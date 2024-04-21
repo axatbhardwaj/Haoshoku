@@ -84,6 +84,13 @@ paru -S discord-screenaudio --noconfirm
 paru -S onlyoffice-bin --noconfirm
 #installing cursor
 paru -S cursor-appimage --noconfirm
+#insalling miniconda
+paru -S miniconda3 --noconfirm
+#installing nerd-fonts
+sudo pacman -S $(pacman -Sgq nerd-fonts) --noconfirm
+#installing kvantum
+paru -S kvantum- --noconfirm
+
 
 
 ##----------------------------------------------------FLATPAK INSTALLS------------------------------------------------------##
@@ -146,39 +153,16 @@ fish -c 'alias rmf "rm -r -f -v"; funcsave rmf;'
 fish -c 'alias ps "ps auxfh"; funcsave ps;' 
 fish -c 'function cursor; command cursor $argv > /dev/null 2>&1 &; end; funcsave cursor'
 
+####------------------------------------------------------configuring-fish ------------------------------------------------------####
 
-
-#### ----------------------- configuring cursor appimage ---------------------------------------- ####
-chmod +x cursor-config.sh
-./cursor-config.sh
-
-#### ----------------------- configuring kitty and Fish launch ---------------------------------------- ####
-
-# Configure kitty config
-
-# Define the path to the kitty.conf file
-config_file="$HOME/.config/kitty/kitty.conf"
-
-# Check if the kitty.conf file exists
-if [ ! -f "$config_file" ]; then
-    mkdir -p "$HOME/.config/kitty"
-    touch "$config_file"
-fi
-
-# Add or modify the transparency setting
-# printf "background_opacity 0.5\n" >> "$config_file"
-
-# printf "Transparency setting added to kitty.conf. Restart Kitty for the changes to take effect.\n"
-
-#Configure launch options for fish
-printf "if status is-interactive
+# Configure Fish shell
+cat <<EOF >> ~/.config/fish/config.fish
+if status is-interactive
+    fastfetch
+    source /opt/miniconda3/etc/fish/conf.d/conda.fish
     # Commands to run in interactive sessions can go here
-    # fastfetch
-    export TERM=screen-256color
-    set -gx VIRTUAL_ENV_DISABLE_PROMPT 1
-end\n" > ~/.config/fish/config.fish
-
-
+end
+EOF
 
 ####------------------------------------------------------ git config ------------------------------------------------------####
 
@@ -280,24 +264,6 @@ mv ~/.config/kdeconnect ~/.config/kdeconnect.bak
 sudo firewall-cmd --permanent --zone=public --add-service=kdeconnect
 sudo firewall-cmd --reload
 
-#####----------------------------------------------------Installing blurr------------------------------------------------------####
-# Prompt for desktop environment
-read -p "Is your desktop environment KDE? (y/n): " is_kde
-
-if [ "$is_kde" = "y" ]; then
-        git clone https://github.com/esjeon/kwin-forceblur.git
-        cd kwin-forceblur
-        chmod +x install.sh
-        chmod +x pack.sh
-        ./pack.sh
-        ./install.sh
-
-        mkdir -p ~/.local/share/kservices5/
-        cp ~/.local/share/kwin/scripts/forceblur/metadata.desktop ~/.local/share/kservices5/forceblur.desktop
-        echo "Remember to enable blurr within kwin-scripts"
-else
-    echo "Skipping kwin-forceblur installation as the desktop environment is not KDE."
-fi
 
 #promt for gameing 
 read -p "Do you want to to configure this machine for gaming ? (y/n): " game_on
@@ -352,3 +318,6 @@ if [ "$bt_on"="y" ]; then
 fi
 
 echo "installation complete! Restart your terminal"
+
+echo "Kvantum theme name is OCEAN link is present in script"
+#https://store.kde.org/p/1427568/
