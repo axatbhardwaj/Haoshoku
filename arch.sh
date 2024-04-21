@@ -187,17 +187,21 @@ add_ssh_to_agent() {
 # Start SSH agent
 eval "$(ssh-agent -s)"
 
-# Creating directory for work and personal git
-mkdir -p ~/work
-cd ~/work
+# Prompt for work profile creation
+read -p "Do you want to create a work profile? (y/n): " create_work_profile
 
-# Prompt for work-related information
-work_email=$(prompt_user "Enter work email")
-work_username=$(prompt_user "Enter work username")
-github_username=$(prompt_user "Enter GitHub username for work")
+if [ "$create_work_profile" = "y" ]; then
+    # Creating directory for work git
+    mkdir -p ~/work
+    cd ~/work
 
-# Generate .gitconfig.work
-cat <<EOF > ~/work/.gitconfig.work
+    # Prompt for work-related information
+    work_email=$(prompt_user "Enter work email")
+    work_username=$(prompt_user "Enter work username")
+    github_username=$(prompt_user "Enter GitHub username for work")
+
+    # Generate .gitconfig.work
+    cat <<EOF > ~/work/.gitconfig.work
 [user]
 email = $work_email
 name = $work_username
@@ -209,16 +213,18 @@ user = "$github_username"
 sshCommand = "ssh -i ~/.ssh/work_key"
 EOF
 
-# Generate Ed25519 SSH key for work
-generate_ed25519_key "$work_email" ~/.ssh/work_key
+    # Generate Ed25519 SSH key for work
+    generate_ed25519_key "$work_email" ~/.ssh/work_key
 
-# Add SSH key to agent
-add_ssh_to_agent ~/.ssh/work_key
+    # Add SSH key to agent
+    add_ssh_to_agent ~/.ssh/work_key
+fi
 
-# Repeat the process for personal
+# Creating directory for personal git
 mkdir -p ~/personal
 cd ~/personal
 
+# Prompt for personal-related information
 personal_email=$(prompt_user "Enter personal email")
 personal_username=$(prompt_user "Enter personal username")
 github_username=$(prompt_user "Enter GitHub username for personal")
@@ -247,13 +253,15 @@ cat <<EOF > ~/.gitconfig
 [includeIf "gitdir:~/personal/"]
     path = ~/personal/.gitconfig.personal
 
+EOF
+
+if [ "$create_work_profile" = "y" ]; then
+    cat <<EOF >> ~/.gitconfig
 [includeIf "gitdir:~/work/"]
     path = ~/work/.gitconfig.work
 
-[core]
-    excludesfile = ~/.gitignore
 EOF
-
+fi
 
 echo "CAT the .pub files and add the contents to Github.com in their respective accounts"
 
