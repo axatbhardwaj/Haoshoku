@@ -90,6 +90,8 @@ paru -S miniconda3 --noconfirm
 sudo pacman -S $(pacman -Sgq nerd-fonts) --noconfirm
 #installing kvantum
 paru -S kvantum- --noconfirm
+#installing foundry
+curl -L https://foundry.paradigm.xyz | bash
 
 
 
