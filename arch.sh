@@ -92,6 +92,8 @@ sudo pacman -S $(pacman -Sgq nerd-fonts) --noconfirm
 paru -S kvantum- --noconfirm
 #installing foundry
 curl -L https://foundry.paradigm.xyz | bash
+#installing zoxide
+paru -S zoxide --noconfirm
 
 
 
@@ -164,6 +166,9 @@ if status is-interactive
     source /opt/miniconda3/etc/fish/conf.d/conda.fish
     # Commands to run in interactive sessions can go here
 end
+
+fish_add_path -a /home/axat/.foundry/bin
+zoxide init fish | source
 EOF
 
 ####------------------------------------------------------ git config ------------------------------------------------------####
