@@ -94,9 +94,12 @@ paru -S kvantum- --noconfirm
 curl -L https://foundry.paradigm.xyz | bash
 #installing zoxide
 paru -S zoxide --noconfirm
-
-
-
+#installing openai-chatgpt-nativefier
+paru -S openai-chatgpt-nativefier --noconfirm
+#installing google-gemini-nativefier
+paru -S google-gemini-nativefier --noconfirm
+#installing anthropic-claude-nativefier
+paru -S anthropic-claude-nativefier --noconfirm
 ##----------------------------------------------------FLATPAK INSTALLS------------------------------------------------------##
 
 #adding remote repo for flatpak
