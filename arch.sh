@@ -19,6 +19,21 @@ then
     cd /tmp/paru
     makepkg -si --noconfirm
 fi
+####------------------------------------------------------ insatlling zen kernel ---------------------------------------------------####
+
+#prompting for zen kernel
+read -p "Do you want to install zen kernel ? (y/n): " zen_on
+
+if [ "$zen_on"="y" ]; then
+    #updating system before installing zen-kernel
+    paru -Syyu --noconfirm
+
+    #installing zen kernel
+    paru -S zen-kernel linux-zen-headers --noconfirm
+
+    #making grub entry for zen-kernel
+    sudo grub-mkconfig -o /boot/grub/grub.cfg
+fi
 
 ####------------------------------------------------------ installng software ------------------------------------------------------####
 
@@ -100,6 +115,10 @@ paru -S openai-chatgpt-nativefier --noconfirm
 paru -S google-gemini-nativefier --noconfirm
 #installing anthropic-claude-nativefier
 paru -S anthropic-claude-nativefier --noconfirm
+#installing ticktick
+paru -S ticktick --noconfirm
+#installing telegram
+paru -S telegram-desktop --noconfirm
 ##----------------------------------------------------FLATPAK INSTALLS------------------------------------------------------##
 
 #adding remote repo for flatpak
@@ -175,6 +194,7 @@ zoxide init fish | source
 EOF
 
 ####------------------------------------------------------ git config ------------------------------------------------------####
+
 
 ### configuring git 
 
