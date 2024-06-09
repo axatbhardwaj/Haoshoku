@@ -119,6 +119,9 @@ paru -S anthropic-claude-nativefier --noconfirm
 paru -S ticktick --noconfirm
 #installing telegram
 paru -S telegram-desktop --noconfirm
+#installing klever Notes
+paru -S klevernotes-git --noconfirm
+
 ##----------------------------------------------------FLATPAK INSTALLS------------------------------------------------------##
 
 #adding remote repo for flatpak
@@ -156,18 +159,18 @@ chsh -s $(which fish)
 # Install Fisher
 fish -c "curl -sL https://git.io/fisher | source && fisher install jorgebucaran/fisher"
 
-#installing tide prompt
-fish -c "fisher install IlanCosman/tide"
 
-#configuring tide prmpt 
-fish -c "tide configure --auto --style=Lean --prompt_colors='True color' --show_time='24-hour format' --lean_prompt_height='Two lines' --prompt_connection=Solid --prompt_connection_andor_frame_color=Darkest --prompt_spacing=Sparse --icons='Many icons' --transient=Yes"
 
 # Install Fisher extensions
+fish -c "fisher install IlanCosman/tide"
 fish -c "fisher install jorgebucaran/nvm.fish"
 fish -c "fisher install jorgebucaran/replay.fish"
 fish -c "fisher install franciscolourenco/done"
 fish -c "fisher install gazorby/fish-abbreviation-tips"
 fish -c "fisher install meaningful-ooo/sponge"
+
+#configuring tide prmpt 
+fish -c "tide configure --auto --style=Lean --prompt_colors='True color' --show_time='24-hour format' --lean_prompt_height='Two lines' --prompt_connection=Solid --prompt_connection_andor_frame_color=Darkest --prompt_spacing=Sparse --icons='Many icons' --transient=Yes"
 
 # Set aliases
 fish -c 'alias dog "code"; funcsave dog;' 
