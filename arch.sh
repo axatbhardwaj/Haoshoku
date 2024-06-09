@@ -121,6 +121,8 @@ paru -S ticktick --noconfirm
 paru -S telegram-desktop --noconfirm
 #installing klever Notes
 paru -S klevernotes-git --noconfirm
+#installing anytype
+paru -S anytype-bin --noconfirm
 
 ##----------------------------------------------------FLATPAK INSTALLS------------------------------------------------------##
 
