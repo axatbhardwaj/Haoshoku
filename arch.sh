@@ -123,6 +123,8 @@ paru -S telegram-desktop --noconfirm
 paru -S klevernotes-git --noconfirm
 #installing anytype
 paru -S anytype-bin --noconfirm
+#installing spicetify 
+paru -S spicetify-cli --noconfirm
 
 ##----------------------------------------------------FLATPAK INSTALLS------------------------------------------------------##
 
@@ -308,6 +310,34 @@ sudo firewall-cmd --permanent --zone=public --add-service=kdeconnect
 sudo firewall-cmd --reload
 
 
+####--------------------------------- Spicetify config ------------------------------------####
+#allowing spicetify to write to /opt/spotify
+sudo chmod a+wr /opt/spotify
+sudo chmod a+wr /opt/spotify/Apps -R
+
+#running spicetify
+spicetify backup apply 
+
+#cloing spicetify-themes
+git clone --depth=1 https://github.com/spicetify/spicetify-themes.git 
+
+# copying spiceify-themes
+
+cd spicetify-themes
+cp -r * ~/.config/spicetify/Themes
+
+#selecting theme
+spicetify config current_theme Sleek
+
+#selecting color scheme
+spicetify config color_scheme deeper
+
+#apply changes
+spicetify apply
+
+echo "Spicetify configured !"
+
+
 #promt for gameing 
 read -p "Do you want to to configure this machine for gaming ? (y/n): " game_on
 
@@ -359,6 +389,8 @@ if [ "$bt_on"="y" ]; then
     sudo systemctl start bluetooth
     echo "Bluetooth enabled !"
 fi
+
+
 
 echo "installation complete! Restart your terminal"
 
