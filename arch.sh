@@ -125,6 +125,8 @@ paru -S klevernotes-git --noconfirm
 paru -S anytype-bin --noconfirm
 #installing spicetify 
 paru -S spicetify-cli --noconfirm
+#install ente-auth
+paru -S ente-auth-bin --noconfirm
 
 ##----------------------------------------------------FLATPAK INSTALLS------------------------------------------------------##
 
