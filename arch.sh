@@ -89,8 +89,6 @@ paru -S grub-btrfs --noconfirm
 paru -S grub-customizer --noconfirm
 #installing webcord
 paru -S webcord --noconfirm
-#installing whatsapp-for-linux
-paru -S whatsdesk-bin --noconfirm
 #installing teams-for-linux
 paru -S teams-for-linux --noconfirm
 #installing discord screen-audio
@@ -121,6 +119,8 @@ paru -S anytype-bin --noconfirm
 paru -S spicetify-cli --noconfirm
 #install ente-auth
 paru -S ente-auth-bin --noconfirm
+#installing armcord
+paru armcord-bin --noconfirm
 
 ##----------------------------------------------------FLATPAK INSTALLS------------------------------------------------------##
 
@@ -297,6 +297,16 @@ EOF
 fi
 
 echo "CAT the .pub files and add the contents to Github.com in their respective accounts"
+
+####---------------------------------configuring kitty terminal ------------------------------------####
+# Configure Kitty terminal
+
+#check if kitty folder exists
+if [ ! -d ~/.config/kitty ]; then
+    mkdir -p ~/.config/kitty
+fi
+#copy config file
+cp -f configs/kitty.conf ~/.config/kitty/kitty.conf
 
 ####---------------------------KDE-connect fix----------------------------------####
 killall kdeconnectd
