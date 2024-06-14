@@ -396,6 +396,20 @@ if [ "$bt_on"="y" ]; then
     echo "Bluetooth enabled !"
 fi
 
+####------------------------------------configure Kde force blur ------------------------------------####
+# Configure KDE Force Blur
+
+git clone https://github.com/taj-ny/kwin-effects-forceblur
+cd kwin-effects-forceblur
+mkdir build
+cd build
+cmake ../ -DCMAKE_INSTALL_PREFIX=/usr
+make
+sudo make install
+
+echo "Force blur Installed!"
+echo "Enable it from settings > desktop effects > force blur"
+echo "configure force blurr and set enable blur all except matching"
 
 
 echo "installation complete! Restart your terminal"
