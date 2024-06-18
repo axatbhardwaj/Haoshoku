@@ -117,6 +117,8 @@ paru -S ente-auth-bin --noconfirm
 paru -S armcord-bin --noconfirm
 #installing qbittorrent
 paru -S qbittorrent --noconfirm
+#installing onefetch
+paru -S onefetch --noconfirm
 
 ##----------------------------------------------------FLATPAK INSTALLS------------------------------------------------------##
 
