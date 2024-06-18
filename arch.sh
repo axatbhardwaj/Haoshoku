@@ -4,6 +4,8 @@
 
 set -e  # Exit on error
 
+current_dir=$(pwd)
+
 #pacman updates & installing rust up
 sudo pacman -Syyu base-devel --noconfirm
 
@@ -306,7 +308,7 @@ if [ ! -d ~/.config/kitty ]; then
     mkdir -p ~/.config/kitty
 fi
 #copy config file
-cp -f "$PWD/configs/kitty.conf" ~/.config/kitty/kitty.conf
+cp -f "$current_dir/configs/kitty.conf" ~/.config/kitty/kitty.conf
 
 ####---------------------------KDE-connect fix----------------------------------####
 killall kdeconnectd
@@ -375,7 +377,7 @@ if [ "$game_on"="y" ]; then
     paru -Syyu --noconfirm
 
     #installing linux-zen
-    paru -S linux-zen linux-zen-headers --noconfirm
+    # paru -S linux-zen linux-zen-headers --noconfirm
 
     #making grub entry for linux-zen
     sudo grub-mkconfig -o /boot/grub/grub.cfg    
