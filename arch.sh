@@ -63,8 +63,6 @@ paru -S noisetorch-bin --noconfirm
 paru -S github-cli --noconfirm
 #installing nvm
 paru -S nvm --noconfirm
-#insalling authy
-paru -S authy --noconfirm
 #installing notion
 paru -S notion-app-electron --noconfirm
 #installing flatpak 
