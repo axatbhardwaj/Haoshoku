@@ -186,14 +186,35 @@ fish -c 'function cursor; command cursor $argv > /dev/null 2>&1 &; end; funcsave
 
 # Configure Fish shell
 cat <<EOF >> ~/.config/fish/config.fish
+function is_git_repo
+    if test -d .git
+        return 0
+    else
+        set git_root (git rev-parse --show-toplevel 2>/dev/null)
+        if test $status -eq 0
+            return 0
+        end
+    end
+    return 1
+end
+
 if status is-interactive
-    fastfetch
+    if is_git_repo
+        onefetch
+    else
+        fastfetch
+    end
+    zoxide init fish | source
     source /opt/miniconda3/etc/fish/conf.d/conda.fish
     # Commands to run in interactive sessions can go here
 end
 
 fish_add_path -a /home/axat/.foundry/bin
-zoxide init fish | source
+
+# bun
+set --export BUN_INSTALL "$HOME/.bun"
+set --export PATH $BUN_INSTALL/bin $PATH
+
 EOF
 
 ####------------------------------------------------------ git config ------------------------------------------------------####
