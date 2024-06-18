@@ -48,7 +48,7 @@ paru -S kwin-scripts-forceblur --noconfirm
 #installing Brave
 paru -S brave-bin --noconfirm
 #installing floorp
-paru -S floorp --noconfirm
+paru -S floorp-bin --noconfirm
 #installing zip
 paru -S zip --noconfirm
 #installing Kitty
