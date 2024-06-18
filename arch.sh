@@ -120,23 +120,6 @@ paru -S qbittorrent --noconfirm
 #installing onefetch
 paru -S onefetch --noconfirm
 
-##----------------------------------------------------FLATPAK INSTALLS------------------------------------------------------##
-
-#adding remote repo for flatpak
-flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-
-
-#installing Discord
-flatpak install flathub com.discordapp.Discord -y
-#installing discord-overlay 
-flatpak install io.github.trigg.discover_overlay - y 
-#installing flatseal
-flatpak install flathub com.github.tchx84.Flatseal -y
-
-
-#fixing issue with dicord flatpak related to files
-flatpak override --user --filesystem=home:ro com.discordapp.Discord
-
 
 #####-------------------------------------- Grub fixes ------------------------------------------------#####
 
