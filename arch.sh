@@ -41,8 +41,6 @@ fi
 paru -S fish --noconfirm 
 # Install Fastfetch
 paru -S fastfetch-git --noconfirm
-#Installing Bismuth for tiling
-paru -S kwin-bismuth --noconfirm
 #installing vs-code and vscode insiders
 paru -S visual-studio-code-bin --noconfirm
 #installing Forceblur
