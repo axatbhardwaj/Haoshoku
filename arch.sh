@@ -21,21 +21,6 @@ then
     cd /tmp/paru
     makepkg -si --noconfirm
 fi
-####------------------------------------------------------ insatlling zen kernel ---------------------------------------------------####
-
-#prompting for zen kernel
-read -p "Do you want to install zen kernel ? (y/n): " zen_on
-
-if [ "$zen_on"="y" ]; then
-    #updating system before installing linux-zen
-    paru -Syyu --noconfirm
-
-    #installing zen kernel
-    paru -S linux-zen linux-zen-headers --noconfirm
-
-    #making grub entry for linux-zen
-    sudo grub-mkconfig -o /boot/grub/grub.cfg
-fi
 
 ####------------------------------------------------------ installng software ------------------------------------------------------####
 
@@ -377,7 +362,7 @@ if [ "$game_on"="y" ]; then
     paru -Syyu --noconfirm
 
     #installing linux-zen
-    # paru -S linux-zen linux-zen-headers --noconfirm
+    paru -S linux-zen linux-zen-headers --noconfirm
 
     #making grub entry for linux-zen
     sudo grub-mkconfig -o /boot/grub/grub.cfg    
