@@ -114,7 +114,7 @@ paru -S spicetify-cli --noconfirm
 #install ente-auth
 paru -S ente-auth-bin --noconfirm
 #installing armcord
-paru armcord-bin --noconfirm
+paru -S armcord-bin --noconfirm
 #installing qbittorrent
 paru -S qbittorrent --noconfirm
 
