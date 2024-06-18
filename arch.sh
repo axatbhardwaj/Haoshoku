@@ -25,13 +25,13 @@ fi
 read -p "Do you want to install zen kernel ? (y/n): " zen_on
 
 if [ "$zen_on"="y" ]; then
-    #updating system before installing zen-kernel
+    #updating system before installing linux-zen
     paru -Syyu --noconfirm
 
     #installing zen kernel
-    paru -S zen-kernel linux-zen-headers --noconfirm
+    paru -S linux-zen linux-zen-headers --noconfirm
 
-    #making grub entry for zen-kernel
+    #making grub entry for linux-zen
     sudo grub-mkconfig -o /boot/grub/grub.cfg
 fi
 
@@ -394,13 +394,13 @@ if [ "$game_on"="y" ]; then
     #installing nvdock for nvsettings
     paru -S nvdock-git --noconfirm
 
-    #updating system before installing zen-kernel
+    #updating system before installing linux-zen
     paru -Syyu --noconfirm
 
-    #installing zen-kernel
-    paru -S zen-kernel linux-zen-headers --noconfirm
+    #installing linux-zen
+    paru -S linux-zen linux-zen-headers --noconfirm
 
-    #making grub entry for zen-kernel
+    #making grub entry for linux-zen
     sudo grub-mkconfig -o /boot/grub/grub.cfg    
 
     echo "Games-configurations completed !
