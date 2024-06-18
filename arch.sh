@@ -306,7 +306,7 @@ if [ ! -d ~/.config/kitty ]; then
     mkdir -p ~/.config/kitty
 fi
 #copy config file
-cp -f configs/kitty.conf ~/.config/kitty/kitty.conf
+cp -f "$PWD/configs/kitty.conf" ~/.config/kitty/kitty.conf
 
 ####---------------------------KDE-connect fix----------------------------------####
 killall kdeconnectd
