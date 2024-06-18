@@ -129,9 +129,7 @@ flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.f
 #installing Discord
 flatpak install flathub com.discordapp.Discord -y
 #installing discord-overlay 
-flatpak install io.github.trigg.discover_overlay
-#installing authy 
-flatpak install flathub com.authy.Authy -y
+flatpak install io.github.trigg.discover_overlay - y 
 #installing flatseal
 flatpak install flathub com.github.tchx84.Flatseal -y
 
