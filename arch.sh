@@ -98,7 +98,7 @@ paru -S miniconda3 --noconfirm
 #installing nerd-fonts
 sudo pacman -S $(pacman -Sgq nerd-fonts) --noconfirm
 #installing kvantum
-paru -S kvantum- --noconfirm
+paru -S kvantum --noconfirm
 #installing foundry
 curl -L https://foundry.paradigm.xyz | bash
 #installing zoxide
