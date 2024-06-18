@@ -121,6 +121,8 @@ paru -S spicetify-cli --noconfirm
 paru -S ente-auth-bin --noconfirm
 #installing armcord
 paru armcord-bin --noconfirm
+#installing qbittorrent
+paru -S qbittorrent --noconfirm
 
 ##----------------------------------------------------FLATPAK INSTALLS------------------------------------------------------##
 
