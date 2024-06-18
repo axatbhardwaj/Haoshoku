@@ -63,14 +63,12 @@ paru -S noisetorch-bin --noconfirm
 paru -S github-cli --noconfirm
 #installing nvm
 paru -S nvm --noconfirm
-#installing notion
-paru -S notion-app-electron --noconfirm
 #installing flatpak 
 paru -S flatpak --noconfirm
 #installing bitwarden
 paru -S bitwarden --noconfirm
 #installing spotify
-paru -S spotify-snapstore --noconfirm
+paru -S spotify --noconfirm
 #installing kde-partitionmanger
 paru -S partitionmanager --noconfirm
 #installing timeshift
