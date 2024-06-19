@@ -351,7 +351,7 @@ SPOTIFY_PREF_PATH=$(pwd)
 replace_string_in_file() {
     local file="$HOME/.config/spicetify/config-xpui.ini"
     local search="~/.config/spotify/prefs"
-    local replace="$SPOTIFY_PREF_PATH"
+    local replace="$SPOTIFY_PREF_PATH/prefs"
     
     if [ -f "$file" ]; then
         sed -i "s|$search|$replace|g" "$file"
@@ -359,6 +359,11 @@ replace_string_in_file() {
         echo "File $file does not exist."
     fi
 }
+
+#if pref file is not present in SPOTIFY_PREF_PATH then create it
+if [ ! -f "$SPOTIFY_PREF_PATH/prefs" ]; then
+    touch "$SPOTIFY_PREF_PATH/prefs"
+fi
 
 replace_string_in_file
 
