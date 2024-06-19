@@ -117,7 +117,7 @@ install_apps
 curl -L https://foundry.paradigm.xyz | bash
 
 #installing nerd-fonts
-sudo pacman -S $(pacman -Sgq nerd-fonts)
+sudo pacman -S $(pacman -Sgq nerd-fonts) --noconfirm
 
 #####-------------------------------------- Grub fixes ------------------------------------------------#####
 
