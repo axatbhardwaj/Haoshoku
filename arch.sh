@@ -24,87 +24,46 @@ fi
 
 ####------------------------------------------------------ installng software ------------------------------------------------------####
 
-# install Fish
-paru -S fish --noconfirm 
-# Install Fastfetch
-paru -S fastfetch-git --noconfirm
-#installing vs-code and vscode insiders
-paru -S visual-studio-code-bin --noconfirm
-#installing Brave
-paru -S brave-bin --noconfirm
-#installing floorp
-paru -S floorp-bin --noconfirm
-#installing zip
-paru -S zip --noconfirm
-#installing Kitty
-paru -S kitty --noconfirm           
-#installing signal
-paru -S signal-desktop --noconfirm
-#installing thunderbird
-paru -S thunderbird --noconfirm
-#installing noisetorch
-paru -S noisetorch-bin --noconfirm
-#installing github-cli
-paru -S github-cli --noconfirm
-#installing nvm
-paru -S nvm --noconfirm
-#installing flatpak 
-paru -S flatpak --noconfirm
-#installing bitwarden
-paru -S bitwarden --noconfirm
-#installing spotify
-paru -S spotify --noconfirm
-#installing kde-partitionmanger
-paru -S partitionmanager --noconfirm
-#installing timeshift
-paru -S timeshift --noconfirm
-#installing timeshift-autosnap
-paru -S timeshift-autosnap --noconfirm
-#installing inotify
-paru -S inotify-tools --noconfirm
-#intsalling grub-btrfs
-paru -S grub-btrfs --noconfirm
-#installing grub-customizer
-paru -S grub-customizer --noconfirm
-#installing webcord
-paru -S webcord --noconfirm
-#installing teams-for-linux
-paru -S teams-for-linux --noconfirm
-#installing discord screen-audio
-paru -S discord-screenaudio --noconfirm
-#installing onlyoffice
-paru -S onlyoffice-bin --noconfirm
-#installing cursor
-paru -S cursor-appimage --noconfirm
-#insalling miniconda
-paru -S miniconda3 --noconfirm
-#installing nerd-fonts
-sudo pacman -S $(pacman -Sgq nerd-fonts) --noconfirm
-#installing kvantum
-paru -S kvantum --noconfirm
-#installing foundry
-curl -L https://foundry.paradigm.xyz | bash
-#installing zoxide
-paru -S zoxide --noconfirm
-#installing ticktick
-paru -S ticktick --noconfirm
-#installing telegram
-paru -S telegram-desktop --noconfirm
-#installing klever Notes
-paru -S klevernotes-git --noconfirm
-#installing anytype
-paru -S anytype-bin --noconfirm
-#installing spicetify 
-paru -S spicetify-cli --noconfirm
-#install ente-auth
-paru -S ente-auth-bin --noconfirm
-#installing armcord
-paru -S armcord-bin --noconfirm
-#installing qbittorrent
-paru -S qbittorrent --noconfirm
-#installing onefetch
-paru -S onefetch --noconfirm
+apps=(
+    "fish"
+    "fastfetch-git"
+    "visual-studio-code-bin"
+    "brave-bin"
+    "floorp-bin"
+    "zip"
+    "kitty"
+    "signal-desktop"
+    "thunderbird"
+    "noisetorch-bin"
+    "github-cli"
+    "nvm"
+    "flatpak"
+    "bitwarden"
+    "spotify"
+    "partitionmanager"
+    "timeshift"
+    "timeshift-autosnap"
+    "inotify-tools"
+    "grub-btrfs"
+    "grub-customizer"
+    "webcord"
+    "teams-for-linux"
+    "slack-desktop"
+    "betterdiscord-installer"
+    "discord"
+    "libreoffice-still"
+    "plasma-pa"
+    "plasma-nm"
+)
 
+# Function to install applications
+install_apps() {
+    for app in "${apps[@]}"; do
+        paru -S "$app" --noconfirm
+    done
+}
+
+install_apps
 
 #####-------------------------------------- Grub fixes ------------------------------------------------#####
 
@@ -291,7 +250,7 @@ if [ ! -d ~/.config/kitty ]; then
     mkdir -p ~/.config/kitty
 fi
 #copy config file
-cp -f "$current_dir/configs/kitty.conf" ~/.config/kitty/kitty.conf
+cp -f "$current_dir/configs/kitty/kitty.conf" ~/.config/kitty/kitty.conf
 
 ####---------------------------KDE-connect fix----------------------------------####
 killall kdeconnectd
@@ -305,6 +264,36 @@ sudo firewall-cmd --reload
 #allowing spicetify to write to /opt/spotify
 sudo chmod a+wr /opt/spotify
 sudo chmod a+wr /opt/spotify/Apps -R
+
+#making sure that the spicetify folder exists
+if [ ! -d ~/.config/spicetify ]; then
+    mkdir -p ~/.config/spicetify
+fi
+
+#copying spicetify config
+cp -f "$current_dir/configs/spicetify/config-xpui.ini" ~/.config/spicetify/config-xpui.ini
+
+#chaging prefs_path in spicetify config
+cd ~/.config/spotify/
+
+#savinf spotify-prefs-path to restore later
+SPOTIFY_PREF_PATH=$(pwd)
+
+#changing prefs_path
+replace_string_in_file() {
+    local file="$HOME/.config/spicetify/config-xpui.ini"
+    local search="~/.config/spotify/prefs"
+    local replace="$SPOTIFY_PREF_PATH"
+    
+    if [ -f "$file" ]; then
+        sed -i "s|$search|$replace|g" "$file"
+    else
+        echo "File $file does not exist."
+    fi
+}
+
+replace_string_in_file
+
 
 #running spicetify
 spicetify backup apply 
@@ -330,46 +319,42 @@ echo "Spicetify configured !"
 
 
 #promt for gameing 
-read -p "Do you want to to configure this machine for gaming ? (y/n): " game_on
+# Ask if to enable gaming
+read -p "Do you want to enable gaming ? (y/n): " game_on
 
-if [ "$game_on"="y" ]; then
-    #installing steam
-    paru -S steam --noconfirm
-    #installing lutris
-    paru -S lutris --noconfirm
-    #installing protonup for proton-GE
-    paru -S protonup-rs-bin --noconfirm
-    #installing protontricks
-    paru -S protontricks --noconfirm
-    #installing gamemode
-    paru -S gamemode --noconfirm
-    #installing plasma-gamemode-integration
-    paru -S plasma-gamemode-git --noconfirm
-    #installing goverlay 
-    paru -S goverlay --noconfirm
-    #installing nvtop
-    paru -S nvtop --noconfirm
-    #installing btop
-    paru -S btop --noconfirm
-    #installing nvidia settings
-    paru -S nvidia-settings --noconfirm
-    #installing nvdock for nvsettings
-    paru -S nvdock-git --noconfirm
+if [ "$game_on" == "y" ]; then
+    gaming_apps=(
+        "steam"
+        "lutris"
+        "protonup-rs-bin"
+        "protontricks"
+        "gamemode"
+        "plasma-gamemode-git"
+        "goverlay"
+        "nvtop"
+        "btop"
+        "nvidia-settings"
+        "nvdock-git"
+        "linux-zen"
+        "linux-zen-headers"
+    )
+    
+    for app in "${gaming_apps[@]}"; do
+        paru -S "$app" --noconfirm
+    done
 
-    #updating system before installing linux-zen
+    # Update system before installing linux-zen
     paru -Syyu --noconfirm
 
-    #installing linux-zen
-    paru -S linux-zen linux-zen-headers --noconfirm
+    # Making grub entry for linux-zen
+    sudo grub-mkconfig -o /boot/grub/grub.cfg
 
-    #making grub entry for linux-zen
-    sudo grub-mkconfig -o /boot/grub/grub.cfg    
-
-    echo "Games-configurations completed !
+    echo "Games-configurations completed!
     launch steam and lutris then run:
     protonup-rs -q 
     "
 fi
+
 
 #ask if to enable bluetooth
 read -p "Do you want to enable bluetooth ? (y/n): " bt_on
