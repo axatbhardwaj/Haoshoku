@@ -90,8 +90,6 @@ apps=(
 "telegram-desktop"
 #installing klever Notes
 "klevernotes-git"
-#installing anytype
-"anytype-bin"
 #installing spicetify 
 "spicetify-cli"
 #install ente-auth
