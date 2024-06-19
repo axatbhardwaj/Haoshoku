@@ -307,7 +307,11 @@ fi
 cp -f "$current_dir/configs/kitty/kitty.conf" ~/.config/kitty/kitty.conf
 
 ####---------------------------KDE-connect fix----------------------------------####
-killall kdeconnectd
+if pgrep -x "kdeconnectd" > /dev/null
+then
+    killall kdeconnectd || true
+fi
+
 mv ~/.config/kdeconnect ~/.config/kdeconnect.bak
 
 sudo firewall-cmd --permanent --zone=public --add-service=kdeconnect
