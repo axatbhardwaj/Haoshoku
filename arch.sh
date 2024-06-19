@@ -105,11 +105,7 @@ apps=(
 # Function to install applications
 install_apps() {
     for app in "${apps[@]}"; do
-        if ! command -v "$app" &> /dev/null; then
-            echo "$app is already installed. Skipping..."
-        else
             paru -S "$app" --noconfirm
-        fi
     done
 }
 
