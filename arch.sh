@@ -30,8 +30,6 @@ paru -S fish --noconfirm
 paru -S fastfetch-git --noconfirm
 #installing vs-code and vscode insiders
 paru -S visual-studio-code-bin --noconfirm
-#installing Forceblur
-paru -S kwin-scripts-forceblur --noconfirm
 #installing Brave
 paru -S brave-bin --noconfirm
 #installing floorp
