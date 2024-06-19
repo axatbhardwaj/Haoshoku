@@ -352,6 +352,8 @@ if [ "$game_on" == "y" ]; then
         paru -S "$app" --noconfirm
     done
 
+    sudo nvidia-xconfig
+
     # Update system before installing linux-zen
     paru -Syyu --noconfirm
 
