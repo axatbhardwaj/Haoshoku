@@ -341,6 +341,8 @@ if [ "$game_on" == "y" ]; then
         "nvtop"
         "btop"
         "nvidia-settings"
+        "nvidia-dkms"
+        "nvidia-utils"
         "nvdock-git"
         "linux-zen"
         "linux-zen-headers"
