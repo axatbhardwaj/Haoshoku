@@ -25,35 +25,83 @@ fi
 ####------------------------------------------------------ installng software ------------------------------------------------------####
 
 apps=(
-    "fish"
-    "fastfetch-git"
-    "visual-studio-code-bin"
-    "brave-bin"
-    "floorp-bin"
-    "zip"
-    "kitty"
-    "signal-desktop"
-    "thunderbird"
-    "noisetorch-bin"
-    "github-cli"
-    "nvm"
-    "flatpak"
-    "bitwarden"
-    "spotify"
-    "partitionmanager"
-    "timeshift"
-    "timeshift-autosnap"
-    "inotify-tools"
-    "grub-btrfs"
-    "grub-customizer"
-    "webcord"
-    "teams-for-linux"
-    "slack-desktop"
-    "betterdiscord-installer"
-    "discord"
-    "libreoffice-still"
-    "plasma-pa"
-    "plasma-nm"
+   
+# install Fish
+"fish" 
+# Install Fastfetch
+"fastfetch-git"
+#installing vs-code and vscode insiders
+"visual-studio-code-bin"
+#installing Brave
+"brave-bin"
+#installing floorp
+"floorp-bin"
+#installing zip
+"zip"
+#installing Kitty
+"kitty"
+#installing signal
+"signal-desktop"
+#installing thunderbird
+"thunderbird"
+#installing noisetorch
+"noisetorch-bin"
+#installing github-cli
+"github-cli"
+#installing nvm
+"nvm"
+#installing flatpak 
+"flatpak"
+#installing bitwarden
+"bitwarden"
+#installing spotify
+'spotify'
+#installing kde-partitionmanger
+"partitionmanager"
+#installing timeshift
+"timeshift"
+#installing timeshift-autosnap
+"timeshift-autosnap"
+#installing inotify
+"inotify-tools"
+#intsalling grub-btrfs
+"grub-btrfs"
+#installing grub-customizer
+"grub-customizer"
+#installing webcord
+"webcord"
+#installing teams-for-linux
+"teams-for-linux"
+#installing discord screen-audio
+"discord-screenaudio"
+#installing onlyoffice
+"onlyoffice-bin"
+#installing cursor
+"cursor-appimage"
+#insalling miniconda
+"miniconda3"
+#installing kvantum
+"kvantum"
+#installing zoxide
+"zoxide"
+#installing ticktick
+"ticktick"
+#installing telegram
+"telegram-desktop"
+#installing klever Notes
+"klevernotes-git"
+#installing anytype
+"anytype-bin"
+#installing spicetify 
+"spicetify-cli"
+#install ente-auth
+"ente-auth-bin"
+#installing armcord
+"armcord-bin"
+#installing qbittorrent
+"qbittorrent"
+#installing onefetch
+"onefetch"
 )
 
 # Function to install applications
@@ -64,6 +112,12 @@ install_apps() {
 }
 
 install_apps
+
+#installing foundry 
+curl -L https://foundry.paradigm.xyz | bash
+
+#installing nerd-fonts
+sudo pacman -S $(pacman -Sgq nerd-fonts)
 
 #####-------------------------------------- Grub fixes ------------------------------------------------#####
 

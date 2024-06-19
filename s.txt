@@ -1,0 +1,77 @@
+
+# install Fish
+fish 
+# Install Fastfetch
+fastfetch-git
+#installing vs-code and vscode insiders
+visual-studio-code-bin
+#installing Brave
+brave-bin
+#installing floorp
+floorp-bin
+#installing zip
+zip
+#installing Kitty
+kitty           
+#installing signal
+signal-desktop
+#installing thunderbird
+thunderbird
+#installing noisetorch
+noisetorch-bin
+#installing github-cli
+github-cli
+#installing nvm
+nvm
+#installing flatpak 
+flatpak
+#installing bitwarden
+bitwarden
+#installing spotify
+spotify
+#installing kde-partitionmanger
+partitionmanager
+#installing timeshift
+timeshift
+#installing timeshift-autosnap
+timeshift-autosnap
+#installing inotify
+inotify-tools
+#intsalling grub-btrfs
+grub-btrfs
+#installing grub-customizer
+grub-customizer
+#installing webcord
+webcord
+#installing teams-for-linux
+teams-for-linux
+#installing discord screen-audio
+discord-screenaudio
+#installing onlyoffice
+onlyoffice-bin
+#installing cursor
+cursor-appimage
+#insalling miniconda
+miniconda3
+#installing kvantum
+kvantum
+#installing zoxide
+zoxide
+#installing ticktick
+ticktick
+#installing telegram
+telegram-desktop
+#installing klever Notes
+klevernotes-git
+#installing anytype
+anytype-bin
+#installing spicetify 
+spicetify-cli
+#install ente-auth
+ente-auth-bin
+#installing armcord
+armcord-bin
+#installing qbittorrent
+qbittorrent
+#installing onefetch
+onefetch
