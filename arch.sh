@@ -167,10 +167,12 @@ function is_git_repo
     else
         set git_root (git rev-parse --show-toplevel 2>/dev/null)
         if test $status -eq 0
+            cd $git_root  # Change directory to the root of the Git repository
             return 0
+        else
+            return 1
         end
     end
-    return 1
 end
 
 if status is-interactive
@@ -183,13 +185,6 @@ if status is-interactive
     source /opt/miniconda3/etc/fish/conf.d/conda.fish
     # Commands to run in interactive sessions can go here
 end
-
-fish_add_path -a /home/axat/.foundry/bin
-
-# bun
-set --export BUN_INSTALL "$HOME/.bun"
-set --export PATH $BUN_INSTALL/bin $PATH
-
 EOF
 
 ####------------------------------------------------------ git config ------------------------------------------------------####
