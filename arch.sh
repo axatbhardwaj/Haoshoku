@@ -312,6 +312,11 @@ then
     killall kdeconnectd || true
 fi
 
+#making sure that the kdeconnect folder exists
+if [ ! -d ~/.config/kdeconnect ]; then
+    mkdir -p ~/.config/kdeconnect
+fi
+
 mv ~/.config/kdeconnect ~/.config/kdeconnect.bak
 
 sudo firewall-cmd --permanent --zone=public --add-service=kdeconnect
