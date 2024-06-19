@@ -100,6 +100,8 @@ apps=(
 "qbittorrent"
 #installing onefetch
 "onefetch"
+#installing webapp-manager
+"webapp-manager"
 )
 
 # Function to install applications
