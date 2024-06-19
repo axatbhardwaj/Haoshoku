@@ -270,6 +270,11 @@ if [ ! -d ~/.config/spicetify ]; then
     mkdir -p ~/.config/spicetify
 fi
 
+#mkaing sure spotify folder exists
+if [ ! -d ~/.config/spotify ]; then
+    mkdir -p ~/.config/spotify
+fi
+
 #copying spicetify config
 cp -f "$current_dir/configs/spicetify/config-xpui.ini" ~/.config/spicetify/config-xpui.ini
 
