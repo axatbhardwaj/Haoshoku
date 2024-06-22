@@ -315,7 +315,7 @@ read -p "Do you want to configure spicetify ? (y/n): " spicetify_on
 
 if [ "$spicetify_on"="y" ]; then
     #run the spicetify.sh script
-    bash "$current_dir/helpers/spicetify.sh"
+    bash "$current_dir/helpers/spicetify.sh $current_dir"
 fi
 
 ####------------------------------------------------------------------ configuring fastfetch ------------------------------------------------------####

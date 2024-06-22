@@ -1,11 +1,16 @@
 #this script if for fastfetch configuration
 
+#take the current directory as argument
+current_dir=$1
+
 fastfetch --gen-config
 
 cd $HOME/.config/fastfetch
 
 rm config.jsonc
 
-wget https://raw.githubusercontent.com/xerolinux/xero-layan-git/main/Configs/Home/.config/fastfetch/config.jsonc
+#copying the config file
+
+cp $current_dir/configs/fastfetch/config.jsonc $HOME/.config/fastfetch/config.jsonc
 
 echo "Fastfetch setup complete"
