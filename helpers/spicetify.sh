@@ -15,15 +15,20 @@ sudo chmod a+wr /opt/spotify/Apps -R
 
 #backup
 spicetify backup
-#installing spicetify-themesgit
+
+#if pref is not present then create it with pref file
+if [ ! -d $HOME/.config/spotify ]; then
+    mkdir -p $HOME/.config/spotify
+    touch $HOME/.config/spotify/prefs
+fi
 
 #pref path
 spicetify config pref_path $HOME/.config/spotify/prefs
 
 #backup
 spicetify backup
-#installing spicetify-themes
 
+#installing spicetify-themes
 echo "Installing Spicetify Themes..."
 
 git clone --depth=1 https://github.com/spicetify/spicetify-themes.git
