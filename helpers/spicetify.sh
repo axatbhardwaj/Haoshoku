@@ -13,6 +13,10 @@ fi
 sudo chmod a+wr /opt/spotify
 sudo chmod a+wr /opt/spotify/Apps -R
 
+#backup
+spicetify backup
+#installing spicetify-themesgit
+
 #pref path
 spicetify config pref_path $HOME/.config/spotify/prefs
 
