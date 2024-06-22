@@ -1,6 +1,6 @@
-#!/bin/bash
+# !/bin/bash
 # This file is used to setup Manjro for my setup
-#the commands for verbose and redundant for better calrity 
+# the commands for verbose and redundant for better calrity
 
 set -e  # Exit on error
 
@@ -25,95 +25,89 @@ fi
 ####------------------------------------------------------ installng software ------------------------------------------------------####
 
 apps=(
-   
-# install Fish
-"fish" 
-# Install Fastfetch
-"fastfetch-git"
-#installing vs-code and vscode insiders
-"visual-studio-code-bin"
-#installing Brave
-"brave-bin"
-#installing floorp
-"floorp-bin"
-#installing zip
-"zip"
-#installing Kitty
-"kitty"
-#installing signal
-"signal-desktop"
-#installing thunderbird
-"thunderbird"
-#installing noisetorch
-"noisetorch-bin"
-#installing github-cli
-"github-cli"
-#installing nvm
-"nvm"
-#installing flatpak 
-"flatpak"
-#installing bitwarden
-"bitwarden"
-#installing spotify
-'spotify'
-#installing kde-partitionmanger
-"partitionmanager"
-#installing timeshift
-"timeshift"
-#installing timeshift-autosnap
-"timeshift-autosnap"
-#installing inotify
-"inotify-tools"
-#intsalling grub-btrfs
-"grub-btrfs"
-#installing grub-customizer
-"grub-customizer"
-#installing webcord
-"webcord"
-#installing teams-for-linux
-"teams-for-linux"
-#installing discord screen-audio
-"discord-screenaudio"
-#installing onlyoffice
-"onlyoffice-bin"
-#installing cursor
-"cursor-appimage"
-#insalling miniconda
-"miniconda3"
-#installing kvantum
-"kvantum"
-#installing zoxide
-"zoxide"
-#installing ticktick
-"ticktick"
-#installing telegram
-"telegram-desktop"
-#installing klever Notes
-"klevernotes-git"
-#installing spicetify 
-"spicetify-cli"
-#install ente-auth
-"ente-auth-bin"
-#installing armcord
-"armcord-bin"
-#installing qbittorrent
-"qbittorrent"
-#installing onefetch
-"onefetch"
-#installing webapp-manager
-"webapp-manager"
+    
+    # install Fish
+    "fish"
+    #installing vs-code and vscode insiders
+    "visual-studio-code-bin"
+    #installing Brave
+    "brave-bin"
+    #installing floorp
+    "floorp-bin"
+    #installing zip
+    "zip"
+    #installing Kitty
+    "kitty"
+    #installing signal
+    "signal-desktop"
+    #installing thunderbird
+    "thunderbird"
+    #installing noisetorch
+    "noisetorch-bin"
+    #installing github-cli
+    "github-cli"
+    #installing nvm
+    "nvm"
+    #installing flatpak
+    "flatpak"
+    #installing bitwarden
+    "bitwarden"
+    #installing spotify
+    'spotify'
+    #installing kde-partitionmanger
+    "partitionmanager"
+    #installing inotify
+    "inotify-tools"
+    #intsalling grub-btrfs
+    "grub-btrfs"
+    #installing webcord
+    "webcord"
+    #installing teams-for-linux
+    "teams-for-linux"
+    #installing discord screen-audio
+    "discord-screenaudio"
+    #installing onlyoffice
+    "onlyoffice-bin"
+    #insalling miniconda
+    "miniconda3"
+    #installing kvantum
+    "kvantum"
+    #installing zoxide
+    "zoxide"
+    #installing ticktick
+    "ticktick"
+    #installing telegram
+    "telegram-desktop"
+    #installing klever Notes
+    "klevernotes-git"
+    #installing spicetify
+    "spicetify-cli"
+    #install ente-auth
+    "ente-auth-bin"
+    #installing armcord
+    "armcord-bin"
+    #installing qbittorrent
+    "qbittorrent"
+    #installing onefetch
+    "onefetch"
+    #installing webapp-manager
+    "webapp-manager"
+    #installing btop
+    "btop"
+    installing nvtop
+    "nvtop"
 )
 
 # Function to install applications
 install_apps() {
     for app in "${apps[@]}"; do
-            paru -S "$app" --noconfirm
+        paru -S "$app" --noconfirm
     done
 }
 
 install_apps
 
-#installing foundry 
+#installing foundry
 curl -L https://foundry.paradigm.xyz | bash
 
 #installing nerd-fonts
@@ -130,33 +124,27 @@ paru -Syyu --noconfirm
 
 ####---------------------------------------------configuring fish ------------------------------------------------------####
 
-# Make Fish the default shell 
+# Make Fish the default shell
 chsh -s $(which fish)
 
 # Install Fisher
 fish -c "curl -sL https://git.io/fisher | source && fisher install jorgebucaran/fisher"
 
-
-
-# Install Fisher extensions
+#installing and configuring tide
 fish -c "fisher install IlanCosman/tide"
-fish -c "fisher install jorgebucaran/nvm.fish"
-fish -c "fisher install jorgebucaran/replay.fish"
-fish -c "fisher install franciscolourenco/done"
-fish -c "fisher install gazorby/fish-abbreviation-tips"
-fish -c "fisher install meaningful-ooo/sponge"
 
-#configuring tide prmpt 
+#configuring tide prmpt
 fish -c "tide configure --auto --style=Lean --prompt_colors='True color' --show_time='24-hour format' --lean_prompt_height='Two lines' --prompt_connection=Solid --prompt_connection_andor_frame_color=Darkest --prompt_spacing=Sparse --icons='Many icons' --transient=Yes"
 
+
 # Set aliases
-fish -c 'alias dog "code"; funcsave dog;' 
+fish -c 'alias dog "code"; funcsave dog;'
 fish -c 'alias lss "ls -a -h"; funcsave lss;'
 fish -c 'alias rmf "rm -r -f -v"; funcsave rmf;'
 fish -c 'alias ps "ps auxfh"; funcsave ps;'
 fish -c 'alias lss "ls -a -h"; funcsave lss;'
 fish -c 'alias rmf "rm -r -f -v"; funcsave rmf;'
-fish -c 'alias ps "ps auxfh"; funcsave ps;' 
+fish -c 'alias ps "ps auxfh"; funcsave ps;'
 fish -c 'function cursor; command cursor $argv > /dev/null 2>&1 &; end; funcsave cursor'
 
 ####------------------------------------------------------configuring-fish ------------------------------------------------------####
@@ -192,7 +180,7 @@ EOF
 ####------------------------------------------------------ git config ------------------------------------------------------####
 
 
-### configuring git 
+### configuring git
 
 # Function to prompt for user input
 prompt_user() {
@@ -220,12 +208,12 @@ if [ "$create_work_profile" = "y" ]; then
     # Creating directory for work git
     mkdir -p ~/work
     cd ~/work
-
+    
     # Prompt for work-related information
     work_email=$(prompt_user "Enter work email")
     work_username=$(prompt_user "Enter work username")
     github_username=$(prompt_user "Enter GitHub username for work")
-
+    
     # Generate .gitconfig.work
     cat <<EOF > ~/work/.gitconfig.work
 [user]
@@ -238,10 +226,10 @@ user = "$github_username"
 [core]
 sshCommand = "ssh -i ~/.ssh/work_key"
 EOF
-
+    
     # Generate Ed25519 SSH key for work
     generate_ed25519_key "$work_email" ~/.ssh/work_key
-
+    
     # Add SSH key to agent
     add_ssh_to_agent ~/.ssh/work_key
 fi
@@ -300,22 +288,8 @@ if [ ! -d ~/.config/kitty ]; then
 fi
 #copy config file
 cp -f "$current_dir/configs/kitty/kitty.conf" ~/.config/kitty/kitty.conf
+echo "Kitty configured"
 
-####---------------------------KDE-connect fix----------------------------------####
-if pgrep -x "kdeconnectd" > /dev/null
-then
-    killall kdeconnectd || true
-fi
-
-#making sure that the kdeconnect folder exists
-if [ ! -d ~/.config/kdeconnect ]; then
-    mkdir -p ~/.config/kdeconnect
-fi
-
-mv ~/.config/kdeconnect ~/.config/kdeconnect.bak
-
-sudo firewall-cmd --permanent --zone=public --add-service=kdeconnect
-sudo firewall-cmd --reload
 
 #ask if to enable bluetooth
 read -p "Do you want to enable bluetooth ? (y/n): " bt_on
