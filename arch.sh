@@ -287,14 +287,14 @@ echo "CAT the .pub files and add the contents to Github.com in their respective 
 
 # use the kitty.sh script to configure kitty
 
-bash "$current_dir/helpers/kitty.sh $current_dir"
+bash -c "$current_dir/helpers/kitty.sh $current_dir"
 
 
 ###########---------------------------------configuring alacritty ------------------------------------####
 
 #use the alacritty.sh script to configure alacritty
 
-bash "$current_dir/helpers/alacritty.sh $current_dir"
+bash -c "$current_dir/helpers/alacritty.sh $current_dir"
 
 ####---------------------------------configuring bluetooth ------------------------------------####
 
@@ -310,7 +310,7 @@ fi
 
 ####------------------------------------------------------------------ configuring fastfetch ------------------------------------------------------####
 # Configure Fastfetch
-bash "$current_dir/helpers/fastfetch.sh $current_dir"
+bash -c "$current_dir/helpers/fastfetch.sh $current_dir"
 
 ####------------------------------------------------------------------ configuring spicetify ------------------------------------------------------####
 
