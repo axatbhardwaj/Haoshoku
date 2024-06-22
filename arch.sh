@@ -294,6 +294,7 @@ fi
 cp -f "$current_dir/configs/kitty/kitty.conf" ~/.config/kitty/kitty.conf
 echo "Kitty configured"
 
+####---------------------------------configuring bluetooth ------------------------------------####
 
 #ask if to enable bluetooth
 read -p "Do you want to enable bluetooth ? (y/n): " bt_on
@@ -305,6 +306,7 @@ if [ "$bt_on"="y" ]; then
     echo "Bluetooth enabled !"
 fi
 
+####------------------------------------------------------------------ configuring spicetify ------------------------------------------------------####
 
 #ask to configure spicetify
 read -p "Do you want to configure spicetify ? (y/n): " spicetify_on
@@ -315,6 +317,10 @@ if [ "$spicetify_on"="y" ]; then
     #run the spicetify.sh script
     bash "$current_dir/helpers/spicetify.sh"
 fi
+
+####------------------------------------------------------------------ configuring fastfetch ------------------------------------------------------####
+# Configure Fastfetch
+bash "$current_dir/helpers/fastfetch.sh"
 
 
 ####------------------------------------configure Kde force blur ------------------------------------####
