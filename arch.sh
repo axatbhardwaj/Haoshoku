@@ -284,15 +284,17 @@ fi
 echo "CAT the .pub files and add the contents to Github.com in their respective accounts"
 
 ####---------------------------------configuring kitty terminal ------------------------------------####
-# Configure Kitty terminal
 
-#check if kitty folder exists
-if [ ! -d ~/.config/kitty ]; then
-    mkdir -p ~/.config/kitty
-fi
-#copy config file
-cp -f "$current_dir/configs/kitty/kitty.conf" ~/.config/kitty/kitty.conf
-echo "Kitty configured"
+# use the kitty.sh script to configure kitty
+
+bash "$current_dir/helpers/kitty.sh $current_dir"
+
+
+###########---------------------------------configuring alacritty ------------------------------------####
+
+#use the alacritty.sh script to configure alacritty
+
+bash "$current_dir/helpers/alacritty.sh $current_dir"
 
 ####---------------------------------configuring bluetooth ------------------------------------####
 
@@ -317,11 +319,6 @@ if [ "$spicetify_on"="y" ]; then
     #run the spicetify.sh script
     bash "$current_dir/helpers/spicetify.sh $current_dir"
 fi
-
-####------------------------------------------------------------------ configuring fastfetch ------------------------------------------------------####
-# Configure Fastfetch
-bash "$current_dir/helpers/fastfetch.sh"
-
 
 ####------------------------------------configure Kde force blur ------------------------------------####
 # Configure KDE Force Blur
