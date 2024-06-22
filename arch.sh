@@ -305,6 +305,18 @@ if [ "$bt_on"="y" ]; then
     echo "Bluetooth enabled !"
 fi
 
+
+#ask to configure spicetify
+read -p "Do you want to configure spicetify ? (y/n): " spicetify_on
+
+#if yes use the spicetify.sh script
+
+if [ "$spicetify_on"="y" ]; then
+    #run the spicetify.sh script
+    bash "$current_dir/helpers/spicetify.sh"
+fi
+
+
 ####------------------------------------configure Kde force blur ------------------------------------####
 # Configure KDE Force Blur
 

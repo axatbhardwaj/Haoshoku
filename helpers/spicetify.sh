@@ -27,5 +27,11 @@ git clone --depth=1 https://github.com/spicetify/spicetify-themes.git
 cd spicetify-themes
 cp -r * ~/.config/spicetify/Themes
 
+#choosing theme
+spicetify config current_theme sleek
+spicetify config color_scheme deeper
+
 #apply theme
 spicetify backup apply
+
+echo "Spicetify setup complete"
