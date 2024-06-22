@@ -308,6 +308,10 @@ if [ "$bt_on"="y" ]; then
     echo "Bluetooth enabled !"
 fi
 
+####------------------------------------------------------------------ configuring fastfetch ------------------------------------------------------####
+# Configure Fastfetch
+bash "$current_dir/helpers/fastfetch.sh $current_dir"
+
 ####------------------------------------------------------------------ configuring spicetify ------------------------------------------------------####
 
 #ask to configure spicetify
