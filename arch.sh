@@ -94,8 +94,10 @@ apps=(
     "webapp-manager"
     #installing btop
     "btop"
-    installing nvtop
+    #installing nvtop
     "nvtop"
+    #installing skype
+    "skypeforlinux-bin"
 )
 
 # Function to install applications
