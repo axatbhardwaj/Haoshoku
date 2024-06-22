@@ -13,9 +13,6 @@ fi
 sudo chmod a+wr /opt/spotify
 sudo chmod a+wr /opt/spotify/Apps -R
 
-#backup
-spicetify backup
-
 #if pref is not present then create it with pref file
 if [ ! -d $HOME/.config/spotify ]; then
     mkdir -p $HOME/.config/spotify
@@ -37,7 +34,7 @@ cd spicetify-themes
 cp -r * ~/.config/spicetify/Themes
 
 #choosing theme
-spicetify config current_theme sleek
+spicetify config current_theme Sleek
 spicetify config color_scheme deeper
 
 #apply theme
