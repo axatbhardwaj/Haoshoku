@@ -98,6 +98,8 @@ apps=(
     "nvtop"
     #installing skype
     "skypeforlinux-bin"
+    #gamemode intefration with plasma
+    "plasma-gamemode-git"
 )
 
 # Function to install applications
