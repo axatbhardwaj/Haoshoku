@@ -287,12 +287,18 @@ echo "CAT the .pub files and add the contents to Github.com in their respective 
 
 # use the kitty.sh script to configure kitty
 
+#give the script executable permissions
+chmod +x "$current_dir/helpers/kitty.sh"
+
 bash -c "$current_dir/helpers/kitty.sh $current_dir"
 
 
 ###########---------------------------------configuring alacritty ------------------------------------####
 
 #use the alacritty.sh script to configure alacritty
+
+#give the script executable permissions
+chmod +x "$current_dir/helpers/alacritty.sh"
 
 bash -c "$current_dir/helpers/alacritty.sh $current_dir"
 
@@ -310,6 +316,12 @@ fi
 
 ####------------------------------------------------------------------ configuring fastfetch ------------------------------------------------------####
 # Configure Fastfetch
+
+#use the fastfetch.sh script to configure fastfetch
+
+#give the script executable permissions
+chmod +x "$current_dir/helpers/fastfetch.sh"
+
 bash -c "$current_dir/helpers/fastfetch.sh $current_dir"
 
 ####------------------------------------------------------------------ configuring spicetify ------------------------------------------------------####
