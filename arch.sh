@@ -100,6 +100,8 @@ apps=(
     "skypeforlinux-bin"
     #gamemode intefration with plasma
     "plasma-gamemode-git"
+    #installing wmctrl
+    "wmctrl"
 )
 
 # Function to install applications
@@ -138,7 +140,7 @@ fish -c "curl -sL https://git.io/fisher | source && fisher install jorgebucaran/
 fish -c "fisher install IlanCosman/tide"
 
 #configuring tide prmpt
-fish -c "tide configure --auto --style=Lean --prompt_colors='True color' --show_time='24-hour format' --lean_prompt_height='Two lines' --prompt_connection=Solid --prompt_connection_andor_frame_color=Darkest --prompt_spacing=Sparse --icons='Many icons' --transient=Yes"
+fish -c "tide configure --auto --style=Lean --prompt_colors='True color' --show_time='24-hour format' --lean_prompt_height='Two lines' --prompt_connection=Solid --prompt_connection_andor_frame_color=Lightest --prompt_spacing=Sparse --icons='Many icons' --transient=Yes"
 
 
 # Set aliases
