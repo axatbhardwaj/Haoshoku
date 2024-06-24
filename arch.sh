@@ -102,6 +102,8 @@ apps=(
     "plasma-gamemode-git"
     #installing wmctrl
     "wmctrl"
+    #installing protonup-rs
+    "protonup-rs-bin"
 )
 
 # Function to install applications
