@@ -5,9 +5,11 @@
         "autoUpdateNotification": true,
         "useQuickCss": true,
         "themeLinks": [
-            "https://refact0r.github.io/midnight-discord/midnight.css"
+            "https://betterdiscord.app/theme/Dark%20Matter"
         ],
-        "enabledThemes": [],
+        "enabledThemes": [
+            "clearvisionv.theme.css"
+        ],
         "enableReactDevtools": false,
         "frameless": false,
         "transparent": false,
@@ -31,7 +33,7 @@
                 "enabled": true
             },
             "MessageAccessoriesAPI": {
-                "enabled": false
+                "enabled": true
             },
             "MessageDecorationsAPI": {
                 "enabled": true
@@ -197,7 +199,8 @@
                 "enabled": true
             },
             "GameActivityToggle": {
-                "enabled": true
+                "enabled": true,
+                "oldIcon": false
             },
             "GifPaste": {
                 "enabled": false
@@ -358,7 +361,11 @@
                 "enabled": false
             },
             "PlatformIndicators": {
-                "enabled": true
+                "enabled": true,
+                "colorMobileIndicator": true,
+                "list": true,
+                "badges": true,
+                "messages": true
             },
             "PreviewMessage": {
                 "enabled": false
@@ -448,7 +455,8 @@
                 "enabled": false
             },
             "SpotifyControls": {
-                "enabled": true
+                "enabled": true,
+                "hoverControls": false
             },
             "SpotifyCrack": {
                 "enabled": false
@@ -529,7 +537,8 @@
                 "enabled": false
             },
             "WebContextMenus": {
-                "enabled": true
+                "enabled": true,
+                "addBack": false
             },
             "WebKeybinds": {
                 "enabled": true
@@ -541,6 +550,30 @@
                 "enabled": false
             },
             "Wikisearch": {
+                "enabled": false
+            },
+            "UserSettingsAPI": {
+                "enabled": true
+            },
+            "AppleMusicRichPresence": {
+                "enabled": false
+            },
+            "FixSpotifyEmbeds": {
+                "enabled": false
+            },
+            "FixYoutubeEmbeds": {
+                "enabled": false
+            },
+            "InvisibleChat": {
+                "enabled": false
+            },
+            "ShikiCodeblocks": {
+                "enabled": false
+            },
+            "WatchTogetherAdblock": {
+                "enabled": false
+            },
+            "XSOverlay": {
                 "enabled": false
             }
         },
@@ -554,7 +587,7 @@
             "authenticated": false,
             "url": "https://api.vencord.dev/",
             "settingsSync": false,
-            "settingsSyncVersion": 1718124375327
+            "settingsSyncVersion": 1719254597994
         }
     },
     "quickCss": ""
