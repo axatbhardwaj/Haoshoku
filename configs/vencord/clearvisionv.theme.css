@@ -1,5 +1,5 @@
 /**
- * @name clearvisionv2
+ * @name clearvision
  * @author ClearVision Team
  * @version 6.9.0
  * @description Highly customizable and beautiful theme for BetterDiscord.
@@ -12,7 +12,7 @@
 @import url('https://clearvision.github.io/ClearVision-v6/main.css');
 
 :root {
-  --main-color: #27E6A2;
+  --main-color: #239F82;
   --hover-color: #1e63b3;
   --success-color: #8BC34A;
   --danger-color: #982929;

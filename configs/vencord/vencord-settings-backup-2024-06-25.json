@@ -4,9 +4,7 @@
         "autoUpdate": false,
         "autoUpdateNotification": true,
         "useQuickCss": true,
-        "themeLinks": [
-            "https://betterdiscord.app/theme/Dark%20Matter"
-        ],
+        "themeLinks": [],
         "enabledThemes": [
             "clearvisionv.theme.css"
         ],
@@ -587,7 +585,7 @@
             "authenticated": false,
             "url": "https://api.vencord.dev/",
             "settingsSync": false,
-            "settingsSyncVersion": 1719254597994
+            "settingsSyncVersion": 1719254831431
         }
     },
     "quickCss": ""

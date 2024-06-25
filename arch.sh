@@ -85,7 +85,7 @@ apps=(
     #install ente-auth
     "ente-auth-bin"
     #installing armcord
-    "armcord-bin"
+    "vencord-desktop-git"
     #installing qbittorrent
     "qbittorrent"
     #installing onefetch
@@ -103,7 +103,7 @@ apps=(
     #installing wmctrl
     "wmctrl"
     #installing protonup-rs
-    "protonup-rs-bin"
+    "protonup-rs-bin"git 
 )
 
 # Function to install applications
