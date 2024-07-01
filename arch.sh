@@ -103,7 +103,13 @@ apps=(
     #installing wmctrl
     "wmctrl"
     #installing protonup-rs
-    "protonup-rs-bin"git 
+    "protonup-rs-bin"git
+    #installing notion-app
+    "notion-app-electron"
+    #installing chatgpt-desktop
+    "chatgpt-desktop-bin"
+    #instlaling whatsdesk
+    "whatsdesk-git"
 )
 
 # Function to install applications
