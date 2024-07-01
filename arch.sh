@@ -109,7 +109,7 @@ apps=(
     #installing chatgpt-desktop
     "chatgpt-desktop-bin"
     #instlaling whatsdesk
-    "whatsdesk-git"
+    "whatsdesk-bin"
 )
 
 # Function to install applications
