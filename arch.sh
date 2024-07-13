@@ -127,6 +127,51 @@ curl -L https://foundry.paradigm.xyz | bash
 #installing nerd-fonts
 sudo pacman -S $(pacman -Sgq nerd-fonts) --noconfirm
 
+#gaming related congigurations
+#promt for gameing
+# Ask if to enable gaming
+read -p "Do you want to enable gaming ? (y/n): " game_on
+
+if [ "$game_on" == "y" ]; then
+    gaming_apps=(
+        "steam"
+        "lutris"
+        "protonup-rs-bin"
+        "protontricks"
+        "gamemode"
+        "plasma-gamemode-git"
+        "goverlay"
+        "nvtop"
+        "btop"
+        "nvidia-settings"
+        "nvidia-dkms"
+        "nvidia-utils"
+        "nvdock-git"
+        "linux-zen"
+        "linux-zen-headers"
+    )
+    
+    for app in "${gaming_apps[@]}"; do
+        paru -S "$app" --noconfirm
+    done
+    
+    sudo nvidia-xconfig
+    
+    # Update system before installing linux-zen
+    paru -Syyu --noconfirm
+    
+    # Making grub entry for linux-zen
+    sudo grub-mkconfig -o /boot/grub/grub.cfg
+    
+    echo "Games-configurations completed!
+    launch steam and lutris then run:
+    protonup-rs -q
+    "
+fi
+
+
+
+
 #####-------------------------------------- Grub fixes ------------------------------------------------#####
 
 sudo grub-mkconfig -o /boot/grub/grub.cfg
