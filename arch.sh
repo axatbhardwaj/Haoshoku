@@ -78,8 +78,6 @@ apps=(
     "ticktick"
     #installing telegram
     "telegram-desktop"
-    #installing klever Notes
-    "klevernotes-git"
     #installing spicetify
     "spicetify-cli"
     #install ente-auth
