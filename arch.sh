@@ -349,14 +349,6 @@ chmod +x "$current_dir/helpers/alacritty.sh"
 bash -c "$current_dir/helpers/alacritty.sh $current_dir"
 
 ####---------------------------KDE-connect fix----------------------------------####
-
-#check if kde connect is installed
-if ! command -v kdeconnect-cli &> /dev/null
-then
-    echo "kdeconnect-cli not found. Installing kdeconnect..."
-    paru -S kdeconnect --noconfirm
-fi
-
 if pgrep -x "kdeconnectd" > /dev/null
 then
     killall kdeconnectd || true
