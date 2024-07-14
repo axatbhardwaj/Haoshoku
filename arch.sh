@@ -106,6 +106,8 @@ apps=(
     "whatsdesk-bin"
     #install fastfetch
     "fastfetch"
+    #installing expect
+    "expect"
 )
 
 # Function to install applications

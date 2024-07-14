@@ -1,3 +1,5 @@
+# !/bin/bash
+
 #this script if for fastfetch configuration
 
 #take the current directory as argument
