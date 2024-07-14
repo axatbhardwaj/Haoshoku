@@ -84,8 +84,6 @@ apps=(
     "spicetify-cli"
     #install ente-auth
     "ente-auth-bin"
-    #installing armcord
-    "vencord-desktop-git"
     #installing qbittorrent
     "qbittorrent"
     #installing onefetch
@@ -98,18 +96,16 @@ apps=(
     "nvtop"
     #installing skype
     "skypeforlinux-bin"
-    #gamemode intefration with plasma
-    "plasma-gamemode-git"
     #installing wmctrl
     "wmctrl"
-    #installing protonup-rs
-    "protonup-rs-bin"git
     #installing notion-app
     "notion-app-electron"
     #installing chatgpt-desktop
     "chatgpt-desktop-bin"
     #instlaling whatsdesk
     "whatsdesk-bin"
+    #install fastfetch
+    "fastfetch"
 )
 
 # Function to install applications
@@ -128,9 +124,9 @@ curl -L https://foundry.paradigm.xyz | bash
 sudo pacman -S $(pacman -Sgq nerd-fonts) --noconfirm
 
 #gaming related congigurations
-#promt for gameing
 # Ask if to enable gaming
-read -p "Do you want to enable gaming ? (y/n): " game_on
+
+read -p "Do you want to enable gaming? (y/n): " game_on
 
 if [ "$game_on" == "y" ]; then
     gaming_apps=(
@@ -144,16 +140,21 @@ if [ "$game_on" == "y" ]; then
         "nvtop"
         "btop"
         "nvidia-settings"
-        "nvidia-dkms"
-        "nvidia-utils"
         "nvdock-git"
         "linux-zen"
         "linux-zen-headers"
+        "vencord-desktop-git"
     )
     
     for app in "${gaming_apps[@]}"; do
         paru -S "$app" --noconfirm
     done
+    
+    #removing nvidia
+    paru -Rns nvidia --noconfirm
+    
+    # Install nvidia-dkms explicitly
+    paru -S --overwrite '*' nvidia-dkms --noconfirm
     
     sudo nvidia-xconfig
     
@@ -162,6 +163,7 @@ if [ "$game_on" == "y" ]; then
     
     # Making grub entry for linux-zen
     sudo grub-mkconfig -o /boot/grub/grub.cfg
+    
     
     echo "Games-configurations completed!
     launch steam and lutris then run:
@@ -209,32 +211,15 @@ fish -c 'function cursor; command cursor $argv > /dev/null 2>&1 &; end; funcsave
 ####------------------------------------------------------configuring-fish ------------------------------------------------------####
 
 # Configure Fish shell
-cat <<EOF >> ~/.config/fish/config.fish
-function is_git_repo
-    if test -d .git
-        return 0
-    else
-        set git_root (git rev-parse --show-toplevel 2>/dev/null)
-        if test $status -eq 0
-            cd $git_root  # Change directory to the root of the Git repository
-            return 0
-        else
-            return 1
-        end
-    end
-end
+#copy config.fish from config folder to ~/.config/fish
 
-if status is-interactive
-    if is_git_repo
-        onefetch
-    else
-        fastfetch
-    end
-    zoxide init fish | source
-    source /opt/miniconda3/etc/fish/conf.d/conda.fish
-    # Commands to run in interactive sessions can go here
-end
-EOF
+#making sure that the fish folder exists
+if [ ! -d ~/.config/fish ]; then
+    mkdir -p ~/.config/fish
+fi
+
+cp "$current_dir/config/config.fish" $HOME/.config/fish/config.fish
+
 
 ####------------------------------------------------------ git config ------------------------------------------------------####
 
@@ -357,6 +342,22 @@ chmod +x "$current_dir/helpers/alacritty.sh"
 
 bash -c "$current_dir/helpers/alacritty.sh $current_dir"
 
+####---------------------------KDE-connect fix----------------------------------####
+if pgrep -x "kdeconnectd" > /dev/null
+then
+    killall kdeconnectd || true
+fi
+
+#making sure that the kdeconnect folder exists
+if [ ! -d ~/.config/kdeconnect ]; then
+    mkdir -p ~/.config/kdeconnect
+fi
+
+mv ~/.config/kdeconnect ~/.config/kdeconnect.bak
+
+sudo firewall-cmd --permanent --zone=public --add-service=kdeconnect
+sudo firewall-cmd --reload
+
 ####---------------------------------configuring bluetooth ------------------------------------####
 
 #ask if to enable bluetooth
@@ -379,17 +380,6 @@ chmod +x "$current_dir/helpers/fastfetch.sh"
 
 bash -c "$current_dir/helpers/fastfetch.sh $current_dir"
 
-####------------------------------------------------------------------ configuring spicetify ------------------------------------------------------####
-
-#ask to configure spicetify
-read -p "Do you want to configure spicetify ? (y/n): " spicetify_on
-
-#if yes use the spicetify.sh script
-
-if [ "$spicetify_on"="y" ]; then
-    #run the spicetify.sh script
-    bash "$current_dir/helpers/spicetify.sh $current_dir"
-fi
 
 ####------------------------------------configure Kde force blur ------------------------------------####
 # Configure KDE Force Blur

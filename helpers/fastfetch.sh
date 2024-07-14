@@ -4,7 +4,7 @@
 current_dir=$1
 
 fastfetch --gen-config
-
+mkdir $HOME/.config/fastfetch
 cd $HOME/.config/fastfetch
 
 rm config.jsonc
