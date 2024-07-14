@@ -36,6 +36,9 @@ expect {
 EOF
 )
 
+cp $current_dir/../configs/spicetify/fullAppDisplayMod.js $HOME/.config/spicetify/Extensions/
+spicetify config extensions fullAppDisplayMod.js
+
 # Run the expect script
 echo "$expect_script" | expect
 
