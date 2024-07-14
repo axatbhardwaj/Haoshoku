@@ -215,7 +215,7 @@ if [ ! -d ~/.config/fish ]; then
     mkdir -p ~/.config/fish
 fi
 
-cp "$current_dir/config/fish/config.fish" $HOME/.config/fish/config.fish
+cp "$current_dir/configs/fish/config.fish" $HOME/.config/fish/config.fish
 
 
 ####------------------------------------------------------ git config ------------------------------------------------------####
