@@ -349,6 +349,14 @@ chmod +x "$current_dir/helpers/alacritty.sh"
 bash -c "$current_dir/helpers/alacritty.sh $current_dir"
 
 ####---------------------------KDE-connect fix----------------------------------####
+
+#check if kde connect is installed
+if ! command -v kdeconnect-cli &> /dev/null
+then
+    echo "kdeconnect-cli not found. Installing kdeconnect..."
+    paru -S kdeconnect --noconfirm
+fi
+
 if pgrep -x "kdeconnectd" > /dev/null
 then
     killall kdeconnectd || true
@@ -390,20 +398,25 @@ bash -c "$current_dir/helpers/fastfetch.sh $current_dir"
 ####------------------------------------configure Kde force blur ------------------------------------####
 # Configure KDE Force Blur
 
-git clone https://github.com/taj-ny/kwin-effects-forceblur
-cd kwin-effects-forceblur
-mkdir build
-cd build
-cmake ../ -DCMAKE_INSTALL_PREFIX=/usr
-make
-sudo make install
+#prompt if this is kde environment or not if yes then execute the following commands
+read -p "Is this a KDE environment? (y/n): " kde_env
 
-echo "Force blur Installed!"
-echo "Enable it from settings > desktop effects > force blur"
-echo "configure force blurr and set enable blur all except matching"
-
+if [ "$kde_env" = "y" ]; then
+    git clone https://github.com/taj-ny/kwin-effects-forceblur
+    cd kwin-effects-forceblur
+    mkdir build
+    cd build
+    cmake ../ -DCMAKE_INSTALL_PREFIX=/usr
+    make
+    sudo make install
+    
+    echo "Force blur Installed!"
+    echo "Enable it from settings > desktop effects > force blur"
+    echo "configure force blurr and set enable blur all except matching"
+    echo "Kvantum theme name is OCEAN link is present in script"
+    #https://store.kde.org/p/1427568/
+    
+fi
 
 echo "installation complete! Restart your terminal"
 
-echo "Kvantum theme name is OCEAN link is present in script"
-#https://store.kde.org/p/1427568/
