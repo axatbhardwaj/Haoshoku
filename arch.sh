@@ -145,16 +145,16 @@ if [ "$game_on" == "y" ]; then
         "linux-zen-headers"
         "vencord-desktop-git"
     )
-
+    
     for app in "${gaming_apps[@]}"; do
         paru -S "$app" --noconfirm
     done
-
-    #removing nvidia 
+    
+    #removing nvidia
     paru -Rns nvidia --noconfirm
-
+    
     # Install nvidia-dkms explicitly
-    paru -S --overwrite '*' nvidia-dkms --noconfirm 
+    paru -S --overwrite '*' nvidia-dkms --noconfirm
     
     sudo nvidia-xconfig
     
@@ -164,7 +164,7 @@ if [ "$game_on" == "y" ]; then
     # Making grub entry for linux-zen
     sudo grub-mkconfig -o /boot/grub/grub.cfg
     
-
+    
     echo "Games-configurations completed!
     launch steam and lutris then run:
     protonup-rs -q
@@ -211,30 +211,14 @@ fish -c 'function cursor; command cursor $argv > /dev/null 2>&1 &; end; funcsave
 ####------------------------------------------------------configuring-fish ------------------------------------------------------####
 
 # Configure Fish shell
+#copy config.fish from config folder to ~/.config/fish
 
+#making sure that the fish folder exists
+if [ ! -d ~/.config/fish ]; then
+    mkdir -p ~/.config/fish
+fi
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+cp "$current_dir/config/config.fish" $HOME/.config/fish/config.fish
 
 
 ####------------------------------------------------------ git config ------------------------------------------------------####
@@ -268,12 +252,12 @@ if [ "$create_work_profile" = "y" ]; then
     # Creating directory for work git
     mkdir -p ~/work
     cd ~/work
-
+    
     # Prompt for work-related information
     work_email=$(prompt_user "Enter work email")
     work_username=$(prompt_user "Enter work username")
     github_username=$(prompt_user "Enter GitHub username for work")
-
+    
     # Generate .gitconfig.work
     cat <<EOF > ~/work/.gitconfig.work
 [user]
@@ -286,10 +270,10 @@ user = "$github_username"
 [core]
 sshCommand = "ssh -i ~/.ssh/work_key"
 EOF
-
+    
     # Generate Ed25519 SSH key for work
     generate_ed25519_key "$work_email" ~/.ssh/work_key
-
+    
     # Add SSH key to agent
     add_ssh_to_agent ~/.ssh/work_key
 fi
