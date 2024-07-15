@@ -18,7 +18,13 @@ if [ ! -d $HOME/.config/spotify ]; then
     touch $HOME/.config/spotify/prefs
 fi
 
+#generating config file
+spicetify
+#copying my own config file
 cp $current_dir/configs/spicetify/config-xpui.ini $HOME/.config/spicetify/
+
+# Backup the current config
+spicetify backup apply enable-devtool
 
 # Define the expect script to handle the "Press any key to continue" prompt
 expect_script=$(cat <<'EOF'
@@ -47,3 +53,6 @@ spicetify config custom_apps lyrics-plus
 
 # Apply the bloom theme
 spicetify apply
+
+#update spicetify
+spicetify update
