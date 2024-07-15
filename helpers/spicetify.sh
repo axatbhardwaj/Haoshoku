@@ -18,7 +18,7 @@ if [ ! -d $HOME/.config/spotify ]; then
     touch $HOME/.config/spotify/prefs
 fi
 
-cp $current_dir/../configs/spicetify/config-xpui.ini $HOME/.config/spicetify/
+cp $current_dir/configs/spicetify/config-xpui.ini $HOME/.config/spicetify/
 
 # Define the expect script to handle the "Press any key to continue" prompt
 expect_script=$(cat <<'EOF'
