@@ -1,5 +1,5 @@
 #!/bin/bash
-current_dir=$(pwd)
+current_dir=$1 
 
 # Giving folder permission
 sudo chmod a+wr /opt/spotify
@@ -36,7 +36,7 @@ expect {
 EOF
 )
 
-cp $current_dir/../configs/spicetify/fullAppDisplayMod.js $HOME/.config/spicetify/Extensions/
+cp $current_dir/configs/spicetify/fullAppDisplayMod.js $HOME/.config/spicetify/Extensions/
 spicetify config extensions fullAppDisplayMod.js
 
 # Run the expect script
