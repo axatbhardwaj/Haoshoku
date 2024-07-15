@@ -42,7 +42,7 @@ expect {
 EOF
 )
 
-cp $current_dir/configs/spicetify/fullAppDisplayMod.js $HOME/.config/spicetify/Extensions/
+wget -q "https://raw.githubusercontent.com/huhridge/huh-spicetify-extensions/main/fullAppDisplayModified/fullAppDisplayMod.js" -O $HOME/.config/spicetify/Extensions/
 spicetify config extensions fullAppDisplayMod.js
 
 # Run the expect script
