@@ -108,6 +108,8 @@ apps=(
     "expect"
     #installing vesktop
     "vencord-desktop-git"
+    #installing timeshift
+    "timeshift"
 )
 
 # Function to install applications
