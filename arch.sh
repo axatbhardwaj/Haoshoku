@@ -7,7 +7,7 @@ set -e  # Exit on error
 current_dir=$(pwd)
 
 #pacman updates & installing rust up
-sudo pacman -Syyu base-devel --noconfirm
+sudo pacman -Syu base-devel --noconfirm
 
 curl https://sh.rustup.rs -sSf | sh -s -- -y --profile default --default-toolchain stable
 source $HOME/.cargo/env
