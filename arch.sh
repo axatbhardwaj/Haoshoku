@@ -329,6 +329,11 @@ mv ~/.config/kdeconnect ~/.config/kdeconnect.bak
 sudo iptables -I INPUT -p tcp --dport 1714:1764 -j ACCEPT
 sudo iptables -I INPUT -p udp --dport 1714:1764 -j ACCEPT
 
+sudo ufw allow 1714:1764/udp
+sudo ufw allow 1714:1764/tcp
+sudo ufw reload
+
+
 ####---------------------------------configuring bluetooth ------------------------------------####
 
 #ask if to enable bluetooth
