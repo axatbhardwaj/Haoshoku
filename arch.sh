@@ -357,7 +357,7 @@ bash -c "$current_dir/helpers/fastfetch.sh $current_dir"
 read -p "Is this a KDE environment? (y/n): " kde_env
 
 if [ "$kde_env" = "y" ]; then
-    paru -S base-devel git extra-cmake-modules qt6-tools
+    paru -S base-devel git extra-cmake-modules qt6-tools --noconfirm
     
     git clone https://github.com/taj-ny/kwin-effects-forceblur
     cd kwin-effects-forceblur
