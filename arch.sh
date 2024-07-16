@@ -110,6 +110,8 @@ apps=(
     "vencord-desktop-git"
     #installing timeshift
     "timeshift"
+    #installing Solaar
+    "solaar"
 )
 
 # Function to install applications
