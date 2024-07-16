@@ -106,6 +106,8 @@ apps=(
     "fastfetch"
     #installing expect
     "expect"
+    #installing vesktop
+    "vencord-desktop-git"
 )
 
 # Function to install applications
@@ -129,46 +131,7 @@ sudo pacman -S $(pacman -Sgq nerd-fonts) --noconfirm
 read -p "Do you want to enable gaming? (y/n): " game_on
 
 if [ "$game_on" == "y" ]; then
-    gaming_apps=(
-        "steam"
-        "lutris"
-        "protonup-rs-bin"
-        "protontricks"
-        "gamemode"
-        "plasma-gamemode-git"
-        "goverlay"
-        "nvtop"
-        "btop"
-        "nvidia-settings"
-        "nvdock-git"
-        "linux-zen"
-        "linux-zen-headers"
-        "vencord-desktop-git"
-    )
-    
-    for app in "${gaming_apps[@]}"; do
-        paru -S "$app" --noconfirm
-    done
-    
-    #removing nvidia
-    paru -Rns nvidia --noconfirm
-    
-    # Install nvidia-dkms explicitly
-    paru -S --overwrite '*' nvidia-dkms --noconfirm
-    
-    sudo nvidia-xconfig
-    
-    # Update system before installing linux-zen
-    paru -Syyu --noconfirm
-    
-    # Making grub entry for linux-zen
-    sudo grub-mkconfig -o /boot/grub/grub.cfg
-    
-    
-    echo "Games-configurations completed!
-    launch steam and lutris then run:
-    protonup-rs -q
-    "
+    paru -S cachyos-gaming-meta protonup-rs-bin --noconfirm
 fi
 
 #####-------------------------------------- Grub fixes ------------------------------------------------#####
@@ -359,8 +322,8 @@ fi
 
 mv ~/.config/kdeconnect ~/.config/kdeconnect.bak
 
-sudo firewall-cmd --permanent --zone=public --add-service=kdeconnect
-sudo firewall-cmd --reload
+sudo iptables -I INPUT -p tcp --dport 1714:1764 -j ACCEPT
+sudo iptables -I INPUT -p udp --dport 1714:1764 -j ACCEPT
 
 ####---------------------------------configuring bluetooth ------------------------------------####
 

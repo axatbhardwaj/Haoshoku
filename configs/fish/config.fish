@@ -1,3 +1,4 @@
+source /usr/share/cachyos-fish-config/cachyos-config.fish
 function is_git_repo
     if test -d .git
         return 0
