@@ -110,6 +110,8 @@ apps=(
     "vencord-desktop-git"
     #installing timeshift
     "timeshift"
+    #installing timeshift autosnap
+    "timeshift-autosnap"
     #installing Solaar
     "solaar"
 )
