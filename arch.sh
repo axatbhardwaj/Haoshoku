@@ -147,7 +147,7 @@ sudo systemctl enable grub-btrfsd
 
 
 #updating system
-paru -Syyu --noconfirm
+paru -Syyuu --noconfirm
 
 ####---------------------------------------------configuring fish ------------------------------------------------------####
 
