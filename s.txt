@@ -6,3 +6,13 @@ cursor - lyrax
 
 icons - beautiline 
 
+
+goodbyeads list 
+
+https://raw.githubusercontent.com/jerryn70/GoodbyeAds/master/Formats/GoodbyeAds-AdBlock-Filter.txt
+
+https://github.com/jerryn70/GoodbyeAds
+
+free dns :- 
+
+https://docs.controld.com/docs/free-dns
