@@ -24,103 +24,15 @@ fi
 
 ####------------------------------------------------------ installng software ------------------------------------------------------####
 
-apps=(
-    
-    # install Fish
-    "fish"
-    #installing vs-code and vscode insiders
-    "visual-studio-code-bin"
-    #installing Brave
-    "brave-bin"
-    #installing floorp
-    "floorp-bin"
-    #installing zip
-    "zip"
-    #installing Kitty
-    "kitty"
-    #installing signal
-    "signal-desktop"
-    #installing thunderbird
-    "thunderbird"
-    #installing noisetorch
-    "noisetorch-bin"
-    #installing github-cli
-    "github-cli"
-    #installing nvm
-    "nvm"
-    #installing flatpak
-    "flatpak"
-    #installing bitwarden
-    "bitwarden"
-    #installing spotify
-    'spotify'
-    #installing kde-partitionmanger
-    "partitionmanager"
-    #installing inotify
-    "inotify-tools"
-    #intsalling grub-btrfs
-    "grub-btrfs"
-    #installing webcord
-    "webcord"
-    #installing teams-for-linux
-    "teams-for-linux"
-    #installing discord screen-audio
-    "discord-screenaudio"
-    #installing onlyoffice
-    "onlyoffice-bin"
-    #insalling miniconda
-    "miniconda3"
-    #installing kvantum
-    "kvantum"
-    #installing zoxide
-    "zoxide"
-    #installing ticktick
-    "ticktick"
-    #installing telegram
-    "telegram-desktop"
-    #installing spicetify
-    "spicetify-cli"
-    #install ente-auth
-    "ente-auth-bin"
-    #installing qbittorrent
-    "qbittorrent"
-    #installing onefetch
-    "onefetch"
-    #installing webapp-manager
-    "webapp-manager"
-    #installing btop
-    "btop"
-    #installing nvtop
-    "nvtop"
-    #installing skype
-    "skypeforlinux-bin"
-    #installing wmctrl
-    "wmctrl"
-    #installing notion-app
-    "notion-app-electron"
-    #installing chatgpt-desktop
-    "chatgpt-desktop-bin"
-    #instlaling whatsdesk
-    "whatsdesk-bin"
-    #install fastfetch
-    "fastfetch"
-    #installing expect
-    "expect"
-    #installing vesktop
-    "vencord-desktop-git"
-    #installing timeshift
-    "timeshift"
-    #installing timeshift autosnap
-    "timeshift-autosnap"
-    #installing Solaar
-    "solaar"
-)
-
-# Function to install applications
 install_apps() {
-    for app in "${apps[@]}"; do
-        paru -S "$app" --noconfirm
-    done
+    # Define the path to apps.txt
+    APPS_FILE="$current_dir/common/applist.txt"
+    
+    # Read the list of apps from apps.txt
+    mapfile -t apps < "$APPS_FILE"
+    
+    # Install all apps in parallel using paru
+    paru -S --noconfirm --sudoloop "${apps[@]}"
 }
 
 install_apps
