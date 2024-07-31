@@ -57,7 +57,6 @@ fi
 sudo grub-mkconfig -o /boot/grub/grub.cfg
 sudo systemctl enable grub-btrfsd
 
-
 #updating system
 paru -Syyuu --noconfirm
 
@@ -100,106 +99,18 @@ cp "$current_dir/configs/fish/config.fish" $HOME/.config/fish/config.fish
 
 
 ####------------------------------------------------------ git config ------------------------------------------------------####
+# ask if git configuration is required
+read -p "Do you want to configure git? (y/n): " git_config
 
 
-### configuring git
-
-# Function to prompt for user input
-prompt_user() {
-    read -p "$1: " user_input
-    echo "$user_input"
-}
-
-# Function to generate Ed25519 SSH key
-generate_ed25519_key() {
-    ssh-keygen -t ed25519 -C "$1" -f "$2"
-}
-
-# Function to add SSH key to agent
-add_ssh_to_agent() {
-    ssh-add $1
-}
-
-# Start SSH agent
-eval "$(ssh-agent -s)"
-
-# Prompt for work profile creation
-read -p "Do you want to create a work profile? (y/n): " create_work_profile
-
-if [ "$create_work_profile" = "y" ]; then
-    # Creating directory for work git
-    mkdir -p ~/work
-    cd ~/work
+# if yes then run the configure_git.sh script
+if [ "$git_config" = "y" ]; then
+    #give the script executable permissions
+    chmod +x "$current_dir/helpers/configure_git.sh"
+    #use the configure_git.sh script to configure git
     
-    # Prompt for work-related information
-    work_email=$(prompt_user "Enter work email")
-    work_username=$(prompt_user "Enter work username")
-    github_username=$(prompt_user "Enter GitHub username for work")
-    
-    # Generate .gitconfig.work
-    cat <<EOF > ~/work/.gitconfig.work
-[user]
-email = $work_email
-name = $work_username
-
-[github]
-user = "$github_username"
-
-[core]
-sshCommand = "ssh -i ~/.ssh/work_key"
-EOF
-    
-    # Generate Ed25519 SSH key for work
-    generate_ed25519_key "$work_email" ~/.ssh/work_key
-    
-    # Add SSH key to agent
-    add_ssh_to_agent ~/.ssh/work_key
+    bash -c "$current_dir/helpers/configure_git.sh"
 fi
-
-# Creating directory for personal git
-mkdir -p ~/personal
-cd ~/personal
-
-# Prompt for personal-related information
-personal_email=$(prompt_user "Enter personal email")
-personal_username=$(prompt_user "Enter personal username")
-github_username=$(prompt_user "Enter GitHub username for personal")
-
-# Generate .gitconfig.personal
-cat <<EOF > ~/personal/.gitconfig.personal
-[user]
-email = $personal_email
-name = $personal_username
-
-[github]
-user = "$github_username"
-
-[core]
-sshCommand = "ssh -i ~/.ssh/personal_key"
-EOF
-
-# Generate Ed25519 SSH key for personal
-generate_ed25519_key "$personal_email" ~/.ssh/personal_key
-
-# Add SSH key to agent
-add_ssh_to_agent ~/.ssh/personal_key
-
-# Configure global gitconfig
-cat <<EOF > ~/.gitconfig
-[includeIf "gitdir:~/personal/"]
-    path = ~/personal/.gitconfig.personal
-
-EOF
-
-if [ "$create_work_profile" = "y" ]; then
-    cat <<EOF >> ~/.gitconfig
-[includeIf "gitdir:~/work/"]
-    path = ~/work/.gitconfig.work
-
-EOF
-fi
-
-echo "CAT the .pub files and add the contents to Github.com in their respective accounts"
 
 ####---------------------------------configuring kitty terminal ------------------------------------####
 
@@ -219,7 +130,6 @@ chmod +x "$current_dir/helpers/spicetify.sh"
 bash -c "$current_dir/helpers/spicetify.sh $current_dir"
 
 ###########---------------------------------configuring alacritty ------------------------------------####
-
 #use the alacritty.sh script to configure alacritty
 
 #give the script executable permissions
@@ -246,7 +156,6 @@ sudo iptables -I INPUT -p udp --dport 1714:1764 -j ACCEPT
 sudo ufw allow 1714:1764/udp
 sudo ufw allow 1714:1764/tcp
 sudo ufw reload
-
 
 ####---------------------------------configuring bluetooth ------------------------------------####
 
@@ -278,7 +187,6 @@ read -p "Do you want to enable private dns ? (y/n): " pvt_dns
 if [ "$pvt_dns" = "y" ]; then
     bash -c "$current_dir/helpers/pvt-dns.sh"
 fi
-
 
 ####------------------------------------configure Kde force blur ------------------------------------####
 # Configure KDE Force Blur
