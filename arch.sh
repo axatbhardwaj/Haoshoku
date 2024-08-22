@@ -27,10 +27,10 @@ fi
 install_apps() {
     # Define the path to apps.txt
     APPS_FILE="$current_dir/common/applist.txt"
-    
+
     # Read the list of apps from apps.txt
     mapfile -t apps < "$APPS_FILE"
-    
+
     # Install all apps in parallel using paru
     paru -S --noconfirm --sudoloop "${apps[@]}"
 }
@@ -76,7 +76,7 @@ fish -c "tide configure --auto --style=Lean --prompt_colors='True color' --show_
 
 
 # Set aliases
-fish -c 'alias dog "code"; funcsave dog;'
+fish -c 'alias dog "zeditor"; funcsave dog;'
 fish -c 'alias lss "ls -a -h"; funcsave lss;'
 fish -c 'alias rmf "rm -r -f -v"; funcsave rmf;'
 fish -c 'alias ps "ps auxfh"; funcsave ps;'
@@ -108,7 +108,7 @@ if [ "$git_config" = "y" ]; then
     #give the script executable permissions
     chmod +x "$current_dir/helpers/configure_git.sh"
     #use the configure_git.sh script to configure git
-    
+
     bash -c "$current_dir/helpers/configure_git.sh"
 fi
 
@@ -188,6 +188,10 @@ if [ "$pvt_dns" = "y" ]; then
     bash -c "$current_dir/helpers/pvt-dns.sh"
 fi
 
+####---------------------------------configuring zed ------------------------------------####
+## copying zed config file to the zed config folder
+cp "$current_dir/configs/zed/settings.json" $HOME/.config/zed/settings.json
+
 ####------------------------------------configure Kde force blur ------------------------------------####
 # Configure KDE Force Blur
 
@@ -196,7 +200,7 @@ read -p "Is this a KDE environment? (y/n): " kde_env
 
 if [ "$kde_env" = "y" ]; then
     paru -S base-devel git extra-cmake-modules qt6-tools --noconfirm
-    
+
     git clone https://github.com/taj-ny/kwin-effects-forceblur
     cd kwin-effects-forceblur
     mkdir build
@@ -204,14 +208,13 @@ if [ "$kde_env" = "y" ]; then
     cmake ../ -DCMAKE_INSTALL_PREFIX=/usr
     make
     sudo make install
-    
+
     echo "Force blur Installed!"
     echo "Enable it from settings > desktop effects > force blur"
     echo "configure force blurr and set enable blur all except matching"
     echo "Kvantum theme name is OCEAN link is present in script"
     #https://store.kde.org/p/1427568/
-    
+
 fi
 
 echo "installation complete! Restart your terminal"
-
