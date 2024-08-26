@@ -44,3 +44,5 @@ timeshift-autosnap
 solaar
 okular
 proton-vpn-gtk-app
+notion-app-electron
+google-gemini-nativefier
