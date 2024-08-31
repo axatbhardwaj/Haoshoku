@@ -1,5 +1,5 @@
 #!/bin/bash
-current_dir=$1 
+current_dir=$1
 
 # Giving folder permission
 sudo chmod a+wr /opt/spotify
@@ -24,35 +24,25 @@ spicetify
 cp $current_dir/configs/spicetify/config-xpui.ini $HOME/.config/spicetify/
 
 # Backup the current config
-spicetify backup apply enable-devtool
+spicetify backup apply
 
-# Define the expect script to handle the "Press any key to continue" prompt
-expect_script=$(cat <<'EOF'
-#!/usr/bin/expect -f
+#installing spiceify marketplace
+curl -fsSL https://raw.githubusercontent.com/spicetify/spicetify-marketplace/main/resources/install.sh | sh
 
-set timeout -1
+#check if the marketplace folder exists
 
-spawn bash -c "curl -fsSL https://raw.githubusercontent.com/nimsandu/spicetify-bloom/main/install/install.sh | bash"
-expect {
-    "Press any key to continue or Ctrl+C to cancel" {
-        send "\r"
-        exp_continue
-    }
-}
-EOF
-)
+if [ ! -d $HOME/.config/spicetify/Themes/marketplace ]; then
+    echo "Creating marketplace folder"
+    mkdir -p $HOME/.config/spicetify/Themes
+fi
 
-wget -q "https://raw.githubusercontent.com/huhridge/huh-spicetify-extensions/main/fullAppDisplayModified/fullAppDisplayMod.js" -O $HOME/.config/spicetify/Extensions/fullAppDisplayMod.js
-spicetify config extensions fullAppDisplayMod.js
 
-# Run the expect script
-echo "$expect_script" | expect
+spicetify config inject_css 1
+spicetify config replace_colors 1
+spicetify config current_theme marketplace
 
-# Lyrics extension for spicetify
-spicetify config custom_apps lyrics-plus
 
-# Apply the bloom theme
+spicetify config custom_apps marketplace
 spicetify apply
 
-#update spicetify
-spicetify update
+#the theme name is hazy
