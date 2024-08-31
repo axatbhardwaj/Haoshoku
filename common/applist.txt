@@ -25,7 +25,7 @@ zoxide
 ticktick
 telegram-desktop
 spicetify-cli
-ente-auth-bin
+ente-auth
 qbittorrent
 onefetch
 webapp-manager
@@ -46,3 +46,4 @@ okular
 proton-vpn-gtk-app
 notion-app-electron
 google-gemini-nativefier
+zen-browser-avx2-bin

@@ -76,7 +76,7 @@ fish -c "tide configure --auto --style=Lean --prompt_colors='True color' --show_
 
 
 # Set aliases
-fish -c 'alias dog "zeditor"; funcsave dog;'
+fish -c 'alias dog "code"; funcsave dog;'
 fish -c 'alias lss "ls -a -h"; funcsave lss;'
 fish -c 'alias rmf "rm -r -f -v"; funcsave rmf;'
 fish -c 'alias ps "ps auxfh"; funcsave ps;'
@@ -190,7 +190,7 @@ fi
 
 ####---------------------------------configuring zed ------------------------------------####
 ## copying zed config file to the zed config folder
-cp "$current_dir/configs/zed/settings.json" $HOME/.config/zed/settings.json
+# cp "$current_dir/configs/zed/settings.json" $HOME/.config/zed/settings.json
 
 ####------------------------------------configure Kde force blur ------------------------------------####
 # Configure KDE Force Blur
