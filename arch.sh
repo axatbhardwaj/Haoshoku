@@ -121,6 +121,14 @@ chmod +x "$current_dir/helpers/kitty.sh"
 
 bash -c "$current_dir/helpers/kitty.sh $current_dir"
 
+#######---------------------------------configuring spicetify ------------------------------------#######
+#use the spicetify.sh script to configure spicetify
+
+#give the script executable permissions
+chmod +x "$current_dir/helpers/spicetify.sh"
+
+bash -c "$current_dir/helpers/spicetify.sh $current_dir"
+
 ###########---------------------------------configuring alacritty ------------------------------------####
 #use the alacritty.sh script to configure alacritty
 
