@@ -37,14 +37,21 @@ if [ "$create_work_profile" = "y" ]; then
     # Generate .gitconfig.work
     cat <<EOF > ~/work/.gitconfig.work
 [user]
-email = $work_email
-name = $work_username
+    email = $work_email
+    name = $work_username
+    signingkey = ~/.ssh/work_key
 
 [github]
-user = "$github_username"
+    user = "$github_username"
+
+[commit]
+    gpgsign = true
+
+[gpg]
+    format = ssh
 
 [core]
-sshCommand = "ssh -i ~/.ssh/work_key"
+    sshCommand = "ssh -i ~/.ssh/work_key"
 EOF
     
     # Generate Ed25519 SSH key for work
@@ -66,14 +73,21 @@ github_username=$(prompt_user "Enter GitHub username for personal")
 # Generate .gitconfig.personal
 cat <<EOF > ~/personal/.gitconfig.personal
 [user]
-email = $personal_email
-name = $personal_username
+    email = $personal_email
+    name = $personal_username
+    signingkey = ~/.ssh/personal_key
 
 [github]
-user = "$github_username"
+    user = "$github_username"
+
+[commit]
+    gpgsign = true
+
+[gpg]
+    format = ssh
 
 [core]
-sshCommand = "ssh -i ~/.ssh/personal_key"
+    sshCommand = "ssh -i ~/.ssh/personal_key"
 EOF
 
 # Generate Ed25519 SSH key for personal
@@ -86,15 +100,8 @@ add_ssh_to_agent ~/.ssh/personal_key
 cat <<EOF > ~/.gitconfig
 [includeIf "gitdir:~/personal/"]
     path = ~/personal/.gitconfig.personal
-
-EOF
-
-if [ "$create_work_profile" = "y" ]; then
-    cat <<EOF >> ~/.gitconfig
 [includeIf "gitdir:~/work/"]
     path = ~/work/.gitconfig.work
-
 EOF
-fi
 
 echo "CAT the .pub files and add the contents to Github.com in their respective accounts"
