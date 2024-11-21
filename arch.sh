@@ -27,10 +27,10 @@ fi
 install_apps() {
     # Define the path to apps.txt
     APPS_FILE="$current_dir/common/applist.txt"
-
+    
     # Read the list of apps from apps.txt
     mapfile -t apps < "$APPS_FILE"
-
+    
     # Install all apps in parallel using paru
     paru -S --noconfirm --sudoloop "${apps[@]}"
 }
@@ -108,7 +108,7 @@ if [ "$git_config" = "y" ]; then
     #give the script executable permissions
     chmod +x "$current_dir/helpers/configure_git.sh"
     #use the configure_git.sh script to configure git
-
+    
     bash -c "$current_dir/helpers/configure_git.sh"
 fi
 
@@ -169,6 +169,14 @@ if [ "$bt_on"="y" ]; then
     echo "Bluetooth enabled !"
 fi
 
+############################################3 installing uv ########################################################
+curl -LsSf https://astral.sh/uv/install.sh | sh
+#source fish
+source ~/.config/fish/config.fish
+
+#########---------------------------------------- installing fastanime ------------------------------------####
+uv tool install "fastanime[standard]"
+
 ####------------------------------------------------------------------ configuring fastfetch ------------------------------------------------------####
 # Configure Fastfetch
 
@@ -200,7 +208,7 @@ read -p "Is this a KDE environment? (y/n): " kde_env
 
 if [ "$kde_env" = "y" ]; then
     paru -S base-devel git extra-cmake-modules qt6-tools --noconfirm
-
+    
     git clone https://github.com/taj-ny/kwin-effects-forceblur
     cd kwin-effects-forceblur
     mkdir build
@@ -208,13 +216,13 @@ if [ "$kde_env" = "y" ]; then
     cmake ../ -DCMAKE_INSTALL_PREFIX=/usr
     make
     sudo make install
-
+    
     echo "Force blur Installed!"
     echo "Enable it from settings > desktop effects > force blur"
     echo "configure force blurr and set enable blur all except matching"
     echo "Kvantum theme name is OCEAN link is present in script"
     #https://store.kde.org/p/1427568/
-
+    
 fi
 
 echo "installation complete! Restart your terminal"
