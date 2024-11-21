@@ -46,4 +46,4 @@ okular
 proton-vpn-gtk-app
 gemini-desktop-git
 slack-desktop-wayland
-prowlarr
+prowlarr-bin
