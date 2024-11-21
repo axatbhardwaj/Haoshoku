@@ -38,7 +38,7 @@ chatgpt-desktop-bin
 whatsdesk-bin
 fastfetch
 expect
-vencord-desktop-git
+vesktop
 timeshift
 timeshift-autosnap
 solaar
