@@ -172,10 +172,9 @@ fi
 ############################################3 installing uv ########################################################
 curl -LsSf https://astral.sh/uv/install.sh | sh
 #source fish
-source $HOME/.local/bin/env.fish
 
 #########---------------------------------------- installing fastanime ------------------------------------####
-uv tool install "fastanime[standard]"
+fish -c 'uv tool install "fastanime[standard]"'
 
 ####------------------------------------------------------------------ configuring fastfetch ------------------------------------------------------####
 # Configure Fastfetch
