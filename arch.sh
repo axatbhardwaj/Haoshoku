@@ -169,12 +169,12 @@ if [ "$bt_on"="y" ]; then
     echo "Bluetooth enabled !"
 fi
 
-############################################3 installing uv ########################################################
+############################################ installing uv ########################################################
 curl -LsSf https://astral.sh/uv/install.sh | sh
-#source fish
 
-#########---------------------------------------- installing fastanime ------------------------------------####
-fish -c 'uv tool install "fastanime[standard]"'
+#call the fastanime-setup.sh script
+bash -c "$current_dir/helpers/fastanime-setup.sh"
+
 
 ####------------------------------------------------------------------ configuring fastfetch ------------------------------------------------------####
 # Configure Fastfetch
