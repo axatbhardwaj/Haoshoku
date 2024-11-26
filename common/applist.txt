@@ -43,8 +43,9 @@ timeshift
 timeshift-autosnap
 solaar
 okular
-proton-vpn-gtk-app
 gemini-desktop-git
 slack-desktop-wayland
 prowlarr-bin
 mpv
+syncplay
+webtorrent-cli 
