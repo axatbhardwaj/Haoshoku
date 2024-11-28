@@ -50,5 +50,5 @@ mpv
 python-mpv
 syncplay
 webtorrent-cli
-fastanime
 mpv-uosc
+fastanime
