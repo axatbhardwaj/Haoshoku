@@ -49,4 +49,6 @@ prowlarr-bin
 mpv
 python-mpv
 syncplay
-webtorrent-cli 
+webtorrent-cli
+fastanime
+mpv-uosc
