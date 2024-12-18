@@ -43,7 +43,6 @@ timeshift
 timeshift-autosnap
 solaar
 okular
-gemini-desktop-git
 slack-desktop-wayland
 prowlarr-bin
 mpv
