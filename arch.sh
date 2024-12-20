@@ -157,6 +157,10 @@ sudo ufw allow 1714:1764/udp
 sudo ufw allow 1714:1764/tcp
 sudo ufw reload
 
+#####---------------------------------installing uosc ------------------------------------####
+#installing uosc
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/tomasklaen/uosc/HEAD/installers/unix.sh)"
+
 ####---------------------------------configuring bluetooth ------------------------------------####
 
 #ask if to enable bluetooth
