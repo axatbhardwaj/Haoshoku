@@ -121,6 +121,11 @@ chmod +x "$current_dir/helpers/kitty.sh"
 
 bash -c "$current_dir/helpers/kitty.sh $current_dir"
 
+
+####---------------------------------configuring ghostty ------------------------------------####
+
+cp "$current_dir/configs/ghostty/config" $HOME/.config/ghostty/config
+
 #######---------------------------------configuring spicetify ------------------------------------#######
 #use the spicetify.sh script to configure spicetify
 

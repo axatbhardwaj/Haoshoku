@@ -1,0 +1,4 @@
+theme = MaterialOcean
+background-opacity = 0.85
+background-blur-radius=0
+window-theme=ghostty
