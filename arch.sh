@@ -124,6 +124,10 @@ bash -c "$current_dir/helpers/kitty.sh $current_dir"
 
 ####---------------------------------configuring ghostty ------------------------------------####
 
+#making sure that the ghostty folder exists in the config folder
+if [ ! -d ~/.config/ghostty ]; then
+    mkdir -p ~/.config/ghostty
+fi
 cp "$current_dir/configs/ghostty/config" $HOME/.config/ghostty/config
 
 #######---------------------------------configuring spicetify ------------------------------------#######
