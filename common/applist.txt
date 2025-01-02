@@ -52,3 +52,4 @@ webtorrent-cli
 mpv-uosc
 fastanime
 mission-center
+ghostty
