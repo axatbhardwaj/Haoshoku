@@ -53,3 +53,5 @@ mpv-uosc
 fastanime
 mission-center
 ghostty
+starship
+nushell
