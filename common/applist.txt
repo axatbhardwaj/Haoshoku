@@ -54,4 +54,6 @@ fastanime
 mission-center
 ghostty
 starship
-nushell
+whatsdesk-bin
+zen-browser-avx2-bin
+gemini-desktop-git
