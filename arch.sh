@@ -189,19 +189,6 @@ chmod +x "$current_dir/helpers/fastfetch.sh"
 
 bash -c "$current_dir/helpers/fastfetch.sh $current_dir"
 
-######-------------------------------- private dns ------------------------------------####
-# ask if to enable private dns
-read -p "Do you want to enable private dns ? (y/n): " pvt_dns
-
-# if yes then run the pvt-dns.sh script
-if [ "$pvt_dns" = "y" ]; then
-    bash -c "$current_dir/helpers/pvt-dns.sh"
-fi
-
-####---------------------------------configuring zed ------------------------------------####
-## copying zed config file to the zed config folder
-# cp "$current_dir/configs/zed/settings.json" $HOME/.config/zed/settings.json
-
 ####------------------------------------configure Kde force blur ------------------------------------####
 # Configure KDE Force Blur
 
