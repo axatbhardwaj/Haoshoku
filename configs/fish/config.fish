@@ -15,14 +15,19 @@ end
 
 if status is-interactive
     if is_git_repo
+        sleep 0.25
         onefetch
     else
+        sleep 0.25
         fastfetch
     end
     zoxide init fish | source
     source /opt/miniconda3/etc/fish/conf.d/conda.fish
     starship init fish | source
+    thefuck --alias tf | source
     # Commands to run in interactive sessions can go here
 end
 
 set -gx CRYPTOGRAPHY_OPENSSL_NO_LEGACY 1
+# Added by LM Studio CLI (lms)
+set -gx PATH $PATH /home/xzat/.lmstudio/bin
