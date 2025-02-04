@@ -78,8 +78,8 @@ fish -c 'alias lss "ls -a -h"; funcsave lss;'
 fish -c 'alias rmf "rm -r -f -v"; funcsave rmf;'
 fish -c 'alias ps "ps auxfh"; funcsave ps;'
 fish -c 'alias lss "ls -a -h"; funcsave lss;'
-fish -c 'alias rmf "rm -r -f -v"; funcsave rmf;'
 fish -c 'alias ps "ps auxfh"; funcsave ps;'
+fish -c 'alias tf "fuck"; funcsave tf;'
 fish -c 'function cursor; command cursor $argv > /dev/null 2>&1 &; end; funcsave cursor'
 
 ####------------------------------------------------------configuring-fish ------------------------------------------------------####
