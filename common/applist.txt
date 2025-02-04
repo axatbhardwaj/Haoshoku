@@ -57,3 +57,4 @@ starship
 whatsdesk-bin
 zen-browser-avx2-bin
 gemini-desktop-git
+httpie
