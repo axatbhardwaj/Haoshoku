@@ -44,7 +44,6 @@ timeshift-autosnap
 solaar
 okular
 slack-desktop-wayland
-prowlarr-bin
 mpv
 python-mpv
 syncplay
