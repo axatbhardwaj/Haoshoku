@@ -49,7 +49,6 @@ python-mpv
 syncplay
 webtorrent-cli
 mpv-uosc
-fastanime
 mission-center
 ghostty
 starship
@@ -58,3 +57,4 @@ zen-browser-avx2-bin
 gemini-desktop-git
 httpie
 thefuck
+subdl
