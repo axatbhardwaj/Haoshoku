@@ -22,7 +22,6 @@ if status is-interactive
         fastfetch
     end
     zoxide init fish | source
-    source /opt/miniconda3/etc/fish/conf.d/conda.fish
     thefuck --alias | source
     # Commands to run in interactive sessions can go here
 end

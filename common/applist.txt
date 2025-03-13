@@ -19,7 +19,6 @@ webcord
 teams-for-linux
 discord-screenaudio
 onlyoffice-bin
-miniconda3
 kvantum
 zoxide
 ticktick
