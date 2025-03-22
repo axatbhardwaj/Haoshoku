@@ -24,7 +24,6 @@ zoxide
 ticktick
 telegram-desktop
 spicetify-cli
-ente-auth
 qbittorrent
 onefetch
 webapp-manager
@@ -52,7 +51,6 @@ mission-center
 ghostty
 starship
 whatsdesk-bin
-zen-browser-avx2-bin
 gemini-desktop-git
 httpie
 thefuck
