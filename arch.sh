@@ -135,14 +135,6 @@ if [ ! -d ~/.config/ghostty ]; then
 fi
 cp "$current_dir/configs/ghostty/config" $HOME/.config/ghostty/config
 
-#######---------------------------------configuring spicetify ------------------------------------#######
-#use the spicetify.sh script to configure spicetify
-
-#give the script executable permissions
-chmod +x "$current_dir/helpers/spicetify.sh"
-
-bash -c "$current_dir/helpers/spicetify.sh $current_dir"
-
 ###########---------------------------------configuring alacritty ------------------------------------####
 #use the alacritty.sh script to configure alacritty
 

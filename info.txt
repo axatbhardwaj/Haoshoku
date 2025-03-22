@@ -2,7 +2,7 @@ gtk- juno-ocean-v40
 
 theme name ocean - https://store.kde.org/p/1427568/
 
-cursor - lyrax
+cursor - Material cursors
 
 icons - beautiline 
 
