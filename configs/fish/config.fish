@@ -23,6 +23,8 @@ if status is-interactive
     end
     zoxide init fish | source
     thefuck --alias | source
+    starship init fish | source
+
     # Commands to run in interactive sessions can go here
 end
 

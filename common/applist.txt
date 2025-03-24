@@ -56,3 +56,4 @@ httpie
 thefuck
 subdl
 ente-auth-bin
+startship
