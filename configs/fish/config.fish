@@ -24,6 +24,7 @@ if status is-interactive
     zoxide init fish | source
     thefuck --alias | source
     starship init fish | source
+    source /opt/miniconda3/etc/fish/conf.d/conda.fish # conda
 
     # Commands to run in interactive sessions can go here
 end

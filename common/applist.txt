@@ -57,3 +57,5 @@ thefuck
 subdl
 ente-auth-bin
 startship
+docker
+miniconda3
