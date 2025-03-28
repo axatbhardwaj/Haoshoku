@@ -54,7 +54,7 @@ sudo pacman -S $(pacman -Sgq nerd-fonts) --noconfirm
 read -p "Do you want to enable gaming? (y/n): " game_on
 
 if [ "$game_on" == "y" ]; then
-    paru -S cachyos-gaming-meta protonup-rs-bin --noconfirm
+    paru -S cachyos-gaming-meta cachyos-gaming-applications protonup-rs-bin --noconfirm
 fi
 
 #####-------------------------------------- Grub fixes ------------------------------------------------#####
