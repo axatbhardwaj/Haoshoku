@@ -59,3 +59,4 @@ ente-auth-bin
 startship
 docker
 miniconda3
+bun-bin
