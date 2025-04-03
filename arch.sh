@@ -80,16 +80,6 @@ fish -c "fisher install IlanCosman/tide"
 #configuring tide prmpt
 fish -c "tide configure --auto --style=Lean --prompt_colors='True color' --show_time='24-hour format' --lean_prompt_height='Two lines' --prompt_connection=Solid --prompt_connection_andor_frame_color=Lightest --prompt_spacing=Sparse --icons='Many icons' --transient=Yes"
 
-# Set aliases
-fish -c 'alias dog "code"; funcsave dog;'
-fish -c 'alias lss "ls -a -h"; funcsave lss;'
-fish -c 'alias rmf "rm -r -f -v"; funcsave rmf;'
-fish -c 'alias ps "ps auxfh"; funcsave ps;'
-fish -c 'alias lss "ls -a -h"; funcsave lss;'
-fish -c 'alias ps "ps auxfh"; funcsave ps;'
-fish -c 'alias tf "fuck"; funcsave tf;'
-fish -c 'function cursor; command cursor $argv > /dev/null 2>&1 &; end; funcsave cursor'
-
 ####------------------------------------------------------configuring-fish ------------------------------------------------------####
 
 # Configure Fish shell

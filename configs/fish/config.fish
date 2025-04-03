@@ -24,8 +24,22 @@ if status is-interactive
     zoxide init fish | source
     thefuck --alias | source
     starship init fish | source
-    source /opt/miniconda3/etc/fish/conf.d/conda.fish # conda
-
+    source /opt/miniconda3/etc/fish/conf.d/conda.fish #conda init
+    
+    # ===================================
+    # Aliases Section
+    # ===================================
+    # Development
+    alias dog="cursor"
+    
+    # File operations
+    alias lss="ls -a -h"
+    alias rmf="rm -r -f -v"
+    
+    # System commands
+    alias ps="ps auxfh"
+    alias tf="fuck"
+    
     # Commands to run in interactive sessions can go here
 end
 
