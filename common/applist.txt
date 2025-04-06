@@ -57,3 +57,4 @@ subdl
 docker
 miniconda3
 bun-bin
+vivaldi
