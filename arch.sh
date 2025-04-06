@@ -169,6 +169,14 @@ if [ "$bt_on"="y" ]; then
     echo "Bluetooth enabled !"
 fi
 
+#######------------------------------------Enabling Docker-------------------------#####
+# Enable and start Docker
+sudo systemctl enable docker
+sudo systemctl start docker
+
+# Set permissions for Docker socket
+sudo chmod 666 /var/run/docker.sock
+
 ####------------------------------------------------------------------ configuring fastfetch ------------------------------------------------------####
 # Configure Fastfetch
 
