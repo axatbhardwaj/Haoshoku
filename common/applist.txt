@@ -51,12 +51,9 @@ mission-center
 ghostty
 starship
 whatsdesk-bin
-gemini-desktop-git
 httpie
 thefuck
 subdl
-ente-auth-bin
-startship
 docker
 miniconda3
 bun-bin
