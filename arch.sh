@@ -170,12 +170,18 @@ if [ "$bt_on"="y" ]; then
 fi
 
 #######------------------------------------Enabling Docker-------------------------#####
-# Enable and start Docker
-sudo systemctl enable docker
-sudo systemctl start docker
+# Ask if user wants to enable Docker
+read -p "Do you want to enable Docker? (y/n): " docker_on
 
-# Set permissions for Docker socket
-sudo chmod 666 /var/run/docker.sock
+if [ "$docker_on" = "y" ]; then
+    # Enable and start Docker
+    sudo systemctl enable docker
+    sudo systemctl start docker
+
+    # Set permissions for Docker socket
+    sudo chmod 666 /var/run/docker.sock
+    echo "Docker has been enabled and started!"
+fi
 
 ####------------------------------------------------------------------ configuring fastfetch ------------------------------------------------------####
 # Configure Fastfetch
