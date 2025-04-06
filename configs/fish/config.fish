@@ -30,8 +30,10 @@ if status is-interactive
     # Aliases Section
     # ===================================
     # Development
-    alias dog="cursor"
+    alias dog="cursor > /dev/null 2>&1 &"
     
+    alias cursor="cursor > /dev/null 2>&1 &"
+
     # File operations
     alias lss="ls -a -h"
     alias rmf="rm -r -f -v"
