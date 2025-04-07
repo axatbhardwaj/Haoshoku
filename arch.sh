@@ -63,7 +63,7 @@ sudo grub-mkconfig -o /boot/grub/grub.cfg
 sudo systemctl enable grub-btrfsd
 
 #updating system
-paru -Syyuu --noconfirm
+paru -Syyuu --noconfirm 
 
 ####---------------------------------------------configuring fish ------------------------------------------------------####
 

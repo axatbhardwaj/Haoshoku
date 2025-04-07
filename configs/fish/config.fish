@@ -25,14 +25,20 @@ if status is-interactive
     thefuck --alias | source
     starship init fish | source
     source /opt/miniconda3/etc/fish/conf.d/conda.fish #conda init
+
+    #===========================================
+    # Functions Section
+    #===========================================
+    function cursor
+        command cursor $argv > /dev/null 2>&1 &
+    end
     
     # ===================================
     # Aliases Section
     # ===================================
     # Development
-    alias dog="cursor > /dev/null 2>&1 &"
+    alias dog="cursor"
     
-    alias cursor="cursor > /dev/null 2>&1 &"
 
     # File operations
     alias lss="ls -a -h"
