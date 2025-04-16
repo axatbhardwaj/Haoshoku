@@ -237,32 +237,6 @@ if [[ "$install_font_manager" =~ ^[Yy]$ ]]; then
     flatpak install --user -y flathub org.gnome.FontManager || print_warning "Failed to install Font Manager."
 fi
 
-# --- Grub Configuration --- 
-read -p "Do you use BTRFS and want to install/enable grub-btrfs service? (y/n): " configure_grub_btrfs
-if [[ "$configure_grub_btrfs" =~ ^[Yy]$ ]]; then
-    print_info "Installing grub-btrfs..."
-    sudo dnf install -y grub-btrfs || print_warning "Failed to install grub-btrfs."
-    if command_exists grub-btrfsd; then 
-        print_info "Enabling grub-btrfsd service..."
-        sudo systemctl enable grub-btrfsd
-    fi
-fi
-# Check grub config path (UEFI is more common now)
-GRUB_CFG_PATH_EFI="/boot/efi/EFI/fedora/grub.cfg"
-GRUB_CFG_PATH_BIOS="/boot/grub2/grub.cfg"
-GRUB_CFG_PATH=""
-if [ -f "$GRUB_CFG_PATH_EFI" ]; then
-    GRUB_CFG_PATH="$GRUB_CFG_PATH_EFI"
-elif [ -f "$GRUB_CFG_PATH_BIOS" ]; then
-    GRUB_CFG_PATH="$GRUB_CFG_PATH_BIOS"
-fi
-if [ -n "$GRUB_CFG_PATH" ]; then
-    print_info "It is recommended to run 'sudo grub2-mkconfig -o $GRUB_CFG_PATH' after kernel updates if needed."
-else
-    print_warning "Could not determine GRUB config path. Manual check needed."
-fi
-
-
 # --- Fish Shell Configuration ---
 print_info "Configuring Fish shell..."
 if ! command_exists fish; then
@@ -405,8 +379,11 @@ if command_exists docker; then
          print_info "Ensuring Docker service is enabled and started..."
          sudo systemctl enable docker
          sudo systemctl start docker
-         if ! groups $USER | grep -q '\bdocker\b'; then
-              print_warning "User $USER not in docker group. Run 'sudo usermod -aG docker $USER' and log out/in."
+         # Check if user is in docker group and add if not
+         if ! groups $USER | grep -q '\bdocker\b'; then 
+              print_info "Adding user $USER to the docker group..."
+              sudo usermod -aG docker $USER
+              print_warning "User $USER added to docker group. Please log out and log back in for this change to take effect."
          else
              print_info "User $USER is already in the docker group."
          fi
