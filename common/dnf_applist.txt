@@ -12,3 +12,4 @@ ghostty
 starship
 thefuck
 conda
+docker-cli

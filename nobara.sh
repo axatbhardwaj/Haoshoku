@@ -136,20 +136,6 @@ install_apps # Call the function
 
 # --- Specific Installers & Repo Setups (Triggered by DNF list) ---
 
-# Setup Vivaldi repo if requested in DNF list
-if [[ " ${dnf_packages[@]} " =~ " vivaldi-stable " ]]; then
-    print_info "Setting up Vivaldi repository..."
-    if ! dnf list installed vivaldi-stable &> /dev/null; then
-        sudo dnf config-manager --add-repo https://repo.vivaldi.com/archive/vivaldi-fedora.repo
-        # Installation should have happened during main DNF install phase
-        print_info "Vivaldi repository added. Package should be installed."
-    else
-        print_info "Vivaldi already installed."
-    fi
-else
-     print_info "Vivaldi not listed in DNF package list ($APPLIST_FILE). Skipping repo setup."
-fi
-
 # Docker repository setup (triggered if docker-ce* is in DNF list)
 # Check if any package starting with docker-ce was in the dnf_packages list
 docker_requested=false

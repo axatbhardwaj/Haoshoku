@@ -1,18 +1,14 @@
 # !/bin/bash
 
-#this script if for fastfetch configuration
+# This script is for fastfetch configuration
 
-#take the current directory as argument
+# Take the current directory as argument
 current_dir=$1
 
-fastfetch --gen-config
-mkdir $HOME/.config/fastfetch
-cd $HOME/.config/fastfetch
+# Ensure the target directory exists
+mkdir -p "$HOME/.config/fastfetch"
 
-rm config.jsonc
+# Force copy the config file, overwriting if it exists
+cp -f "$current_dir/configs/fastfetch/config.jsonc" "$HOME/.config/fastfetch/config.jsonc"
 
-#copying the config file
-
-cp $current_dir/configs/fastfetch/config.jsonc $HOME/.config/fastfetch/config.jsonc
-
-echo "Fastfetch setup complete"
+echo "Fastfetch user config updated."
