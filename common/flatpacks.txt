@@ -1,0 +1,16 @@
+com.vivaldi.Vivaldi
+com.visualstudio.code
+com.brave.Browser
+org.signal.Signal
+com.bitwarden.desktop
+com.spotify.Client
+com.github.IsmaelMartinez.teams_for_linux
+org.telegram.desktop
+org.qbittorrent.qBittorrent
+com.slack.Slack
+io.github.pwr_solaar.solaar
+io.mpv.Mpv
+io.github.brunofin.Cohesion
+io.httpie.Httpie
+io.missioncenter.MissionCenter
+com.discordapp.Discord

@@ -1,0 +1,15 @@
+
+fish
+nodejs
+npm
+kvantum
+zoxide
+onefetch
+btop
+nvtop
+wmctrl
+fastfetch
+ghostty
+starship
+thefuck
+conda
