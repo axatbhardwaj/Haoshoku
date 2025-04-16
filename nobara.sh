@@ -133,6 +133,14 @@ install_apps() {
 # --- Execute Application Installation ---
 install_apps # Call the function
 
+# installing cursor
+if ! command_exists cursor; then
+    print_info "Installing Cursor IDE..."
+    curl -fsSL https://raw.githubusercontent.com/watzon/cursor-linux-installer/main/install.sh | bash
+    print_info "Cursor IDE installed successfully."
+else
+    print_info "Cursor IDE already installed."
+fi
 
 # --- Specific Installers & Repo Setups (Triggered by DNF list) ---
 
