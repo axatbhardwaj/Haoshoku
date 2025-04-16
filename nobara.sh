@@ -208,20 +208,6 @@ else
     print_info "NVM command already exists. Skipping installation prompt."
 fi
 
-# Miniconda
-if ! command_exists conda; then
-    read -p "Install Miniconda? (y/n): " install_miniconda
-    if [[ "$install_miniconda" =~ ^[Yy]$ ]]; then
-        print_info "Installing Miniconda..."
-        wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh
-        bash ~/miniconda.sh -b -p $HOME/miniconda3
-        rm ~/miniconda.sh
-        print_info "Miniconda installed. Fish config initialization will be added."
-    fi
-else
-    print_info "Conda command already exists. Skipping Miniconda installation prompt."
-fi
-
 # Bun
 if ! command_exists bun; then
     read -p "Install Bun? (y/n): " install_bun
