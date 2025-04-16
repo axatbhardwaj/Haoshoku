@@ -195,12 +195,6 @@ if ! command_exists foundryup; then
         print_info "Installing Foundry..."
         curl -L https://foundry.paradigm.xyz | bash
         print_info "Foundry installed. You might need to restart your shell or source profile."
-
-        #source foundryup
-        source ~/.profile
-        
-        #using foundryup to install foundry
-        foundryup
     fi
 else
     print_info "Foundry (foundryup) already installed."
