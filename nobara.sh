@@ -48,9 +48,6 @@ sudo dnf update -y
 print_info "Installing essential packages (curl, wget, git)..."
 sudo dnf install -y curl wget git
 
-print_info "Installing Development Tools group..."
-sudo dnf groupinstall -y "Development Tools" # Equiv. to base-devel
-
 print_info "Installing Rust via rustup..."
 if ! command_exists rustc; then
     curl https://sh.rustup.rs -sSf | sh -s -- -y --profile default --default-toolchain stable
