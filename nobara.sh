@@ -195,6 +195,12 @@ if ! command_exists foundryup; then
         print_info "Installing Foundry..."
         curl -L https://foundry.paradigm.xyz | bash
         print_info "Foundry installed. You might need to restart your shell or source profile."
+
+        #source foundryup
+        source ~/.profile
+        
+        #using foundryup to install foundry
+        foundryup
     fi
 else
     print_info "Foundry (foundryup) already installed."
@@ -242,30 +248,6 @@ else
     export BUN_INSTALL="$HOME/.bun"
 fi
 
-# Spicetify CLI & Marketplace
-if ! command_exists spicetify; then
-    read -p "Install Spicetify CLI and Marketplace? (y/n): " install_spicetify
-    if [[ "$install_spicetify" =~ ^[Yy]$ ]]; then
-        print_info "Installing Spicetify CLI & Marketplace..."
-        curl -fsSL https://raw.githubusercontent.com/spicetify/spicetify-cli/master/install.sh | sh
-        if command_exists spicetify; then
-             mkdir -p "$SPICETIFY_CONFIG_DIR/Themes"
-             curl -fsSL https://raw.githubusercontent.com/spicetify/spicetify-marketplace/main/resources/install.sh | sh -s -- -c "$SPICETIFY_CONFIG_DIR/Themes"
-        else
-            print_warning "Spicetify CLI installation failed. Cannot install Marketplace."
-        fi
-    fi
-else
-    print_info "Spicetify command already exists. Ensuring Marketplace is installed (if Spicetify dir exists)..."
-    if [ -d "$SPICETIFY_CONFIG_DIR" ] && ! [ -d "$SPICETIFY_CONFIG_DIR/Themes/marketplace" ]; then
-         mkdir -p "$SPICETIFY_CONFIG_DIR/Themes"
-         curl -fsSL https://raw.githubusercontent.com/spicetify/spicetify-marketplace/main/resources/install.sh | sh -s -- -c "$SPICETIFY_CONFIG_DIR/Themes"
-    fi
-fi
-
-# NoiseTorch Reminder (always show if thinking about manual installs)
-print_info "Reminder: NoiseTorch requires manual download and installation from its website/GitHub."
-
 # --- Fonts --- 
 print_info "Checking for Nerd Fonts..."
 print_info "You can search for Nerd Fonts using 'dnf search nerd-font'"
@@ -274,16 +256,6 @@ if [[ "$install_font_manager" =~ ^[Yy]$ ]]; then
     print_info "Installing Font Manager Flatpak..."
     flatpak install --user -y flathub org.gnome.FontManager || print_warning "Failed to install Font Manager."
 fi
-
-# --- Gaming --- 
-print_info "Configuring Gaming related items..."
-read -p "Do you want to install ProtonUp-Qt (Flatpak) to manage Proton-GE versions? (y/n): " install_protonup
-if [[ "$install_protonup" =~ ^[Yy]$ ]]; then
-    print_info "Installing ProtonUp-Qt Flatpak..."
-    flatpak install --user -y flathub net.davidotek.pupgui2 || print_warning "Failed to install ProtonUp-Qt."
-fi
-print_info "Nobara Linux comes with many gaming optimizations pre-installed."
-
 
 # --- Grub Configuration --- 
 read -p "Do you use BTRFS and want to install/enable grub-btrfs service? (y/n): " configure_grub_btrfs
@@ -446,32 +418,6 @@ if command_exists ghostty; then # Ghostty likely not flatpak, check command
 fi
 
 
-# --- Uosc for MPV --- 
-if [[ " ${flatpak_packages[@]} " =~ " io.mpv.Mpv " ]] || command_exists mpv; then
-    read -p "Do you want to install the uosc UI for MPV? (y/n): " install_uosc
-    if [[ "$install_uosc" =~ ^[Yy]$ ]]; then
-        print_info "Installing uosc for MPV..."
-        # Need to check if MPV is flatpak or native for install path
-        MPV_CONFIG_DIR="$HOME/.config/mpv"
-        if [[ " ${flatpak_packages[@]} " =~ " io.mpv.Mpv " ]]; then
-            # Flatpak config path might differ or require override
-            MPV_CONFIG_DIR="$HOME/.var/app/io.mpv.Mpv/config/mpv"
-             print_warning "MPV installed via Flatpak. uosc installer might need manual adjustments for path: $MPV_CONFIG_DIR"
-             # Try to create path just in case
-             mkdir -p "$MPV_CONFIG_DIR"
-        fi
-        # Run installer - may need adjustment for Flatpak
-        bash -c "$(curl -fsSL https://raw.githubusercontent.com/tomasklaen/uosc/HEAD/installers/unix.sh)" || print_warning "uosc installation script failed. Manual installation might be required."
-    fi
-fi
-
-# --- Bluetooth --- 
-read -p "Do you want to enable the Bluetooth service? (y/n): " enable_bluetooth
-if [[ "$enable_bluetooth" =~ ^[Yy]$ ]]; then
-    print_info "Enabling and starting Bluetooth service..."
-    sudo systemctl enable --now bluetooth.service || print_warning "Failed to enable/start Bluetooth service."
-fi
-
 # --- Docker Enablement --- 
 if command_exists docker; then
      read -p "Docker is installed. Do you want to ensure the Docker service is enabled and started? (y/n): " enable_docker
@@ -505,16 +451,6 @@ if command_exists fastfetch; then
          fi
     fi
 fi
-
-####------------------------------- Installing NVM -------------------------------####
-
-# Install NVM
-if ! command_exists nvm; then
-    print_info "Installing NVM..."
-    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.2/install.sh | bash
-    export NVM_DIR="$HOME/.nvm"
-    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-
 
 # --- Final Steps ---
 print_info "Nobara Linux setup script completed."
