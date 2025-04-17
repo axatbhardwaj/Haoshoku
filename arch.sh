@@ -31,7 +31,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 install_apps() {
     # Define the path to apps.txt
-    APPS_FILE="$current_dir/common/applist.txt"
+    APPS_FILE="$current_dir/common/paru_applist.txt"
     
     # Read the list of apps from apps.txt
     mapfile -t apps < "$APPS_FILE"
@@ -41,6 +41,16 @@ install_apps() {
 }
 
 install_apps
+
+# installing cursor
+if ! command_exists cursor; then
+    print_info "Installing Cursor IDE..."
+    curl -fsSL https://raw.githubusercontent.com/watzon/cursor-linux-installer/main/install.sh | bash
+    print_info "Cursor IDE installed successfully."
+else
+    print_info "Cursor IDE already installed."
+fi
+
 
 #installing foundry
 curl -L https://foundry.paradigm.xyz | bash
@@ -57,13 +67,6 @@ if [ "$game_on" == "y" ]; then
     paru -S cachyos-gaming-meta cachyos-gaming-applications protonup-rs-bin --noconfirm
 fi
 
-#####-------------------------------------- Grub fixes ------------------------------------------------#####
-
-sudo grub-mkconfig -o /boot/grub/grub.cfg
-sudo systemctl enable grub-btrfsd
-
-#updating system
-paru -Syyuu --noconfirm 
 
 ####---------------------------------------------configuring fish ------------------------------------------------------####
 
