@@ -6,6 +6,16 @@ set -e  # Exit on error
 
 current_dir=$(pwd)
 
+# Function to check if a command exists
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+# Function to print info messages
+print_info() {
+    echo "[INFO] $1"
+}
+
 #pacman updates & installing rust up
 sudo pacman -Syu base-devel --noconfirm
 
