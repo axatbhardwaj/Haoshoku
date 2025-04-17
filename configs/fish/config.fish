@@ -1,3 +1,4 @@
+source /usr/share/cachyos-fish-config/cachyos-config.fish
 function is_git_repo
     if test -d .git
         return 0
@@ -23,6 +24,7 @@ if status is-interactive
     zoxide init fish | source
     thefuck --alias | source
     starship init fish | source
+    source /opt/miniconda3/etc/fish/conf.d/conda.fish #conda init
 
     #===========================================
     # Functions Section
