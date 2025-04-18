@@ -93,6 +93,9 @@ fish -c "fisher install IlanCosman/tide"
 #configuring tide prmpt
 fish -c "tide configure --auto --style=Lean --prompt_colors='True color' --show_time='24-hour format' --lean_prompt_height='Two lines' --prompt_connection=Solid --prompt_connection_andor_frame_color=Lightest --prompt_spacing=Sparse --icons='Many icons' --transient=Yes"
 
+#configuring starship prompt
+starship preset nerd-font-symbols -o ~/.config/starship.toml
+
 ####------------------------------------------------------configuring-fish ------------------------------------------------------####
 
 # Configure Fish shell
