@@ -45,3 +45,4 @@ docker
 miniconda3
 bun-bin
 vivaldi
+gitleaks
