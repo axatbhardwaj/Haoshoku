@@ -90,6 +90,14 @@ fi
 print_info "Installing essential packages (curl, wget, git)..."
 sudo apt install -y curl wget git
 
+print_info "Installing Brave Browser..."
+if ! command_exists brave-browser; then
+    curl -fsS https://dl.brave.com/install.sh | sh
+    print_info "Brave Browser installed."
+else
+    print_info "Brave Browser already installed."
+fi
+
 print_info "Installing Rust via rustup..."
 if ! command_exists rustc; then
     curl https://sh.rustup.rs -sSf | sh -s -- -y --profile default --default-toolchain stable
@@ -399,7 +407,6 @@ if prompt_with_timeout "Install Conda (Python ENV manager)?" "y"; then
         print_info "Cleaning up installer..."
         rm -f Anaconda3-2024.10-1-Linux-x86_64.sh
         print_info "Conda installed and configured. Reloading shell to make conda command available..."
-        exec fish
         cd - > /dev/null
     else
         print_info "Conda already installed."
