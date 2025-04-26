@@ -73,6 +73,21 @@ print_info "Updating system packages..."
 sudo apt update
 sudo apt upgrade -y
 
+print_info "Installing Grub Customizer..."
+sudo add-apt-repository ppa:danielrichter2007/grub-customizer -y
+sudo apt update
+
+print_info "Installing Dark Matter GRUB theme..."
+if [ ! -d "darkmatter-grub-theme" ]; then
+    git clone --depth 1 https://gitlab.com/VandalByte/darkmatter-grub-theme.git
+    cd darkmatter-grub-theme
+    sudo python3 darkmatter-theme.py --install
+    cd ..
+    rm -rf darkmatter-grub-theme
+else
+    print_warning "Dark Matter GRUB theme directory already exists. Skipping installation."
+fi
+
 print_info "Installing essential packages (curl, wget, git)..."
 sudo apt install -y curl wget git
 
