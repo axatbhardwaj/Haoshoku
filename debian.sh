@@ -546,39 +546,6 @@ if prompt_with_timeout "Is this a KDE environment?" "n"; then
     print_info "4. Recommended Kvantum theme: OCEAN (https://store.kde.org/p/1427568/)"
 fi
 
-# --- ProtonUp Installation ---
-if prompt_with_timeout "Install ProtonUp (Proton-GE installer)?" "y"; then
-    if ! command_exists protonup-rs; then
-        print_info "Installing ProtonUp..."
-        
-        # Clone the repository
-        if [ -d "protonup-rs" ]; then
-            print_warning "protonup-rs directory already exists. Removing..."
-            rm -rf protonup-rs
-        fi
-        
-        git clone https://github.com/DavidoTek/ProtonUp-rs.git protonup-rs || print_error "Failed to clone ProtonUp repository"
-        cd protonup-rs || print_error "Failed to enter protonup-rs directory"
-        
-        # Build the project
-        print_info "Building ProtonUp..."
-        cargo build -p protonup-rs --release || print_error "Failed to build ProtonUp"
-        
-        # Install to /usr/local/bin
-        print_info "Installing ProtonUp..."
-        sudo mv ./target/release/protonup-rs /usr/local/bin/ || print_error "Failed to install ProtonUp"
-        
-        # Clean up
-        cd "$CURRENT_DIR" || print_error "Failed to return to original directory"
-        rm -rf protonup-rs
-        
-        print_info "ProtonUp installed successfully!"
-        print_info "You can now use 'protonup-rs' to install Proton-GE versions."
-    else
-        print_info "ProtonUp already installed."
-    fi
-fi
-
 # --- Final Steps ---
 print_info "Debian/Kubuntu setup script completed."
 print_warning "Please review any warnings above."
