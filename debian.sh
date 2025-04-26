@@ -88,6 +88,29 @@ else
     print_warning "Dark Matter GRUB theme directory already exists. Skipping installation."
 fi
 
+print_info "Setting up Timeshift and automatic snapshots..."
+sudo apt install -y git make timeshift
+
+print_info "Installing timeshift-autosnap-apt..."
+if [ ! -d "/home/$USER/timeshift-autosnap-apt" ]; then
+    git clone https://github.com/wmutschl/timeshift-autosnap-apt.git "/home/$USER/timeshift-autosnap-apt"
+    cd "/home/$USER/timeshift-autosnap-apt"
+    sudo make install
+    cd "$CURRENT_DIR"
+else
+    print_warning "timeshift-autosnap-apt directory already exists. Skipping installation."
+fi
+
+print_info "Installing grub-btrfs..."
+if [ ! -d "/home/$USER/grub-btrfs" ]; then
+    git clone https://github.com/Antynea/grub-btrfs.git "/home/$USER/grub-btrfs"
+    cd "/home/$USER/grub-btrfs"
+    sudo make install
+    cd "$CURRENT_DIR"
+else
+    print_warning "grub-btrfs directory already exists. Skipping installation."
+fi
+
 print_info "Installing essential packages (curl, wget, git)..."
 sudo apt install -y curl wget git
 
@@ -579,5 +602,6 @@ print_warning "Please review any warnings above."
 print_warning "Ensure your common/apt_applist.txt (for APT) and common/flatpacks.txt (for Flatpak) contain the desired packages."
 print_warning "A system restart or logging out and back in is recommended for all changes to take effect (PATH, groups, services, etc.)."
 print_warning "Remember to add SSH keys to GitHub if configured."
+print_warning "Remember configure timeshift"
 
 exit 0
