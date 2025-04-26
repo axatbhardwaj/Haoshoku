@@ -153,11 +153,7 @@ install_apps() {
         if [ ${#snap_packages[@]} -gt 0 ]; then
             print_info "Installing Snap packages: ${snap_packages[*]}"
             for pkg in "${snap_packages[@]}"; do
-                if [ "$pkg" = "ghostty" ]; then
-                    sudo snap install ghostty --classic || print_warning "Failed to install Ghostty"
-                else
                     sudo snap install $pkg || print_warning "Failed to install Snap package: $pkg"
-                fi
             done
         fi
     else

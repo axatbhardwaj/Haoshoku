@@ -3,6 +3,5 @@
 # Comments start with #
 
 # Terminal
-ghostty
 onefetch
 
