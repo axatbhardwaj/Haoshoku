@@ -73,9 +73,6 @@ print_info "Updating system packages..."
 sudo apt update
 sudo apt upgrade -y
 
-print_info "Installing Grub Customizer..."
-sudo add-apt-repository ppa:danielrichter2007/grub-customizer -y
-sudo apt update
 
 print_info "Installing Dark Matter GRUB theme..."
 if [ ! -d "darkmatter-grub-theme" ]; then
