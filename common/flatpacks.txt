@@ -14,4 +14,4 @@ io.httpie.Httpie
 io.missioncenter.MissionCenter
 com.discordapp.Discord
 dev.vencord.Vesktop
-flathub net.davidotek.pupgui2
+net.davidotek.pupgui2
