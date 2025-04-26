@@ -1,6 +1,5 @@
 com.vivaldi.Vivaldi
 com.visualstudio.code
-com.brave.Browser
 org.signal.Signal
 com.bitwarden.desktop
 com.spotify.Client
@@ -14,3 +13,4 @@ io.github.brunofin.Cohesion
 io.httpie.Httpie
 io.missioncenter.MissionCenter
 com.discordapp.Discord
+dev.vencord.Vesktop
