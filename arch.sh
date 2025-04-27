@@ -107,6 +107,9 @@ fi
 
 cp "$current_dir/configs/fish/config.fish" $HOME/.config/fish/config.fish
 
+####--------------------------------------------------- Setting Pyenv fish --------------------------------------------------####
+  set -Ux PYENV_ROOT $HOME/.pyenv
+  fish_add_path $PYENV_ROOT/bin
 
 ####------------------------------------------------------ git config ------------------------------------------------------####
 # ask if git configuration is required

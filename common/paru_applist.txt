@@ -46,3 +46,4 @@ miniconda3
 bun-bin
 vivaldi
 gitleaks
+pyenv

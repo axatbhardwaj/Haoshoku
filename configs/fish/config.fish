@@ -23,6 +23,7 @@ if status is-interactive
     zoxide init fish | source
     thefuck --alias | source
     starship init fish | source
+    pyenv init - fish | source
 
     # Initialize Conda
     if test -d $HOME/anaconda3
