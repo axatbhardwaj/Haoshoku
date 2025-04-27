@@ -81,14 +81,6 @@ sudo ubuntu-drivers autoinstall
 sudo apt install snapper
 sudo snapper -c root create-config /
 
-#installing grub-btrfs
-sudo apt install btrfs-progs gawk inotify-tools
-git clone https://github.com/Antynea/grub-btrfs.git
-cd grub-btrfs
-sudo make install
-sudo systemctl start grub-btrfsd
-sudo systemctl enable grub-btrfsd
-
 
 
 print_info "Installing Dark Matter GRUB theme..."
@@ -558,6 +550,15 @@ if prompt_with_timeout "Is this a KDE environment?" "n"; then
     print_info "3. Configure Force Blur and set 'Enable blur all except matching'"
     print_info "4. Recommended Kvantum theme: OCEAN (https://store.kde.org/p/1427568/)"
 fi
+
+
+#installing grub-btrfs
+sudo apt install btrfs-progs gawk inotify-tools
+git clone https://github.com/Antynea/grub-btrfs.git
+cd grub-btrfs
+sudo make install
+sudo systemctl start grub-btrfsd
+sudo systemctl enable grub-btrfsd
 
 # --- Final Steps ---
 print_info "Debian/Kubuntu setup script completed."
