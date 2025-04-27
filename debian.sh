@@ -72,6 +72,23 @@ while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
 print_info "Updating system packages..."
 sudo apt update
 sudo apt upgrade -y
+#installing drivers
+sudo ubuntu-drivers autoinstall
+
+
+
+#snapper installation
+sudo apt install snapper
+sudo snapper -c root create-config /
+
+#installing grub-btrfs
+sudo apt install btrfs-progs gawk inotify-tools
+git clone https://github.com/Antynea/grub-btrfs.git
+cd grub-btrfs
+sudo make install
+sudo systemctl start grub-btrfsd
+sudo systemctl enable grub-btrfsd
+
 
 
 print_info "Installing Dark Matter GRUB theme..."
