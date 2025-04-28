@@ -1,3 +1,4 @@
+source /usr/share/cachyos-fish-config/cachyos-config.fish
 function is_git_repo
     if test -d .git
         return 0
@@ -28,6 +29,11 @@ if status is-interactive
     # Initialize Conda
     if test -d $HOME/anaconda3
         eval $HOME/anaconda3/bin/conda "shell.fish" "hook" $argv | source
+    end
+
+    # Initialize Miniconda
+    if test -d /opt/miniconda3
+        source /opt/miniconda3/etc/fish/conf.d/conda.fish
     end
 
     #===========================================
