@@ -32,10 +32,29 @@ print_warning() {
 }
 
 # --- Check Prerequisites ---
-# Check if Git is installed
+# Check if Git is installed, attempt to install if missing
 if ! command -v git &> /dev/null; then
   print_error "Git is not installed. Please install Git and try again."
-  exit 1
+  # Attempt to install git based on package manager (basic attempt)
+  if command -v pacman &> /dev/null; then
+      print_info "Attempting to install git using pacman..."
+      sudo pacman -Syu --noconfirm git || { print_error "Failed to install git using pacman."; exit 1; }
+  elif command -v apt-get &> /dev/null; then
+      print_info "Attempting to install git using apt..."
+      sudo apt-get update && sudo apt-get install -y git || { print_error "Failed to install git using apt."; exit 1; }
+  elif command -v dnf &> /dev/null; then
+      print_info "Attempting to install git using dnf..."
+      sudo dnf install -y git || { print_error "Failed to install git using dnf."; exit 1; }
+  else
+      print_error "Could not determine package manager to install git automatically."
+      exit 1
+  fi
+  # Verify installation
+  if ! command -v git &> /dev/null; then
+      print_error "Git installation failed or was not found after attempt."
+      exit 1
+  fi
+  print_success "Git installed successfully."
 fi
 # Check if Bash is available (needed for the target scripts)
 if ! command -v bash &> /dev/null; then
@@ -73,26 +92,19 @@ done
 # --- Clone or Update Repository ---
 # Check if the repository directory already exists
 if [ -d "$REPO_DIR_NAME" ]; then
-  print_warning "Directory '$REPO_DIR_NAME' already exists."
-  # Ask the user if they want to update the existing repository
-  read -p "Do you want to pull latest changes? (y/N): " -n 1 -r PULL_CHOICE
-  echo # Move to a new line after read
-  if [[ $PULL_CHOICE =~ ^[Yy]$ ]]; then
-    print_info "Attempting to pull changes in $REPO_DIR_NAME..."
-    # Change into the directory safely
-    cd "$REPO_DIR_NAME" || { print_error "Could not change directory to $REPO_DIR_NAME."; exit 1; }
-    # Try to pull the latest changes
-    if git pull; then
-      print_success "Repository updated."
-    else
-      print_error "Failed to pull repository updates. Please check for conflicts or issues."
-      # Optional: exit 1 here if a failed pull should stop the script
-    fi
-    # Change back to the parent directory safely
-    cd .. || { print_error "Could not change back to parent directory."; exit 1; }
+  # *** Automatically attempt to pull changes ***
+  print_info "Directory '$REPO_DIR_NAME' already exists. Attempting to pull latest changes..."
+  # Change into the directory safely
+  cd "$REPO_DIR_NAME" || { print_error "Could not change directory to $REPO_DIR_NAME."; exit 1; }
+  # Try to pull the latest changes
+  if git pull; then
+    print_success "Repository updated."
   else
-    print_info "Skipping repository update. Using existing local version."
+    print_warning "Failed to pull repository updates. Continuing with existing local version. Check for conflicts or network issues."
+    # Optional: exit 1 here if a failed pull should stop the script
   fi
+  # Change back to the parent directory safely
+  cd .. || { print_error "Could not change back to parent directory."; exit 1; }
 else
   # If the directory doesn't exist, clone the repository
   print_info "Cloning repository $REPO_URL into '$REPO_DIR_NAME'..."
@@ -132,17 +144,20 @@ detect_os() {
   # Map the detected OS family (lowercase) to the script identifiers
   local family_lower
   family_lower=$(echo "$DETECTED_OS_FAMILY" | tr '[:upper:]' '[:lower:]')
+  local guess=""
 
   case "$family_lower" in
-    *arch*)        FINAL_OS="cachyos" ;; # Map arch family to cachyos
-    *debian*|*ubuntu*) FINAL_OS="kubuntu" ;; # Map debian/ubuntu family to kubuntu
-    *fedora*|*nobara*) FINAL_OS="nobara" ;; # Keep nobara as is
+    *arch*)        guess="cachyos" ;; # Map arch family to cachyos
+    *debian*|*ubuntu*) guess="kubuntu" ;; # Map debian/ubuntu family to kubuntu
+    *fedora*|*nobara*) guess="nobara" ;; # Keep nobara as is
     *)
       # If the detected OS doesn't match known families
       print_warning "Detected OS Family ('$DETECTED_OS_FAMILY') does not directly match known scripts (cachyos, kubuntu, nobara)."
       return 1 # Indicate need for manual selection
       ;;
   esac
+  # Set FINAL_OS directly here if detection is successful
+  FINAL_OS="$guess"
   return 0 # Indicate successful detection and mapping
 }
 
@@ -161,24 +176,28 @@ select_os_manually() {
     done
 }
 
-# --- OS Determination Logic ---
-# Check if the OS was explicitly provided via the --os argument
+# --- OS Determination & Confirmation Logic ---
+# *** CHANGE: Reverted logic to only confirm if --os flag is NOT used ***
 if [[ -n "$TARGET_OS_ARG" ]]; then
-  # Map the provided argument to our script identifiers
+  # --os flag was used, map it directly to FINAL_OS
   case "$TARGET_OS_ARG" in
-      cachyos|arch) FINAL_OS="cachyos" ;; # Accept cachyos or arch
-      kubuntu|debian|ubuntu) FINAL_OS="kubuntu" ;; # Accept kubuntu, debian, or ubuntu
-      nobara|fedora) FINAL_OS="nobara" ;; # Accept nobara or fedora
+      cachyos|arch) FINAL_OS="cachyos" ;;
+      kubuntu|debian|ubuntu) FINAL_OS="kubuntu" ;;
+      nobara|fedora) FINAL_OS="nobara" ;;
       *)
           # Handle invalid OS argument
           print_error "Invalid OS specified with --os: $TARGET_OS_ARG. Use 'cachyos', 'kubuntu', or 'nobara'."
           select_os_manually # Allow manual selection if argument was wrong
           ;;
   esac
+  # No confirmation needed when --os is used
+  print_info "Proceeding with specified OS: $FINAL_OS"
+
 else
   # No --os argument was provided, attempt auto-detection
   if detect_os; then
-    # Auto-detection successful, confirm with the user using the new names
+    # Auto-detection successful, CONFIRM with the user
+    # FINAL_OS was set inside detect_os()
     read -p "Detected OS seems to be '$FINAL_OS'. Is this correct? (Y/n): " -n 1 -r CONFIRM_OS
     echo # Move to a new line after read
     if [[ $CONFIRM_OS =~ ^[Nn]$ ]]; then
@@ -188,7 +207,7 @@ else
     elif [[ $CONFIRM_OS =~ ^[Yy]$ ]] || [[ -z $CONFIRM_OS ]]; then
       # If the user says yes (or just presses Enter), proceed
       print_info "Proceeding with detected OS: $FINAL_OS"
-      # FINAL_OS is already set correctly from detect_os
+      # FINAL_OS is already set correctly
     else
         # Handle invalid Y/n input
         print_error "Invalid input. Please answer Y or N."
@@ -196,9 +215,11 @@ else
     fi
   else
     # Auto-detection failed or OS wasn't mapped, trigger manual selection
+    print_warning "Could not determine OS automatically."
     select_os_manually
   fi
 fi
+
 
 # --- Execute Target Script ---
 TARGET_SCRIPT_NAME=""
