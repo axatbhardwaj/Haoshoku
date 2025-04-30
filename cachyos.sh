@@ -151,16 +151,6 @@ else
     fi
 fi
 
-# installing cursor
-if ! command_exists cursor; then
-    print_info "Installing Cursor IDE..."
-    curl -fsSL https://raw.githubusercontent.com/watzon/cursor-linux-installer/main/install.sh | bash
-    print_info "Cursor IDE installed successfully."
-else
-    print_info "Cursor IDE already installed."
-fi
-
-
 #installing foundry
 if ! command_exists foundryup; then
     print_info "Installing Foundry..."

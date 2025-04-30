@@ -47,3 +47,4 @@ bun-bin
 vivaldi
 gitleaks
 pyenv
+cursor-bin-patched
