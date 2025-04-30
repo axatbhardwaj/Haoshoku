@@ -165,7 +165,7 @@ detect_os() {
 select_os_manually() {
     print_info "Please select the target operating system script:"
     # Use the 'select' command to create a menu with updated names
-    # *** FIX: Redirect input for select from /dev/tty ***
+    # Redirect input for select from /dev/tty
     select os_choice in "CachyOS (cachyos.sh)" "Kubuntu/Debian (kubuntu.sh)" "Fedora/Nobara (nobara.sh)" "Cancel" </dev/tty; do
         case $os_choice in
             "CachyOS (cachyos.sh)")       FINAL_OS="cachyos"; break ;;
@@ -177,7 +177,8 @@ select_os_manually() {
     done
 }
 
-# --- OS Determination & Confirmation Logic ---
+# --- OS Determination Logic ---
+# *** CHANGE: Removed confirmation prompt after successful auto-detection ***
 if [[ -n "$TARGET_OS_ARG" ]]; then
   # --os flag was used, map it directly to FINAL_OS
   case "$TARGET_OS_ARG" in
@@ -196,24 +197,9 @@ if [[ -n "$TARGET_OS_ARG" ]]; then
 else
   # No --os argument was provided, attempt auto-detection
   if detect_os; then
-    # Auto-detection successful, CONFIRM with the user
-    # FINAL_OS was set inside detect_os()
-    # *** FIX: Redirect input for read from /dev/tty ***
-    read -p "Detected OS seems to be '$FINAL_OS'. Is this correct? (Y/n): " -n 1 -r CONFIRM_OS </dev/tty
-    echo # Move to a new line after read
-    if [[ $CONFIRM_OS =~ ^[Nn]$ ]]; then
-      # If the user says no, trigger manual selection
-      print_info "Okay, let's select manually."
-      select_os_manually
-    elif [[ $CONFIRM_OS =~ ^[Yy]$ ]] || [[ -z $CONFIRM_OS ]]; then
-      # If the user says yes (or just presses Enter), proceed
-      print_info "Proceeding with detected OS: $FINAL_OS"
-      # FINAL_OS is already set correctly
-    else
-        # Handle invalid Y/n input
-        print_error "Invalid input. Please answer Y or N."
-        select_os_manually # Force manual selection on invalid input
-    fi
+    # Auto-detection successful. FINAL_OS was set inside detect_os().
+    # Proceed directly without confirmation.
+    print_info "Proceeding with detected OS: $FINAL_OS"
   else
     # Auto-detection failed or OS wasn't mapped, trigger manual selection
     print_warning "Could not determine OS automatically."
