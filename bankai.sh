@@ -237,7 +237,7 @@ select_os_manually() {
     # Use PS3 for prompt string
     PS3="Enter choice (1-4): "
     # Use select command for menu, read from /dev/tty
-    select os_choice in "${options[@]}" </dev/tty; do
+    select os_choice in "${options[@]}"; do
         case "$os_choice" in
             "${options[0]}") SELECTED_OS_TYPE="cachyos"; break ;;
             "${options[1]}") SELECTED_OS_TYPE="kubuntu"; break ;;
