@@ -179,15 +179,20 @@ SELECTED_OS_TYPE="" # Will hold the final OS choice (cachyos, kubuntu, nobara)
 # Function to map OS identifier (ID, ID_LIKE, argument) to our script names
 map_os_to_script_name() {
   local os_identifier="$1"
+  echo "DEBUG: map_os_to_script_name received: '$os_identifier'" # DEBUG
   local identifier_lower
   identifier_lower=$(echo "$os_identifier" | tr '[:upper:]' '[:lower:]')
+  echo "DEBUG: lowercased identifier: '$identifier_lower'" # DEBUG
+  local result=""
 
   case "$identifier_lower" in
-    *arch*|*cachyos*) echo "cachyos" ;;
-    *debian*|*ubuntu*|*kubuntu*) echo "kubuntu" ;;
-    *fedora*|*nobara*) echo "nobara" ;;
-    *) echo "" ;; # Return empty string if no match
+    *arch*|*cachyos*) result="cachyos" ;;
+    *debian*|*ubuntu*|*kubuntu*) result="kubuntu" ;;
+    *fedora*|*nobara*) result="nobara" ;;
+    *) result="" ;; # Return empty string if no match
   esac
+  echo "DEBUG: map_os_to_script_name returning: '$result'" # DEBUG
+  echo "$result"
 }
 
 # Function to detect the OS using /etc/os-release
@@ -195,29 +200,36 @@ detect_os() {
   local detected_id=""
   local detected_family=""
   local mapped_os=""
+  local os_release_file="/etc/os-release"
 
-  if [ ! -f /etc/os-release ]; then
-      print_warning "/etc/os-release not found. Cannot automatically detect OS."
+  if [ ! -f "$os_release_file" ]; then
+      print_warning "$os_release_file not found. Cannot automatically detect OS."
       return 1 # Indicate detection failure
   fi
 
-  # Source the file in a subshell to avoid polluting current shell environment
-  (
-    # Ignore unbound variable errors during sourcing if /etc/os-release is weird
-    set +u
-    . /etc/os-release
-    detected_id="${ID:-unknown}" # Provide default if unset
-    # Use ID_LIKE if it exists and is non-empty, otherwise fallback to ID
-    detected_family="${ID_LIKE:-$ID}"
-    set -u
-  )
+  # Parse ID and ID_LIKE using grep and cut instead of sourcing
+  detected_id=$(grep '^ID=' "$os_release_file" | head -n 1 | cut -d '=' -f 2 | tr -d '"'\'')
+  # Try to get ID_LIKE, fall back to ID if ID_LIKE is empty or not found
+  detected_family=$(grep '^ID_LIKE=' "$os_release_file" | head -n 1 | cut -d '=' -f 2 | tr -d '"'\'')
+  if [[ -z "$detected_family" ]]; then
+      detected_family="$detected_id"
+  fi
 
+  # Handle cases where parsing might have failed (though unlikely with /etc/os-release format)
+  detected_id=${detected_id:-unknown}
+  detected_family=${detected_family:-$detected_id}
+
+  echo "DEBUG: Parsed values: ID='$detected_id', Family='$detected_family'" # DEBUG
   print_info "Detected OS ID: $detected_id, Family: $detected_family"
 
   # Try mapping family first, then ID
+  echo "DEBUG: Mapping family '$detected_family'..." # DEBUG
   mapped_os=$(map_os_to_script_name "$detected_family")
+  echo "DEBUG: Mapping family result: '$mapped_os'" # DEBUG
   if [[ -z "$mapped_os" ]]; then
+    echo "DEBUG: Family mapping failed, trying ID '$detected_id'..." # DEBUG
     mapped_os=$(map_os_to_script_name "$detected_id")
+    echo "DEBUG: Mapping ID result: '$mapped_os'" # DEBUG
   fi
 
   if [[ -n "$mapped_os" ]]; then
@@ -225,7 +237,7 @@ detect_os() {
     print_info "Automatically selected OS script type: $SELECTED_OS_TYPE"
     return 0 # Indicate success
   else
-    print_warning "Detected OS ('$detected_id' / '$detected_family') does not automatically map to a known script type (cachyos, kubuntu, nobara)."
+    print_warning "Detected OS \('$detected_id' / '$detected_family'\) does not automatically map to a known script type \(cachyos, kubuntu, nobara\)."
     return 1 # Indicate mapping failure -> need manual selection
   fi
 }
