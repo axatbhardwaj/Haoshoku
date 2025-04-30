@@ -109,7 +109,7 @@ install_apps() {
     paru -S --noconfirm --sudoloop "${apps[@]}" || print_warning "Failed to install some packages via Paru."
 }
 
-# install_apps
+install_apps
 
 #####-------------------------------------------installing flatpak packages-------------------------------------------####
 # --- Flatpak Setup ---
