@@ -165,7 +165,8 @@ detect_os() {
 select_os_manually() {
     print_info "Please select the target operating system script:"
     # Use the 'select' command to create a menu with updated names
-    select os_choice in "CachyOS (cachyos.sh)" "Kubuntu/Debian (kubuntu.sh)" "Fedora/Nobara (nobara.sh)" "Cancel"; do
+    # *** FIX: Redirect input for select from /dev/tty ***
+    select os_choice in "CachyOS (cachyos.sh)" "Kubuntu/Debian (kubuntu.sh)" "Fedora/Nobara (nobara.sh)" "Cancel" </dev/tty; do
         case $os_choice in
             "CachyOS (cachyos.sh)")       FINAL_OS="cachyos"; break ;;
             "Kubuntu/Debian (kubuntu.sh)") FINAL_OS="kubuntu"; break ;;
@@ -177,7 +178,6 @@ select_os_manually() {
 }
 
 # --- OS Determination & Confirmation Logic ---
-# *** CHANGE: Reverted logic to only confirm if --os flag is NOT used ***
 if [[ -n "$TARGET_OS_ARG" ]]; then
   # --os flag was used, map it directly to FINAL_OS
   case "$TARGET_OS_ARG" in
@@ -198,7 +198,8 @@ else
   if detect_os; then
     # Auto-detection successful, CONFIRM with the user
     # FINAL_OS was set inside detect_os()
-    read -p "Detected OS seems to be '$FINAL_OS'. Is this correct? (Y/n): " -n 1 -r CONFIRM_OS
+    # *** FIX: Redirect input for read from /dev/tty ***
+    read -p "Detected OS seems to be '$FINAL_OS'. Is this correct? (Y/n): " -n 1 -r CONFIRM_OS </dev/tty
     echo # Move to a new line after read
     if [[ $CONFIRM_OS =~ ^[Nn]$ ]]; then
       # If the user says no, trigger manual selection
