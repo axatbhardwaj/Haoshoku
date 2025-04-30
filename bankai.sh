@@ -58,7 +58,7 @@ while [[ $# -gt 0 ]]; do
         shift # Consume --os argument
         shift # Consume the OS value
       else
-        print_error "--os flag requires a value (e.g., --os arch)."
+        print_error "--os flag requires a value (e.g., --os cachyos)."
         exit 1
       fi
       ;;
@@ -110,7 +110,7 @@ print_info "Changing directory to $REPO_DIR_NAME..."
 cd "$REPO_DIR_NAME" || { print_error "Failed to enter repository directory '$REPO_DIR_NAME'."; exit 1; }
 
 # --- Determine Target OS ---
-FINAL_OS=""         # Will hold the final OS choice (arch, debian, nobara)
+FINAL_OS=""         # Will hold the final OS choice (cachyos, kubuntu, nobara)
 DETECTED_OS_ID=""   # OS ID from /etc/os-release
 DETECTED_OS_FAMILY="" # OS Family (ID_LIKE or ID) from /etc/os-release
 
@@ -134,12 +134,12 @@ detect_os() {
   family_lower=$(echo "$DETECTED_OS_FAMILY" | tr '[:upper:]' '[:lower:]')
 
   case "$family_lower" in
-    *arch*)        FINAL_OS="arch" ;;
-    *debian*|*ubuntu*) FINAL_OS="debian" ;;
-    *fedora*|*nobara*) FINAL_OS="nobara" ;; # Handle fedora/nobara family
+    *arch*)        FINAL_OS="cachyos" ;; # Map arch family to cachyos
+    *debian*|*ubuntu*) FINAL_OS="kubuntu" ;; # Map debian/ubuntu family to kubuntu
+    *fedora*|*nobara*) FINAL_OS="nobara" ;; # Keep nobara as is
     *)
       # If the detected OS doesn't match known families
-      print_warning "Detected OS Family ('$DETECTED_OS_FAMILY') does not directly match known scripts (arch, debian, nobara)."
+      print_warning "Detected OS Family ('$DETECTED_OS_FAMILY') does not directly match known scripts (cachyos, kubuntu, nobara)."
       return 1 # Indicate need for manual selection
       ;;
   esac
@@ -149,12 +149,12 @@ detect_os() {
 # Function to prompt the user to select the OS manually
 select_os_manually() {
     print_info "Please select the target operating system script:"
-    # Use the 'select' command to create a menu
-    select os_choice in "Arch/CachyOS (arch.sh)" "Debian/Ubuntu (debian.sh)" "Fedora/Nobara (nobara.sh)" "Cancel"; do
+    # Use the 'select' command to create a menu with updated names
+    select os_choice in "CachyOS (cachyos.sh)" "Kubuntu/Debian (kubuntu.sh)" "Fedora/Nobara (nobara.sh)" "Cancel"; do
         case $os_choice in
-            "Arch/CachyOS (arch.sh)")   FINAL_OS="arch"; break ;;
-            "Debian/Ubuntu (debian.sh)") FINAL_OS="debian"; break ;;
-            "Fedora/Nobara (nobara.sh)") FINAL_OS="nobara"; break ;;
+            "CachyOS (cachyos.sh)")       FINAL_OS="cachyos"; break ;;
+            "Kubuntu/Debian (kubuntu.sh)") FINAL_OS="kubuntu"; break ;;
+            "Fedora/Nobara (nobara.sh)")  FINAL_OS="nobara"; break ;;
             "Cancel") echo "Operation cancelled."; exit 0 ;;
             *) echo "Invalid choice. Please try again." ;; # Handle invalid input
         esac
@@ -166,19 +166,19 @@ select_os_manually() {
 if [[ -n "$TARGET_OS_ARG" ]]; then
   # Map the provided argument to our script identifiers
   case "$TARGET_OS_ARG" in
-      arch|cachyos) FINAL_OS="arch" ;;
-      debian|ubuntu) FINAL_OS="debian" ;;
-      fedora|nobara) FINAL_OS="nobara" ;;
+      cachyos|arch) FINAL_OS="cachyos" ;; # Accept cachyos or arch
+      kubuntu|debian|ubuntu) FINAL_OS="kubuntu" ;; # Accept kubuntu, debian, or ubuntu
+      nobara|fedora) FINAL_OS="nobara" ;; # Accept nobara or fedora
       *)
           # Handle invalid OS argument
-          print_error "Invalid OS specified with --os: $TARGET_OS_ARG. Use 'arch', 'debian', or 'nobara'."
+          print_error "Invalid OS specified with --os: $TARGET_OS_ARG. Use 'cachyos', 'kubuntu', or 'nobara'."
           select_os_manually # Allow manual selection if argument was wrong
           ;;
   esac
 else
   # No --os argument was provided, attempt auto-detection
   if detect_os; then
-    # Auto-detection successful, confirm with the user
+    # Auto-detection successful, confirm with the user using the new names
     read -p "Detected OS seems to be '$FINAL_OS'. Is this correct? (Y/n): " -n 1 -r CONFIRM_OS
     echo # Move to a new line after read
     if [[ $CONFIRM_OS =~ ^[Nn]$ ]]; then
@@ -204,9 +204,9 @@ fi
 TARGET_SCRIPT_NAME=""
 # Determine the exact script filename based on the FINAL_OS choice
 case "$FINAL_OS" in
-  arch)   TARGET_SCRIPT_NAME="arch.sh" ;;
-  debian) TARGET_SCRIPT_NAME="debian.sh" ;;
-  nobara) TARGET_SCRIPT_NAME="nobara.sh" ;;
+  cachyos) TARGET_SCRIPT_NAME="cachyos.sh" ;;
+  kubuntu) TARGET_SCRIPT_NAME="kubuntu.sh" ;;
+  nobara)  TARGET_SCRIPT_NAME="nobara.sh" ;;
   *)
     # This should ideally not happen if logic above is correct
     print_error "Internal error: Could not determine a valid target script for OS '$FINAL_OS'."
