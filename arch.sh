@@ -109,8 +109,21 @@ install_apps() {
     paru -S --noconfirm --sudoloop "${apps[@]}" || print_warning "Failed to install some packages via Paru."
 }
 
-install_apps
+# install_apps
+
 #####-------------------------------------------installing flatpak packages-------------------------------------------####
+# --- Flatpak Setup ---
+print_info "Ensuring Flatpak is configured..."
+if ! command_exists flatpak; then
+    print_info "Flatpak not found, installing..."
+    paru -S flatpak --noconfirm || print_error "Failed to install flatpak."
+fi
+
+print_info "Adding Flathub remote..."
+# Add for the system (--system) or just the user (--user)
+# Using --user here as packages are installed with --user
+flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo || print_warning "Failed to add Flathub remote for user."
+
 # --- Process Flatpak flatpacks.txt ---
 print_info "Processing Flatpak package list from $FLATPAKLIST_FILE..."
 if [ ! -f "$FLATPAKLIST_FILE" ]; then
