@@ -1,5 +1,18 @@
 #!/bin/bash
 
+# --- Self-update/Cache-bust if piped ---
+# If the script is piped (e.g., curl ... | bash) and hasn't been re-fetched yet,
+# re-fetch it with a cache-busting parameter to ensure the latest version is run.
+if ! tty -s <&0 && [ -z "$BANKAI_REFETCHED" ]; then
+    echo "Initial execution via pipe detected. Ensuring the latest version of bankai.sh..."
+    export BANKAI_REFETCHED=true
+    # Execute a new bash instance with the script content fetched by a new curl call (with cache buster)
+    # The exec replaces the current shell process with the new one.
+    exec bash <(curl -sSL "https://raw.githubusercontent.com/axatbhardwaj/bankai/stable/bankai.sh?$(date +%s)")
+    # If exec somehow fails (it shouldn't if bash and curl are present), exit.
+    exit 1
+fi
+
 # --- Configuration ---
 # Repository URL for your setup scripts
 REPO_URL="https://github.com/axatbhardwaj/bankai.git"
