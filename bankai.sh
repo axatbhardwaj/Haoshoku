@@ -147,7 +147,7 @@ detect_os() {
   local guess=""
 
   case "$family_lower" in
-    *arch*)        guess="cachyos" ;; # Map arch family to cachyos
+    cachyos|*arch*) guess="cachyos" ;; # Map cachyos or arch family to cachyos
     *debian*|*ubuntu*) guess="kubuntu" ;; # Map debian/ubuntu family to kubuntu
     *fedora*|*nobara*) guess="nobara" ;; # Keep nobara as is
     *)
@@ -166,7 +166,7 @@ select_os_manually() {
     print_info "Please select the target operating system script:"
     # Use the 'select' command to create a menu with updated names
     # Redirect input for select from /dev/tty
-    select os_choice in "CachyOS (cachyos.sh)" "Kubuntu/Debian (kubuntu.sh)" "Fedora/Nobara (nobara.sh)" "Cancel" ; do
+    select os_choice in "CachyOS (cachyos.sh)" "Kubuntu/Debian (kubuntu.sh)" "Fedora/Nobara (nobara.sh)" "Cancel" < /dev/tty; do
         case $os_choice in
             "CachyOS (cachyos.sh)")       FINAL_OS="cachyos"; break ;;
             "Kubuntu/Debian (kubuntu.sh)") FINAL_OS="kubuntu"; break ;;
