@@ -166,7 +166,7 @@ select_os_manually() {
     print_info "Please select the target operating system script:"
     # Use the 'select' command to create a menu with updated names
     # Redirect input for select from /dev/tty
-    select os_choice in "CachyOS (cachyos.sh)" "Kubuntu/Debian (kubuntu.sh)" "Fedora/Nobara (nobara.sh)" "Cancel" < /dev/tty; do
+    select os_choice in "CachyOS (cachyos.sh)" "Kubuntu/Debian (kubuntu.sh)" "Fedora/Nobara (nobara.sh)" "Cancel"; do
         case $os_choice in
             "CachyOS (cachyos.sh)")       FINAL_OS="cachyos"; break ;;
             "Kubuntu/Debian (kubuntu.sh)") FINAL_OS="kubuntu"; break ;;
@@ -174,7 +174,7 @@ select_os_manually() {
             "Cancel") echo "Operation cancelled."; exit 0 ;;
             *) echo "Invalid choice. Please try again." ;; # Handle invalid input
         esac
-    done
+    done < /dev/tty
 }
 
 # --- OS Determination Logic ---
