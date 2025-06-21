@@ -27,6 +27,7 @@ def run_command(command, cwd=None):
             stderr=subprocess.STDOUT,
             text=True,
             cwd=cwd,
+            bufsize=1,
         )
 
         with process.stdout:
