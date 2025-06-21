@@ -3,28 +3,11 @@ import subprocess
 import sys
 from pathlib import Path
 import shutil
+import os
+
+from .utils import run_command, command_exists
 
 log = logging.getLogger("bankai")
-
-
-def run_command(command, check=True):
-    """A wrapper to run shell commands."""
-    try:
-        subprocess.run(command, check=check, shell=True)
-    except subprocess.CalledProcessError as e:
-        log.warning(f"Command failed: {e}")
-    except FileNotFoundError:
-        log.warning(f"Command not found: {command}")
-
-
-def command_exists(command):
-    """Check if a command exists."""
-    return (
-        subprocess.run(
-            f"command -v {command}", shell=True, capture_output=True
-        ).returncode
-        == 0
-    )
 
 
 def install_paru():
@@ -85,11 +68,21 @@ def setup_fish_shell():
         run_command("paru -S fish --noconfirm")
 
     # Set fish as default shell
+    fish_path = shutil.which("fish")
+    if not fish_path:
+        log.error("Could not find the fish executable after attempting to install.")
+        return
+
     try:
-        subprocess.run(["chsh", "-s", shutil.which("fish")], check=True)
-        log.info("Fish set as default shell.")
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        log.warning("Could not set fish as default shell.")
+        user = os.getlogin()
+        log.info(f"Setting Fish as the default shell for user {user}...")
+        command = f"sudo chsh -s {fish_path} {user}"
+        if not run_command(command):
+            log.warning(
+                "Failed to set Fish as default shell. It might require manual intervention."
+            )
+    except Exception as e:
+        log.error(f"An unexpected error occurred while setting fish shell: {e}")
 
     # Install fisher and plugins
     fisher_plugins = [

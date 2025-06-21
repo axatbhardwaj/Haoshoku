@@ -3,27 +3,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+from .utils import run_command, command_exists
+
 log = logging.getLogger("bankai")
-
-
-def run_command(command, check=True):
-    """A wrapper to run shell commands."""
-    try:
-        subprocess.run(command, check=check, shell=True, text=True)
-    except subprocess.CalledProcessError as e:
-        log.warning(f"Command failed: {e}")
-    except FileNotFoundError:
-        log.warning(f"Command not found: {command}")
-
-
-def command_exists(command):
-    """Check if a command exists."""
-    return (
-        subprocess.run(
-            f"command -v {command}", shell=True, capture_output=True
-        ).returncode
-        == 0
-    )
 
 
 def initial_setup():

@@ -15,6 +15,7 @@ from rich.live import Live
 from rich.text import Text
 
 from os_scripts import cachyos, kubuntu, nobara
+from os_scripts.utils import run_command
 
 
 # --- Logger Setup ---
@@ -170,46 +171,45 @@ def get_target_os(cli_arg):
 
 def main():
     """Main script logic."""
-    ui_log = Text()
-    log.addHandler(UILoggingHandler(ui_log))
-
-    main_panel = Panel(
-        ui_log, title="[bold yellow]Log[/bold yellow]", border_style="blue"
+    parser = argparse.ArgumentParser(
+        description="Bankai: Your personal setup assistant.",
+        epilog="Arguments after '--' will be passed to the target OS script.",
     )
-    footer_panel = Panel("[italic]In progress...[/italic]", style="dim")
-
-    layout = Layout()
-    layout.split_column(
-        Layout(
-            Panel("[bold green]Bankai: Your Personal Setup Assistant[/bold green]"),
-            name="header",
-            size=3,
-        ),
-        Layout(main_panel, name="main", ratio=1),
-        Layout(footer_panel, name="footer", size=3),
+    parser.add_argument(
+        "--os", help="Specify the target OS (cachyos, kubuntu, nobara)."
+    )
+    parser.add_argument(
+        "--no-tui", action="store_true", help="Disable the TUI for simple logging."
     )
 
-    with Live(layout, screen=True, redirect_stderr=False, refresh_per_second=4) as live:
+    # Split arguments for the main script and for the target script
+    try:
+        separator_index = sys.argv.index("--")
+        main_args = sys.argv[1:separator_index]
+        script_args = sys.argv[separator_index + 1 :]
+    except ValueError:
+        main_args = sys.argv[1:]
+        script_args = []
+
+    args = parser.parse_args(main_args)
+
+    # --- Pre-run setup ---
+    try:
+        print("Requesting sudo access...")
+        subprocess.run(["sudo", "-v"], check=True, capture_output=True, text=True)
+        print("Sudo access granted.")
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        print("[bold red]Error:[/bold red] Failed to get sudo permissions. Aborting.")
+        sys.exit(1)
+
+    # --- Execute based on TUI mode ---
+    if args.no_tui:
+        # --- NO TUI MODE ---
+        log.handlers.clear()
+        log.addHandler(RichHandler(console=console, rich_tracebacks=True))
+        log.info("TUI disabled. Running in simple logging mode.")
+
         try:
-            parser = argparse.ArgumentParser(
-                description="Bankai: Your personal setup assistant.",
-                epilog="Arguments after '--' will be passed to the target OS script.",
-            )
-            parser.add_argument(
-                "--os", help="Specify the target OS (cachyos, kubuntu, nobara)."
-            )
-
-            # Split arguments for the main script and for the target script
-            try:
-                separator_index = sys.argv.index("--")
-                main_args = sys.argv[1:separator_index]
-                script_args = sys.argv[separator_index + 1 :]
-            except ValueError:
-                main_args = sys.argv[1:]
-                script_args = []
-
-            args = parser.parse_args(main_args)
-
             clone_or_update_repo()
 
             try:
@@ -232,22 +232,76 @@ def main():
                 raise RuntimeError(f"Invalid OS selected: {final_os}")
 
             log.info(f"Executing setup for {final_os}...")
-
-            # Pass the remaining arguments to the script function if it accepts them
-            # For now, we call it without arguments.
             target_script_func()
-
-            footer_panel.renderable = Text(
-                "✅ Setup complete.", style="bold green", justify="center"
-            )
+            log.info("[bold green]✅ Setup complete.[/bold green]")
 
         except Exception as e:
-            log.error(f"An error occurred: {e}", exc_info=True)
-            footer_panel.renderable = Text(
-                f"❌ Setup failed. Check logs for details.",
-                style="bold red",
-                justify="center",
-            )
+            log.error(f"❌ Setup failed. An error occurred: {e}", exc_info=True)
+            sys.exit(1)
+
+    else:
+        # --- TUI MODE ---
+        ui_log = Text()
+        log.addHandler(UILoggingHandler(ui_log))
+
+        main_panel = Panel(
+            ui_log, title="[bold yellow]Log[/bold yellow]", border_style="blue"
+        )
+        footer_panel = Panel("[italic]In progress...[/italic]", style="dim")
+
+        layout = Layout()
+        layout.split_column(
+            Layout(
+                Panel("[bold green]Bankai: Your Personal Setup Assistant[/bold green]"),
+                name="header",
+                size=3,
+            ),
+            Layout(main_panel, name="main", ratio=1),
+            Layout(footer_panel, name="footer", size=3),
+        )
+
+        with Live(
+            layout, screen=True, redirect_stderr=False, refresh_per_second=4
+        ) as live:
+            try:
+                clone_or_update_repo()
+
+                try:
+                    os.chdir(REPO_DIR_NAME)
+                except FileNotFoundError:
+                    log.error(
+                        f"Failed to enter repository directory '{REPO_DIR_NAME}'."
+                    )
+                    raise
+
+                final_os = get_target_os(args.os)
+
+                script_map = {
+                    "cachyos": cachyos.main,
+                    "kubuntu": kubuntu.main,
+                    "nobara": nobara.main,
+                }
+                target_script_func = script_map.get(final_os)
+
+                if not target_script_func:
+                    log.error(f"Internal error: No script found for OS '{final_os}'.")
+                    raise RuntimeError(f"Invalid OS selected: {final_os}")
+
+                log.info(f"Executing setup for {final_os}...")
+
+                target_script_func()
+
+                footer_panel.renderable = Text(
+                    "✅ Setup complete.", style="bold green", justify="center"
+                )
+
+            except Exception as e:
+                log.error(f"An error occurred: {e}", exc_info=True)
+                footer_panel.renderable = Text(
+                    f"❌ Setup failed. Check logs for details.",
+                    style="bold red",
+                    justify="center",
+                )
 
 
 if __name__ == "__main__":
