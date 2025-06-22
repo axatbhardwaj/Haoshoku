@@ -1,0 +1,10 @@
+2025-06-22 10:50:17,187 - bankai - INFO - File logging initialized.
+2025-06-22 10:50:17,187 - bankai - INFO - Detected OS ID: cachyos, Family: arch
+2025-06-22 10:50:17,187 - bankai - INFO - Proceeding with detected OS: cachyos
+2025-06-22 10:50:26,717 - bankai - ERROR - A critical error occurred.
+Traceback (most recent call last):
+  File "/home/xzat/personal/bankai/bankai/__main__.py", line 238, in main
+    os_module.run_setup(tui, log)
+  File "/home/xzat/personal/bankai/os_scripts/cachyos.py", line 396, in run_setup
+    run_interactive_command(
+TypeError: run_interactive_command() got an unexpected keyword argument 'check'

@@ -6,6 +6,7 @@ import shutil
 import stat
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -75,24 +76,8 @@ def strip_ansi(text):
     return ansi_escape.sub("", text)
 
 
-def refresh_sudo(tui: "TUI"):
-    """Refreshes the sudo timestamp, prompting for a password if needed."""
-    tui.log_output("Checking sudo access. You may be prompted for your password.")
-    try:
-        # We need to run this interactively, so we pause the TUI
-        tui.live.stop()
-        subprocess.run(["sudo", "-v"], check=True)
-        tui.live.start(refresh=True)
-        tui.log_output("Sudo access confirmed.")
-        return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        tui.live.start(refresh=True)
-        tui.log_output("[bold red]Failed to acquire sudo privileges.[/bold red]")
-        return False
-
-
 def run_command(command, tui: "TUI", cwd=None, check=True):
-    """Runs a shell command and streams its output to the TUI."""
+    """Runs a non-interactive shell command and streams its output to the TUI."""
     tui.log_output(f"[dim]Executing: {command}[/dim]")
 
     use_shell = "|" in command or "source" in command or "&&" in command
@@ -134,23 +119,25 @@ def run_command(command, tui: "TUI", cwd=None, check=True):
 
 def run_interactive_command(command, tui: "TUI", cwd=None):
     """Runs an interactive shell command by pausing the TUI."""
-    tui.log_output(f"[dim]Running interactive command: {command}[/dim]")
+    tui.log_output(f"[dim]Pausing TUI for interactive command: {command}[/dim]")
     tui.live.stop()
     try:
-        result = subprocess.run(command, shell=True, check=False, cwd=cwd)
-        tui.live.start(refresh=True)
-        if result.returncode != 0:
+        # Use os.system for a cleaner hand-off of terminal control
+        return_code = os.system(command)
+        if return_code != 0:
             tui.log_output(
-                f"[yellow]Warning: Command '{command}' exited with code {result.returncode}[/yellow]"
+                f"[yellow]Warning: Interactive command exited with code {return_code}[/yellow]"
             )
             return False
         return True
     except Exception as e:
-        tui.live.start(refresh=True)
         tui.log_output(
             f"[bold red]An error occurred during interactive command: {e}[/bold red]"
         )
         return False
+    finally:
+        # Whatever happens, resume the TUI
+        tui.live.start(refresh=True)
 
 
 def command_exists(command):
@@ -175,7 +162,7 @@ def prompt_user(tui: "TUI", prompt, default=False):
 def install_base_dependencies(tui: "TUI"):
     """Installs base-devel and Rust."""
     tui.log_output("Updating system and installing base-devel...")
-    run_command("sudo pacman -Syu base-devel --noconfirm", tui)
+    run_interactive_command("sudo pacman -Syu base-devel --noconfirm", tui)
 
     tui.log_output("Installing Rust via rustup...")
     run_command(f"curl {RUSTUP_URL} -sSf | sh -s -- -y", tui)
@@ -304,13 +291,15 @@ def enable_services(tui: "TUI"):
     """Prompts to enable and configure system services like Bluetooth and Docker."""
     if prompt_user(tui, "Enable Bluetooth?", default=False):
         tui.log_output("Enabling Bluetooth service...")
-        run_command("sudo systemctl enable --now bluetooth", tui, check=False)
+        run_interactive_command(
+            "sudo systemctl enable --now bluetooth", tui, check=False
+        )
 
     if command_exists("docker") and prompt_user(tui, "Enable Docker?", default=True):
         tui.log_output("Enabling and starting Docker service...")
-        run_command("sudo systemctl enable --now docker", tui, check=False)
+        run_interactive_command("sudo systemctl enable --now docker", tui, check=False)
         user = os.getlogin()
-        run_command(f"sudo usermod -aG docker {user}", tui, check=False)
+        run_interactive_command(f"sudo usermod -aG docker {user}", tui, check=False)
         tui.log_output(
             f"[yellow]User {user} added to docker group. Please log out and back in.[/yellow]"
         )
@@ -338,28 +327,34 @@ def configure_fastfetch(tui: "TUI"):
 def configure_kde(tui: "TUI"):
     """Applies KDE-specific tweaks and configurations."""
     tui.log_output("Applying KDE Connect fix...")
-    run_command("sudo iptables -I INPUT -p tcp --dport 1714:1764 -j ACCEPT", tui)
-    run_command("sudo iptables -I INPUT -p udp --dport 1714:1764 -j ACCEPT", tui)
+    run_interactive_command(
+        "sudo iptables -I INPUT -p tcp --dport 1714:1764 -j ACCEPT", tui
+    )
+    run_interactive_command(
+        "sudo iptables -I INPUT -p udp --dport 1714:1764 -j ACCEPT", tui
+    )
     if command_exists("ufw"):
-        run_command("sudo ufw allow 1714:1764/udp", tui)
-        run_command("sudo ufw allow 1714:1764/tcp", tui)
-        run_command("sudo ufw reload", tui)
+        run_interactive_command("sudo ufw allow 1714:1764/udp", tui)
+        run_interactive_command("sudo ufw allow 1714:1764/tcp", tui)
+        run_interactive_command("sudo ufw reload", tui)
 
     if prompt_user(
         tui, "Install KDE Force Blur effect (requires build)?", default=False
     ):
         tui.log_output("Installing prerequisites for KDE Force Blur...")
-        run_command(
+        run_interactive_command(
             "paru -S base-devel git extra-cmake-modules qt6-tools --noconfirm", tui
         )
         tui.log_output("Cloning and building KDE Force Blur...")
-        run_command(
-            "cd /tmp && "
-            "git clone https://github.com/taj-ny/kwin-effects-forceblur && "
-            "cd kwin-effects-forceblur && "
-            "mkdir build && cd build && "
-            "cmake ../ -DCMAKE_INSTALL_PREFIX=/usr && "
-            "make && sudo make install",
+        run_interactive_command(
+            (
+                "cd /tmp && "
+                "git clone https://github.com/taj-ny/kwin-effects-forceblur && "
+                "cd kwin-effects-forceblur && "
+                "mkdir build && cd build && "
+                "cmake ../ -DCMAKE_INSTALL_PREFIX=/usr && "
+                "make && sudo make install"
+            ),
             tui,
             check=False,
         )
@@ -377,46 +372,40 @@ def run_setup(tui: "TUI", log: "logging.Logger"):
     with tui.task("Installing development tools..."):
         install_dev_tools(tui)
 
-    tui.log_output("Preparing for package installation...")
-    if not refresh_sudo(tui):
-        tui.log_output(
-            "[bold red]Sudo authentication failed. Skipping sudo-dependent installations.[/bold red]"
-        )
-    else:
-        with tui.task("Installing system packages..."):
-            # This is now handled interactively to prevent getting stuck
-            packages_file = Path(PARU_APPLIST_PATH)
-            if not packages_file.is_file():
-                tui.log_output(
-                    f"[yellow]Warning: Package file not found at {packages_file}[/yellow]"
-                )
-            else:
-                packages = [
-                    line.strip()
-                    for line in packages_file.read_text().splitlines()
-                    if line.strip() and not line.startswith("#")
-                ]
-                if packages:
-                    tui.log_output(
-                        f"Handing over to paru to install {len(packages)} packages..."
-                    )
-                    command = f"paru -S --sudoloop {' '.join(packages)}"
-                    run_interactive_command(command, tui)
-
-        with tui.task("Installing Nerd Fonts..."):
-            run_command(
-                "sudo pacman -S $(pacman -Sgq nerd-fonts) --noconfirm", tui, check=False
+    with tui.task("Installing system packages..."):
+        # This is now handled interactively to prevent getting stuck
+        packages_file = Path(PARU_APPLIST_PATH)
+        if not packages_file.is_file():
+            tui.log_output(
+                f"[yellow]Warning: Package file not found at {packages_file}[/yellow]"
             )
-
-        if prompt_user(tui, "Enable gaming configuration?", default=False):
-            with tui.task("Installing gaming packages..."):
-                run_command(
-                    "paru -S cachyos-gaming-meta cachyos-gaming-applications protonup-rs-bin --noconfirm",
-                    tui,
-                )
         else:
-            # Advance progress bar even if skipped
-            tui.skip_task("Install gaming packages")
+            packages = [
+                line.strip()
+                for line in packages_file.read_text().splitlines()
+                if line.strip() and not line.startswith("#")
+            ]
+            if packages:
+                tui.log_output(
+                    f"Handing over to paru to install {len(packages)} packages..."
+                )
+                command = f"paru -S --sudoloop {' '.join(packages)}"
+                run_interactive_command(command, tui)
+
+    with tui.task("Installing Nerd Fonts..."):
+        run_interactive_command(
+            "sudo pacman -S $(pacman -Sgq nerd-fonts) --noconfirm", tui, check=False
+        )
+
+    if prompt_user(tui, "Enable gaming configuration?", default=False):
+        with tui.task("Installing gaming packages..."):
+            run_interactive_command(
+                "paru -S cachyos-gaming-meta cachyos-gaming-applications protonup-rs-bin --noconfirm",
+                tui,
+            )
+    else:
+        # Advance progress bar even if skipped
+        tui.skip_task("Install gaming packages")
 
     with tui.task("Installing Flatpak packages..."):
         # These don't require sudo, so they can run regardless.

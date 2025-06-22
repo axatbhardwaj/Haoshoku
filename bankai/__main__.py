@@ -150,6 +150,17 @@ def select_os_manually():
     return choice
 
 
+def setup_file_logging():
+    """Sets up logging to a file."""
+    file_handler = logging.FileHandler("bankai.log", mode="w")
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+    file_handler.setFormatter(formatter)
+    log.addHandler(file_handler)
+    log.info("File logging initialized.")
+
+
 def get_target_os(cli_arg):
     """Determines the target OS from CLI arg, detection, or manual selection."""
     if cli_arg:
@@ -181,6 +192,7 @@ def get_target_os(cli_arg):
 
 def main():
     """Main script logic."""
+    setup_file_logging()
     parser = argparse.ArgumentParser(
         description="Bankai: Your personal setup assistant.",
         epilog="Arguments after '--' will be passed to the target OS script.",
