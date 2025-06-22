@@ -7,6 +7,7 @@ import stat
 import subprocess
 import sys
 from pathlib import Path
+import importlib.resources
 
 from rich.console import Console
 from rich.logging import RichHandler
@@ -29,8 +30,8 @@ log.addHandler(
 )
 
 # --- Configuration ---
-REPO_URL = "https://github.com/axatbhardwaj/bankai.git"
-REPO_DIR_NAME = Path(Path(REPO_URL).stem)
+# REPO_URL = "https://github.com/axatbhardwaj/bankai.git"
+# REPO_DIR_NAME = Path(Path(REPO_URL).stem)
 
 
 # --- Helper Functions ---
@@ -60,52 +61,10 @@ def run_command(command, check=True):
 
 
 def check_prerequisites():
-    """Checks for git and bash, attempts to install git if missing."""
+    """Checks for bash."""
     if shutil.which("bash") is None:
         log.error("Bash is required to run the target scripts. Please install it.")
         sys.exit(1)
-
-    if shutil.which("git") is not None:
-        return  # Git is installed
-
-    log.error("Git is not installed. It is required to continue.")
-    package_managers = {
-        "pacman": "sudo pacman -Syu --noconfirm git",
-        "apt-get": "sudo apt-get update && sudo apt-get install -y git",
-        "dnf": "sudo dnf install -y git",
-    }
-    for pm, command in package_managers.items():
-        if shutil.which(pm):
-            log.info(f"Attempting to install git using {pm}...")
-            if run_command(command):
-                log.info("Git installed successfully.")
-                return
-            else:
-                log.error(f"Failed to install git using {pm}.")
-                sys.exit(1)
-
-    log.error("Could not determine a package manager to install git automatically.")
-    sys.exit(1)
-
-
-def clone_or_update_repo():
-    """Clones the repository or pulls the latest changes."""
-    if REPO_DIR_NAME.is_dir():
-        log.info(f"Directory '{REPO_DIR_NAME}' exists. Pulling latest changes...")
-        try:
-            os.chdir(REPO_DIR_NAME)
-            if run_command("git pull"):
-                log.info("Repository updated.")
-            else:
-                log.warning("Failed to pull updates. Using local version.")
-        finally:
-            os.chdir("..")
-    else:
-        log.info(f"Cloning repository '{REPO_URL}'...")
-        if not run_command(f"git clone {REPO_URL}"):
-            log.error(f"Failed to clone repository from {REPO_URL}.")
-            sys.exit(1)
-        log.info("Repository cloned successfully.")
 
 
 def detect_os():
@@ -200,29 +159,31 @@ def main():
     args = parser.parse_args(main_args)
 
     check_prerequisites()
-    clone_or_update_repo()
-
-    try:
-        os.chdir(REPO_DIR_NAME)
-    except FileNotFoundError:
-        log.error(f"Failed to enter repository directory '{REPO_DIR_NAME}'.")
-        sys.exit(1)
+    # No longer cloning repo, scripts are packaged.
+    # clone_or_update_repo()
 
     final_os = get_target_os(args.os)
-    target_script_name = f"{final_os}.sh"
-    target_script_path = Path(target_script_name)
+    target_script_name = f"{final_os}.py"
+
+    try:
+        target_script_path = (
+            importlib.resources.files("os_scripts") / target_script_name
+        )
+    except (ModuleNotFoundError, AttributeError):
+        log.error(
+            f"Could not locate the 'os_scripts' package. Is the project installed correctly?"
+        )
+        sys.exit(1)
 
     if not target_script_path.is_file():
         log.error(f"Target script '{target_script_name}' not found in the repository.")
         sys.exit(1)
 
-    log.info(f"Executing ./{target_script_name} with arguments: {script_args}")
-    st = target_script_path.stat()
-    target_script_path.chmod(st.st_mode | stat.S_IEXEC)
+    log.info(f"Executing {target_script_name} with arguments: {script_args}")
 
     try:
         result = subprocess.run(
-            ["bash", f"./{target_script_name}", *script_args], check=False
+            [sys.executable, str(target_script_path), *script_args], check=False
         )
         if result.returncode == 0:
             log.info(
