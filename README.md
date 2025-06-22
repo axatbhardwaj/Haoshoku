@@ -13,6 +13,9 @@ Bankai is a modular, multi-distro Linux setup and configuration toolkit. It auto
 - **Kubuntu / Debian / Ubuntu**
 - **Nobara / Fedora**
 
+> [!NOTE]
+> The current release is primarily focused on and tested with Arch-based distributions like CachyOS. , the plan for other distributions is to have them working as well, but it's not a priority. and does not work in this release.
+
 ## Features
 - Automated installation of system packages and Flatpaks.
 - Terminal and shell configuration (Fish, Starship, Fisher, etc.)
