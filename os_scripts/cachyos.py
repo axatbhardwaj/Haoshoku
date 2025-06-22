@@ -34,6 +34,8 @@ FISH_CONFIG_DIR = HOME / ".config" / "fish"
 PYENV_ROOT = HOME / ".pyenv"
 GHOSTTY_CONFIG_DIR = HOME / ".config" / "ghostty"
 FASTFETCH_CONFIG_DIR = HOME / ".config" / "fastfetch"
+KITTY_CONFIG_DIR = HOME / ".config" / "kitty"
+ALACRITTY_CONFIG_DIR = HOME / ".config" / "alacritty"
 
 # Relative paths from project root
 COMMON_DIR = CURRENT_DIR / "common"
@@ -45,6 +47,8 @@ FLATPAK_APPLIST_PATH = COMMON_DIR / "flatpacks_arch.txt"
 CUSTOM_FISH_CONFIG_PATH = CONFIGS_DIR / "fish" / "config.fish"
 CUSTOM_GHOSTTY_CONFIG_PATH = CONFIGS_DIR / "ghostty" / "config"
 CUSTOM_FASTFETCH_CONFIG_PATH = CONFIGS_DIR / "fastfetch" / "config.jsonc"
+CUSTOM_KITTY_CONFIG_PATH = CONFIGS_DIR / "kitty" / "kitty.conf"
+CUSTOM_ALACRITTY_CONFIG_PATH = CONFIGS_DIR / "alacritty" / "alacritty.toml"
 
 
 # --- Helper Functions ---
@@ -199,8 +203,7 @@ def install_packages_from_file(file_path, installer_cmd):
     ]
     if packages:
         log.info(f"Installing {len(packages)} packages...")
-        # Use --batchinstall for non-interactive scripting
-        run_command(f"{installer_cmd} --batchinstall {' '.join(packages)}")
+        run_command(f"{installer_cmd} {' '.join(packages)}")
 
 
 # --- Configuration Functions ---
@@ -243,15 +246,25 @@ def configure_fish_shell():
 
 def configure_terminals():
     """Configures Kitty, Ghostty, and Alacritty."""
-    for script_name in ["kitty.sh", "alacritty.sh"]:
-        script_path = HELPERS_DIR / script_name
-        if script_path.is_file():
-            log.info(f"Running {script_name}...")
-            st = script_path.stat()
-            script_path.chmod(st.st_mode | stat.S_IEXEC)
-            run_command(f"bash {script_path} {str(CURRENT_DIR)}")
-        else:
-            log.warning(f"Helper script not found: {script_path}")
+    log.info("Configuring Kitty terminal...")
+    KITTY_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    if CUSTOM_KITTY_CONFIG_PATH.is_file():
+        shutil.copy(CUSTOM_KITTY_CONFIG_PATH, KITTY_CONFIG_DIR / "kitty.conf")
+        log.info("Copied custom Kitty config.")
+    else:
+        log.warning(f"Custom Kitty config not found at {CUSTOM_KITTY_CONFIG_PATH}")
+
+    log.info("Configuring Alacritty terminal...")
+    ALACRITTY_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    if CUSTOM_ALACRITTY_CONFIG_PATH.is_file():
+        shutil.copy(
+            CUSTOM_ALACRITTY_CONFIG_PATH, ALACRITTY_CONFIG_DIR / "alacritty.toml"
+        )
+        log.info("Copied custom Alacritty config.")
+    else:
+        log.warning(
+            f"Custom Alacritty config not found at {CUSTOM_ALACRITTY_CONFIG_PATH}"
+        )
 
     log.info("Configuring Ghostty terminal...")
     GHOSTTY_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
@@ -330,7 +343,7 @@ def main():
         log.info("Installing packages from file lists...")
         install_packages_from_file(
             PARU_APPLIST_PATH,
-            "paru -S --noconfirm --sudoloop",
+            "paru -S --noconfirm --sudoloop --batchinstall",
         )
 
         log.info("Installing Nerd Fonts...")
@@ -359,7 +372,7 @@ def main():
     configure_kde()
 
     log.info("Installing uosc for MPV...")
-    run_command(f'bash -c "$(curl -fsSL {UOSC_INSTALL_URL})"')
+    run_command(f"curl -fsSL {UOSC_INSTALL_URL} | bash")
 
     enable_services()
     configure_fastfetch()
