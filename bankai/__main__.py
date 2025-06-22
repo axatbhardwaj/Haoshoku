@@ -6,27 +6,19 @@ import shutil
 import stat
 import subprocess
 import sys
+import importlib
 from pathlib import Path
 
 from rich.console import Console
-from rich.logging import RichHandler
 from rich.prompt import Prompt
+
+from bankai.tui import TUI, get_tui_logger
 
 # --- Logger Setup ---
 log = logging.getLogger("bankai")
 log.setLevel(logging.INFO)
 log.propagate = False
-console = Console()
-log.addHandler(
-    RichHandler(
-        console=console,
-        rich_tracebacks=True,
-        show_path=False,
-        show_level=False,
-        show_time=False,
-        markup=True,
-    )
-)
+# The RichHandler is now managed by the TUI
 
 # --- Configuration ---
 REPO_URL = "https://github.com/axatbhardwaj/bankai.git"
@@ -41,7 +33,7 @@ def run_command(command, check=True):
         process = subprocess.run(
             shlex.split(command),
             check=check,
-            capture_output=not sys.stdout.isatty(),
+            capture_output=True,
             text=True,
         )
         if process.stdout:
@@ -51,8 +43,10 @@ def run_command(command, check=True):
         return process
     except subprocess.CalledProcessError as e:
         log.error(f"Command '{command}' failed with exit code {e.returncode}.")
-        log.error(f"Stdout: {e.stdout}")
-        log.error(f"Stderr: {e.stderr}")
+        if e.stdout:
+            log.error(f"Stdout: {e.stdout.strip()}")
+        if e.stderr:
+            log.error(f"Stderr: {e.stderr.strip()}")
         return None
     except FileNotFoundError:
         log.error(f"Command not found for: '{command}'")
@@ -106,6 +100,12 @@ def clone_or_update_repo():
             log.error(f"Failed to clone repository from {REPO_URL}.")
             sys.exit(1)
         log.info("Repository cloned successfully.")
+        # After cloning, we need to be inside the repo dir for subsequent operations
+        try:
+            os.chdir(REPO_DIR_NAME)
+        except FileNotFoundError:
+            log.error(f"Failed to enter repository directory '{REPO_DIR_NAME}'.")
+            sys.exit(1)
 
 
 def detect_os():
@@ -189,6 +189,7 @@ def main():
         "--os", help="Specify the target OS (cachyos, kubuntu, nobara)."
     )
 
+    # Now we are inside the repo, we can parse arguments and run the main logic.
     try:
         separator_index = sys.argv.index("--")
         main_args = sys.argv[1:separator_index]
@@ -198,41 +199,38 @@ def main():
         script_args = []
 
     args = parser.parse_args(main_args)
-
-    check_prerequisites()
-    clone_or_update_repo()
-
-    try:
-        os.chdir(REPO_DIR_NAME)
-    except FileNotFoundError:
-        log.error(f"Failed to enter repository directory '{REPO_DIR_NAME}'.")
-        sys.exit(1)
-
     final_os = get_target_os(args.os)
-    target_script_name = f"{final_os}.sh"
-    target_script_path = Path(target_script_name)
-
-    if not target_script_path.is_file():
-        log.error(f"Target script '{target_script_name}' not found in the repository.")
-        sys.exit(1)
-
-    log.info(f"Executing ./{target_script_name} with arguments: {script_args}")
-    st = target_script_path.stat()
-    target_script_path.chmod(st.st_mode | stat.S_IEXEC)
 
     try:
-        result = subprocess.run(
-            ["bash", f"./{target_script_name}", *script_args], check=False
-        )
-        if result.returncode == 0:
-            log.info(
-                f"[bold green]{target_script_name} executed successfully.[/bold green]"
-            )
-        else:
-            log.error(f"{target_script_name} finished with errors.")
-    except Exception as e:
-        log.error(f"An unexpected error occurred while running the script: {e}")
+        # Dynamically import the OS-specific module
+        os_module_name = f"os_scripts.{final_os}"
+        os_module = importlib.import_module(os_module_name)
+    except ImportError:
+        log.error(f"Failed to load setup module for OS: '{final_os}'")
+        log.error(f"Looked for module: '{os_module_name}.py'")
         sys.exit(1)
+
+    # Get the steps from the OS module to initialize the TUI
+    steps = getattr(os_module, "STEPS", [])
+    if not steps:
+        log.error("No steps defined in the OS setup script.")
+        sys.exit(1)
+
+    tui = TUI(script_name=final_os, total_steps=len(steps))
+    log.addHandler(get_tui_logger(tui))
+    tui.update_steps(steps)
+
+    try:
+        tui.start()
+        # The main setup function in the OS script
+        os_module.run_setup(tui, log)
+        log.info(f"[bold green]{final_os} setup finished successfully.[/bold green]")
+    except (Exception, KeyboardInterrupt):
+        log.error("A critical error occurred.", exc_info=True)
+        sys.exit(1)
+    finally:
+        if tui.live.is_started:
+            tui.stop()
 
     log.info("Bankai script finished.")
 
