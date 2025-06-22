@@ -1,6 +1,6 @@
 [project]
 name = "bankai"
-version = "0.1.3"
+version = "0.1.4"
 description = "TUI to help you setup your Linux system"
 readme = "README.md"
 requires-python = ">=3.12"
