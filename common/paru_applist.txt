@@ -47,3 +47,4 @@ vivaldi
 gitleaks
 pyenv
 cursor-bin
+merkuro
