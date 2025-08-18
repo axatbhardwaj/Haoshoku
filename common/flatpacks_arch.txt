@@ -2,3 +2,4 @@ io.ente.auth
 io.github.brunofin.Cohesion
 io.github.nozwock.Packet
 com.spotify.Client
+com.rtosta.zapzap
