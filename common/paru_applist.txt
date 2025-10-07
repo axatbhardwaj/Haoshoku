@@ -48,3 +48,4 @@ gitleaks
 pyenv
 cursor-bin
 merkuro
+thorium-browser-avx2-bin
