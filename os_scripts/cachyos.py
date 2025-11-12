@@ -198,7 +198,7 @@ def setup_flatpak_remotes():
     if command_exists("flatpak"):
         log.info("Setting up Flatpak remotes...")
         run_command(
-            "flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo"
+            "flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo"
         )
     else:
         log.warning("Flatpak not found. Skipping remote setup.")
