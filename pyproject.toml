@@ -1,6 +1,6 @@
 [project]
 name = "bankai"
-version = "1.0.1"
+version = "1.0.2"
 description = "TUI to help you setup your Linux system"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -13,5 +13,5 @@ bankai = "bankai:main"
 
 [tool.setuptools]
 py-modules = ["bankai"]
-packages = ["os_scripts"]
+packages = ["os_scripts", "common"]
  
