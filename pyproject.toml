@@ -13,5 +13,5 @@ bankai = "bankai:main"
 
 [tool.setuptools]
 py-modules = ["bankai"]
-packages = ["os_scripts", "common"]
+packages = ["os_scripts", "common", "configs"]
  
