@@ -13,7 +13,11 @@ from rich.text import Text
 
 # --- Logger and Global Setup ---
 log = logging.getLogger("bankai")
-CURRENT_DIR = Path.cwd()
+# Get the directory where this script is located
+SCRIPT_DIR = Path(__file__).parent
+# The project root is one level up from os_scripts/
+PROJECT_ROOT = SCRIPT_DIR.parent
+CURRENT_DIR = PROJECT_ROOT
 
 # --- Constants ---
 # URLs
