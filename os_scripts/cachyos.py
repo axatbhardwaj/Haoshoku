@@ -193,6 +193,17 @@ def install_dev_tools():
         log.info("Foundry (foundryup) already installed.")
 
 
+def setup_flatpak_remotes():
+    """Ensures required Flatpak remotes are configured."""
+    if command_exists("flatpak"):
+        log.info("Setting up Flatpak remotes...")
+        run_command(
+            "flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo"
+        )
+    else:
+        log.warning("Flatpak not found. Skipping remote setup.")
+
+
 def install_packages_from_file(file_path, installer_cmd):
     """Installs packages from a text file using a specified command."""
     packages_file = Path(file_path)
@@ -358,6 +369,7 @@ def main():
                 "paru -S cachyos-gaming-meta cachyos-gaming-applications protonup-rs-bin --noconfirm"
             )
     # These don't require sudo, so they can run regardless.
+    setup_flatpak_remotes()
     install_packages_from_file(
         FLATPAK_APPLIST_PATH,
         "flatpak install --user -y flathub",
