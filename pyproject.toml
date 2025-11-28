@@ -8,6 +8,14 @@ dependencies = [
     "rich",
 ]
 
+[project.optional-dependencies]
+test = ["pytest"]
+
+[tool.pytest.ini_options]
+pythonpath = [
+    ".",
+]
+
 [project.scripts]
 bankai = "bankai:main"
 
@@ -15,4 +23,9 @@ bankai = "bankai:main"
 py-modules = ["bankai"]
 packages = ["os_scripts", "common", "configs"]
 include-package-data = true
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.1",
+]
  
