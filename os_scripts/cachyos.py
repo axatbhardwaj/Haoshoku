@@ -128,9 +128,7 @@ def run_command(command, cwd=None, check=True):
     except FileNotFoundError:
         log.error(f"Command not found for: '{command}'")
         return False
-    except Exception as e:
-        log.error(f"An unexpected error occurred while running '{command}': {e}")
-        return False
+
 
 
 def command_exists(command):
@@ -345,29 +343,30 @@ def configure_kde():
 
 
 # --- Main Execution ---
-def main():
-    """Main execution flow for the CachyOS setup script."""
-    install_base_dependencies()
-    install_aur_helper()
-    install_dev_tools()
-
+def install_system_packages():
+    """Installs system-wide packages requiring sudo."""
     log.info("Preparing for package installation...")
     if not refresh_sudo():
         log.error("Sudo authentication failed. Skipping sudo-dependent installations.")
-    else:
-        log.info("Installing packages from file lists...")
-        install_packages_from_file(
-            PARU_APPLIST_PATH,
-            "paru -S --noconfirm --sudoloop --batchinstall",
+        return
+
+    log.info("Installing packages from file lists...")
+    install_packages_from_file(
+        PARU_APPLIST_PATH,
+        "paru -S --noconfirm --sudoloop --batchinstall",
+    )
+
+    log.info("Installing Nerd Fonts...")
+    run_command("sudo pacman -S $(pacman -Sgq nerd-fonts) --noconfirm", check=False)
+
+    if prompt_user("Enable gaming configuration?", default=False):
+        run_command(
+            "paru -S cachyos-gaming-meta cachyos-gaming-applications protonup-rs-bin --noconfirm"
         )
 
-        log.info("Installing Nerd Fonts...")
-        run_command("sudo pacman -S $(pacman -Sgq nerd-fonts) --noconfirm", check=False)
 
-        if prompt_user("Enable gaming configuration?", default=False):
-            run_command(
-                "paru -S cachyos-gaming-meta cachyos-gaming-applications protonup-rs-bin --noconfirm"
-            )
+def install_flatpak_apps():
+    """Configures Flatpak and installs applications."""
     # These don't require sudo, so they can run regardless.
     setup_flatpak_remotes()
     install_packages_from_file(
@@ -375,6 +374,9 @@ def main():
         "flatpak install --user -y flathub",
     )
 
+
+def configure_user_apps():
+    """Configures user-level applications and settings."""
     configure_fish_shell()
 
     if prompt_user("Configure git?", default=True):
@@ -392,6 +394,17 @@ def main():
 
     enable_services()
     configure_fastfetch()
+
+
+def main():
+    """Main execution flow for the CachyOS setup script."""
+    install_base_dependencies()
+    install_aur_helper()
+    install_dev_tools()
+
+    install_system_packages()
+    install_flatpak_apps()
+    configure_user_apps()
 
     log.info(
         Text.from_markup(

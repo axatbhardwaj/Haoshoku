@@ -191,9 +191,11 @@ def main():
             )
         else:
             log.error(f"{target_script_name} finished with errors.")
-    except Exception as e:
-        log.error(f"An unexpected error occurred while running the script: {e}")
-        sys.exit(1)
+            sys.exit(result.returncode)
+
+    except KeyboardInterrupt:
+        log.warning("\nOperation cancelled by user.")
+        sys.exit(130)
 
     log.info("Bankai script finished.")
 
