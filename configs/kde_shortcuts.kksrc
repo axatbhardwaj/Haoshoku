@@ -93,7 +93,7 @@ ZoomIn=Ctrl++; Ctrl+=
 ZoomOut=Ctrl+-
 
 [com.mitchellh.ghostty.desktop][Global Shortcuts]
-_launch=Alt+Return
+_launch=Meta+Return
 new-window=
 
 [kaccess][Global Shortcuts]
