@@ -48,6 +48,7 @@ HELPERS_DIR = CURRENT_DIR / "helpers"
 
 PARU_APPLIST_PATH = COMMON_DIR / "paru_applist.txt"
 FLATPAK_APPLIST_PATH = COMMON_DIR / "flatpacks_arch.txt"
+KDE_SHORTCUTS_PATH = CONFIGS_DIR / "kde_shortcuts.kksrc"
 CUSTOM_FISH_CONFIG_PATH = CONFIGS_DIR / "fish" / "config.fish"
 CUSTOM_GHOSTTY_CONFIG_PATH = CONFIGS_DIR / "ghostty" / "config"
 CUSTOM_FASTFETCH_CONFIG_PATH = CONFIGS_DIR / "fastfetch" / "config.jsonc"
@@ -128,7 +129,6 @@ def run_command(command, cwd=None, check=True):
     except FileNotFoundError:
         log.error(f"Command not found for: '{command}'")
         return False
-
 
 
 def command_exists(command):
@@ -319,6 +319,32 @@ def configure_fastfetch():
 
 def configure_kde():
     """Applies KDE-specific tweaks and configurations."""
+    if prompt_user("Apply custom KDE Shortcuts?", default=False):
+        log.info("Applying custom KDE shortcuts...")
+        if KDE_SHORTCUTS_PATH.is_file():
+            # Create a backup of the current shortcuts if they exist
+            kglobalshortcutsrc = HOME / ".config" / "kglobalshortcutsrc"
+            if kglobalshortcutsrc.exists():
+                shutil.copy(kglobalshortcutsrc, kglobalshortcutsrc.with_suffix(".bak"))
+                log.info(
+                    f"Backed up existing shortcuts to {kglobalshortcutsrc.with_suffix('.bak')}"
+                )
+            else:
+                log.warning(
+                    f"Existing config not found at {kglobalshortcutsrc}, skipping backup."
+                )
+
+            # Overwrite with new shortcuts
+            # Note: Direct copy might not work perfectly if KDE caches this,
+            # but it's the standard way to restore.
+            # Ideally, we would use kwriteconfig5/6 or specific KDE DBus calls,
+            # but overwriting the config file is a common brute-force method.
+            # For key bindings to take effect, a relogin might be needed.
+            shutil.copy(KDE_SHORTCUTS_PATH, kglobalshortcutsrc)
+            log.info("KDE shortcuts applied. Please log out and log back in.")
+        else:
+            log.warning(f"KDE shortcuts file not found at {KDE_SHORTCUTS_PATH}")
+
     log.info("Applying KDE Connect fix...")
     run_command("sudo iptables -I INPUT -p tcp --dport 1714:1764 -j ACCEPT")
     run_command("sudo iptables -I INPUT -p udp --dport 1714:1764 -j ACCEPT")
