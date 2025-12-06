@@ -10,8 +10,8 @@ import fs from "fs";
 const program = new Command();
 
 program
-  .name("bankai")
-  .description("Bankai: Your personal setup assistant.")
+  .name("haoshoku")
+  .description("Haoshoku: Color of the Supreme King. Dominate your setup.")
   .version("2.0.0");
 
 function detectOS() {

@@ -1,20 +1,32 @@
-# Bankai Linux Setup (inspired by the anime "Bleach")
+![Haoshoku Logo](icons/Gemini_Generated_Image_kwrza7kwrza7kwrz.png)
+
+# Haoshoku: Color of the Supreme King
 
 **Quick Start:**
 ```bash
-pipx install bankai
-bankai
+# Install via npm (v2.0.0+)
+npm install -g haoshoku
+
+# Or run directly with Bun
+git clone https://github.com/axatbhardwaj/bankai.git
+cd bankai
+bun install
+bun haoshoku.js
 ```
 
-Bankai is a modular, multi-distro Linux setup and configuration toolkit. It automates the installation of essential applications, developer tools, terminal configs, and user environment tweaks for several popular Linux distributions.
-
-## Supported Distributions
-- **CachyOS / Arch-based**
-- **Kubuntu / Debian / Ubuntu**
-- **Nobara / Fedora**
+**Haoshoku** (formerly Bankai) is a modular, multi-distro Linux setup and configuration toolkit. It automates the installation of essential applications, developer tools, terminal configs, and user environment tweaks.
 
 > [!NOTE]
-> The current release is primarily focused on and tested with Arch-based distributions like CachyOS. , the plan for other distributions is to have them working as well, but it's not a priority. and does not work in this release.
+> **Haoshoku** (from the anime *One Piece*) means ["Color of the Supreme King"](https://onepiece.fandom.com/wiki/Haki/Supreme_King_Haki). It imposes your will on the operating system, forcing it to submit to your configuration.
+
+> [!IMPORTANT]
+> **Rebranding & Migration**: This project was previously known as **Bankai** and was available on **PyPI** (Python). It has been renamed to **Haoshoku** and is now available on **NPM** (JavaScript/Bun).
+>
+> Please uninstall any old Python versions (`pipx uninstall bankai`) before installing the new version.
+
+## Supported Distributions
+- **CachyOS / Arch-based** (Primary support)
+- **Debian Server** (New in v2.0.0)
 
 ## Features
 - Automated installation of system packages and Flatpaks.
@@ -23,47 +35,51 @@ Bankai is a modular, multi-distro Linux setup and configuration toolkit. It auto
 - Optional gaming, Docker, and other productivity enhancements
 - Modular config files for terminals (Kitty, Alacritty, Ghostty, Fastfetch)
 - Git and SSH setup helper
+- **OS Auto-detection**: Automatically detects your OS (CachyOS or Debian) and runs the appropriate setup.
 
 ## Usage
-After installation, simply run the main command:
+If installed globally via npm:
 ```bash
-bankai
+haoshoku
 ```
-- The script will auto-detect your OS or prompt you to select one.
+
+If running from source with Bun:
+```bash
+bun haoshoku.js
+```
+
+- The script will auto-detect your OS.
 - You can specify the OS directly:
   ```bash
-  bankai --os cachyos   # or kubuntu, nobara
+  haoshoku --os cachyos
+  # or
+  bun haoshoku.js --os debian-server
   ```
-- Any extra arguments will be passed to the OS-specific script by adding `--` before them:
-  ```bash
-  bankai --os cachyos -- --some-arg
-  ```
-- Follow the prompts for optional installs (gaming, Docker, Fish shell, etc.).
-
-## Notes
-- `pipx` is the recommended tool for installing command-line applications like Bankai, as it isolates them in their own environments. You can install it via `pip install pipx`.
-- Some steps will require `sudo` privileges. The script will prompt you for your password when needed.
-- A system restart or re-login is recommended for all changes to take effect.
 
 ## For Developers (Contributing)
 
-If you want to contribute or customize the scripts, you can clone the repository:
-```bash
-git clone https://github.com/axatbhardwaj/bankai.git
-cd bankai
-# Recommended: create a virtual environment
-python -m venv .venv
-source .venv/bin/activate
-# Install in editable mode
-pip install -e .
-# Now you can run your local version
-bankai
-```
+If you want to contribute or customize the scripts:
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/axatbhardwaj/bankai.git
+   cd bankai
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   bun install
+   ```
+
+3. **Run locally:**
+   ```bash
+   bun haoshoku.js
+   ```
 
 - **Package lists** are in `common/`
 - **Configuration templates** are in `configs/`
-- **OS-specific logic** is in `os_scripts/`
-
+- **OS-specific logic** is in `src/os_scripts/`
+- **Helpers** are in `src/helpers/`
 
 ## License
 MIT (see repository) 
