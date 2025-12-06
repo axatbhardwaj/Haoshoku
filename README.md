@@ -17,7 +17,7 @@ bun haoshoku.js
 **Haoshoku** (formerly Bankai) is a modular, multi-distro Linux setup and configuration toolkit. It automates the installation of essential applications, developer tools, terminal configs, and user environment tweaks.
 
 > [!NOTE]
-> **Haoshoku** (from the anime *One Piece*) means ["Color of the Supreme King"](https://onepiece.fandom.com/wiki/Haki/Supreme_King_Haki). It imposes your will on the operating system, forcing it to submit to your configuration.
+> **Haoshoku** (referencing ["Supreme King Haki"](https://onepiece.fandom.com/wiki/Haki/Supreme_King_Haki) from *One Piece*) serves as an authoritative configuration manager, enforcing a strict and consistent environment setup across your Linux systems.
 
 > [!IMPORTANT]
 > **Rebranding & Migration**: This project was previously known as **Bankai** and was available on **PyPI** (Python). It has been renamed to **Haoshoku** and is now available on **NPM** (JavaScript/Bun).
