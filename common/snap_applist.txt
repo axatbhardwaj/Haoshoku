@@ -1,7 +1,0 @@
-# Snap packages to install
-# Format: one package per line
-# Comments start with #
-
-# Terminal
-onefetch
-

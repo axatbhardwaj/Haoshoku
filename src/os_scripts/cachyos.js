@@ -76,15 +76,24 @@ async function installPackagesFromFile(filePath, installerCmd) {
 // --- Installation Functions ---
 
 async function installBaseDependencies() {
+    log.info("Refreshing keyrings...");
+    // // Initialize and populate keys first to ensure we can verify signatures
+    // await runCommand("sudo pacman-key --init");
+    // await runCommand("sudo pacman-key --populate archlinux cachyos");
+    // // Then update the keyring packages
+    // await runCommand("sudo pacman -Sy --noconfirm archlinux-keyring cachyos-keyring");
+
   log.info("Updating system and installing base-devel...");
-  await runCommand("sudo pacman -Syu base-devel --noconfirm");
+    //   await runCommand("sudo pacman -Syu base-devel --noconfirm");
 
   log.info("Installing Rust via rustup...");
   await runCommand(`curl ${RUSTUP_URL} -sSf | sh -s -- -y`);
   
-  if (await commandExists("pyenv")) {
+    if (await commandExists("pyenv") && await commandExists("fish")) {
     log.info("Configuring Pyenv for Fish...");
-    await runCommand(`fish -c "set -Ux PYENV_ROOT ${PYENV_ROOT}; fish_add_path ${PYENV_ROOT}/bin"`);
+        await runCommand(`fish -c 'set -Ux PYENV_ROOT "${PYENV_ROOT}"'`);
+        // Use set -U fish_user_paths as it is more robust than fish_add_path in some environments
+        await runCommand(`fish -c 'if not contains "${PYENV_ROOT}/bin" $fish_user_paths; set -Ua fish_user_paths "${PYENV_ROOT}/bin"; end'`);
   }
 }
 
@@ -279,18 +288,18 @@ async function installSystemPackages() {
   }
 
   log.info("Installing packages from file lists...");
-  await installPackagesFromFile(
-    PARU_APPLIST_PATH,
-    "paru -S --noconfirm --sudoloop --batchinstall"
-  );
+    //   await installPackagesFromFile(
+    //     PARU_APPLIST_PATH,
+    //     "paru -S --noconfirm --sudoloop --batchinstall"
+    //   );
 
   log.info("Installing Nerd Fonts...");
-  await runCommand("sudo pacman -S $(pacman -Sgq nerd-fonts) --noconfirm");
+    //   await runCommand("sudo pacman -S $(pacman -Sgq nerd-fonts) --noconfirm");
 
   if (await promptUser("Enable gaming configuration?", false)) {
-    await runCommand(
-      "paru -S cachyos-gaming-meta cachyos-gaming-applications protonup-rs-bin --noconfirm"
-    );
+      // await runCommand(
+      //   "paru -S cachyos-gaming-meta cachyos-gaming-applications protonup-rs-bin --noconfirm"
+      // );
   }
 }
 

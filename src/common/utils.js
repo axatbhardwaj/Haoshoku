@@ -15,8 +15,11 @@ export async function runCommand(
 ) {
   log.dim(`Executing: ${command}`);
 
+    // Auto-detect shell usage if not explicitly set
+    const useShell = options.shell || ["|", "&&", ";", ">", "<", "*", "?", "$", '"', "'"].some(char => command.includes(char));
+
   try {
-    const proc = spawn(options.shell ? ["sh", "-c", command] : command.split(" "), {
+      const proc = spawn(useShell ? ["sh", "-c", command] : command.split(" "), {
       cwd: options.cwd,
       stdout: "inherit",
       stderr: "inherit",
