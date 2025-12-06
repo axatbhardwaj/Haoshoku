@@ -29,7 +29,10 @@ async function promptUser(message, initial = false) {
 async function installEssentials() {
   log.info("Updating system and installing essentials...");
   await runCommand("sudo apt update && sudo apt upgrade -y");
-  await runCommand("sudo apt install -y curl wget git vim ufw fail2ban software-properties-common");
+  // Split installation to ensure core tools are installed even if optional ones fail
+  await runCommand("sudo apt install -y curl wget git vim ufw fail2ban");
+  // Try installing software-properties-common separately as it might not be available on all minimal images
+  await runCommand("sudo apt install -y software-properties-common", { check: false });
 }
 
 async function setupSsh() {
@@ -56,8 +59,11 @@ async function setupSsh() {
 async function configureFishShell() {
   if (!(await commandExists("fish"))) {
     log.info("Installing Fish shell...");
-    await runCommand("sudo apt-add-repository -y ppa:fish-shell/release-3");
-    await runCommand("sudo apt update");
+    // Only try adding PPA if software-properties-common was installed successfully
+    if (await commandExists("add-apt-repository")) {
+      await runCommand("sudo apt-add-repository -y ppa:fish-shell/release-3");
+      await runCommand("sudo apt update");
+    }
     await runCommand("sudo apt install -y fish");
   }
 
@@ -77,8 +83,10 @@ async function configureFishShell() {
   // Ensure fish config dir exists
   fs.mkdirSync(FISH_CONFIG_DIR, { recursive: true });
 
+  // Install Fisher itself first
+  await runCommand('fish -c "curl -sL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish | source && fisher install jorgebucaran/fisher"');
+
   const fisherPlugins = [
-    "jorgebucaran/fisher",
     "meaningful-ooo/sponge",
     "jorgebucaran/nvm.fish",
     "franciscolourenco/done",
