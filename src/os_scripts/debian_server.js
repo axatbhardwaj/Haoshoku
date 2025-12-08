@@ -4,6 +4,7 @@ import path from "path";
 import fs from "fs";
 import { homedir } from "os";
 import net from "net";
+import { fileURLToPath } from "url";
 
 // --- Constants ---
 const HOME = homedir();
@@ -11,7 +12,9 @@ const FISH_CONFIG_DIR = path.join(HOME, ".config", "fish");
 const STARSHIP_CONFIG_PATH = path.join(HOME, ".config", "starship.toml");
 
 // Project paths
-const PROJECT_ROOT = process.cwd();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const PROJECT_ROOT = path.resolve(__dirname, "..", "..");
 const CONFIGS_DIR = path.join(PROJECT_ROOT, "configs");
 const CUSTOM_FISH_CONFIG_PATH = path.join(CONFIGS_DIR, "fish", "config.fish");
 
@@ -33,7 +36,10 @@ async function installEssentials() {
   // Split installation to ensure core tools are installed even if optional ones fail
   await runCommand("sudo apt install -y curl wget git vim ufw fail2ban");
   // Try installing software-properties-common separately as it might not be available on all minimal images
-  await runCommand("sudo apt install -y software-properties-common", { check: false });
+  const spcResult = await runCommand("sudo apt install -y software-properties-common", { check: false });
+  if (!spcResult) {
+    log.warning("Could not install software-properties-common. Some PPAs might not work.");
+  }
 }
 
 async function setupSsh() {
@@ -60,10 +66,12 @@ async function setupSsh() {
 async function configureFishShell() {
   if (!(await commandExists("fish"))) {
     log.info("Installing Fish shell...");
-    // Only try adding PPA if software-properties-common was installed successfully
+    // Only try adding PPA if add-apt-repository is available
     if (await commandExists("add-apt-repository")) {
       await runCommand("sudo apt-add-repository -y ppa:fish-shell/release-3");
       await runCommand("sudo apt update");
+    } else {
+      log.warning("add-apt-repository not found. Installing fish from default repositories (might be older version).");
     }
     await runCommand("sudo apt install -y fish");
   }
