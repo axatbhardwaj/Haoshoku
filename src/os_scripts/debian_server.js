@@ -3,7 +3,6 @@ import prompts from "prompts";
 import path from "path";
 import fs from "fs";
 import { homedir } from "os";
-import net from "net";
 import { fileURLToPath } from "url";
 
 // --- Constants ---
@@ -152,90 +151,11 @@ async function setupFirewall() {
   }
 }
 
-function checkPortAvailability(port) {
-  return new Promise((resolve) => {
-    const server = net.createServer();
-    server.once("error", (err) => {
-      resolve(false);
-    });
-    server.once("listening", () => {
-      server.close();
-      resolve(true);
-    });
-    server.listen(port);
-  });
-}
-
-async function installDashy() {
-  if (await promptUser("Install Dashy (Personal Dashboard)?", true)) {
-    const servicesDir = path.join(HOME, "services");
-    const dashyDir = path.join(servicesDir, "dashy");
-    const sourceDir = path.join(PROJECT_ROOT, "services", "dashy");
-
-    if (!fs.existsSync(sourceDir)) {
-      log.error(`Dashy source not found at ${sourceDir}`);
-      return;
-    }
-
-    // Port selection
-    let port = 8080;
-    let isAvailable = await checkPortAvailability(port);
-
-    if (!isAvailable) {
-      log.warning(`Port ${port} is already in use.`);
-      const response = await prompts({
-        type: "number",
-        name: "port",
-        message: "Enter a different port for Dashy:",
-        initial: 8081,
-        validate: async (p) => (await checkPortAvailability(p)) ? true : "Port is still in use",
-      });
-      port = response.port;
-    }
-
-    log.info(`Installing Dashy on port ${port}...`);
-
-    // Copy files
-    if (!fs.existsSync(servicesDir)) {
-      fs.mkdirSync(servicesDir, { recursive: true });
-    }
-
-    // Using cp -r for simplicity and preserving permissions
-    await runCommand(`cp -r ${sourceDir} ${servicesDir}`);
-
-    // Update port in docker-compose.yml if changed
-    if (port !== 8080) {
-      const composePath = path.join(dashyDir, "docker-compose.yml");
-      if (fs.existsSync(composePath)) {
-        let content = fs.readFileSync(composePath, "utf-8");
-        content = content.replace("8080:80", `${port}:80`);
-        fs.writeFileSync(composePath, content);
-        log.info(`Updated Dashy port to ${port} in docker-compose.yml`);
-      }
-    }
-
-    // Start service
-    log.info("Starting Dashy...");
-    // We need to run docker compose in the dashy directory
-    // runCommand doesn't support cwd option directly based on usage seen, 
-    // so we construct the command to change dir or use -f and -p? 
-    // Actually runCommand implementation in utils.js likely supports options or we can chain cd.
-    // Let's check utils.js or just chain.
-    // Assuming runCommand takes options based on standard exec wrappers, but looking at previous file view, 
-    // I don't see the definition of runCommand. 
-    // Let's assume `cd ... && ...` works for shell commands.
-    await runCommand(`cd ${dashyDir} && docker compose up -d`);
-
-    log.success(`Dashy installed! Access it at http://localhost:${port}`);
-  }
-}
-
 export async function runDebianServerSetup() {
   await installEssentials();
   await setupSsh();
   await configureFishShell();
   await installDocker();
-  await installDashy();
   await setupFirewall();
 
   log.success("Debian Server setup finished.");
