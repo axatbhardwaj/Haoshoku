@@ -6,6 +6,9 @@
   "bin": {
     "haoshoku": "haoshoku.js"
   },
+  "scripts": {
+    "release": "bun scripts/release.js"
+  },
   "dependencies": {
     "chalk": "^5.6.2",
     "commander": "^14.0.2",
