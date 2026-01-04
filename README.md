@@ -2,84 +2,80 @@
 
 # Haoshoku: Color of the Supreme King
 
-**Quick Start:**
-```bash
-# Install via npm (v2.0.0+)
-npm install -g haoshoku
-
-# Or run directly with Bun
-git clone https://github.com/axatbhardwaj/bankai.git
-cd bankai
-bun install
-bun haoshoku.js
-```
-
 **Haoshoku** (formerly Bankai) is a modular, multi-distro Linux setup and configuration toolkit. It automates the installation of essential applications, developer tools, terminal configs, and user environment tweaks.
 
 > [!NOTE]
 > **Haoshoku** (referencing ["Supreme King Haki"](https://onepiece.fandom.com/wiki/Haki/Supreme_King_Haki) from *One Piece*) serves as an authoritative configuration manager, enforcing a strict and consistent environment setup across your Linux systems.
 
 > [!IMPORTANT]
-> **Rebranding & Migration**: This project was previously known as **Bankai** and was available on **PyPI** (Python). It has been renamed to **Haoshoku** and is now available on **NPM** (JavaScript/Bun).
->
-> Please uninstall any old Python versions (`pipx uninstall bankai`) before installing the new version.
+> **Rebranding & Migration**: This project was previously known as **Bankai** and was available on **PyPI** (Python). It has been renamed to **Haoshoku** and is now available on **NPM** (JavaScript/Bun). Please uninstall old Python versions (`pipx uninstall bankai`) before installing.
 
-## Supported Distributions
-- **CachyOS / Arch-based** (Primary support)
-- **Debian Server** (New in v2.0.0)
+## Quick Start
 
-## Features
-- Automated installation of system packages and Flatpaks.
-- Terminal and shell configuration (Fish, Starship, Fisher, etc.)
-- IDEs, developer tools, and language managers (Rust, Node, Python, etc.)
-- Optional gaming, Docker, and other productivity enhancements
-- Modular config files for terminals (Kitty, Alacritty, Ghostty, Fastfetch)
-- Git and SSH setup helper
-- **OS Auto-detection**: Automatically detects your OS (CachyOS or Debian) and runs the appropriate setup.
-
-## Usage
-If installed globally via npm:
+### Option 1: Run directly with Bun (Recommended)
 ```bash
-haoshoku
-```
+# Clone the repo
+git clone https://github.com/axatbhardwaj/bankai.git
+cd bankai
 
-If running from source with Bun:
-```bash
+# Install dependencies
+bun install
+
+# Run the setup
 bun haoshoku.js
 ```
 
-- The script will auto-detect your OS.
-- You can specify the OS directly:
-  ```bash
-  haoshoku --os cachyos
-  # or
-  bun haoshoku.js --os debian-server
-  ```
+### Option 2: Install via npm
+```bash
+npm install -g haoshoku
+haoshoku
+```
 
-## For Developers (Contributing)
+## Features
 
-If you want to contribute or customize the scripts:
+### Supported Platforms
+-   **CachyOS / Arch Linux**: Full desktop environment setup (KDE Plasma), gaming optimizations, and daily driver tools.
+-   **Debian Server**: Minimal, secure server setup with Docker, UFW, and Fail2ban.
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/axatbhardwaj/bankai.git
-   cd bankai
-   ```
+### What It Does
+-   **Terminal & Shell**:
+    -   Installs and configures **Fish Shell** as default.
+    -   Sets up **Starship** prompt and **Fisher** plugins.
+    -   Deploys custom configs for **Ghostty**, **Kitty**, **Alacritty**, and **Fastfetch**.
+-   **Developer Ecosystem**:
+    -   **Languages**: Rust (Rustup), Python (Uv/Conda), Node.js (Volta/NVM).
+    -   **Tools**: Docker, Git (with signing), Neovim/VS Code, Foundry (Smart Contracts).
+-   **System Hardening (Debian)**:
+    -   Configures **UFW** firewall (allow SSH/HTTP/HTTPS).
+    -   Sets up **Fail2ban** for SSH protection.
+    -   Enables auto-updates and essential system utilities.
+-   **Desktop Experience (Arch)**:
+    -   Installs curated Flatpaks (Obsidian, Discord, Spotify).
+    -   Optimizes KDE Plasma settings.
+    -   Sets up gaming tools (Steam, Lutris) and media players (mpv).
 
-2. **Install dependencies:**
-   ```bash
-   bun install
-   ```
+## Configuration
 
-3. **Run locally:**
-   ```bash
-   bun haoshoku.js
-   ```
+All configuration templates are stored in the `configs/` directory and are symlinked or copied during setup:
 
-- **Package lists** are in `common/`
-- **Configuration templates** are in `configs/`
-- **OS-specific logic** is in `src/os_scripts/`
-- **Helpers** are in `src/helpers/`
+-   `configs/fish/`: Fish shell configuration and functions.
+-   `configs/ghostty/`: Ghostty terminal config.
+-   `configs/kitty/`: Kitty terminal config.
+-   `configs/starship.toml`: Cross-shell prompt theme.
+-   `configs/fastfetch/`: System information fetch tool config.
+
+## For Developers
+
+To modify or extend the scripts:
+
+1.  Clone the repository.
+2.  Install dependencies: `bun install`
+3.  Run locally: `bun haoshoku.js`
+
+**Project Structure:**
+-   `src/os_scripts/`: OS-specific logic (`cachyos.js`, `debian_server.js`).
+-   `configs/`: Configuration files to be deployed.
+-   `common/`: Package lists and shared utilities.
 
 ## License
-MIT (see repository) 
+MIT
