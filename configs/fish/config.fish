@@ -42,12 +42,17 @@ if status is-interactive
     function cursor
         command cursor $argv > /dev/null 2>&1 &
     end
+
+    function antigravity
+        command antigravity --new-window $argv > /dev/null 2>&1 &
+    end
     
     # ===================================
     # Aliases Section
     # ===================================
     # Development
-    alias dog="cursor"
+    alias dog="antigravity"
+    alias agy="antigravity"
     
 
     # File operations

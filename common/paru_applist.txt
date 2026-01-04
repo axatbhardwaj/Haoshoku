@@ -50,3 +50,4 @@ cursor-bin
 merkuro
 thorium-browser-avx2-bin
 session-desktop-bin
+antigravity-bin
