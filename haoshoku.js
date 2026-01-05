@@ -1,18 +1,19 @@
 #!/usr/bin/env bun
 import { Command } from "commander";
+import fs from "fs";
 import prompts from "prompts";
+import { showBanner, getBanner } from "./src/common/ui.js";
 import { log } from "./src/common/utils.js";
 import { runCachyOSSetup } from "./src/os_scripts/cachyos.js";
 import { runDebianServerSetup } from "./src/os_scripts/debian_server.js";
-
-import fs from "fs";
 
 const program = new Command();
 
 program
   .name("haoshoku")
   .description("Haoshoku: Color of the Supreme King. Dominate your setup.")
-  .version("2.3.0");
+  .version("2.3.0")
+  .addHelpText("before", getBanner());
 
 function detectOS() {
   try {
@@ -44,6 +45,7 @@ function detectOS() {
 program
   .option("--os <type>", "Specify the target OS (cachyos, debian-server)")
   .action(async (options) => {
+    showBanner();
     let osType = options.os;
 
     if (!osType) {
