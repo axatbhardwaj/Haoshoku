@@ -63,6 +63,29 @@ All configuration templates are stored in the `configs/` directory and are symli
 -   `configs/kitty/`: Kitty terminal config.
 -   `configs/starship.toml`: Cross-shell prompt theme.
 -   `configs/fastfetch/`: System information fetch tool config.
+-   `deskback/`: Assets and wallpapers.
+
+## Development
+
+### Testing
+
+Run the test suite using Bun's native test runner:
+
+```bash
+bun test
+```
+
+### Linting & Formatting
+
+This project uses [Biome](https://biomejs.dev/) for fast linting and formatting.
+
+```bash
+# Format code
+bun run format
+
+# Lint code
+bun run lint
+```
 
 ## For Developers
 

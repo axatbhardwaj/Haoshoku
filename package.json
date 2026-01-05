@@ -1,17 +1,26 @@
 {
-  "name": "haoshoku",
-  "version": "2.4.0",
-  "module": "haoshoku.js",
-  "type": "module",
-  "bin": {
-    "haoshoku": "haoshoku.js"
-  },
-  "scripts": {
-    "release": "bun scripts/release.js"
-  },
-  "dependencies": {
-    "chalk": "^5.6.2",
-    "commander": "^14.0.2",
-    "prompts": "^2.4.2"
-  }
+	"name": "haoshoku",
+	"version": "2.4.0",
+	"module": "haoshoku.js",
+	"type": "module",
+	"bin": {
+		"haoshoku": "haoshoku.js"
+	},
+	"scripts": {
+		"release": "bun scripts/release.js",
+		"test": "bun test",
+		"lint": "biome lint .",
+		"format": "biome format . --write"
+	},
+	"dependencies": {
+		"chalk": "^5.6.2",
+		"commander": "^14.0.2",
+		"figlet": "^1.9.4",
+		"gradient-string": "^3.0.0",
+		"ora": "^9.0.0",
+		"prompts": "^2.4.2"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.3.11"
+	}
 }
