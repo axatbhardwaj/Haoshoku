@@ -1,0 +1,32 @@
+import { describe, expect, it } from "bun:test";
+import fs from "fs";
+import path from "path";
+
+const PROJECT_ROOT = path.resolve(__dirname, "..");
+const COMMON_DIR = path.join(PROJECT_ROOT, "common");
+
+describe("Common Files", () => {
+	it("should have the common directory", () => {
+		expect(fs.existsSync(COMMON_DIR)).toBe(true);
+	});
+
+	const validFiles = ["paru_applist.txt", "flatpacks_arch.txt"];
+
+	validFiles.forEach((file) => {
+		it(`should contain ${file}`, () => {
+			const filePath = path.join(COMMON_DIR, file);
+			expect(fs.existsSync(filePath)).toBe(true);
+
+			const content = fs.readFileSync(filePath, "utf-8").trim();
+			expect(content.length).toBeGreaterThan(0);
+
+			const lines = content.split("\n");
+			lines.forEach((line, index) => {
+				if (line.trim() && !line.startsWith("#")) {
+					// Check no leading whitespace
+					expect(line.startsWith(" ")).toBe(false);
+				}
+			});
+		});
+	});
+});
