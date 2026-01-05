@@ -5,6 +5,16 @@ import prompts from "prompts";
 import { withSpinner } from "../common/ui.js";
 import { commandExists, log, runCommand } from "../common/utils.js";
 
+
+// URLs
+const RUSTUP_URL = "https://sh.rustup.rs";
+const PARU_AUR_URL = "https://aur.archlinux.org/paru.git";
+const UV_INSTALL_URL = "https://astral.sh/uv/install.sh";
+const FOUNDRY_INSTALL_URL = "https://foundry.paradigm.xyz";
+const UOSC_INSTALL_URL =
+	"https://raw.githubusercontent.com/tomasklaen/uosc/HEAD/installers/unix.sh";
+const CLAUDE_INSTALL_URL = "https://claude.ai/install.sh";
+
 // --- Constants ---
 const HOME = homedir();
 const CARGO_HOME = path.join(HOME, ".cargo");
@@ -16,6 +26,8 @@ const GHOSTTY_CONFIG_DIR = path.join(HOME, ".config", "ghostty");
 const FASTFETCH_CONFIG_DIR = path.join(HOME, ".config", "fastfetch");
 const KITTY_CONFIG_DIR = path.join(HOME, ".config", "kitty");
 const ALACRITTY_CONFIG_DIR = path.join(HOME, ".config", "alacritty");
+const CLAUDE_CONFIG_DIR = path.join(HOME, ".claude");
+const CLAUDE_JSON_PATH = path.join(HOME, ".claude.json");
 
 // Project paths (assuming running from project root)
 const PROJECT_ROOT = process.cwd();
@@ -39,14 +51,7 @@ const CUSTOM_ALACRITTY_CONFIG_PATH = path.join(
 	"alacritty",
 	"alacritty.toml",
 );
-
-// URLs
-const RUSTUP_URL = "https://sh.rustup.rs";
-const PARU_AUR_URL = "https://aur.archlinux.org/paru.git";
-const UV_INSTALL_URL = "https://astral.sh/uv/install.sh";
-const FOUNDRY_INSTALL_URL = "https://foundry.paradigm.xyz";
-const UOSC_INSTALL_URL =
-	"https://raw.githubusercontent.com/tomasklaen/uosc/HEAD/installers/unix.sh";
+const CUSTOM_CLAUDE_DIR = path.join(CONFIGS_DIR, "claude");
 
 // --- Helper Functions ---
 
@@ -367,6 +372,50 @@ async function installFlatpakApps() {
 	);
 }
 
+async function configureClaude() {
+	if (!(await commandExists("claude"))) {
+		log.info("Installing Claude Code...");
+		// Native installer
+		await withSpinner("Installing Claude Code", () =>
+			runCommand(`curl -fsSL ${CLAUDE_INSTALL_URL} | bash`),
+		);
+	} else {
+		log.info("Claude Code already installed.");
+	}
+
+	log.info("Configuring Claude Code...");
+
+	// ~/.claude.json
+	const customClaudeJson = path.join(CUSTOM_CLAUDE_DIR, "claude.json");
+	if (fs.existsSync(customClaudeJson)) {
+		fs.copyFileSync(customClaudeJson, CLAUDE_JSON_PATH);
+		log.info("Restored ~/.claude.json");
+	} else {
+		log.warning(`Custom Claude config not found at ${customClaudeJson}`);
+	}
+
+	// Ensure ~/.claude exists
+	fs.mkdirSync(CLAUDE_CONFIG_DIR, { recursive: true });
+
+	// ~/.claude/settings.json
+	const customSettingsJson = path.join(CUSTOM_CLAUDE_DIR, "settings.json");
+	if (fs.existsSync(customSettingsJson)) {
+		fs.copyFileSync(
+			customSettingsJson,
+			path.join(CLAUDE_CONFIG_DIR, "settings.json"),
+		);
+		log.info("Restored ~/.claude/settings.json");
+	}
+
+	// ~/.claude/CLAUDE.md
+	const customClaudeMd = path.join(CUSTOM_CLAUDE_DIR, "CLAUDE.md");
+	if (fs.existsSync(customClaudeMd)) {
+		fs.copyFileSync(customClaudeMd, path.join(CLAUDE_CONFIG_DIR, "CLAUDE.md"));
+		log.info("Restored ~/.claude/CLAUDE.md");
+	}
+}
+
+
 async function configureUserApps() {
 	await configureFishShell();
 
@@ -383,6 +432,7 @@ async function configureUserApps() {
 
 	await enableServices();
 	await configureFastfetch();
+	await configureClaude();
 }
 
 export async function runCachyOSSetup() {
