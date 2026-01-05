@@ -112,8 +112,15 @@ async function main() {
 		writeFileSync(packagePath, JSON.stringify(pkg, null, 2) + "\n");
 		log.success(`Updated package.json to v${newVersion}`);
 
+		// Update haoshoku.js
+		const cliPath = resolve(process.cwd(), "haoshoku.js");
+		let cliContent = readFileSync(cliPath, "utf-8");
+		cliContent = cliContent.replace(/\.version\(".*"\)/, `.version("${newVersion}")`);
+		writeFileSync(cliPath, cliContent);
+		log.success(`Updated haoshoku.js to v${newVersion}`);
+
 		// 5. Git operations
-		await runCommand("git", ["add", "package.json"]);
+		await runCommand("git", ["add", "package.json", "haoshoku.js"]);
 		await runCommand("git", ["commit", "-m", `chore: release v${newVersion}`]);
 		await runCommand("git", [
 			"tag",
