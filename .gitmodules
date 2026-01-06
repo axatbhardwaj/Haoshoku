@@ -1,0 +1,3 @@
+[submodule "configs/claude-config"]
+	path = configs/claude-config
+	url = https://github.com/axatbhardwaj/claude-config.git

@@ -52,8 +52,22 @@ const CUSTOM_ALACRITTY_CONFIG_PATH = path.join(
 	"alacritty.toml",
 );
 const CUSTOM_CLAUDE_DIR = path.join(CONFIGS_DIR, "claude");
+const CLAUDE_CONFIG_SUBMODULE = path.join(CONFIGS_DIR, "claude-config");
 
 // --- Helper Functions ---
+
+function copyDirSync(src, dest) {
+	fs.mkdirSync(dest, { recursive: true });
+	for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+		const srcPath = path.join(src, entry.name);
+		const destPath = path.join(dest, entry.name);
+		if (entry.isDirectory()) {
+			copyDirSync(srcPath, destPath);
+		} else {
+			fs.copyFileSync(srcPath, destPath);
+		}
+	}
+}
 
 async function promptUser(message, initial = false) {
 	const response = await prompts({
@@ -412,6 +426,17 @@ async function configureClaude() {
 	if (fs.existsSync(customClaudeMd)) {
 		fs.copyFileSync(customClaudeMd, path.join(CLAUDE_CONFIG_DIR, "CLAUDE.md"));
 		log.info("Restored ~/.claude/CLAUDE.md");
+	}
+
+	// Copy workflow directories from submodule
+	const workflowDirs = ["agents", "skills", "output-styles"];
+	for (const dir of workflowDirs) {
+		const srcDir = path.join(CLAUDE_CONFIG_SUBMODULE, dir);
+		const destDir = path.join(CLAUDE_CONFIG_DIR, dir);
+		if (fs.existsSync(srcDir)) {
+			copyDirSync(srcDir, destDir);
+			log.info(`Installed Claude ${dir}/`);
+		}
 	}
 }
 
