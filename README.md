@@ -12,7 +12,7 @@
 
 ## Quick Start
 
-### Option 1: Run directly with Bun (Recommended)
+### Option 1: Run with Bun (Recommended)
 ```bash
 # Clone the repo
 git clone https://github.com/axatbhardwaj/bankai.git
@@ -25,7 +25,7 @@ bun install
 bun haoshoku.js
 ```
 
-### Option 2: Install via npm
+### Option 2: Install via npm (Alternative)
 ```bash
 npm install -g haoshoku
 haoshoku
