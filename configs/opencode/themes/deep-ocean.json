@@ -1,0 +1,43 @@
+{
+  "$schema": "https://opencode.ai/theme.json",
+  "defs": {
+    "bg": "#0F111A",
+    "fg": "#8F93A2",
+    "black": "#546E7A",
+    "red": "#FF5370",
+    "green": "#C3E88D",
+    "yellow": "#FFCB6B",
+    "blue": "#82AAFF",
+    "magenta": "#C792EA",
+    "cyan": "#89DDFF",
+    "white": "#FFFFFF",
+    "orange": "#F78C6C",
+    "selection": "#1F2233",
+    "guide": "#3B4252"
+  },
+  "theme": {
+    "primary": { "dark": "green", "light": "green" },
+    "secondary": { "dark": "blue", "light": "blue" },
+    "accent": { "dark": "green", "light": "green" },
+    "background": { "dark": "none", "light": "none" },
+    "backgroundPanel": { "dark": "#1a1c25", "light": "#1a1c25" },
+    "backgroundElement": { "dark": "selection", "light": "selection" },
+    "text": { "dark": "fg", "light": "fg" },
+    "textMuted": { "dark": "black", "light": "black" },
+    "border": { "dark": "selection", "light": "selection" },
+    "borderActive": { "dark": "green", "light": "green" },
+    "error": { "dark": "red", "light": "red" },
+    "warning": { "dark": "yellow", "light": "yellow" },
+    "success": { "dark": "green", "light": "green" },
+    "info": { "dark": "blue", "light": "blue" },
+    "syntaxKeyword": { "dark": "magenta", "light": "magenta" },
+    "syntaxString": { "dark": "green", "light": "green" },
+    "syntaxFunction": { "dark": "blue", "light": "blue" },
+    "syntaxVariable": { "dark": "fg", "light": "fg" },
+    "syntaxComment": { "dark": "black", "light": "black" },
+    "syntaxType": { "dark": "yellow", "light": "yellow" },
+    "syntaxNumber": { "dark": "orange", "light": "orange" },
+    "syntaxOperator": { "dark": "cyan", "light": "cyan" },
+    "syntaxPunctuation": { "dark": "fg", "light": "fg" }
+  }
+}
