@@ -7,7 +7,7 @@ import { commandExists, log } from "../common/utils.js";
 const HOME = homedir();
 const AI_SKILLS_PATH = path.join(HOME, "personal", "ai-skills");
 const GEMINI_SKILLS_DIR = path.join(HOME, ".gemini", "skills");
-const OPENCODE_SKILLS_DIR = path.join(HOME, ".config", "opencode", "skill");
+const OPENCODE_SKILLS_DIR = path.join(HOME, ".config", "opencode", "skills");
 // Gemini CLI stores settings at ~/.gemini/settings.json
 const GEMINI_SETTINGS_PATH = path.join(HOME, ".gemini", "settings.json");
 
