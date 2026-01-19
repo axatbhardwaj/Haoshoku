@@ -31,6 +31,19 @@ npm install -g haoshoku
 haoshoku
 ```
 
+## CLI Usage
+
+Haoshoku provides command-line options for non-interactive use or specific tasks.
+
+```bash
+# Run for a specific OS (skips detection/prompt)
+haoshoku --os cachyos
+haoshoku --os debian-server
+
+# Sync Claude Code configuration only (without OS setup)
+haoshoku --claude
+```
+
 ## Features
 
 ### Supported Platforms
@@ -53,6 +66,8 @@ haoshoku
     -   Installs curated Flatpaks (Obsidian, Discord, Spotify).
     -   Optimizes KDE Plasma settings.
     -   Sets up gaming tools (Steam, Lutris) and media players (mpv).
+-   **AI Configuration**:
+    -   **Claude Code Sync**: Automatically syncs your Claude Code settings, including custom agents, tips, and permissions (`haoshoku --claude`).
 
 ## Configuration
 
