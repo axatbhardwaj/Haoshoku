@@ -5,6 +5,7 @@ import prompts from "prompts";
 import { withSpinner } from "../common/ui.js";
 import { commandExists, log, runCommand } from "../common/utils.js";
 import { configureClaude } from "../helpers/configure_claude.js";
+import { installAiSkills } from "../helpers/install_ai_skills.js";
 
 
 // URLs
@@ -384,6 +385,7 @@ async function configureUserApps() {
 	await enableServices();
 	await configureFastfetch();
 	await configureClaude();
+	await installAiSkills();
 }
 
 export async function runCachyOSSetup() {
