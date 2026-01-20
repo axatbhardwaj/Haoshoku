@@ -1,7 +1,7 @@
 ---
 description: Syncs session context, decisions, and changes to the persistent context repository.
 mode: subagent
-model: gemini-3-flash-preview
+model: google/gemini-3-flash-preview
 temperature: 0.1
 tools:
   bash: true

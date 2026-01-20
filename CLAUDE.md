@@ -20,7 +20,7 @@ Multi-distro Linux setup and configuration toolkit (JavaScript/Bun).
 | Directory  | What                              | When to read                                    |
 | ---------- | --------------------------------- | ----------------------------------------------- |
 | `src/`     | Core source code                  | Modifying setup logic, adding features          |
-| `configs/` | Template configs for deployment   | Adding/modifying terminal or app configs        |
+| `configs/` | Template configs for deployment   | Adding/modifying terminal, app, or AI configs   |
 | `common/`  | Package lists for OS setup        | Adding/removing packages to install             |
 | `tests/`   | Test suite                        | Writing tests, debugging test failures          |
 | `scripts/` | Build and release scripts         | Modifying release process                       |
