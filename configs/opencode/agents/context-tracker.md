@@ -28,10 +28,10 @@ You will receive a task description containing:
    }
    ```
    
-2. **Execute:** Run `python3 ~/personal/claude-context-tracker/hooks/opencode_sync.py` piping the JSON to stdin.
+2. **Execute:** Run `python3 ~/personal/context-tracker/hooks/opencode_sync.py` piping the JSON to stdin.
 
 ## Script Location
-The sync script is located at: `~/personal/claude-context-tracker/hooks/opencode_sync.py`
+The sync script is located at: `~/personal/context-tracker/hooks/opencode_sync.py`
 
 ## Example Usage
 If the user says: "Sync: Added login feature", you:
