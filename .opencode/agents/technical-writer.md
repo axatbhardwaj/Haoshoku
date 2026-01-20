@@ -1,6 +1,7 @@
 ---
 description: Creates documentation optimized for LLM consumption - use after feature completion
 mode: subagent
+model: gemini-3-flash-preview
 temperature: 0.2
 tools:
   write: true

@@ -1,6 +1,7 @@
 ---
 description: Implements your specs with tests - delegate for writing code
 mode: subagent
+model: gemini-3-flash-preview
 temperature: 0.2
 tools:
   write: true
