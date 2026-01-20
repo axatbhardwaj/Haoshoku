@@ -1,5 +1,4 @@
-import { describe, expect, it, mock } from "bun:test";
-import { spawn } from "bun";
+import { describe, expect, it } from "bun:test";
 import { commandExists, runCommand } from "../src/common/utils.js";
 
 describe("Utils", () => {

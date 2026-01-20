@@ -1,8 +1,8 @@
-import fs from "fs";
-import { homedir } from "os";
-import path from "path";
+import fs from "node:fs";
+import { homedir } from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import prompts from "prompts";
-import { fileURLToPath } from "url";
 import { withSpinner } from "../common/ui.js";
 import { commandExists, log, runCommand } from "../common/utils.js";
 

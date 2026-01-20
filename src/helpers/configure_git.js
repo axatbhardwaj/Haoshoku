@@ -1,6 +1,6 @@
-import fs from "fs";
-import { homedir } from "os";
-import path from "path";
+import fs from "node:fs";
+import { homedir } from "node:os";
+import path from "node:path";
 import prompts from "prompts";
 import { log, runCommand } from "../common/utils";
 
@@ -97,7 +97,7 @@ export async function configureGit() {
 		if (pidMatch) {
 			process.env.SSH_AGENT_PID = pidMatch[1];
 		}
-	} catch (e) {
+	} catch (_e) {
 		log.warning("Could not start ssh-agent.");
 	}
 

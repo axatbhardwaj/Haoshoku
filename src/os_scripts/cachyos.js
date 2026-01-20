@@ -1,11 +1,10 @@
-import fs from "fs";
-import { homedir } from "os";
-import path from "path";
+import fs from "node:fs";
+import { homedir } from "node:os";
+import path from "node:path";
 import prompts from "prompts";
 import { withSpinner } from "../common/ui.js";
 import { commandExists, log, runCommand } from "../common/utils.js";
 import { configureClaude } from "../helpers/configure_claude.js";
-
 
 // URLs
 const RUSTUP_URL = "https://sh.rustup.rs";
@@ -17,7 +16,7 @@ const UOSC_INSTALL_URL =
 
 // --- Constants ---
 const HOME = homedir();
-const CARGO_HOME = path.join(HOME, ".cargo");
+const _CARGO_HOME = path.join(HOME, ".cargo");
 const PARU_BUILD_DIR = "/tmp/paru";
 const STARSHIP_CONFIG_PATH = path.join(HOME, ".config", "starship.toml");
 const FISH_CONFIG_DIR = path.join(HOME, ".config", "fish");
@@ -31,7 +30,7 @@ const PROJECT_ROOT = process.cwd();
 const COMMON_DIR = path.join(PROJECT_ROOT, "common");
 const CONFIGS_DIR = path.join(PROJECT_ROOT, "configs");
 
-const PARU_APPLIST_PATH = path.join(COMMON_DIR, "paru_applist.txt");
+const _PARU_APPLIST_PATH = path.join(COMMON_DIR, "paru_applist.txt");
 const FLATPAK_APPLIST_PATH = path.join(COMMON_DIR, "flatpacks_arch.txt");
 const KDE_SHORTCUTS_PATH = path.join(CONFIGS_DIR, "kde_shortcuts.kksrc");
 const CUSTOM_FISH_CONFIG_PATH = path.join(CONFIGS_DIR, "fish", "config.fish");
@@ -296,7 +295,7 @@ async function configureKde() {
 				"kglobalshortcutsrc",
 			);
 			if (fs.existsSync(kglobalshortcutsrc)) {
-				fs.copyFileSync(kglobalshortcutsrc, kglobalshortcutsrc + ".bak");
+				fs.copyFileSync(kglobalshortcutsrc, `${kglobalshortcutsrc}.bak`);
 				log.info(`Backed up existing shortcuts to ${kglobalshortcutsrc}.bak`);
 			}
 			fs.copyFileSync(KDE_SHORTCUTS_PATH, kglobalshortcutsrc);

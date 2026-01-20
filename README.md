@@ -43,7 +43,7 @@ haoshoku --os debian-server
 # Sync Claude Code configuration only (without OS setup)
 haoshoku --claude
 
-# Sync OpenCode configuration only (without OS setup)
+# Install OpenAgents Control (Advanced Profile)
 haoshoku --opencode
 ```
 
@@ -71,7 +71,7 @@ haoshoku --opencode
     -   Sets up gaming tools (Steam, Lutris) and media players (mpv).
 -   **AI Configuration**:
     -   **Claude Code Sync**: Automatically syncs your Claude Code settings, including custom agents, tips, and permissions (`haoshoku --claude`).
-    -   **OpenCode Sync**: Syncs OpenCode global rules (`AGENTS.md`) and custom agents (`haoshoku --opencode`).
+    -   **OpenAgents Control**: Installs the full OpenAgents Control framework (Advanced profile) for AI agent workflows (`haoshoku --opencode`).
 
 ## Configuration
 

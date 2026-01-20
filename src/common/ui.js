@@ -8,17 +8,19 @@ import ora from "ora";
  * @returns {string} The colored banner string.
  */
 export function getBanner() {
-  const art = figlet.textSync("HAOSHOKU", { horizontalLayout: "full" });
-  const banner = gradient.pastel.multiline(art) + "\n" + 
-                 chalk.dim("  Haoshoku: Color of the Supreme King. Dominate your setup.\n");
-  return banner;
+	const art = figlet.textSync("HAOSHOKU", { horizontalLayout: "full" });
+	const banner =
+		gradient.pastel.multiline(art) +
+		"\n" +
+		chalk.dim("  Haoshoku: Color of the Supreme King. Dominate your setup.\n");
+	return banner;
 }
 
 /**
  * Displays the application banner.
  */
 export function showBanner() {
-  console.log(getBanner());
+	console.log(getBanner());
 }
 
 /**

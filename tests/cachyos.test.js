@@ -1,7 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
-import fs from "fs";
-import path from "path";
-import { runCachyOSSetup } from "../src/os_scripts/cachyos.js";
+import { describe, expect, it } from "bun:test";
+import fs from "node:fs";
+import path from "node:path";
 
 // We can't easily mock the entire module imports in Bun test yet for integration tests without dependency injection.
 // However, we can create a focused test that verifies file operations if we extract the logic or mock fs methods.
@@ -12,7 +11,7 @@ const CONFIGS_DIR = path.join(path.resolve(__dirname, ".."), "configs");
 
 describe("KDE Configuration Assets", () => {
 	it("should have kde_shortcuts.kksrc", () => {
-		const shortcutsPath = path.join(CONFIGS_DIR, "kde_shortcuts.kksrc");
+		const _shortcutsPath = path.join(CONFIGS_DIR, "kde_shortcuts.kksrc");
 		// It's okay if this file doesn't exist yet if it wasn't committed, but if the logic depends on it, we need to know.
 		// Based on cachyos.js: const KDE_SHORTCUTS_PATH = path.join(CONFIGS_DIR, "kde_shortcuts.kksrc");
 		// We should check if the directory structure supports it.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import fs from "fs";
-import path from "path";
+import fs from "node:fs";
+import path from "node:path";
 
 const PROJECT_ROOT = path.resolve(__dirname, "..");
 const COMMON_DIR = path.join(PROJECT_ROOT, "common");
@@ -21,7 +21,7 @@ describe("Common Files", () => {
 			expect(content.length).toBeGreaterThan(0);
 
 			const lines = content.split("\n");
-			lines.forEach((line, index) => {
+			lines.forEach((line, _index) => {
 				if (line.trim() && !line.startsWith("#")) {
 					// Check no leading whitespace
 					expect(line.startsWith(" ")).toBe(false);

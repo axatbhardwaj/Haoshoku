@@ -1,7 +1,7 @@
+import { readFileSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { spawn } from "bun";
 import chalk from "chalk";
-import { readFileSync, writeFileSync } from "fs";
-import { resolve } from "path";
 import prompts from "prompts";
 
 const log = {
@@ -109,13 +109,16 @@ async function main() {
 	try {
 		// 4. Update package.json
 		pkg.version = newVersion;
-		writeFileSync(packagePath, JSON.stringify(pkg, null, 2) + "\n");
+		writeFileSync(packagePath, `${JSON.stringify(pkg, null, 2)}\n`);
 		log.success(`Updated package.json to v${newVersion}`);
 
 		// Update haoshoku.js
 		const cliPath = resolve(process.cwd(), "haoshoku.js");
 		let cliContent = readFileSync(cliPath, "utf-8");
-		cliContent = cliContent.replace(/\.version\(".*"\)/, `.version("${newVersion}")`);
+		cliContent = cliContent.replace(
+			/\.version\(".*"\)/,
+			`.version("${newVersion}")`,
+		);
 		writeFileSync(cliPath, cliContent);
 		log.success(`Updated haoshoku.js to v${newVersion}`);
 
