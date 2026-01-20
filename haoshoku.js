@@ -7,6 +7,7 @@ import { log } from "./src/common/utils.js";
 import { runCachyOSSetup } from "./src/os_scripts/cachyos.js";
 import { runDebianServerSetup } from "./src/os_scripts/debian_server.js";
 import { syncClaudeConfig } from "./src/helpers/configure_claude.js";
+import { syncOpencodeConfig } from "./src/helpers/configure_opencode.js";
 
 const program = new Command();
 
@@ -46,11 +47,17 @@ function detectOS() {
 program
   .option("--os <type>", "Specify the target OS (cachyos, debian-server)")
   .option("--claude", "Sync Claude Code config only")
+  .option("--opencode", "Sync OpenCode config only")
   .action(async (options) => {
     showBanner();
 
     if (options.claude) {
       await syncClaudeConfig();
+      return;
+    }
+
+    if (options.opencode) {
+      await syncOpencodeConfig();
       return;
     }
 
