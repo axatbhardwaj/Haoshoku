@@ -21,3 +21,4 @@ Template configuration files copied to user's `~/.config/` during setup.
 | `vencord/`      | Vencord Discord theme               | Modifying Discord appearance              |
 | `claude/`       | Claude Code settings                | Modifying Claude Code config              |
 | `claude-config/`| Claude config submodule (external)  | Working with Claude skills/agents         |
+| `opencode/`     | OpenCode config & themes            | Modifying OpenCode themes                 |
