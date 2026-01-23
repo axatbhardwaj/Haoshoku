@@ -2,20 +2,10 @@ import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import prompts from "prompts";
-import { log, runCommand } from "../common/utils";
+import { log, promptUser, runCommand } from "../common/utils.js";
 
 const HOME = homedir();
 const SSH_DIR = path.join(HOME, ".ssh");
-
-async function promptUser(message, initial = false) {
-	const response = await prompts({
-		type: "confirm",
-		name: "value",
-		message: message,
-		initial: initial,
-	});
-	return response.value;
-}
 
 async function createProfile(profileType) {
 	log.info(`--- Setting up ${profileType} Git profile ---`);

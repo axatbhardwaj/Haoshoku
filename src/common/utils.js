@@ -48,3 +48,15 @@ export async function commandExists(command) {
 	const exitCode = await proc.exited;
 	return exitCode === 0;
 }
+
+/** Prompt user for yes/no confirmation. */
+export async function promptUser(message, initial = false) {
+	const { default: prompts } = await import("prompts");
+	const response = await prompts({
+		type: "confirm",
+		name: "value",
+		message: message,
+		initial: initial,
+	});
+	return response.value;
+}

@@ -1,9 +1,8 @@
 import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
-import prompts from "prompts";
 import { withSpinner } from "../common/ui.js";
-import { commandExists, log, runCommand } from "../common/utils.js";
+import { commandExists, log, promptUser, runCommand } from "../common/utils.js";
 import { configureClaude } from "../helpers/configure_claude.js";
 
 // URLs
@@ -48,16 +47,6 @@ const CUSTOM_ALACRITTY_CONFIG_PATH = path.join(
 );
 
 // --- Helper Functions ---
-
-async function promptUser(message, initial = false) {
-	const response = await prompts({
-		type: "confirm",
-		name: "value",
-		message: message,
-		initial: initial,
-	});
-	return response.value;
-}
 
 async function refreshSudo() {
 	log.info("Checking sudo access. You may be prompted for your password.");
