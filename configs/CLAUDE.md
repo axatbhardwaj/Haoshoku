@@ -19,6 +19,5 @@ Template configuration files copied to user's `~/.config/` during setup.
 | `ghostty/`      | Ghostty terminal config             | Modifying Ghostty settings                |
 | `kitty/`        | Kitty terminal config               | Modifying Kitty settings                  |
 | `vencord/`      | Vencord Discord theme               | Modifying Discord appearance              |
-| `claude/`       | Claude Code settings                | Modifying Claude Code config              |
-| `claude-config/`| Claude config submodule (external)  | Working with Claude skills/agents         |
-| `opencode/`     | OpenCode config & themes            | Modifying OpenCode themes                 |
+| `claude/`       | Claude Code personal config (copied)    | Modifying settings, backup/restore        |
+| `claude-config/`| Claude skills/agents submodule (symlinked) | Updating skills, understanding workflow |
