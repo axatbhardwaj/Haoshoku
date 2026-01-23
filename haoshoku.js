@@ -4,8 +4,11 @@ import { Command } from "commander";
 import prompts from "prompts";
 import { getBanner, showBanner } from "./src/common/ui.js";
 import { log } from "./src/common/utils.js";
-import { syncClaudeConfig } from "./src/helpers/configure_claude.js";
-import { installOpenAgents } from "./src/helpers/install_openagents.js";
+import {
+	backupClaudeConfig,
+	syncClaudeConfig,
+	updateClaudeSubmodule,
+} from "./src/helpers/configure_claude.js";
 import { runCachyOSSetup } from "./src/os_scripts/cachyos.js";
 import { runDebianServerSetup } from "./src/os_scripts/debian_server.js";
 
@@ -46,18 +49,25 @@ function detectOS() {
 
 program
 	.option("--os <type>", "Specify the target OS (cachyos, debian-server)")
-	.option("--claude", "Sync Claude Code config only")
-	.option("--opencode", "Install OpenAgents Control (Advanced Profile)")
+	.option("--claude", "Sync Claude Code config (symlinks submodule, copies personal)")
+	.option("--claude-backup", "Backup personal Claude config to configs/claude/")
+	.option("--claude-update", "Update submodule and sync Claude config")
 	.action(async (options) => {
 		showBanner();
 
-		if (options.claude) {
+		if (options.claudeUpdate) {
+			await updateClaudeSubmodule();
 			await syncClaudeConfig();
 			return;
 		}
 
-		if (options.opencode) {
-			await installOpenAgents();
+		if (options.claudeBackup) {
+			await backupClaudeConfig();
+			return;
+		}
+
+		if (options.claude) {
+			await syncClaudeConfig();
 			return;
 		}
 
