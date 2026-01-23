@@ -15,8 +15,8 @@
 ### Option 1: Run with Bun (Recommended)
 ```bash
 # Clone the repo
-git clone https://github.com/axatbhardwaj/bankai.git
-cd bankai
+git clone https://github.com/axatbhardwaj/haoshoku.git
+cd haoshoku
 
 # Install dependencies
 bun install
@@ -40,11 +40,14 @@ Haoshoku provides command-line options for non-interactive use or specific tasks
 haoshoku --os cachyos
 haoshoku --os debian-server
 
-# Sync Claude Code configuration only (without OS setup)
+# Sync Claude Code config (symlinks submodule, copies personal)
 haoshoku --claude
 
-# Install OpenAgents Control (Advanced Profile)
-haoshoku --opencode
+# Backup personal Claude config to configs/claude/
+haoshoku --claude-backup
+
+# Update submodule and sync Claude config
+haoshoku --claude-update
 ```
 
 ## Features
@@ -70,8 +73,9 @@ haoshoku --opencode
     -   Optimizes KDE Plasma settings.
     -   Sets up gaming tools (Steam, Lutris) and media players (mpv).
 -   **AI Configuration**:
-    -   **Claude Code Sync**: Automatically syncs your Claude Code settings, including custom agents, tips, and permissions (`haoshoku --claude`).
-    -   **OpenAgents Control**: Installs the full OpenAgents Control framework (Advanced profile) for AI agent workflows (`haoshoku --opencode`).
+    -   **Claude Code Sync**: Symlinks skills/agents from submodule, copies personal config (`haoshoku --claude`).
+    -   **Claude Backup**: Backs up personal config to `configs/claude/` (`haoshoku --claude-backup`).
+    -   **Claude Update**: Updates submodule and syncs (`haoshoku --claude-update`).
 
 ## Configuration
 
