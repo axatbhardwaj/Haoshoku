@@ -46,26 +46,30 @@ if status is-interactive
     function antigravity
         command antigravity --new-window $argv > /dev/null 2>&1 &
     end
-    
+
     # ===================================
     # Aliases Section
     # ===================================
     # Development
-    alias dog="antigravity"
+    alias dog="zeditor"
     alias agy="antigravity"
-    
+
 
     # File operations
     alias lss="ls -a -h"
     alias rmf="rm -r -f -v"
-    
+
     # System commands
     alias ps="ps auxfh"
     alias tf="fuck"
-    
+
     # Commands to run in interactive sessions can go here
 end
 
 set -gx CRYPTOGRAPHY_OPENSSL_NO_LEGACY 1
 # Added by LM Studio CLI (lms)
 set -gx PATH $PATH /home/xzat/.lmstudio/bin
+set -gx PATH $PATH /home/xzat/go/bin
+
+# Generated for envman. Do not edit.
+test -s ~/.config/envman/load.fish; and source ~/.config/envman/load.fish
