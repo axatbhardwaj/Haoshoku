@@ -2,9 +2,8 @@ import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import prompts from "prompts";
 import { withSpinner } from "../common/ui.js";
-import { commandExists, log, runCommand } from "../common/utils.js";
+import { commandExists, log, promptUser, runCommand } from "../common/utils.js";
 
 // --- Constants ---
 const HOME = homedir();
@@ -19,16 +18,6 @@ const CONFIGS_DIR = path.join(PROJECT_ROOT, "configs");
 const CUSTOM_FISH_CONFIG_PATH = path.join(CONFIGS_DIR, "fish", "config.fish");
 
 // --- Helper Functions ---
-
-async function promptUser(message, initial = false) {
-	const response = await prompts({
-		type: "confirm",
-		name: "value",
-		message: message,
-		initial: initial,
-	});
-	return response.value;
-}
 
 async function installEssentials() {
 	log.info("Updating system and installing essentials...");
@@ -171,12 +160,33 @@ async function setupFirewall() {
 	}
 }
 
+async function configureFail2ban() {
+	log.info("Configuring Fail2ban for SSH protection...");
+
+	const jailLocal = `[sshd]
+enabled = true
+port = ssh
+filter = sshd
+logpath = /var/log/auth.log
+maxretry = 5
+bantime = 3600
+findtime = 600
+`;
+
+	fs.writeFileSync("/tmp/jail.local", jailLocal);
+	await runCommand("sudo mv /tmp/jail.local /etc/fail2ban/jail.local");
+	await runCommand("sudo systemctl enable fail2ban");
+	await runCommand("sudo systemctl restart fail2ban");
+	log.success("Fail2ban configured for SSH protection.");
+}
+
 export async function runDebianServerSetup() {
 	await installEssentials();
 	await setupSsh();
 	await configureFishShell();
 	await installDocker();
 	await setupFirewall();
+	await configureFail2ban();
 
 	log.success("Debian Server setup finished.");
 }
