@@ -9,7 +9,7 @@
 				"hooks": [
 					{
 						"type": "command",
-						"command": "CLAUDE_PLUGIN_ROOT=/home/xzat/personal/claude-context-tracker python3 /home/xzat/personal/claude-context-tracker/hooks/stop.py",
+						"command": "CLAUDE_PLUGIN_ROOT=/home/xzat/personal/context-tracker python3 /home/xzat/personal/context-tracker/hooks/stop.py",
 						"timeout": 180
 					}
 				]
