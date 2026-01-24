@@ -36,6 +36,7 @@ syncplay
 mpv-uosc
 mission-center
 ghostty
+zed
 starship
 httpie
 thefuck
