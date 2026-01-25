@@ -1,0 +1,48 @@
+{
+  "outline_panel": {
+    "dock": "right"
+  },
+  "git_panel": {
+    "dock": "right"
+  },
+  "autosave": "on_focus_change",
+  "agent_servers": {
+    "opencode": {
+      "default_model": "google/antigravity-claude-opus-4-5-thinking",
+      "default_mode": "OpenAgent",
+      "type": "extension",
+      "favorite_models": [
+        "google/antigravity-gemini-3-pro",
+        "google/antigravity-claude-sonnet-4-5-thinking",
+        "google/antigravity-claude-sonnet-4-5",
+        "google/gemini-3-flash-preview",
+        "google/antigravity-claude-opus-4-5-thinking",
+        "google/antigravity-gemini-3-flash"
+      ],
+      "default_config_options": {},
+      "favorite_config_option_values": {}
+    }
+  },
+  "icon_theme": "Material Icon Theme",
+  "project_panel": {
+    "dock": "right"
+  },
+  "agent": {
+    "dock": "left",
+    "default_profile": "ask",
+    "default_model": {
+      "provider": "google",
+      "model": "gemini-3-flash-preview"
+    },
+    "play_sound_when_agent_done": true,
+    "always_allow_tool_actions": true,
+    "model_parameters": []
+  },
+  "ui_font_size": 16,
+  "buffer_font_size": 15,
+  "theme": {
+    "mode": "system",
+    "light": "One Light",
+    "dark": "Deep Ocean"
+  }
+}
