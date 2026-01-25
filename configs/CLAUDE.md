@@ -21,3 +21,4 @@ Template configuration files copied to user's `~/.config/` during setup.
 | `vencord/`      | Vencord Discord theme               | Modifying Discord appearance              |
 | `claude/`       | Claude Code personal config (copied)    | Modifying settings, backup/restore        |
 | `claude-config/`| Claude skills/agents submodule (symlinked) | Updating skills, understanding workflow |
+| `zed/`          | Zed editor config (sanitized backup)    | Modifying Zed settings, themes            |
