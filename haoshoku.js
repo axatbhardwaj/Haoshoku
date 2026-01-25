@@ -9,6 +9,7 @@ import {
 	syncClaudeConfig,
 	updateClaudeSubmodule,
 } from "./src/helpers/configure_claude.js";
+import { backupZedConfig, syncZedConfig } from "./src/helpers/configure_zed.js";
 import { runCachyOSSetup } from "./src/os_scripts/cachyos.js";
 import { runDebianServerSetup } from "./src/os_scripts/debian_server.js";
 
@@ -52,6 +53,8 @@ program
 	.option("--claude", "Sync Claude Code config (symlinks submodule, copies personal)")
 	.option("--claude-backup", "Backup personal Claude config to configs/claude/")
 	.option("--claude-update", "Update submodule and sync Claude config")
+	.option("--zed", "Sync Zed config from configs/zed/ to ~/.config/zed/")
+	.option("--zed-backup", "Backup Zed config to configs/zed/ (sanitizes sensitive data)")
 	.action(async (options) => {
 		showBanner();
 
@@ -68,6 +71,16 @@ program
 
 		if (options.claude) {
 			await syncClaudeConfig();
+			return;
+		}
+
+		if (options.zedBackup) {
+			await backupZedConfig();
+			return;
+		}
+
+		if (options.zed) {
+			await syncZedConfig();
 			return;
 		}
 
