@@ -16,16 +16,16 @@ Multi-distro Linux setup and configuration toolkit (JavaScript/Bun).
 
 ## Subdirectories
 
-| Directory  | What                              | When to read                                    |
-| ---------- | --------------------------------- | ----------------------------------------------- |
-| `src/`     | Core source code                  | Modifying setup logic, adding features          |
-| `configs/` | Template configs for deployment   | Adding/modifying terminal, app, or AI configs   |
-| `common/`  | Package lists for OS setup        | Adding/removing packages to install             |
-| `tests/`   | Test suite                        | Writing tests, debugging test failures          |
-| `scripts/` | Build and release scripts         | Modifying release process                       |
-| `docs/`    | Additional documentation          | Understanding project details                   |
-| `deskback/`| Wallpaper assets                  | Adding wallpapers                               |
-| `icons/`   | Icon assets                       | Adding icons                                    |
+| Directory   | What                              | When to read                                    |
+| ----------- | --------------------------------- | ----------------------------------------------- |
+| `src/`      | Core source code                  | Modifying setup logic, adding features          |
+| `configs/`  | Template configs for deployment   | Adding/modifying terminal, app, or AI configs   |
+| `common/`   | Package lists for OS setup        | Adding/removing packages to install             |
+| `tests/`    | Test suite                        | Writing tests, debugging test failures          |
+| `scripts/`  | Build and release scripts         | Modifying release process                       |
+| `docs/`     | Additional documentation          | Understanding project details                   |
+| `deskback/` | Wallpaper assets                  | Adding wallpapers                               |
+| `icons/`    | Icon assets                       | Adding icons                                    |
 
 ## Install
 

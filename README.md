@@ -48,6 +48,15 @@ haoshoku --claude-backup
 
 # Update submodule and sync Claude config
 haoshoku --claude-update
+
+# Sync skills from configured sources
+haoshoku --skills
+
+# Update cached skill sources to latest
+haoshoku --skills-update
+
+# List available skills from all sources
+haoshoku --skills-list
 ```
 
 ## Features
@@ -76,6 +85,36 @@ haoshoku --claude-update
     -   **Claude Code Sync**: Symlinks skills/agents from submodule, copies personal config (`haoshoku --claude`).
     -   **Claude Backup**: Backs up personal config to `configs/claude/` (`haoshoku --claude-backup`).
     -   **Claude Update**: Updates submodule and syncs (`haoshoku --claude-update`).
+    -   **Skill Management**: Runtime cloning of Claude skills from git sources with user priority over community skills.
+
+## Skill Management
+
+Haoshoku manages Claude Code skills via runtime git cloning to enable global npm installations (submodules aren't shipped in packages).
+
+**Configuration**: Edit `~/.haoshoku.json` to add custom skill sources.
+
+```json
+{
+  "skillSources": [
+    "https://github.com/solatis/claude-config.git",
+    "https://github.com/username/custom-skills.git"
+  ]
+}
+```
+
+**Priority Rules**: User sources take precedence over community sources. If multiple sources provide the same skill name, the first source in the array wins.
+
+**Cache Location**: Skills are cloned to `~/.cache/haoshoku/` (or `$XDG_CACHE_HOME/haoshoku/`) and symlinked to `~/.claude/skills/`.
+
+**Usage**:
+- `--skills`: Clone/sync all configured sources
+- `--skills-update`: Pull latest changes from cached sources
+- `--skills-list`: Display available skills by source
+
+**Tradeoffs**:
+- **Git dependency**: Requires git installed on system (standard for developer environments)
+- **Network requirement**: Skills unavailable until first sync (offline operation supported after initial clone)
+- **Separate config file**: `~/.haoshoku.json` adds another config to manage (avoids coupling with Claude config structure)
 
 ## Configuration
 
