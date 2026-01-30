@@ -19,8 +19,8 @@ describe("KDE Configuration Assets", () => {
 	});
 });
 
-// To properly test the "backup and copy" logic from test_kde_config.py,
-// we would ideally unit test a 'backupAndCopy' utility function.
+// Test backup and copy logic for KDE config.
+// We would ideally unit test a 'backupAndCopy' utility function.
 // Since the logic is embedded in cachyos.js, we'll recreate the test logic in a new utility test
 // if we were to extract it. For now, ensuring the integrity of the project structure is the best proxy
 // without major refactoring.
