@@ -153,6 +153,17 @@ program
 				log.error(`Unsupported OS: ${osType}`);
 				process.exit(1);
 		}
+
+		const syncResponse = await prompts({
+			type: "confirm",
+			name: "syncSkills",
+			message: "Sync Claude Code skills from configured sources?",
+			initial: true,
+		});
+
+		if (syncResponse.syncSkills) {
+			syncSkills({ update: false });
+		}
 	});
 
 program.parse(process.argv);
