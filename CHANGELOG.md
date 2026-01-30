@@ -1,5 +1,27 @@
 # Changelog
 
+## 2.13.0 - 2026-01-30
+- Add runtime skill manager for Claude skills.
+- Add CLI commands for skill management (`--skills`, `--skills-update`).
+- Add skill management documentation.
+- Prompt to sync skills after OS setup.
+- Track shared skill resources independently.
+- Remove skills from submodule symlinks (use runtime git clone).
+
+## 2.12.1 - 2026-01-28
+- Improve Zed theme readability for context menus.
+
+## 2.12.0 - 2026-01-27
+- Add Zed Deep Ocean theme.
+- Add Zed theme configuration to CachyOS setup.
+- Add Zed to package list.
+
+## 2.11.1 - 2026-01-26
+- Sync fish config (add go/bin path, envman, zeditor alias).
+
+## 2.11.0 - 2026-01-25
+- Backup personal Claude config.
+
 ## 2.10.0 - 2026-01-23
 - Remove OpenCode support (deprecated in favor of Claude Code).
 - Add hybrid Claude config sync (symlink submodule dirs, copy personal files).
