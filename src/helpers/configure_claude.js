@@ -14,7 +14,8 @@ const CLAUDE_CONFIG_SUBMODULE = path.join(CONFIGS_DIR, "claude-config");
 
 const CLAUDE_INSTALL_URL = "https://claude.ai/install.sh";
 
-const SUBMODULE_DIRS = ["agents", "skills", "output-styles", "conventions"];
+// Skills handled by skill_manager.js via runtime git clone
+const SUBMODULE_DIRS = ["agents", "output-styles", "conventions"];
 const PERSONAL_FILES = [
 	{ src: "claude.json", dest: CLAUDE_JSON_PATH },
 	{ src: "settings.json", dest: path.join(CLAUDE_CONFIG_DIR, "settings.json") },
