@@ -4,9 +4,13 @@
 
 The Claude configuration uses a hybrid sync pattern:
 
-**Symlinked (from submodule):** `agents/`, `skills/`, `output-styles/`, `conventions/`
+**Symlinked (from submodule):** `agents/`, `output-styles/`, `conventions/`
 - Source: `configs/claude-config/` (external repo)
 - Updates propagate automatically after `git submodule update --remote`
+
+**Symlinked (from skill cache):** `skills/`
+- Source: `~/.cache/haoshoku/` (runtime git clones)
+- Handled by skill_manager.js, supports npm global install
 
 **Copied (personal config):** `claude.json`, `settings.json`, `CLAUDE.md`
 - Source: `configs/claude/`

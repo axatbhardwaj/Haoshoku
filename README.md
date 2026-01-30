@@ -82,10 +82,10 @@ haoshoku --skills-list
     -   Optimizes KDE Plasma settings.
     -   Sets up gaming tools (Steam, Lutris) and media players (mpv).
 -   **AI Configuration**:
-    -   **Claude Code Sync**: Symlinks skills/agents from submodule, copies personal config (`haoshoku --claude`).
+    -   **Claude Code Sync**: Symlinks agents/conventions from submodule, copies personal config (`haoshoku --claude`).
     -   **Claude Backup**: Backs up personal config to `configs/claude/` (`haoshoku --claude-backup`).
     -   **Claude Update**: Updates submodule and syncs (`haoshoku --claude-update`).
-    -   **Skill Management**: Runtime cloning of Claude skills from git sources with user priority over community skills.
+    -   **Skill Management**: Runtime git cloning of Claude skills with user priority over community skills.
 
 ## Skill Management
 
