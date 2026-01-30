@@ -1,5 +1,7 @@
 #!/usr/bin/env bun
 import fs from "node:fs";
+import path from "node:path";
+
 import { Command } from "commander";
 import prompts from "prompts";
 import { getBanner, showBanner } from "./src/common/ui.js";
@@ -10,6 +12,11 @@ import {
 	updateClaudeSubmodule,
 } from "./src/helpers/configure_claude.js";
 import { backupZedConfig, syncZedConfig } from "./src/helpers/configure_zed.js";
+import {
+	syncSkills,
+	printAvailableSkills,
+	CACHE_DIR,
+} from "./src/helpers/skill_manager.js";
 import { runCachyOSSetup } from "./src/os_scripts/cachyos.js";
 import { runDebianServerSetup } from "./src/os_scripts/debian_server.js";
 
@@ -53,6 +60,9 @@ program
 	.option("--claude", "Sync Claude Code config (symlinks submodule, copies personal)")
 	.option("--claude-backup", "Backup personal Claude config to configs/claude/")
 	.option("--claude-update", "Update submodule and sync Claude config")
+	.option("--skills", "Sync skills from configured sources")
+	.option("--skills-update", "Update cached skill sources")
+	.option("--skills-list", "List available skills")
 	.option("--zed", "Sync Zed config from configs/zed/ to ~/.config/zed/")
 	.option("--zed-backup", "Backup Zed config to configs/zed/ (sanitizes sensitive data)")
 	.action(async (options) => {
@@ -69,7 +79,27 @@ program
 			return;
 		}
 
+		if (options.skillsUpdate) {
+			syncSkills({ update: true });
+			return;
+		}
+
+		if (options.skills) {
+			syncSkills({ update: false });
+			return;
+		}
+
+		if (options.skillsList) {
+			printAvailableSkills();
+			return;
+		}
+
 		if (options.claude) {
+			if (!fs.existsSync(CACHE_DIR)) {
+				log.info("Cache is empty, syncing skills first...");
+				syncSkills({ update: false });
+			}
+
 			await syncClaudeConfig();
 			return;
 		}
