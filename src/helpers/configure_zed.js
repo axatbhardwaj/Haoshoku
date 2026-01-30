@@ -100,7 +100,23 @@ export async function syncZedConfig() {
 	log.success("Zed config synced to ~/.config/zed/");
 }
 
-/** Deploy Zed config (used by OS setup scripts). */
+/** Copy Zed themes only (used by OS setup scripts). */
 export async function configureZed() {
-	await syncZedConfig();
+	log.info("Configuring Zed editor...");
+
+	const themesDestDir = path.join(ZED_CONFIG_DIR, "themes");
+	fs.mkdirSync(themesDestDir, { recursive: true });
+
+	const themesSrcDir = path.join(ZED_BACKUP_DIR, "themes");
+	if (fs.existsSync(themesSrcDir)) {
+		const themes = fs.readdirSync(themesSrcDir);
+		for (const theme of themes) {
+			const src = path.join(themesSrcDir, theme);
+			const dest = path.join(themesDestDir, theme);
+			fs.copyFileSync(src, dest);
+			log.info(`Copied theme: ${theme}`);
+		}
+	}
+
+	log.success("Zed themes configured.");
 }

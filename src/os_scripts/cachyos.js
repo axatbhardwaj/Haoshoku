@@ -4,6 +4,7 @@ import path from "node:path";
 import { withSpinner } from "../common/ui.js";
 import { commandExists, log, promptUser, runCommand } from "../common/utils.js";
 import { configureClaude } from "../helpers/configure_claude.js";
+import { configureZed } from "../helpers/configure_zed.js";
 
 // URLs
 const RUSTUP_URL = "https://sh.rustup.rs";
@@ -24,8 +25,6 @@ const GHOSTTY_CONFIG_DIR = path.join(HOME, ".config", "ghostty");
 const FASTFETCH_CONFIG_DIR = path.join(HOME, ".config", "fastfetch");
 const KITTY_CONFIG_DIR = path.join(HOME, ".config", "kitty");
 const ALACRITTY_CONFIG_DIR = path.join(HOME, ".config", "alacritty");
-const ZED_CONFIG_DIR = path.join(HOME, ".config", "zed");
-const ZED_THEMES_DIR = path.join(ZED_CONFIG_DIR, "themes");
 // Project paths (assuming running from project root)
 const PROJECT_ROOT = process.cwd();
 const COMMON_DIR = path.join(PROJECT_ROOT, "common");
@@ -47,7 +46,6 @@ const CUSTOM_ALACRITTY_CONFIG_PATH = path.join(
 	"alacritty",
 	"alacritty.toml",
 );
-const CUSTOM_ZED_THEME_DIR = path.join(CONFIGS_DIR, "zed", "themes");
 
 // --- Helper Functions ---
 
@@ -231,17 +229,6 @@ async function configureTerminals() {
 			path.join(GHOSTTY_CONFIG_DIR, "config"),
 		);
 		log.info("Copied custom Ghostty config.");
-	}
-}
-
-async function configureZed() {
-	log.info("Configuring Zed editor...");
-	fs.mkdirSync(ZED_THEMES_DIR, { recursive: true });
-
-	const themePath = path.join(CUSTOM_ZED_THEME_DIR, "deep-ocean.json");
-	if (fs.existsSync(themePath)) {
-		fs.copyFileSync(themePath, path.join(ZED_THEMES_DIR, "deep-ocean.json"));
-		log.info("Copied Deep Ocean theme for Zed.");
 	}
 }
 
