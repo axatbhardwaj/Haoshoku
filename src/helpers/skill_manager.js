@@ -51,8 +51,8 @@ function checkGitInstalled() {
 	}
 }
 
-/** Validate and parse git URL, return null if invalid. */
-function validateGitUrl(url) {
+/** Parse git URL into {owner, repo} or null if invalid. */
+function parseGitUrl(url) {
 	if (url.startsWith("http://") || url.startsWith("https://")) {
 		try {
 			const parsed = new URL(url);
@@ -77,7 +77,7 @@ function validateGitUrl(url) {
  * Returns format: owner-repo (e.g., solatis-claude-config).
  */
 export function getRepoName(url) {
-	const parsed = validateGitUrl(url);
+	const parsed = parseGitUrl(url);
 	if (!parsed) {
 		return null;
 	}
