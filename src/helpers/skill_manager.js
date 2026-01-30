@@ -1,10 +1,10 @@
 /**
  * Skill Manager - Runtime git cloning for Claude skills
  *
- * Manages skill sources via runtime git clone to support npm global install
- * (submodules aren't shipped in packages). Clones skills to XDG cache and
- * symlinks to ~/.claude/skills/ with user skills taking priority over
- * community skills.
+ * Manages skill sources via runtime git clone to support npm global install.
+ * npm packages don't include git submodules, so skills must be cloned at
+ * runtime. Clones skills to XDG cache and symlinks to ~/.claude/skills/
+ * with user skills taking priority over community skills.
  *
  * Flow:
  * 1. Read ~/.haoshoku.json for skill sources
@@ -396,6 +396,25 @@ function processSkill(skill, source, seenSkills) {
 }
 
 /**
+ * Symlink a shared resource (directory or file) if not already linked.
+ * Returns true if symlink was created, false if source doesn't exist.
+ */
+function symlinkSharedResource(srcPath, destPath, isDir, sourceName) {
+	if (!fs.existsSync(srcPath)) {
+		return false;
+	}
+
+	if (pathExists(destPath)) {
+		fs.rmSync(destPath, { recursive: isDir, force: true });
+	}
+
+	fs.symlinkSync(srcPath, destPath);
+	const name = path.basename(srcPath);
+	log.info(`Symlinked ${name}${isDir ? "/" : ""} from ${sourceName}`);
+	return true;
+}
+
+/**
  * Symlink skills to ~/.claude/skills/ with priority order.
  * Sources are processed in array order - user skills first (higher priority).
  *
@@ -405,8 +424,29 @@ function processSkill(skill, source, seenSkills) {
 export function mergeSkills(sources) {
 	ensureSkillsDir();
 	const seenSkills = new Set();
+	const linked = { scripts: false, claudeMd: false, readmeMd: false };
 
 	for (const source of sources) {
+		const skillsRoot = path.join(source.cachePath, "skills");
+
+		if (!linked.scripts) {
+			const src = path.join(skillsRoot, "scripts");
+			const dest = path.join(CLAUDE_SKILLS_DIR, "scripts");
+			linked.scripts = symlinkSharedResource(src, dest, true, source.name);
+		}
+
+		if (!linked.claudeMd) {
+			const src = path.join(skillsRoot, "CLAUDE.md");
+			const dest = path.join(CLAUDE_SKILLS_DIR, "CLAUDE.md");
+			linked.claudeMd = symlinkSharedResource(src, dest, false, source.name);
+		}
+
+		if (!linked.readmeMd) {
+			const src = path.join(skillsRoot, "README.md");
+			const dest = path.join(CLAUDE_SKILLS_DIR, "README.md");
+			linked.readmeMd = symlinkSharedResource(src, dest, false, source.name);
+		}
+
 		const skills = listSkills(source.cachePath);
 		for (const skill of skills) {
 			processSkill(skill, source, seenSkills);
