@@ -57,6 +57,12 @@ haoshoku --skills-update
 
 # List available skills from all sources
 haoshoku --skills-list
+
+# Sync Zed editor config from configs/zed/ to ~/.config/zed/
+haoshoku --zed
+
+# Backup Zed config to configs/zed/ (sanitizes sensitive data)
+haoshoku --zed-backup
 ```
 
 ## Features
@@ -118,7 +124,7 @@ Haoshoku manages Claude Code skills via runtime git cloning to enable global npm
 
 ## Configuration
 
-All configuration templates are stored in the `configs/` directory and are symlinked or copied during setup:
+All configuration templates are stored in the `configs/` directory. Terminal configs (fish, ghostty, kitty, starship, fastfetch) are copied during setup. Claude skills and agents are symlinked:
 
 -   `configs/fish/`: Fish shell configuration and functions.
 -   `configs/ghostty/`: Ghostty terminal config.
