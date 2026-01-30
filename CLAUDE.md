@@ -10,7 +10,6 @@ Multi-distro Linux setup and configuration toolkit (JavaScript/Bun).
 | `package.json`  | Dependencies and npm scripts      | Adding deps, updating scripts                   |
 | `README.md`     | User documentation, feature list  | Understanding features, installation options    |
 | `CHANGELOG.md`  | Version history                   | Checking release notes                          |
-| `.gitmodules`   | Git submodule definitions         | Working with claude-config submodule            |
 | `info.txt`      | Theme names and resource links    | Reference for KDE theme components              |
 | `bun.lock`      | Dependency lockfile (Bun)         | Checking exact dependency versions              |
 

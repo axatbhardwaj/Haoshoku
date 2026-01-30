@@ -9,7 +9,7 @@ import { log } from "./src/common/utils.js";
 import {
 	backupClaudeConfig,
 	syncClaudeConfig,
-	updateClaudeSubmodule,
+	updateClaudeConfig,
 } from "./src/helpers/configure_claude.js";
 import { backupZedConfig, syncZedConfig } from "./src/helpers/configure_zed.js";
 import {
@@ -57,9 +57,9 @@ function detectOS() {
 
 program
 	.option("--os <type>", "Specify the target OS (cachyos, debian-server)")
-	.option("--claude", "Sync Claude Code config (symlinks submodule, copies personal)")
+	.option("--claude", "Sync Claude Code config (symlinks shared dirs, copies personal)")
 	.option("--claude-backup", "Backup personal Claude config to configs/claude/")
-	.option("--claude-update", "Update submodule and sync Claude config")
+	.option("--claude-update", "Update cached config and sync Claude config")
 	.option("--skills", "Sync skills from configured sources")
 	.option("--skills-update", "Update cached skill sources")
 	.option("--skills-list", "List available skills")
@@ -69,7 +69,7 @@ program
 		showBanner();
 
 		if (options.claudeUpdate) {
-			await updateClaudeSubmodule();
+			await updateClaudeConfig();
 			await syncClaudeConfig();
 			return;
 		}

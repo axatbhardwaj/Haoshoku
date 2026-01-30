@@ -40,13 +40,13 @@ Haoshoku provides command-line options for non-interactive use or specific tasks
 haoshoku --os cachyos
 haoshoku --os debian-server
 
-# Sync Claude Code config (symlinks submodule, copies personal)
+# Sync Claude Code config (symlinks shared dirs, copies personal)
 haoshoku --claude
 
 # Backup personal Claude config to configs/claude/
 haoshoku --claude-backup
 
-# Update submodule and sync Claude config
+# Update cached config and sync Claude config
 haoshoku --claude-update
 
 # Sync skills from configured sources
@@ -88,14 +88,14 @@ haoshoku --zed-backup
     -   Optimizes KDE Plasma settings.
     -   Sets up gaming tools (Steam, Lutris) and media players (mpv).
 -   **AI Configuration**:
-    -   **Claude Code Sync**: Symlinks agents/conventions from submodule, copies personal config (`haoshoku --claude`).
+    -   **Claude Code Sync**: Symlinks agents/conventions from cache, copies personal config (`haoshoku --claude`).
     -   **Claude Backup**: Backs up personal config to `configs/claude/` (`haoshoku --claude-backup`).
-    -   **Claude Update**: Updates submodule and syncs (`haoshoku --claude-update`).
+    -   **Claude Update**: Updates cached config and syncs (`haoshoku --claude-update`).
     -   **Skill Management**: Runtime git cloning of Claude skills with user priority over community skills.
 
 ## Skill Management
 
-Haoshoku manages Claude Code skills via runtime git cloning to enable global npm installations (submodules aren't shipped in packages).
+Haoshoku manages Claude Code config via runtime git cloning to enable global npm installations.
 
 **Configuration**: Edit `~/.haoshoku.json` to add custom skill sources.
 

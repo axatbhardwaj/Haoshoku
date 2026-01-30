@@ -4,13 +4,9 @@
 
 The Claude configuration uses a hybrid sync pattern:
 
-**Symlinked (from submodule):** `agents/`, `output-styles/`, `conventions/`
-- Source: `configs/claude-config/` (external repo)
-- Updates propagate automatically after `git submodule update --remote`
-
-**Symlinked (from skill cache):** `skills/`
-- Source: `~/.cache/haoshoku/` (runtime git clones)
-- Handled by skill_manager.js, supports npm global install
+**Symlinked (from cache):** `agents/`, `output-styles/`, `conventions/`, `skills/`
+- Source: `~/.cache/haoshoku/solatis-claude-config/` (runtime git clone)
+- Updates via `--claude-update` or `--skills-update`
 
 **Copied (personal config):** `claude.json`, `settings.json`, `CLAUDE.md`
 - Source: `configs/claude/`
@@ -20,9 +16,9 @@ The Claude configuration uses a hybrid sync pattern:
 
 | Function                 | Purpose                                      |
 | ------------------------ | -------------------------------------------- |
-| `syncClaudeConfig()`     | Copy personal + symlink submodule dirs       |
+| `syncClaudeConfig()`     | Copy personal + symlink shared dirs from cache |
 | `backupClaudeConfig()`   | Copy ~/.claude/ personal files to configs/   |
-| `updateClaudeSubmodule()`| Pull latest from submodule remote            |
+| `updateClaudeConfig()`   | Pull latest from cached repos                |
 | `installClaude()`        | Install Claude Code CLI if not present       |
 | `configureClaude()`      | Install + sync (used by OS setup scripts)    |
 
@@ -30,11 +26,11 @@ The Claude configuration uses a hybrid sync pattern:
 
 - `--claude` - sync only
 - `--claude-backup` - backup personal config
-- `--claude-update` - update submodule + sync
+- `--claude-update` - update cache + sync
 
 ## Skill Manager Architecture
 
-Runtime git cloning for Claude skills to support npm global install (submodules aren't shipped in packages).
+Runtime git cloning for Claude config to support npm global install.
 
 **Separation**: skill_manager.js handles skill fetching/syncing; configure_claude.js handles personal config. Different responsibilities enable independent testing and maintenance.
 

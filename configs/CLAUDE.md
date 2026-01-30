@@ -6,7 +6,6 @@ Template configuration files copied to user's `~/.config/` during setup.
 
 | File                  | What                          | When to read                              |
 | --------------------- | ----------------------------- | ----------------------------------------- |
-| `__init__.py`         | Python package marker         | -                                         |
 | `kde_shortcuts.kksrc` | KDE keyboard shortcuts        | Modifying KDE shortcuts                   |
 
 ## Subdirectories
@@ -20,5 +19,4 @@ Template configuration files copied to user's `~/.config/` during setup.
 | `kitty/`        | Kitty terminal config               | Modifying Kitty settings                  |
 | `vencord/`      | Vencord Discord theme               | Modifying Discord appearance              |
 | `claude/`       | Claude Code personal config (copied)    | Modifying settings, backup/restore        |
-| `claude-config/`| Claude skills/agents submodule (symlinked) | Updating skills, understanding workflow |
 | `zed/`          | Zed editor config (sanitized backup)    | Modifying Zed settings, themes            |

@@ -1,3 +1,0 @@
-[submodule "configs/claude-config"]
-	path = configs/claude-config
-	url = https://github.com/solatis/claude-config.git

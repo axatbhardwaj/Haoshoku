@@ -2,6 +2,7 @@ import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { log, runCommand } from "../common/utils.js";
+import { CACHE_DIR } from "./skill_manager.js";
 
 const HOME = homedir();
 const CLAUDE_CONFIG_DIR = path.join(HOME, ".claude");
@@ -10,12 +11,14 @@ const CLAUDE_JSON_PATH = path.join(HOME, ".claude.json");
 const PROJECT_ROOT = process.cwd();
 const CONFIGS_DIR = path.join(PROJECT_ROOT, "configs");
 const CUSTOM_CLAUDE_DIR = path.join(CONFIGS_DIR, "claude");
-const CLAUDE_CONFIG_SUBMODULE = path.join(CONFIGS_DIR, "claude-config");
+
+// Runtime clone from skill_manager (solatis/claude-config)
+const CLAUDE_CONFIG_CACHE = path.join(CACHE_DIR, "solatis-claude-config");
 
 const CLAUDE_INSTALL_URL = "https://claude.ai/install.sh";
 
-// Skills handled by skill_manager.js via runtime git clone
-const SUBMODULE_DIRS = ["agents", "output-styles", "conventions"];
+// Directories symlinked from cached clone to ~/.claude/
+const SHARED_DIRS = ["agents", "output-styles", "conventions"];
 const PERSONAL_FILES = [
 	{ src: "claude.json", dest: CLAUDE_JSON_PATH },
 	{ src: "settings.json", dest: path.join(CLAUDE_CONFIG_DIR, "settings.json") },
@@ -61,14 +64,15 @@ export async function installClaude() {
 	await runCommand(`curl -fsSL ${CLAUDE_INSTALL_URL} | bash`);
 }
 
-/** Pull latest changes from claude-config submodule remote. */
-export async function updateClaudeSubmodule() {
-	log.info("Updating Claude config submodule...");
-	await runCommand("git submodule update --remote configs/claude-config");
-	log.success("Submodule updated.");
+/** Update cached claude-config by pulling latest (delegates to skill_manager). */
+export async function updateClaudeConfig() {
+	const { syncSkills } = await import("./skill_manager.js");
+	log.info("Updating Claude config from remote...");
+	syncSkills({ update: true });
+	log.success("Claude config updated.");
 }
 
-/** Deploy config to ~/.claude/ (copy personal files, symlink submodule dirs). */
+/** Deploy config to ~/.claude/ (copy personal files, symlink shared dirs from cache). */
 export async function syncClaudeConfig() {
 	log.info("Syncing Claude Code config...");
 
@@ -82,12 +86,15 @@ export async function syncClaudeConfig() {
 		}
 	}
 
-	for (const dir of SUBMODULE_DIRS) {
-		const srcDir = path.join(CLAUDE_CONFIG_SUBMODULE, dir);
+	// Symlink agents/conventions/output-styles from cached clone
+	for (const dir of SHARED_DIRS) {
+		const srcDir = path.join(CLAUDE_CONFIG_CACHE, dir);
 		const destDir = path.join(CLAUDE_CONFIG_DIR, dir);
 		if (fs.existsSync(srcDir)) {
 			createSymlink(srcDir, destDir);
 			log.info(`Symlinked ${dir}/`);
+		} else {
+			log.warning(`${dir}/ not found in cache - run --skills first`);
 		}
 	}
 
