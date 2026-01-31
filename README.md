@@ -1,4 +1,6 @@
-![Haoshoku](icons/haoshoku-readme.gif)
+<p align="center">
+  <img src="icons/haoshoku-readme.gif" alt="Haoshoku" width="100%">
+</p>
 
 # Haoshoku: Color of the Supreme King
 
