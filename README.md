@@ -1,4 +1,4 @@
-![Haoshoku Logo](icons/Gemini_Generated_Image_kwrza7kwrza7kwrz.png)
+![Haoshoku](icons/haoshoku-readme.gif)
 
 # Haoshoku: Color of the Supreme King
 
