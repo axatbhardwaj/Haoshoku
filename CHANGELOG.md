@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.0.1 - 2026-02-01
+- Add animated intro video for README.
+- Add new Conqueror's Haki themed logo.
+- Add Remotion video project for intro generation.
+
 ## 2.13.0 - 2026-01-30
 - Add runtime skill manager for Claude skills.
 - Add CLI commands for skill management (`--skills`, `--skills-update`).
