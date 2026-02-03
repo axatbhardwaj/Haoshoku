@@ -17,7 +17,10 @@ import {
 	printAvailableSkills,
 	CACHE_DIR,
 } from "./src/helpers/skill_manager.js";
-import { runCachyOSSetup } from "./src/os_scripts/cachyos.js";
+import {
+	runCachyOSSetup,
+	installKdeGlass,
+} from "./src/os_scripts/cachyos.js";
 import { runDebianServerSetup } from "./src/os_scripts/debian_server.js";
 
 const program = new Command();
@@ -65,6 +68,7 @@ program
 	.option("--skills-list", "List available skills")
 	.option("--zed", "Sync Zed config from configs/zed/ to ~/.config/zed/")
 	.option("--zed-backup", "Backup Zed config to configs/zed/ (sanitizes sensitive data)")
+	.option("--kde-glass", "Install/reinstall KDE Glass blur effect (CachyOS/Arch only)")
 	.action(async (options) => {
 		showBanner();
 
@@ -111,6 +115,11 @@ program
 
 		if (options.zed) {
 			await syncZedConfig();
+			return;
+		}
+
+		if (options.kdeGlass) {
+			await installKdeGlass();
 			return;
 		}
 

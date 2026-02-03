@@ -304,23 +304,37 @@ async function configureKde() {
 		await runCommand("sudo ufw reload");
 	}
 
-	if (
-		await promptUser("Install KDE Force Blur effect (requires build)?", false)
-	) {
-		log.info("Installing prerequisites for KDE Force Blur...");
-		await runCommand(
-			"paru -S base-devel git extra-cmake-modules qt6-tools --noconfirm",
-		);
-		log.info("Cloning and building KDE Force Blur...");
-		await runCommand(
-			"cd /tmp && " +
-				"git clone https://github.com/taj-ny/kwin-effects-forceblur && " +
-				"cd kwin-effects-forceblur && " +
-				"mkdir build && cd build && " +
-				"cmake ../ -DCMAKE_INSTALL_PREFIX=/usr && " +
-				"make && sudo make install",
-		);
+	if (await promptUser("Install KDE Glass blur effect (requires build)?", false)) {
+		await installKdeGlass();
 	}
+}
+
+export async function installKdeGlass() {
+	log.info("Installing prerequisites for KDE Glass blur effect...");
+	await runCommand(
+		"paru -S base-devel git extra-cmake-modules qt6-tools kwin --noconfirm",
+	);
+
+	log.info("Cloning and building KDE Glass blur effect...");
+	const buildDir = "/tmp/kwin-effects-glass";
+
+	// Remove old build directory if it exists
+	await runCommand(`rm -rf ${buildDir}`);
+
+	await runCommand(
+		`cd /tmp && ` +
+			`git clone https://github.com/4v3ngR/kwin-effects-glass && ` +
+			`cd kwin-effects-glass && ` +
+			`mkdir build && cd build && ` +
+			`cmake .. -DCMAKE_INSTALL_PREFIX=/usr && ` +
+			`make -j$(nproc) && ` +
+			`sudo make install`,
+	);
+
+	log.success(
+		"KDE Glass blur effect installed successfully!\n" +
+		"Open System Settings > Desktop Effects, disable other blur effects, and enable Glass.",
+	);
 }
 
 async function installSystemPackages() {
