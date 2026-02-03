@@ -1,30 +1,29 @@
 {
-	"attribution": {
-		"commit": "",
-		"pr": ""
-	},
-	"hooks": {
-		"Stop": [
-			{
-				"hooks": [
-					{
-						"type": "command",
-						"command": "CLAUDE_PLUGIN_ROOT=/home/xzat/personal/context-tracker python3 /home/xzat/personal/context-tracker/hooks/stop.py",
-						"timeout": 180
-					}
-				]
-			}
-		]
-	},
-	"statusLine": {
-		"type": "command",
-		"command": "bunx -y ccstatusline@latest",
-		"padding": 0
-	},
-	"enabledPlugins": {
-		"context7@claude-plugins-official": true,
-		"code-review@claude-plugins-official": true,
-		"pr-review-toolkit@claude-plugins-official": true,
-		"playwright@claude-plugins-official": true
-	}
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_PLUGIN_ROOT=/home/xzat/personal/context-tracker python3 /home/xzat/personal/context-tracker/hooks/stop.py",
+            "timeout": 180
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bunx -y ccstatusline@latest",
+    "padding": 0
+  },
+  "enabledPlugins": {
+    "context7@claude-plugins-official": true,
+    "code-review@claude-plugins-official": true,
+    "pr-review-toolkit@claude-plugins-official": true
+  }
 }
