@@ -27,7 +27,13 @@ bun install
 bun haoshoku.js
 ```
 
-### Option 2: Install via npm (Alternative)
+### Option 2: Install Globally with Bun
+```bash
+bun install -g haoshoku
+haoshoku
+```
+
+### Option 3: Install via npm (Alternative)
 ```bash
 npm install -g haoshoku
 haoshoku
@@ -65,6 +71,9 @@ haoshoku --zed
 
 # Backup Zed config to configs/zed/ (sanitizes sensitive data)
 haoshoku --zed-backup
+
+# Install/reinstall KDE Glass blur effect (CachyOS/Arch only)
+haoshoku --kde-glass
 ```
 
 ## Features
@@ -88,6 +97,7 @@ haoshoku --zed-backup
 -   **Desktop Experience (Arch)**:
     -   Installs curated Flatpaks (Obsidian, Discord, Spotify).
     -   Optimizes KDE Plasma settings.
+    -   **KDE Glass Blur**: Optional installation of glass blur effect for KDE Plasma 6 (reinstall easily after KDE updates with `--kde-glass`).
     -   Sets up gaming tools (Steam, Lutris) and media players (mpv).
 -   **AI Configuration**:
     -   **Claude Code Sync**: Symlinks agents/conventions from cache, copies personal config (`haoshoku --claude`).
