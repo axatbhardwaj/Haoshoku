@@ -137,9 +137,9 @@ async function setupFlatpakRemotes() {
   if (await commandExists("flatpak")) {
     log.info("Setting up Flatpak remotes...");
     await runCommand(
-      "flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo",
+      "flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo",
     );
-    await runCommand("flatpak update -y");
+    await runCommand("flatpak update --user -y");
   } else {
     log.warning("Flatpak not found. Skipping remote setup.");
   }
