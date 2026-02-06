@@ -49,8 +49,23 @@ export async function commandExists(command) {
 	return exitCode === 0;
 }
 
+/** Drain stale stdin data (e.g. terminal escape sequences from subprocesses). */
+async function drainStdin() {
+	return new Promise((resolve) => {
+		const onData = () => {};
+		process.stdin.on("data", onData);
+		process.stdin.resume();
+		setTimeout(() => {
+			process.stdin.removeListener("data", onData);
+			process.stdin.pause();
+			resolve();
+		}, 50);
+	});
+}
+
 /** Prompt user for yes/no confirmation. */
 export async function promptUser(message, initial = false) {
+	await drainStdin();
 	const { default: prompts } = await import("prompts");
 	const response = await prompts({
 		type: "confirm",
