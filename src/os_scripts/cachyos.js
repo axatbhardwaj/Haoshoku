@@ -139,6 +139,7 @@ async function setupFlatpakRemotes() {
     await runCommand(
       "flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo",
     );
+    await runCommand("flatpak update -y");
   } else {
     log.warning("Flatpak not found. Skipping remote setup.");
   }
