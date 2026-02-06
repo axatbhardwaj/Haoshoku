@@ -365,6 +365,10 @@ async function installSystemPackages() {
 }
 
 async function installFlatpakApps() {
+  if (!(await commandExists("flatpak"))) {
+    log.info("Installing Flatpak...");
+    await runCommand("sudo pacman -S flatpak --noconfirm");
+  }
   await setupFlatpakRemotes();
   await installPackagesFromFile(
     FLATPAK_APPLIST_PATH,
