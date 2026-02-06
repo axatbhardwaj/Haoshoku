@@ -30,7 +30,7 @@ const PROJECT_ROOT = path.resolve(__dirname, "..", "..");
 const COMMON_DIR = path.join(PROJECT_ROOT, "common");
 const CONFIGS_DIR = path.join(PROJECT_ROOT, "configs");
 
-const _PARU_APPLIST_PATH = path.join(COMMON_DIR, "paru_applist.txt");
+const PARU_APPLIST_PATH = path.join(COMMON_DIR, "paru_applist.txt");
 const FLATPAK_APPLIST_PATH = path.join(COMMON_DIR, "flatpacks_arch.txt");
 const KDE_SHORTCUTS_PATH = path.join(CONFIGS_DIR, "kde_shortcuts.kksrc");
 const CUSTOM_FISH_CONFIG_PATH = path.join(CONFIGS_DIR, "fish", "config.fish");
@@ -350,18 +350,18 @@ async function installSystemPackages() {
   }
 
   log.info("Installing packages from file lists...");
-  //   await installPackagesFromFile(
-  //     PARU_APPLIST_PATH,
-  //     "paru -S --noconfirm --sudoloop --batchinstall"
-  //   );
+  await installPackagesFromFile(
+    PARU_APPLIST_PATH,
+    "paru -S --noconfirm --sudoloop --batchinstall",
+  );
 
   log.info("Installing Nerd Fonts...");
-  //   await runCommand("sudo pacman -S $(pacman -Sgq nerd-fonts) --noconfirm");
+  await runCommand("sudo pacman -S $(pacman -Sgq nerd-fonts) --noconfirm");
 
   if (await promptUser("Enable gaming configuration?", false)) {
-    // await runCommand(
-    //   "paru -S cachyos-gaming-meta cachyos-gaming-applications protonup-rs-bin --noconfirm"
-    // );
+    await runCommand(
+      "paru -S cachyos-gaming-meta cachyos-gaming-applications protonup-rs-bin --noconfirm",
+    );
   }
 }
 
