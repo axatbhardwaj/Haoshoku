@@ -66,9 +66,25 @@ async function installPackagesFromFile(filePath, installerCmd) {
     .map((line) => line.trim())
     .filter((line) => line && !line.startsWith("#"));
 
-  if (packages.length > 0) {
-    log.info(`Installing ${packages.length} packages...`);
-    await runCommand(`${installerCmd} ${packages.join(" ")}`);
+  if (packages.length === 0) return;
+
+  log.info(`Installing ${packages.length} packages individually...`);
+  const failed = [];
+
+  for (const pkg of packages) {
+    const ok = await runCommand(`${installerCmd} ${pkg}`);
+    if (ok) {
+      log.success(`Installed ${pkg}`);
+    } else {
+      log.warning(`Failed to install ${pkg}, continuing...`);
+      failed.push(pkg);
+    }
+  }
+
+  if (failed.length > 0) {
+    log.warning(
+      `${failed.length} package(s) failed to install:\n  ${failed.join("\n  ")}`,
+    );
   }
 }
 
@@ -352,7 +368,7 @@ async function installSystemPackages() {
   log.info("Installing packages from file lists...");
   await installPackagesFromFile(
     PARU_APPLIST_PATH,
-    "paru -S --noconfirm --sudoloop --batchinstall",
+    "paru -S --noconfirm --sudoloop",
   );
 
   log.info("Installing Nerd Fonts...");
