@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.2.0 - 2026-02-07
+- Add KDE Ocean theme deployment (`--kde-theme`, `--kde-theme-backup`).
+- Bundle Ocean LAF theme assets (look-and-feel, Kvantum, Aurorae, desktop theme, color scheme).
+- Add `copyDirRecursive` utility for nested directory operations.
+
 ## 3.0.1 - 2026-02-01
 - Add animated intro video for README.
 - Add new Conqueror's Haki themed logo.
