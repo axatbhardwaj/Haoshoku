@@ -1,4 +1,28 @@
 {
+  "language_models": {
+    "openai_compatible": {
+      "NVIDIA": {
+        "api_url": "https://integrate.api.nvidia.com/v1",
+        "available_models": [
+          {
+            "name": "moonshotai/kimi-k2.5",
+            "display_name": "Kimi K2.5",
+            "max_tokens": 131072,
+            "max_output_tokens": 8192,
+            "capabilities": {
+              "tools": true,
+              "images": false,
+              "parallel_tool_calls": true,
+              "prompt_cache_key": false
+            }
+          }
+        ]
+      }
+    }
+  },
+  "features": {
+    "edit_prediction_provider": "zed"
+  },
   "outline_panel": {
     "dock": "right"
   },
@@ -31,8 +55,8 @@
     "dock": "left",
     "default_profile": "ask",
     "default_model": {
-      "provider": "google",
-      "model": "gemini-3-flash-preview"
+      "provider": "NVIDIA",
+      "model": "moonshotai/kimi-k2.5"
     },
     "play_sound_when_agent_done": true,
     "always_allow_tool_actions": true,
