@@ -25,7 +25,7 @@ const program = new Command();
 program
   .name("haoshoku")
   .description("Haoshoku: Color of the Supreme King. Dominate your setup.")
-  .version("3.1.8")
+  .version("3.1.9")
   .addHelpText("before", getBanner());
 
 function detectOS() {
