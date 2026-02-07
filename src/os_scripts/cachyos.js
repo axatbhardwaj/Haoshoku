@@ -4,6 +4,7 @@ import path from "node:path";
 import { withSpinner } from "../common/ui.js";
 import { commandExists, log, promptUser, runCommand } from "../common/utils.js";
 import { configureClaude } from "../helpers/configure_claude.js";
+import { configureKdeTheme } from "../helpers/configure_kde_theme.js";
 import { configureZed } from "../helpers/configure_zed.js";
 
 // URLs
@@ -319,6 +320,10 @@ async function configureKde() {
     await runCommand("sudo ufw allow 1714:1764/udp");
     await runCommand("sudo ufw allow 1714:1764/tcp");
     await runCommand("sudo ufw reload");
+  }
+
+  if (await promptUser("Deploy KDE Ocean theme?", false)) {
+    await configureKdeTheme();
   }
 
   if (

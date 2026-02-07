@@ -11,6 +11,10 @@ import {
   syncClaudeConfig,
   updateClaudeConfig,
 } from "./src/helpers/configure_claude.js";
+import {
+  backupKdeTheme,
+  syncKdeTheme,
+} from "./src/helpers/configure_kde_theme.js";
 import { backupZedConfig, syncZedConfig } from "./src/helpers/configure_zed.js";
 import {
   syncSkills,
@@ -71,6 +75,8 @@ program
     "--zed-backup",
     "Backup Zed config to configs/zed/ (sanitizes sensitive data)",
   )
+  .option("--kde-theme", "Deploy KDE Ocean theme files (sync only, no activate)")
+  .option("--kde-theme-backup", "Backup KDE Ocean theme from system to configs/kde/")
   .option(
     "--kde-glass",
     "Install/reinstall KDE Glass blur effect (CachyOS/Arch only)",
@@ -121,6 +127,16 @@ program
 
     if (options.zed) {
       await syncZedConfig();
+      return;
+    }
+
+    if (options.kdeThemeBackup) {
+      await backupKdeTheme();
+      return;
+    }
+
+    if (options.kdeTheme) {
+      await syncKdeTheme();
       return;
     }
 
