@@ -59,7 +59,7 @@ async function drainStdin() {
 			process.stdin.removeListener("data", onData);
 			process.stdin.pause();
 			resolve();
-		}, 50);
+		}, 300);
 	});
 }
 
