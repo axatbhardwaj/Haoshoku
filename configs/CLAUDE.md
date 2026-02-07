@@ -19,4 +19,5 @@ Template configuration files copied to user's `~/.config/` during setup.
 | `kitty/`        | Kitty terminal config               | Modifying Kitty settings                  |
 | `vencord/`      | Vencord Discord theme               | Modifying Discord appearance              |
 | `claude/`       | Claude Code personal config (copied)    | Modifying settings, backup/restore        |
+| `kde/`          | KDE Ocean theme bundle (5 components)   | Modifying KDE theme deployment            |
 | `zed/`          | Zed editor config (sanitized backup)    | Modifying Zed settings, themes            |
