@@ -396,6 +396,45 @@ function processSkill(skill, source, seenSkills) {
 }
 
 /**
+ * Symlink skill script modules into the shared scripts/skills/ directory.
+ * Third-party skills need their Python modules accessible from the shared
+ * scripts directory for imports like `python3 -m skills.{name}.{module}`.
+ */
+function symlinkSkillModules(sources) {
+	const scriptsLink = path.join(CLAUDE_SKILLS_DIR, "scripts");
+	if (!pathExists(scriptsLink)) return;
+
+	let scriptsDir;
+	try {
+		scriptsDir = fs.realpathSync(scriptsLink);
+	} catch {
+		return;
+	}
+
+	const skillsPackageDir = path.join(scriptsDir, "skills");
+	if (!fs.existsSync(skillsPackageDir)) return;
+
+	for (const source of sources) {
+		const skills = listSkills(source.cachePath);
+		for (const skill of skills) {
+			const skillScriptsDir = path.join(skill.path, "scripts");
+			if (!fs.existsSync(skillScriptsDir)) continue;
+
+			const moduleName = skill.name.replace(/-/g, "_");
+			const destPath = path.join(skillsPackageDir, moduleName);
+			if (pathExists(destPath)) continue;
+
+			try {
+				fs.symlinkSync(skillScriptsDir, destPath);
+				log.info(`Linked ${skill.name} module → scripts/skills/${moduleName}`);
+			} catch (error) {
+				log.warning(`Failed to link ${skill.name} module: ${error.message}`);
+			}
+		}
+	}
+}
+
+/**
  * Symlink a shared resource (directory or file) if not already linked.
  * Returns true if symlink was created, false if source doesn't exist.
  */
@@ -453,6 +492,7 @@ export function mergeSkills(sources) {
 		}
 	}
 
+	symlinkSkillModules(sources);
 	log.success(`Merged ${seenSkills.size} skills to ${CLAUDE_SKILLS_DIR}`);
 }
 
