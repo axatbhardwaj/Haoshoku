@@ -18,7 +18,7 @@ const CLAUDE_CONFIG_CACHE = path.join(CACHE_DIR, "solatis-claude-config");
 const CLAUDE_INSTALL_URL = "https://claude.ai/install.sh";
 
 // Directories symlinked from cached clone to ~/.claude/
-const SHARED_DIRS = ["agents", "output-styles", "conventions"];
+const SHARED_DIRS = ["output-styles", "conventions"];
 const PERSONAL_FILES = [
   { src: "claude.json", dest: CLAUDE_JSON_PATH },
   { src: "settings.json", dest: path.join(CLAUDE_CONFIG_DIR, "settings.json") },
