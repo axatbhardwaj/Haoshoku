@@ -21,6 +21,7 @@ const HOME = homedir();
 const XDG_CACHE_HOME = process.env.XDG_CACHE_HOME || path.join(HOME, ".cache");
 export const CACHE_DIR = path.join(XDG_CACHE_HOME, "haoshoku");
 const CLAUDE_SKILLS_DIR = path.join(HOME, ".claude", "skills");
+const CLAUDE_AGENTS_DIR = path.join(HOME, ".claude", "agents");
 const CONFIG_PATH = path.join(HOME, ".haoshoku.json");
 
 const DEFAULT_CONFIG = {
@@ -497,6 +498,58 @@ export function mergeSkills(sources) {
 }
 
 /**
+ * Symlink agent .md files to ~/.claude/agents/ with priority order.
+ * Same first-source-wins semantics as mergeSkills: earlier sources in
+ * the array take priority when multiple sources provide the same agent name.
+ */
+export function mergeAgents(sources) {
+	// Replace old whole-directory symlink (from configure_claude) with real dir
+	if (pathExists(CLAUDE_AGENTS_DIR)) {
+		try {
+			const stats = fs.lstatSync(CLAUDE_AGENTS_DIR);
+			if (stats.isSymbolicLink()) {
+				fs.unlinkSync(CLAUDE_AGENTS_DIR);
+			}
+		} catch {}
+	}
+
+	if (!fs.existsSync(CLAUDE_AGENTS_DIR)) {
+		fs.mkdirSync(CLAUDE_AGENTS_DIR, { recursive: true });
+	}
+
+	const seenAgents = new Set();
+
+	for (const source of sources) {
+		const agentsDir = path.join(source.cachePath, "agents");
+		if (!fs.existsSync(agentsDir)) continue;
+
+		const entries = fs.readdirSync(agentsDir, { withFileTypes: true });
+		for (const entry of entries) {
+			if (!entry.isFile() || !entry.name.endsWith(".md")) continue;
+			if (seenAgents.has(entry.name)) continue;
+
+			const srcPath = path.join(agentsDir, entry.name);
+			const destPath = path.join(CLAUDE_AGENTS_DIR, entry.name);
+
+			if (pathExists(destPath) && updateSymlinkIfNeeded(destPath, srcPath)) {
+				seenAgents.add(entry.name);
+				continue;
+			}
+
+			try {
+				fs.symlinkSync(srcPath, destPath);
+				log.info(`Symlinked agent ${entry.name} from ${source.name}`);
+				seenAgents.add(entry.name);
+			} catch (error) {
+				log.error(`Failed to symlink agent ${entry.name}: ${error.message}`);
+			}
+		}
+	}
+
+	log.success(`Merged ${seenAgents.size} agents to ${CLAUDE_AGENTS_DIR}`);
+}
+
+/**
  * Collect sources from config.
  * Continues on individual source failures to allow partial success.
  */
@@ -565,4 +618,5 @@ export function syncSkills(options = { update: false }) {
 	}
 
 	mergeSkills(sources);
+	mergeAgents(sources);
 }
