@@ -67,12 +67,31 @@ export async function backupZedConfig() {
   log.success("Zed config backed up to configs/zed/");
 }
 
+/** Deploy Zed themes from configs/zed/themes/ to ~/.config/zed/themes/. */
+export async function syncZedTheme() {
+  log.info("Syncing Zed theme...");
+
+  fs.mkdirSync(path.join(ZED_CONFIG_DIR, "themes"), { recursive: true });
+
+  const themesDir = path.join(ZED_BACKUP_DIR, "themes");
+  if (fs.existsSync(themesDir)) {
+    const themes = fs.readdirSync(themesDir);
+    for (const theme of themes) {
+      const src = path.join(themesDir, theme);
+      const dest = path.join(ZED_CONFIG_DIR, "themes", theme);
+      fs.copyFileSync(src, dest);
+      log.info(`Synced themes/${theme}`);
+    }
+  }
+
+  log.success("Zed theme synced to ~/.config/zed/themes/");
+}
+
 /** Deploy Zed config from configs/zed to ~/.config/zed. */
 export async function syncZedConfig() {
   log.info("Syncing Zed config...");
 
   fs.mkdirSync(ZED_CONFIG_DIR, { recursive: true });
-  fs.mkdirSync(path.join(ZED_CONFIG_DIR, "themes"), { recursive: true });
 
   const settingsPath = path.join(ZED_BACKUP_DIR, "settings.json");
   if (fs.existsSync(settingsPath)) {
@@ -86,16 +105,7 @@ export async function syncZedConfig() {
     log.info("Synced keymap.json");
   }
 
-  const themesDir = path.join(ZED_BACKUP_DIR, "themes");
-  if (fs.existsSync(themesDir)) {
-    const themes = fs.readdirSync(themesDir);
-    for (const theme of themes) {
-      const src = path.join(themesDir, theme);
-      const dest = path.join(ZED_CONFIG_DIR, "themes", theme);
-      fs.copyFileSync(src, dest);
-      log.info(`Synced themes/${theme}`);
-    }
-  }
+  await syncZedTheme();
 
   log.success("Zed config synced to ~/.config/zed/");
 }
