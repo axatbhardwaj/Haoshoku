@@ -35,7 +35,7 @@
         "terminal.ansi.bright_cyan": "#89DDFF",
         "terminal.ansi.bright_white": "#FFFFFF",
         "text": "#D6D8E0FF",
-        "text.muted": "#A0A4B8FF",
+        "text.muted": "#C8CAD2FF",
         "text.placeholder": "#707590FF",
         "text.disabled": "#606580FF",
         "text.accent": "#1FFFC6FF",
