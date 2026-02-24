@@ -1,9 +1,5 @@
 # configs/zed/themes/
 
-Custom Zed color themes.
+Custom Zed color themes deployed to `~/.config/zed/themes/` by `syncZedTheme()`.
 
-## Files
-
-| File              | What                        | When to read                              |
-| ----------------- | --------------------------- | ----------------------------------------- |
-| `deep-ocean.json` | Deep Ocean dark theme       | Modifying theme colors                    |
+Deep Ocean theme was removed — it is now an official Zed extension installed via the marketplace.
