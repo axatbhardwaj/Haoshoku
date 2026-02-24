@@ -10,7 +10,7 @@
         "background.appearance": "opaque",
         "background": "#0F131AD9",
         "editor.background": "#00000000",
-        "editor.foreground": "#BFBFBFBD",
+        "editor.foreground": "#D6D8E0FF",
         "editor.gutter.background": "#00000000",
         "editor.line_number": "#BFBFBFBD",
         "editor.active_line_number": "#FFFFFFFF",
