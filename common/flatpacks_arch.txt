@@ -2,3 +2,4 @@ io.ente.auth
 io.github.brunofin.Cohesion
 io.github.nozwock.Packet
 com.rtosta.zapzap
+org.gnome.Calendar
