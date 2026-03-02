@@ -3,19 +3,7 @@
     "commit": "",
     "pr": ""
   },
-  "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "CLAUDE_PLUGIN_ROOT=/home/xzat/personal/context-tracker python3 /home/xzat/personal/context-tracker/hooks/stop.py",
-            "timeout": 180
-          }
-        ]
-      }
-    ]
-  },
+  "hooks": {},
   "statusLine": {
     "type": "command",
     "command": "bunx -y ccstatusline@latest",
