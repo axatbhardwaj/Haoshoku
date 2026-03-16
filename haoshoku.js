@@ -8,6 +8,7 @@ import { getBanner, showBanner } from "./src/common/ui.js";
 import { log } from "./src/common/utils.js";
 import {
   backupClaudeConfig,
+  installGsd,
   syncClaudeConfig,
   updateClaudeConfig,
 } from "./src/helpers/configure_claude.js";
@@ -68,13 +69,14 @@ program
   .option("--os <type>", "Specify the target OS (cachyos, debian-server)")
   .option(
     "--claude",
-    "Sync Claude Code config (symlinks shared dirs, copies personal)",
+    "Deploy Claude Code config (personal files, conventions, agents)",
   )
   .option("--claude-backup", "Backup personal Claude config to configs/claude/")
   .option("--claude-update", "Update cached config and sync Claude config")
   .option("--skills", "Sync skills from configured sources")
   .option("--skills-update", "Update cached skill sources")
   .option("--skills-list", "List available skills")
+  .option("--gsd", "Install GSD (get-shit-done) for Claude Code")
   .option("--zed", "Sync Zed config from configs/zed/ to ~/.config/zed/")
   .option(
     "--zed-backup",
@@ -114,6 +116,11 @@ program
 
     if (options.skillsList) {
       printAvailableSkills();
+      return;
+    }
+
+    if (options.gsd) {
+      await installGsd();
       return;
     }
 

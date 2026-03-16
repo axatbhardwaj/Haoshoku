@@ -1,8 +1,7 @@
 import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
-import { log, runCommand } from "../common/utils.js";
-import { CACHE_DIR } from "./skill_manager.js";
+import { log, runCommand, copyDirRecursive } from "../common/utils.js";
 
 const HOME = homedir();
 const CLAUDE_CONFIG_DIR = path.join(HOME, ".claude");
@@ -12,18 +11,16 @@ const PROJECT_ROOT = path.resolve(__dirname, "..", "..");
 const CONFIGS_DIR = path.join(PROJECT_ROOT, "configs");
 const CUSTOM_CLAUDE_DIR = path.join(CONFIGS_DIR, "claude");
 
-// Runtime clone from skill_manager (solatis/claude-config)
-const CLAUDE_CONFIG_CACHE = path.join(CACHE_DIR, "solatis-claude-config");
-
 const CLAUDE_INSTALL_URL = "https://claude.ai/install.sh";
 
-// Directories symlinked from cached clone to ~/.claude/
-const SHARED_DIRS = ["output-styles", "conventions"];
 const PERSONAL_FILES = [
   { src: "claude.json", dest: CLAUDE_JSON_PATH },
   { src: "settings.json", dest: path.join(CLAUDE_CONFIG_DIR, "settings.json") },
   { src: "CLAUDE.md", dest: path.join(CLAUDE_CONFIG_DIR, "CLAUDE.md") },
 ];
+
+// Directories fully owned by haoshoku (replaced on sync)
+const MANAGED_DIRS = ["conventions", "output-styles"];
 
 /** Check if a command exists in PATH. */
 function commandExists(cmd) {
@@ -33,24 +30,6 @@ function commandExists(cmd) {
   } catch {
     return false;
   }
-}
-
-/** Check if path exists (works for broken symlinks unlike fs.existsSync). */
-function pathExists(p) {
-  try {
-    fs.lstatSync(p);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/** Replace existing file/dir/symlink at dest with symlink to src. */
-function createSymlink(src, dest) {
-  if (pathExists(dest)) {
-    fs.rmSync(dest, { recursive: true, force: true });
-  }
-  fs.symlinkSync(src, dest);
 }
 
 /** Install Claude Code CLI if not already present. */
@@ -72,7 +51,7 @@ export async function updateClaudeConfig() {
   log.success("Claude config updated.");
 }
 
-/** Deploy config to ~/.claude/ (copy personal files, symlink shared dirs from cache). */
+/** Deploy config to ~/.claude/ (copy personal files from haoshoku template). */
 export async function syncClaudeConfig() {
   log.info("Syncing Claude Code config...");
 
@@ -86,15 +65,12 @@ export async function syncClaudeConfig() {
     }
   }
 
-  // Symlink agents/conventions/output-styles from cached clone
-  for (const dir of SHARED_DIRS) {
-    const srcDir = path.join(CLAUDE_CONFIG_CACHE, dir);
-    const destDir = path.join(CLAUDE_CONFIG_DIR, dir);
-    if (fs.existsSync(srcDir)) {
-      createSymlink(srcDir, destDir);
-      log.info(`Symlinked ${dir}/`);
-    } else {
-      log.warning(`${dir}/ not found in cache - run --skills first`);
+  for (const dir of MANAGED_DIRS) {
+    const src = path.join(CUSTOM_CLAUDE_DIR, dir);
+    const dest = path.join(CLAUDE_CONFIG_DIR, dir);
+    if (fs.existsSync(src)) {
+      copyDirRecursive(src, dest);
+      log.info(`Synced ${dir}/`);
     }
   }
 
@@ -130,7 +106,25 @@ export async function backupClaudeConfig() {
     log.info("Backed up CLAUDE.md");
   }
 
+  for (const dir of MANAGED_DIRS) {
+    const src = path.join(CLAUDE_CONFIG_DIR, dir);
+    const dest = path.join(CUSTOM_CLAUDE_DIR, dir);
+    if (fs.existsSync(src)) {
+      copyDirRecursive(src, dest);
+      log.info(`Backed up ${dir}/`);
+    }
+  }
+
   log.success("Claude Code config backed up to configs/claude/");
+}
+
+/** Install GSD (get-shit-done) commands, agents, and hooks for Claude Code. */
+export async function installGsd() {
+  log.info("Installing GSD for Claude Code...");
+  const ok = await runCommand("npx get-shit-done-cc@latest --claude --global");
+  if (ok) {
+    log.success("GSD installed.");
+  }
 }
 
 /** Install Claude Code CLI and deploy config (used by OS setup scripts). */
