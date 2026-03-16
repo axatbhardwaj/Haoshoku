@@ -75,7 +75,7 @@ function parseGitUrl(url) {
 
 /**
  * Extract repo name from git URL for cache directory naming.
- * Returns format: owner-repo (e.g., solatis-claude-config).
+ * Returns format: owner-repo (e.g., axatbhardwaj-claude-skills).
  */
 export function getRepoName(url) {
 	const parsed = parseGitUrl(url);

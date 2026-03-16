@@ -48,7 +48,7 @@ Haoshoku provides command-line options for non-interactive use or specific tasks
 haoshoku --os cachyos
 haoshoku --os debian-server
 
-# Sync Claude Code config (symlinks shared dirs, copies personal)
+# Deploy Claude Code config (personal files, conventions, output-styles)
 haoshoku --claude
 
 # Backup personal Claude config to configs/claude/
@@ -65,6 +65,9 @@ haoshoku --skills-update
 
 # List available skills from all sources
 haoshoku --skills-list
+
+# Install GSD (get-shit-done) for Claude Code
+haoshoku --gsd
 
 # Sync Zed editor config from configs/zed/ to ~/.config/zed/
 haoshoku --zed
@@ -100,10 +103,10 @@ haoshoku --kde-glass
     -   **KDE Glass Blur**: Optional installation of glass blur effect for KDE Plasma 6 (reinstall easily after KDE updates with `--kde-glass`).
     -   Sets up gaming tools (Steam, Lutris) and media players (mpv).
 -   **AI Configuration**:
-    -   **Claude Code Sync**: Symlinks agents/conventions from cache, copies personal config (`haoshoku --claude`).
+    -   **Claude Code Config**: Deploys personal config, conventions, and output-styles (`haoshoku --claude`).
     -   **Claude Backup**: Backs up personal config to `configs/claude/` (`haoshoku --claude-backup`).
-    -   **Claude Update**: Updates cached config and syncs (`haoshoku --claude-update`).
-    -   **Skill Management**: Runtime git cloning of Claude skills with user priority over community skills.
+    -   **Skill Management**: Runtime git cloning of Claude skills and agents (`haoshoku --skills`).
+    -   **GSD Integration**: Installs get-shit-done commands, agents, and hooks (`haoshoku --gsd`).
 
 ## Skill Management
 
@@ -114,8 +117,7 @@ Haoshoku manages Claude Code config via runtime git cloning to enable global npm
 ```json
 {
   "skillSources": [
-    "https://github.com/solatis/claude-config.git",
-    "https://github.com/username/custom-skills.git"
+    "https://github.com/axatbhardwaj/claude-skills.git"
   ]
 }
 ```

@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.0.0 - 2026-03-16
+- Add `--gsd` flag to install GSD (get-shit-done) for Claude Code.
+- Deploy conventions and output-styles via `--claude` (previously unmanaged).
+- Agents now deployed from skills repo via `--skills` (no longer bundled in haoshoku).
+- Remove solatis/claude-config as default skill source.
+- Update all documentation to reflect new architecture.
+
 ## 3.2.0 - 2026-02-07
 - Add KDE Ocean theme deployment (`--kde-theme`, `--kde-theme-backup`).
 - Bundle Ocean LAF theme assets (look-and-feel, Kvantum, Aurorae, desktop theme, color scheme).

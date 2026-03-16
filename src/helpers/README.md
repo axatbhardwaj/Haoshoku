@@ -4,39 +4,42 @@
 
 The Claude configuration uses a hybrid sync pattern:
 
-**Symlinked (from cache):** `agents/`, `output-styles/`, `conventions/`, `skills/`
-- Source: `~/.cache/haoshoku/solatis-claude-config/` (runtime git clone)
-- Updates via `--claude-update` or `--skills-update`
+**Copied from haoshoku template (`configs/claude/`):**
+- `claude.json`, `settings.json`, `CLAUDE.md` — personal config
+- `conventions/`, `output-styles/` — managed directories (replaced on sync)
+- Updates via `--claude-backup` (capture) and `--claude` (deploy)
 
-**Copied (personal config):** `claude.json`, `settings.json`, `CLAUDE.md`
-- Source: `configs/claude/`
-- User-owned, backed up via `--claude-backup`
+**Symlinked from cache:** `agents/`, `skills/`
+- Source: `~/.cache/haoshoku/{owner}-{repo}/` (runtime git clone)
+- Updates via `--skills` or `--skills-update`
 
 ## Functions
 
 | Function                 | Purpose                                      |
 | ------------------------ | -------------------------------------------- |
-| `syncClaudeConfig()`     | Copy personal + symlink shared dirs from cache |
-| `backupClaudeConfig()`   | Copy ~/.claude/ personal files to configs/   |
+| `syncClaudeConfig()`     | Copy personal files + managed dirs from template |
+| `backupClaudeConfig()`   | Copy ~/.claude/ personal files + managed dirs to template |
 | `updateClaudeConfig()`   | Pull latest from cached repos                |
 | `installClaude()`        | Install Claude Code CLI if not present       |
+| `installGsd()`           | Install GSD commands/agents/hooks via npx    |
 | `configureClaude()`      | Install + sync (used by OS setup scripts)    |
 
 ## CLI Flags
 
-- `--claude` - sync only
-- `--claude-backup` - backup personal config
+- `--claude` - deploy personal config + conventions + output-styles
+- `--claude-backup` - backup personal config + conventions + output-styles
 - `--claude-update` - update cache + sync
+- `--gsd` - install GSD for Claude Code
 
 ## Skill Manager Architecture
 
-Runtime git cloning for Claude config to support npm global install.
+Runtime git cloning for Claude skills and agents.
 
-**Separation**: skill_manager.js handles skill fetching/syncing; configure_claude.js handles personal config. Different responsibilities enable independent testing and maintenance.
+**Separation**: skill_manager.js handles skill/agent fetching and syncing; configure_claude.js handles personal config and managed directories. Different responsibilities enable independent testing and maintenance.
 
 **Cache Location**: XDG_CACHE_HOME/haoshoku/ follows XDG Base Directory spec, prevents home directory pollution.
 
-**Symlinks**: Skills symlinked (not copied) to ~/.claude/skills/ for single source of truth - updates to cache immediately visible to Claude Code.
+**Symlinks**: Skills and agents symlinked (not copied) to ~/.claude/ for single source of truth — updates to cache immediately visible to Claude Code.
 
 ### Cache Structure
 
@@ -45,19 +48,18 @@ Runtime git cloning for Claude config to support npm global install.
     │
     ▼
 $XDG_CACHE_HOME/haoshoku/          # Typically ~/.cache/haoshoku/
-    ├── solatis-claude-config/      # Community skills
-    └── user-custom-skills/         # User skills (optional)
+    └── axatbhardwaj-claude-skills/ # Skills + agents
     │
     ▼
-~/.claude/skills/ → symlinks merged from cache (user priority)
+~/.claude/skills/ → symlinks merged from cache
+~/.claude/agents/ → symlinks merged from cache
 ```
 
 ### Priority Rules
 
-- User skills in cache always take priority over community skills
-- Skills merged by processing sources in config array order (user first)
-- First occurrence of skill name wins (Set-based deduplication)
-- ~/.claude/skills/ contains only symlinks, never copies
+- Sources processed in config array order (first wins)
+- First occurrence of skill/agent name wins (Set-based deduplication)
+- ~/.claude/skills/ and ~/.claude/agents/ contain only symlinks, never copies
 
 ### Design Decisions
 
@@ -75,11 +77,11 @@ $XDG_CACHE_HOME/haoshoku/          # Typically ~/.cache/haoshoku/
 
 - Config must be valid JSON or defaults are used (forward compatibility)
 - Skill directory must contain SKILL.md to be recognized (prevents false positives)
-- Cache directories named by repo: {owner}-{repo} (e.g., solatis-claude-config)
-- Skills dir is user-only permissions (0700) - may contain sensitive paths
+- Cache directories named by repo: {owner}-{repo} (e.g., axatbhardwaj-claude-skills)
+- Skills dir is user-only permissions (0700) — may contain sensitive paths
 
 ### CLI Flags
 
-- `--skills` - clone/sync skills from configured sources
+- `--skills` - clone/sync skills and agents from configured sources
 - `--skills-update` - pull latest from all cached repos
 - `--skills-list` - list available skills by source

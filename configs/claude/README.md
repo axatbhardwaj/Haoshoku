@@ -2,12 +2,16 @@
 
 Personal Claude Code configuration backed up from `~/.claude/`.
 
-## Distinction from claude-config/
+## What lives here vs. skills repo
 
-| Directory       | Owner    | Purpose                          | Sync Method |
-| --------------- | -------- | -------------------------------- | ----------- |
-| `claude/`       | You      | Personal settings, rules         | Copied      |
-| `claude-config/`| Submodule| Skills, agents from solatis repo | Symlinked   |
+| Content               | Source                     | Sync Method | Deployed by   |
+| --------------------- | -------------------------- | ----------- | ------------- |
+| Personal config files | This directory             | Copied      | `--claude`    |
+| `conventions/`        | This directory             | Copied      | `--claude`    |
+| `output-styles/`      | This directory             | Copied      | `--claude`    |
+| Skills                | axatbhardwaj/claude-skills | Symlinked   | `--skills`    |
+| Agents                | axatbhardwaj/claude-skills | Symlinked   | `--skills`    |
+| GSD agents/commands   | get-shit-done-cc           | Installed   | `--gsd`       |
 
 ## Files
 
