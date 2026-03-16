@@ -25,7 +25,7 @@ const CLAUDE_AGENTS_DIR = path.join(HOME, ".claude", "agents");
 const CONFIG_PATH = path.join(HOME, ".haoshoku.json");
 
 const DEFAULT_CONFIG = {
-	skillSources: ["https://github.com/solatis/claude-config.git"],
+	skillSources: [],
 };
 
 /**
@@ -85,13 +85,12 @@ export function getRepoName(url) {
 	return `${parsed.owner}-${parsed.repo}`;
 }
 
-/** Create default config with solatis/claude-config as community baseline. */
+/** Create default config with empty skill sources. */
 function createDefaultConfig() {
 	log.info("Creating default skill configuration...");
 	log.info(`Config file: ${CONFIG_PATH}`);
-	log.info("Default source: solatis/claude-config (community skills)");
 	log.info(
-		`To add your own skills: edit ${CONFIG_PATH} and add your git repo URL to skillSources array`
+		`To add skill sources: edit ${CONFIG_PATH} and add git repo URLs to skillSources array`
 	);
 
 	fs.writeFileSync(CONFIG_PATH, JSON.stringify(DEFAULT_CONFIG, null, 2));
