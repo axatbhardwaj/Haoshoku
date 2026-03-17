@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { withSpinner } from "../common/ui.js";
 import { commandExists, log, promptUser, runCommand } from "../common/utils.js";
+import { configureClaude } from "../helpers/configure_claude.js";
 
 // --- Constants ---
 const HOME = homedir();
@@ -160,6 +161,21 @@ async function setupFirewall() {
 	}
 }
 
+async function installNodejs() {
+	if (await commandExists("node")) {
+		log.info("Node.js already installed.");
+		return;
+	}
+
+	log.info("Installing Node.js LTS...");
+	await withSpinner("Installing Node.js", async () => {
+		await runCommand(
+			"curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo bash -",
+		);
+		await runCommand("sudo apt install -y nodejs");
+	});
+}
+
 async function configureFail2ban() {
 	log.info("Configuring Fail2ban for SSH protection...");
 
@@ -184,9 +200,11 @@ export async function runDebianServerSetup() {
 	await installEssentials();
 	await setupSsh();
 	await configureFishShell();
+	await installNodejs();
 	await installDocker();
 	await setupFirewall();
 	await configureFail2ban();
+	await configureClaude();
 
 	log.success("Debian Server setup finished.");
 }
