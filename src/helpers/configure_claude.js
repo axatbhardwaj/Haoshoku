@@ -17,6 +17,10 @@ const PERSONAL_FILES = [
   { src: "claude.json", dest: CLAUDE_JSON_PATH },
   { src: "settings.json", dest: path.join(CLAUDE_CONFIG_DIR, "settings.json") },
   { src: "CLAUDE.md", dest: path.join(CLAUDE_CONFIG_DIR, "CLAUDE.md") },
+  {
+    src: "statusline-command.sh",
+    dest: path.join(CLAUDE_CONFIG_DIR, "statusline-command.sh"),
+  },
 ];
 
 // Directories fully owned by haoshoku (replaced on sync)
@@ -83,27 +87,11 @@ export async function backupClaudeConfig() {
 
   fs.mkdirSync(CUSTOM_CLAUDE_DIR, { recursive: true });
 
-  if (fs.existsSync(CLAUDE_JSON_PATH)) {
-    fs.copyFileSync(
-      CLAUDE_JSON_PATH,
-      path.join(CUSTOM_CLAUDE_DIR, "claude.json"),
-    );
-    log.info("Backed up ~/.claude.json");
-  }
-
-  const settingsPath = path.join(CLAUDE_CONFIG_DIR, "settings.json");
-  if (fs.existsSync(settingsPath)) {
-    fs.copyFileSync(
-      settingsPath,
-      path.join(CUSTOM_CLAUDE_DIR, "settings.json"),
-    );
-    log.info("Backed up settings.json");
-  }
-
-  const claudeMdPath = path.join(CLAUDE_CONFIG_DIR, "CLAUDE.md");
-  if (fs.existsSync(claudeMdPath)) {
-    fs.copyFileSync(claudeMdPath, path.join(CUSTOM_CLAUDE_DIR, "CLAUDE.md"));
-    log.info("Backed up CLAUDE.md");
+  for (const file of PERSONAL_FILES) {
+    if (fs.existsSync(file.dest)) {
+      fs.copyFileSync(file.dest, path.join(CUSTOM_CLAUDE_DIR, file.src));
+      log.info(`Backed up ${file.src}`);
+    }
   }
 
   for (const dir of MANAGED_DIRS) {
