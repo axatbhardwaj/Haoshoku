@@ -1,58 +1,85 @@
-## Workflow Orchestration
+## Task Routing
 
-### 1. Plan Mode Default
-- Enter plan mode for ANY non-trivial task (3+ steps or architectural decisions)
-- If something goes sideways, STOP and re-plan immediately - don't keep pushing
-- Use plan mode for verification steps, not just building
-- Write detailed specs upfront to reduce ambiguity
+GSD is the default execution framework for code work. The routing decision is the highest-leverage moment of the task — pick deliberately.
 
-### 2. Subagent Strategy to keep main context window clean
-- Offload research, exploration, and parallel analysis to subagents
-- For complex problems, throw more compute at it via subagents
-- One task per subagent for focused execution
+**Skip GSD for:** throwaway scripts, edits to `~/.claude/` itself, pure questions, sub-30-second config tweaks.
 
-### 3. Self-Improvement Loop
-- After ANY correction from the user: update 'tasks/lessons.md' with the pattern
-- Write rules for yourself that prevent the same mistake
-- Ruthlessly iterate on these lessons until mistake rate drops
-- Review lessons at session start for relevant project
+### Picking work back up
 
-### 4. Verification Before Done
-- Never mark a task complete without proving it works
-- Diff behavior between main and your changes when relevant
-- Ask yourself: "Would a staff engineer approve this?"
-- Run tests, check logs, demonstrate correctness
+`/gsd-progress` — situational awareness + auto-routes to the right next step. Default opener after a context reset or when the user asks "what's next?" Falls back to `/gsd-do <freeform intent>` when you can't name the right skill.
 
-### 5. Demand Elegance (Balanced)
-- For non-trivial changes: pause and ask "is there a more elegant way?"
-- If a fix feels hacky: "Knowing everything I know now, implement the elegant solution"
-- Skip this for simple, obvious fixes - don't over-engineer
-- Challenge your own work before presenting it
+### Doing the work
 
-### 6. Autonomous Bug Fixing
-- When given a bug report: just fix it. Don't ask for hand-holding
-- Point at logs, errors, failing tests -> then resolve them
-- Zero context switching required from the user
-- Go fix failing CI tests without being told how
+- Trivial edit (rename, flag flip, typo) → `/gsd-fast` — no state file, no commit log
+- Code task with a known approach → `/gsd-quick` — add `--research` (unfamiliar library), `--discuss` (ambiguous scope), `--validate` (high-stakes), `--full` (all three)
+- Bug, failing CI, unexpected behavior → `/gsd-debug`
+- Architectural brainstorm, no phase yet → `/gsd-explore`
+- Need to understand an unfamiliar codebase → `/gsd-map-codebase`
+- Multi-phase feature or migration → phase workflow (below)
+- Append a phase to current milestone → `/gsd-add-phase`
+- Urgent patch between existing phases → `/gsd-insert-phase` (decimal numbering)
+- Run all remaining phases hands-off → `/gsd-autonomous`
+- Setup → `/gsd-new-project` · `/gsd-new-milestone` · `/gsd-complete-milestone`
 
-## Task Management
-1. **Plan First**: Write plan to 'tasks/todo.md' with checkable items
-2. **Verify Plan**: Check in before starting implementation
-3. **Track Progress**: Mark items complete as you go
-4. **Explain Changes**: High-level summary at each step
-5. **Document Results**: Add review to 'tasks/todo.md'
-6. **Capture Lessons**: Update 'tasks/lessons.md' after corrections
+### Phase workflow (per phase)
 
-## Core Principles
-- **Simplicity First**: Make every change as simple as possible. Impact minimal code.
-- **No Laziness**: Find root causes. No temporary fixes. Senior developer standards.
-- **Minimal Impact**: Changes should only touch what's necessary. Avoid introducing bugs.
-- **Avoid Over-engineering**: Follow the KISS principle: keep things very simple.
+`/gsd-discuss-phase` → `/gsd-plan-phase` → `/gsd-review` (cross-AI peer review of plan) → `/gsd-execute-phase` → `/gsd-verify-work` → `/gsd-secure-phase` → `/gsd-code-review` → `/gsd-code-review-fix` → `/gsd-pr-branch` → `/gsd-ship`
 
-### Git Commits
+Frontend phases also use `/gsd-ui-phase` after plan and `/gsd-ui-review` after execute.
 
-- Keep commit messages short and precise (50 chars max for subject).
-- One file per commit when possible - do not club multiple unrelated files.
-- Each commit should represent one logical change.
-- Use semantic prefixes: feat, fix, refactor, docs, test, chore.
-- Avoid vague messages like "update files" or "fix stuff".
+### Capture an idea without breaking flow
+
+`/gsd-add-todo <text>` for actionable items · `/gsd-add-backlog` for the 999.x parking lot.
+
+### Escape hatches
+
+- Pause mid-phase → `/gsd-pause-work` (writes context handoff)
+- Resume from `.continue-here.md` specifically → `/gsd-resume-work` (otherwise `/gsd-progress`)
+- Roll back a phase or plan commit → `/gsd-undo` (dependency-checked)
+- Completed phase has gaps → `/gsd-validate-phase` (functional) · `/gsd-audit-uat` (cross-phase)
+- Investigate a failed GSD workflow → `/gsd-forensics`
+
+### When tempted to pick X, pick Y instead
+
+| Tempted | Pick instead | When |
+|---|---|---|
+| `/gsd-fast` | `/gsd-quick` | change needs state tracking or atomic commit log |
+| `/gsd-explore` | `/gsd-discuss-phase` | already inside an active phase |
+| `/gsd-add-phase` | `/gsd-insert-phase` | the new work needs to land between existing phases (e.g. 72.1) |
+| `/gsd-resume-work` | `/gsd-progress` | not actually mid-checkpoint; you just want "where do we stand" |
+
+## Worktree Awareness
+
+- Worktrees are sibling directories of the main repo (e.g. `monorepo-DEF-573` next to `monorepo`)
+- New worktree: copy `.env` files and re-check `.gitignore` — they don't carry over. Dependencies may need reinstalling.
+- Always know which worktree you're in and what branch it tracks.
+- "Bring changes to this worktree" → cherry-pick or merge. Don't suggest switching worktrees as the fix.
+
+## Autonomous Execution
+
+The following are pre-authorized — proceed without asking:
+- Bug reports: diagnose and fix end-to-end
+- Failing CI: read the logs, find the cause, fix it
+- PR review comments: address them
+- "Check now" / "try now" / "do it": re-evaluate current state and act
+
+Still confirm for: force-push, branch deletion, dependency removal, schema changes, anything touching shared infra.
+
+When told "do not try to fix it just yet" — comply. Investigate only.
+
+## Verification That Counts
+
+- Run the test that motivated the change, not just the full suite
+- UI changes: verify visually with Playwright MCP when available
+- Infra changes: verify the deployment took effect — exit code 0 is not proof
+- "Would a staff engineer approve this?" — if no, iterate before presenting
+
+## Context Retention
+
+If the user references a prior decision ("we discussed phase 7 for this"), check `.planning/` artifacts before asking them to repeat themselves.
+
+## Git Commits
+
+- Semantic prefix (feat, fix, refactor, docs, test, chore), 50-char subject max
+- One logical change per commit — keep a feature with its test, split a feature from a drive-by refactor
+- Never commit `.planning/`, GSD artifacts, or workflow docs to a project repo — local orchestration state, not source
