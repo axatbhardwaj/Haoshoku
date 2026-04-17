@@ -16,9 +16,17 @@ agent_name=$(echo "$input" | jq -r '.agent.name // empty')
 cost=$(echo "$input"       | jq -r '.cost.total_cost_usd // empty')
 model_name=$(echo "$input" | jq -r '.model.display_name // empty')
 
-dir=$(basename "${cwd:-$(pwd)}")
+dir="${cwd:-$(pwd)}"
+dir="${dir/#$HOME/\~}"  # collapse $HOME → ~ ; \~ escape prevents bash tilde-expansion in the replacement
 user=$(whoami)
 host=$(hostname -s)
+
+# Fallback: if Claude Code didn't pipe a branch (only does so inside an actual worktree),
+# ask git directly. Detached HEAD becomes empty → branch line stays hidden.
+if [ -z "$branch" ]; then
+  branch=$(git -C "${cwd:-$(pwd)}" rev-parse --abbrev-ref HEAD 2>/dev/null || true)
+  [ "$branch" = "HEAD" ] && branch=""
+fi
 
 # ── Deep Ocean truecolor palette ─────────────────────────────────────────────
 C_RESET=$'\033[0m'
