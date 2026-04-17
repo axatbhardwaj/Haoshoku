@@ -74,6 +74,13 @@ When told "do not try to fix it just yet" — comply. Investigate only.
 - Infra changes: verify the deployment took effect — exit code 0 is not proof
 - "Would a staff engineer approve this?" — if no, iterate before presenting
 
+## External Lookups
+
+Training data is stale. Before quoting a package version, library API, framework feature, or CLI tool flag:
+- WebSearch (or WebFetch on the source URL) to verify current state
+- For library/SDK docs specifically, prefer context7 MCP — it pulls live versions
+- Never say "latest X" from memory; look it up
+
 ## Context Retention
 
 If the user references a prior decision ("we discussed phase 7 for this"), check `.planning/` artifacts before asking them to repeat themselves.
