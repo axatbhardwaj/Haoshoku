@@ -1,5 +1,21 @@
 # Changelog
 
+## 4.2.0 - 2026-04-28
+- Remove Ghostty integration end-to-end (config templates, `--ghostty-theme` flag, per-OS deploy block). Kitty replaces it as the default terminal.
+- Port deep-ocean theme to Kitty (palette, 0xProto Nerd Font Mono, opacity 0.85, KDE-honored `background_blur`, shift+enter Claude Code newline keybind).
+- Backup before overwrite for fish, kitty, and alacritty configs (closes ROB-02). Existing configs are preserved as `<dest>.bak` on each deploy. Single rolling backup matches the existing KDE-shortcuts pattern.
+- Add `safeCopyFile` helper to `common/utils.js` with three test specs.
+
+## 4.1.1 - 2026-04-17
+- Fix Claude Code statusline branch + path display.
+- Require web search for current package/library versions in Claude conventions.
+
+## 4.1.0 - 2026-04-16
+- Add Claude Code statusline support (sync + deploy).
+- Add Node.js install and Claude config deployment to Debian server setup.
+- Refactor `CLAUDE.md` template for Claude 4.7.
+- Bump GitHub Actions versions in CI.
+
 ## 4.0.0 - 2026-03-16
 - Add `--gsd` flag to install GSD (get-shit-done) for Claude Code.
 - Deploy conventions and output-styles via `--claude` (previously unmanaged).
