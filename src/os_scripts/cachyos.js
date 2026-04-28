@@ -2,7 +2,13 @@ import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { withSpinner } from "../common/ui.js";
-import { commandExists, log, promptUser, runCommand } from "../common/utils.js";
+import {
+  commandExists,
+  log,
+  promptUser,
+  runCommand,
+  safeCopyFile,
+} from "../common/utils.js";
 import { configureClaude } from "../helpers/configure_claude.js";
 import { configureKdeTheme } from "../helpers/configure_kde_theme.js";
 import { configureZed } from "../helpers/configure_zed.js";
@@ -202,7 +208,7 @@ async function configureFishShell() {
 
   fs.mkdirSync(FISH_CONFIG_DIR, { recursive: true });
   if (fs.existsSync(CUSTOM_FISH_CONFIG_PATH)) {
-    fs.copyFileSync(
+    safeCopyFile(
       CUSTOM_FISH_CONFIG_PATH,
       path.join(FISH_CONFIG_DIR, "config.fish"),
     );
@@ -214,7 +220,7 @@ async function configureTerminals() {
   log.info("Configuring Kitty terminal...");
   fs.mkdirSync(KITTY_CONFIG_DIR, { recursive: true });
   if (fs.existsSync(CUSTOM_KITTY_CONFIG_PATH)) {
-    fs.copyFileSync(
+    safeCopyFile(
       CUSTOM_KITTY_CONFIG_PATH,
       path.join(KITTY_CONFIG_DIR, "kitty.conf"),
     );
@@ -226,7 +232,7 @@ async function configureTerminals() {
   log.info("Configuring Alacritty terminal...");
   fs.mkdirSync(ALACRITTY_CONFIG_DIR, { recursive: true });
   if (fs.existsSync(CUSTOM_ALACRITTY_CONFIG_PATH)) {
-    fs.copyFileSync(
+    safeCopyFile(
       CUSTOM_ALACRITTY_CONFIG_PATH,
       path.join(ALACRITTY_CONFIG_DIR, "alacritty.toml"),
     );
@@ -236,7 +242,6 @@ async function configureTerminals() {
       `Custom Alacritty config not found at ${CUSTOM_ALACRITTY_CONFIG_PATH}`,
     );
   }
-
 }
 
 async function enableServices() {

@@ -78,6 +78,18 @@ export async function promptUser(message, initial = false) {
 	return response.value;
 }
 
+/**
+ * Copy `src` to `dest`, preserving any existing `dest` as `${dest}.bak` first.
+ * Single rolling backup — re-running overwrites the previous .bak.
+ */
+export function safeCopyFile(src, dest) {
+	if (fs.existsSync(dest)) {
+		fs.copyFileSync(dest, `${dest}.bak`);
+		log.info(`Backed up existing ${path.basename(dest)} to ${dest}.bak`);
+	}
+	fs.copyFileSync(src, dest);
+}
+
 /** Recursively copy a directory tree (files and nested dirs). */
 export function copyDirRecursive(src, dest) {
 	fs.mkdirSync(dest, { recursive: true });
