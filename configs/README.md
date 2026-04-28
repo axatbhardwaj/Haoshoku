@@ -6,7 +6,7 @@ This directory contains template configuration files that are deployed to the us
 
 Haoshoku uses a hybrid approach for configuration management:
 
-- **Regular configs** (fish, kitty, alacritty, ghostty, zed): Copied to destination. Ensures the system remains functional even if the source repository is moved or deleted, though changes to the local repo won't be reflected until setup runs again.
+- **Regular configs** (fish, kitty, alacritty, zed): Copied to destination. Ensures the system remains functional even if the source repository is moved or deleted, though changes to the local repo won't be reflected until setup runs again.
 - **Claude skills/agents** (from runtime git clone): Symlinked from cache to destination. Allows updates to skills without re-running setup.
 - **Claude personal config** (claude.json, settings.json): Copied to destination for user-specific customization.
 

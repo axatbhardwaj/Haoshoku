@@ -15,7 +15,6 @@ Template configuration files copied to user's `~/.config/` during setup.
 | `alacritty/`    | Alacritty terminal config           | Modifying Alacritty settings              |
 | `fastfetch/`    | Fastfetch system info config        | Modifying system info display             |
 | `fish/`         | Fish shell config                   | Modifying shell behavior, aliases         |
-| `ghostty/`      | Ghostty terminal config             | Modifying Ghostty settings                |
 | `kitty/`        | Kitty terminal config               | Modifying Kitty settings                  |
 | `vencord/`      | Vencord Discord theme               | Modifying Discord appearance              |
 | `claude/`       | Claude Code personal config (copied)    | Modifying settings, backup/restore        |

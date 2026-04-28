@@ -22,7 +22,6 @@ const PARU_BUILD_DIR = "/tmp/paru";
 const STARSHIP_CONFIG_PATH = path.join(HOME, ".config", "starship.toml");
 const FISH_CONFIG_DIR = path.join(HOME, ".config", "fish");
 const PYENV_ROOT = path.join(HOME, ".pyenv");
-const GHOSTTY_CONFIG_DIR = path.join(HOME, ".config", "ghostty");
 const FASTFETCH_CONFIG_DIR = path.join(HOME, ".config", "fastfetch");
 const KITTY_CONFIG_DIR = path.join(HOME, ".config", "kitty");
 const ALACRITTY_CONFIG_DIR = path.join(HOME, ".config", "alacritty");
@@ -35,7 +34,6 @@ const PARU_APPLIST_PATH = path.join(COMMON_DIR, "paru_applist.txt");
 const FLATPAK_APPLIST_PATH = path.join(COMMON_DIR, "flatpacks_arch.txt");
 const KDE_SHORTCUTS_PATH = path.join(CONFIGS_DIR, "kde_shortcuts.kksrc");
 const CUSTOM_FISH_CONFIG_PATH = path.join(CONFIGS_DIR, "fish", "config.fish");
-const CUSTOM_GHOSTTY_CONFIG_PATH = path.join(CONFIGS_DIR, "ghostty", "config");
 const CUSTOM_FASTFETCH_CONFIG_PATH = path.join(
   CONFIGS_DIR,
   "fastfetch",
@@ -239,15 +237,6 @@ async function configureTerminals() {
     );
   }
 
-  log.info("Configuring Ghostty terminal...");
-  fs.mkdirSync(GHOSTTY_CONFIG_DIR, { recursive: true });
-  if (fs.existsSync(CUSTOM_GHOSTTY_CONFIG_PATH)) {
-    fs.copyFileSync(
-      CUSTOM_GHOSTTY_CONFIG_PATH,
-      path.join(GHOSTTY_CONFIG_DIR, "config"),
-    );
-    log.info("Copied custom Ghostty config.");
-  }
 }
 
 async function enableServices() {

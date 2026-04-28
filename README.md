@@ -89,7 +89,7 @@ haoshoku --kde-glass
 -   **Terminal & Shell**:
     -   Installs and configures **Fish Shell** as default.
     -   Sets up **Starship** prompt and **Fisher** plugins.
-    -   Deploys custom configs for **Ghostty**, **Kitty**, **Alacritty**, and **Fastfetch**.
+    -   Deploys custom configs for **Kitty**, **Alacritty**, and **Fastfetch**.
 -   **Developer Ecosystem**:
     -   **Languages**: Rust (Rustup), Python (Uv/Conda), Node.js (Volta/NVM).
     -   **Tools**: Docker, Git (with signing), Neovim/VS Code, Foundry (Smart Contracts).
@@ -138,10 +138,9 @@ Haoshoku manages Claude Code config via runtime git cloning to enable global npm
 
 ## Configuration
 
-All configuration templates are stored in the `configs/` directory. Terminal configs (fish, ghostty, kitty, starship, fastfetch) are copied during setup. Claude skills and agents are symlinked:
+All configuration templates are stored in the `configs/` directory. Terminal configs (fish, kitty, starship, fastfetch) are copied during setup. Claude skills and agents are symlinked:
 
 -   `configs/fish/`: Fish shell configuration and functions.
--   `configs/ghostty/`: Ghostty terminal config.
 -   `configs/kitty/`: Kitty terminal config.
 -   `configs/starship.toml`: Cross-shell prompt theme.
 -   `configs/fastfetch/`: System information fetch tool config.

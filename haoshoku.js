@@ -16,7 +16,6 @@ import {
   backupKdeTheme,
   syncKdeTheme,
 } from "./src/helpers/configure_kde_theme.js";
-import { syncGhosttyTheme } from "./src/helpers/configure_ghostty.js";
 import {
   backupZedConfig,
   syncZedConfig,
@@ -82,7 +81,6 @@ program
     "--zed-backup",
     "Backup Zed config to configs/zed/ (sanitizes sensitive data)",
   )
-  .option("--ghostty-theme", "Sync Ghostty theme to ~/.config/ghostty/themes/")
   .option("--zed-theme", "Sync Zed theme to ~/.config/zed/themes/")
   .option("--kde-theme", "Deploy KDE Ocean theme files (sync only, no activate)")
   .option("--kde-theme-backup", "Backup KDE Ocean theme from system to configs/kde/")
@@ -141,11 +139,6 @@ program
 
     if (options.zed) {
       await syncZedConfig();
-      return;
-    }
-
-    if (options.ghosttyTheme) {
-      await syncGhosttyTheme();
       return;
     }
 
