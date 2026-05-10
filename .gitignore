@@ -314,4 +314,7 @@ pyrightconfig.json
 .sidecar/
 .todos/
 
+# Superpowers brainstorming + planning artifacts (local-only, never committed)
+/superpowers/
+
 # End of https://www.toptal.com/developers/gitignore/api/python,node
