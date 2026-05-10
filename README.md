@@ -66,8 +66,8 @@ haoshoku --skills-update
 # List available skills from all sources
 haoshoku --skills-list
 
-# Install GSD (get-shit-done) for Claude Code
-haoshoku --gsd
+# Enable Superpowers plugin (idempotent)
+haoshoku --superpowers
 
 # Sync Zed editor config from configs/zed/ to ~/.config/zed/
 haoshoku --zed
@@ -106,7 +106,7 @@ haoshoku --kde-glass
     -   **Claude Code Config**: Deploys personal config, conventions, and output-styles (`haoshoku --claude`).
     -   **Claude Backup**: Backs up personal config to `configs/claude/` (`haoshoku --claude-backup`).
     -   **Skill Management**: Runtime git cloning of Claude skills and agents (`haoshoku --skills`).
-    -   **GSD Integration**: Installs get-shit-done commands, agents, and hooks (`haoshoku --gsd`).
+    -   **Superpowers**: Idempotently enables the Superpowers plugin in `~/.claude/settings.json` (`haoshoku --superpowers`).
 
 ## Skill Management
 

@@ -10,6 +10,8 @@ const CLAUDE_JSON_PATH = path.join(HOME, ".claude.json");
 const PROJECT_ROOT = path.resolve(__dirname, "..", "..");
 const CONFIGS_DIR = path.join(PROJECT_ROOT, "configs");
 const CUSTOM_CLAUDE_DIR = path.join(CONFIGS_DIR, "claude");
+const SETTINGS_PATH = path.join(CLAUDE_CONFIG_DIR, "settings.json");
+const SUPERPOWERS_PLUGIN_ID = "superpowers@claude-plugins-official";
 
 const CLAUDE_INSTALL_URL = "https://claude.ai/install.sh";
 
@@ -106,13 +108,29 @@ export async function backupClaudeConfig() {
   log.success("Claude Code config backed up to configs/claude/");
 }
 
-/** Install GSD (get-shit-done) commands, agents, and hooks for Claude Code. */
-export async function installGsd() {
-  log.info("Installing GSD for Claude Code...");
-  const ok = await runCommand("npx get-shit-done-cc@latest --claude --global");
-  if (ok) {
-    log.success("GSD installed.");
+/** Idempotently enable the Superpowers plugin in ~/.claude/settings.json. */
+export async function installSuperpowers(settingsPath = SETTINGS_PATH) {
+  if (!fs.existsSync(settingsPath)) {
+    log.error(
+      `${settingsPath} not found. Run 'haoshoku --claude' first to deploy the config bundle.`,
+    );
+    return;
   }
+
+  log.info("Enabling Superpowers plugin in ~/.claude/settings.json...");
+  const settings = JSON.parse(fs.readFileSync(settingsPath, "utf-8"));
+  settings.enabledPlugins ??= {};
+
+  if (settings.enabledPlugins[SUPERPOWERS_PLUGIN_ID] === true) {
+    log.info("Superpowers plugin already enabled (no change).");
+    return;
+  }
+
+  settings.enabledPlugins[SUPERPOWERS_PLUGIN_ID] = true;
+  fs.writeFileSync(settingsPath, `${JSON.stringify(settings, null, 2)}\n`);
+  log.success(
+    "Superpowers plugin enabled in ~/.claude/settings.json. Restart Claude Code to load it.",
+  );
 }
 
 /** Install Claude Code CLI and deploy config (used by OS setup scripts). */

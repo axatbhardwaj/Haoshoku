@@ -4,14 +4,14 @@ Personal Claude Code configuration backed up from `~/.claude/`.
 
 ## What lives here vs. skills repo
 
-| Content               | Source                     | Sync Method | Deployed by   |
-| --------------------- | -------------------------- | ----------- | ------------- |
-| Personal config files | This directory             | Copied      | `--claude`    |
-| `conventions/`        | This directory             | Copied      | `--claude`    |
-| `output-styles/`      | This directory             | Copied      | `--claude`    |
-| Skills                | axatbhardwaj/claude-skills | Symlinked   | `--skills`    |
-| Agents                | axatbhardwaj/claude-skills | Symlinked   | `--skills`    |
-| GSD agents/commands   | get-shit-done-cc           | Installed   | `--gsd`       |
+| Content               | Source                     | Sync Method        | Deployed by        |
+| --------------------- | -------------------------- | ------------------ | ------------------ |
+| Personal config files | This directory             | Copied             | `--claude`         |
+| `conventions/`        | This directory             | Copied             | `--claude`         |
+| `output-styles/`      | This directory             | Copied             | `--claude`         |
+| Skills                | axatbhardwaj/claude-skills | Symlinked          | `--skills`         |
+| Agents                | axatbhardwaj/claude-skills | Symlinked          | `--skills`         |
+| Superpowers plugin    | claude-plugins-official    | Settings.json edit | `--superpowers`    |
 
 ## Files
 

@@ -101,32 +101,6 @@ agent_icon() {
     claude-code-guide)                     printf '📚' ;;
     statusline-setup)                      printf '📊' ;;
 
-    # GSD workflow agents
-    gsd-advisor-researcher)                printf '💡' ;;
-    gsd-assumptions-analyzer)              printf '🤔' ;;
-    gsd-codebase-mapper)                   printf '🗺️' ;;
-    gsd-code-fixer)                        printf '🔧' ;;
-    gsd-code-reviewer)                     printf '🔍' ;;
-    gsd-debugger)                          printf '🐛' ;;
-    gsd-doc-verifier)                      printf '📑' ;;
-    gsd-doc-writer)                        printf '📝' ;;
-    gsd-executor)                          printf '⚙️' ;;
-    gsd-integration-checker)               printf '🔗' ;;
-    gsd-intel-updater)                     printf '📡' ;;
-    gsd-nyquist-auditor)                   printf '📐' ;;
-    gsd-phase-researcher)                  printf '🔬' ;;
-    gsd-plan-checker)                      printf '✔️' ;;
-    gsd-planner)                           printf '📋' ;;
-    gsd-project-researcher)                printf '🔭' ;;
-    gsd-research-synthesizer)              printf '🧬' ;;
-    gsd-roadmapper)                        printf '🛣️' ;;
-    gsd-security-auditor)                  printf '🛡️' ;;
-    gsd-ui-auditor)                        printf '🎨' ;;
-    gsd-ui-checker)                        printf '✨' ;;
-    gsd-ui-researcher)                     printf '🎭' ;;
-    gsd-user-profiler)                     printf '👤' ;;
-    gsd-verifier)                          printf '✅' ;;
-
     # plugin agents (pr-review-toolkit, feature-dev, codex, hookify, plugin-dev, skill-creator)
     code-reviewer)                         printf '🔍' ;;
     code-simplifier)                       printf '✂️' ;;

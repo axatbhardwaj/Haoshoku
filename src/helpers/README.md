@@ -21,7 +21,7 @@ The Claude configuration uses a hybrid sync pattern:
 | `backupClaudeConfig()`   | Copy ~/.claude/ personal files + managed dirs to template |
 | `updateClaudeConfig()`   | Pull latest from cached repos                |
 | `installClaude()`        | Install Claude Code CLI if not present       |
-| `installGsd()`           | Install GSD commands/agents/hooks via npx    |
+| `installSuperpowers()`   | Enable Superpowers plugin in settings.json   |
 | `configureClaude()`      | Install + sync (used by OS setup scripts)    |
 
 ## CLI Flags
@@ -29,7 +29,7 @@ The Claude configuration uses a hybrid sync pattern:
 - `--claude` - deploy personal config + conventions + output-styles
 - `--claude-backup` - backup personal config + conventions + output-styles
 - `--claude-update` - update cache + sync
-- `--gsd` - install GSD for Claude Code
+- `--superpowers` - enable Superpowers plugin in settings.json
 
 ## Skill Manager Architecture
 

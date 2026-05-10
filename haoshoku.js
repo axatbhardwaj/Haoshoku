@@ -8,7 +8,7 @@ import { getBanner, showBanner } from "./src/common/ui.js";
 import { log } from "./src/common/utils.js";
 import {
   backupClaudeConfig,
-  installGsd,
+  installSuperpowers,
   syncClaudeConfig,
   updateClaudeConfig,
 } from "./src/helpers/configure_claude.js";
@@ -75,7 +75,7 @@ program
   .option("--skills", "Sync skills from configured sources")
   .option("--skills-update", "Update cached skill sources")
   .option("--skills-list", "List available skills")
-  .option("--gsd", "Install GSD (get-shit-done) for Claude Code")
+  .option("--superpowers", "Enable the Superpowers plugin for Claude Code")
   .option("--zed", "Sync Zed config from configs/zed/ to ~/.config/zed/")
   .option(
     "--zed-backup",
@@ -102,6 +102,11 @@ program
       return;
     }
 
+    if (options.superpowers) {
+      await installSuperpowers();
+      return;
+    }
+
     if (options.skillsUpdate) {
       syncSkills({ update: true });
       return;
@@ -114,11 +119,6 @@ program
 
     if (options.skillsList) {
       printAvailableSkills();
-      return;
-    }
-
-    if (options.gsd) {
-      await installGsd();
       return;
     }
 

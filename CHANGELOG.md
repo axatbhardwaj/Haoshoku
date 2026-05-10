@@ -1,5 +1,10 @@
 # Changelog
 
+## 4.3.0 - 2026-05-11
+- Replace `--gsd` with `--superpowers`. The new flag idempotently enables the Superpowers plugin via a direct edit to `~/.claude/settings.json` (different shape from `--gsd`'s npx shell-out).
+- Remove dead `gsd-*` agent emoji entries from the Claude Code statusline (live + backed-up copy).
+- Update README, helpers README, and configs/claude/README to reflect the migration.
+
 ## 4.2.1 - 2026-05-10
 - Add reasoning effort indicator to Claude Code statusline (`💭 <level>` color-coded by tier — dim/blue/green/magenta for low/medium/high/xhigh; shows `⚡ fast` when fast mode bypasses thinking).
 - Sync personal Claude config snapshot (`settings.json`, `CLAUDE.md`, `claude.json` runtime state) from live `~/.claude/`. CLAUDE.md transitions from GSD-era routing to Superpowers framework.
