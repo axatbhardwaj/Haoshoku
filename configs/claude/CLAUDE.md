@@ -1,52 +1,72 @@
-## Task Routing
+## Task Routing — Superpowers
 
-GSD is the default execution framework for code work. The routing decision is the highest-leverage moment of the task — pick deliberately.
+Superpowers is the default execution framework. Skills auto-trigger from their descriptions, but engage them deliberately — they exist to stop you from jumping straight to code.
 
-**Skip GSD for:** throwaway scripts, edits to `~/.claude/` itself, pure questions, sub-30-second config tweaks.
+**Skip Superpowers only for:** throwaway one-liners, edits to `~/.claude/` itself, pure factual questions, sub-30-second config tweaks.
 
-### Picking work back up
+### Every conversation
+- Open with `superpowers:using-superpowers` — invoke before any other response, including clarifying questions
 
-`/gsd-progress` — situational awareness + auto-routes to the right next step. Default opener after a context reset or when the user asks "what's next?" Falls back to `/gsd-do <freeform intent>` when you can't name the right skill.
+### Before writing code
+- New feature, component, or behavior change → `superpowers:brainstorming` (mandatory before any creative work)
+- Multi-step task with a spec → `superpowers:writing-plans`
+- Implementation work → `superpowers:test-driven-development` (red/green TDD, before writing implementation)
 
 ### Doing the work
+- Plan exists, executing in this session → `superpowers:subagent-driven-development`
+- Plan exists, executing in a separate session with checkpoints → `superpowers:executing-plans`
+- 2+ independent tasks with no shared state → `superpowers:dispatching-parallel-agents`
+- Feature needs workspace isolation from current branch → `superpowers:using-git-worktrees`
 
-- Trivial edit (rename, flag flip, typo) → `/gsd-fast` — no state file, no commit log
-- Code task with a known approach → `/gsd-quick` — add `--research` (unfamiliar library), `--discuss` (ambiguous scope), `--validate` (high-stakes), `--full` (all three)
-- Bug, failing CI, unexpected behavior → `/gsd-debug`
-- Architectural brainstorm, no phase yet → `/gsd-explore`
-- Need to understand an unfamiliar codebase → `/gsd-map-codebase`
-- Multi-phase feature or migration → phase workflow (below)
-- Append a phase to current milestone → `/gsd-add-phase`
-- Urgent patch between existing phases → `/gsd-insert-phase` (decimal numbering)
-- Run all remaining phases hands-off → `/gsd-autonomous`
-- Setup → `/gsd-new-project` · `/gsd-new-milestone` · `/gsd-complete-milestone`
+### Debugging
+- Any bug, test failure, or unexpected behavior → `superpowers:systematic-debugging` *before* proposing fixes
 
-### Phase workflow (per phase)
+### Finishing
+- About to claim "done", "fixed", "passing" → `superpowers:verification-before-completion` — always run verification commands and confirm output before any success claim
+- Implementation complete, deciding integration → `superpowers:finishing-a-development-branch`
+- Want review before merge → `superpowers:requesting-code-review`
+- Receiving review feedback → `superpowers:receiving-code-review` (verify, don't blindly implement)
 
-`/gsd-discuss-phase` → `/gsd-plan-phase` → `/gsd-review` (cross-AI peer review of plan) → `/gsd-execute-phase` → `/gsd-verify-work` → `/gsd-secure-phase` → `/gsd-code-review` → `/gsd-code-review-fix` → `/gsd-pr-branch` → `/gsd-ship`
+### Creating or editing skills
+- `superpowers:writing-skills`
 
-Frontend phases also use `/gsd-ui-phase` after plan and `/gsd-ui-review` after execute.
+### Token discipline
+Superpowers replaces the heavier GSD framework specifically because it skips persisted artifact files. Don't reintroduce that pattern: keep state in conversation context and skill invocations, not in scattered `.md` files in the repo.
 
-### Capture an idea without breaking flow
+### Branch-scoped continuity (narrow exception to the no-artifacts rule)
 
-`/gsd-add-todo <text>` for actionable items · `/gsd-add-backlog` for the 999.x parking lot.
+The unit of work that actually crosses session boundaries is the **branch**, not the conversation and not the repo. Two — and only two — persistent files are allowed:
 
-### Escape hatches
+- **`BRANCH-NOTES.md`** at the worktree root, gitignored. One screen, append-only-ish: each session writes a dated line covering what shipped, what's blocked, and what the next session needs to know to skip re-discovery (deployed envs, open PRs, current test state). Read it first thing on session start; append at session end. If it grows past one screen, prune older entries.
+- **`~/ACTIVE-WORK.md`** as a single global index across all worktrees. 2–3 lines per active branch: worktree path, branch name, one-line status. Update whenever you context-switch between worktrees.
 
-- Pause mid-phase → `/gsd-pause-work` (writes context handoff)
-- Resume from `.continue-here.md` specifically → `/gsd-resume-work` (otherwise `/gsd-progress`)
-- Roll back a phase or plan commit → `/gsd-undo` (dependency-checked)
-- Completed phase has gaps → `/gsd-validate-phase` (functional) · `/gsd-audit-uat` (cross-phase)
-- Investigate a failed GSD workflow → `/gsd-forensics`
+This is **not** GSD. Do **not** create `plan.md`, `spec.md`, `tasks.md`, `notes.md`, `research.md`, or per-feature `.planning/` directories — those still belong in conversation context and skill invocations. Plans live in conversation; *status* lives in these two files.
 
-### When tempted to pick X, pick Y instead
+### Superpowers spec/plan artifacts — local-only, never committed
 
-| Tempted | Pick instead | When |
-|---|---|---|
-| `/gsd-fast` | `/gsd-quick` | change needs state tracking or atomic commit log |
-| `/gsd-explore` | `/gsd-discuss-phase` | already inside an active phase |
-| `/gsd-add-phase` | `/gsd-insert-phase` | the new work needs to land between existing phases (e.g. 72.1) |
-| `/gsd-resume-work` | `/gsd-progress` | not actually mid-checkpoint; you just want "where do we stand" |
+Specs and plans from the brainstorming and writing-plans skills go to a **gitignored, root-level `./superpowers/` directory** in every repo. Specifically:
+
+- `./superpowers/specs/YYYY-MM-DD-<topic>-design.md`
+- `./superpowers/plans/YYYY-MM-DD-<feature>.md`
+
+`superpowers/` lives at the **repo root** as a sibling of `app/`, `src/`, `lib/`, etc. It is **not** under `docs/`, **not** under `.claude/`, **not** anywhere else. The directory and everything inside it must be in `.gitignore` so nothing under it ever enters version control.
+
+The brainstorming and writing-plans skills default to writing under a tracked `docs/superpowers/...` path — **override that default and write to `./superpowers/...` instead.** If a skill or tool tries to redirect you to a tracked path, push back and use the gitignored root-level location.
+
+Why local-only:
+
+- Specs and plans are working artifacts of the brainstorming + planning loop — they're how we reach alignment, not what ships. The PR description, commit messages, and the code itself carry the design rationale that future readers need.
+- These docs accumulate adversarial-review iterations (4+ rounds is normal). Committing them bloats the diff with noise and mixes "what we proposed at every step" with "what we shipped." Reviewers don't need the negotiation history.
+
+When starting work in a repo: first add `/superpowers/` to `.gitignore` as a setup step. When inheriting a repo where prior specs/plans were committed (anywhere), `git rm` them and re-create under the gitignored `./superpowers/` so they remain locally for reference without polluting the repo.
+
+## Skill discipline
+
+The rules above are gates. Run the `using-superpowers` checklist before implementation work, not as theater. If the rule says "Implementation work → TDD" and you find yourself rationalizing ("simple change, types pass, manually verified"), stop — that thought is the rationalization the rule exists to override. Same shape: if a plan exists in conversation (not just in a spec doc) and you're about to drive every edit yourself, dispatch subagents instead.
+
+**Re-check the gates before any Edit/Write tool call that modifies code.** Brainstorming approval is not a license to skip TDD. Each implementation increment is its own gate-check — a multi-step task does not collapse into one continuous "work" period after the plan is approved.
+
+**Always create tasks for every Superpowers skill step.** When invoking any Superpowers skill that has a checklist (brainstorming, writing-plans, executing-plans, TDD, debugging, etc.), immediately create one TaskCreate entry per checklist item before doing the work. Update statuses (`in_progress` → `completed`) as you go. Two reasons: (1) the user can see the workflow you're executing instead of guessing whether the skill is actually being followed; (2) writing the steps down is what stops you from collapsing them, skipping a gate, or losing your place mid-skill. This applies even for "small" tasks — if a skill is invoked, its checklist gets tasks. No exceptions for perceived simplicity.
 
 ## Worktree Awareness
 
@@ -58,9 +78,9 @@ Frontend phases also use `/gsd-ui-phase` after plan and `/gsd-ui-review` after e
 ## Autonomous Execution
 
 The following are pre-authorized — proceed without asking:
-- Bug reports: diagnose and fix end-to-end
+- Bug reports: diagnose and fix end-to-end (route via `superpowers:systematic-debugging`)
 - Failing CI: read the logs, find the cause, fix it
-- PR review comments: address them
+- PR review comments: address them (route via `superpowers:receiving-code-review`)
 - "Check now" / "try now" / "do it": re-evaluate current state and act
 
 Still confirm for: force-push, branch deletion, dependency removal, schema changes, anything touching shared infra.
@@ -68,6 +88,8 @@ Still confirm for: force-push, branch deletion, dependency removal, schema chang
 When told "do not try to fix it just yet" — comply. Investigate only.
 
 ## Verification That Counts
+
+`superpowers:verification-before-completion` enforces this for code completion. The principle generalizes:
 
 - Run the test that motivated the change, not just the full suite
 - UI changes: verify visually with Playwright MCP when available
@@ -83,10 +105,32 @@ Training data is stale. Before quoting a package version, library API, framework
 
 ## Context Retention
 
-If the user references a prior decision ("we discussed phase 7 for this"), check `.planning/` artifacts before asking them to repeat themselves.
+If the user references a prior decision, check the conversation history before asking them to repeat themselves.
+
+## Subagent model selection
+
+When dispatching subagents via the `Agent` tool, **never use `haiku`**. Default to `sonnet` whenever a "fast and cheap" tier is needed, and `opus` only for tasks that genuinely require the strongest reasoning (architectural design, complex review, hairy debugging).
+
+**Why:** Haiku produces work that needs more review iterations to reach acceptable quality, even on tasks that look mechanical on paper. The total round-trip time and review-loop overhead end up costing more than just running sonnet once. Sonnet is the floor for any code-touching subagent in this workspace.
+
+**How to apply:** When a skill or guide says "use a fast cheap model" or "use the cheapest model that can do the job", read that as `sonnet`. Reserve `opus` for the few tasks where extra capability noticeably reduces failure rate (multi-file integration, novel architecture, code review of subtle logic).
 
 ## Git Commits
 
 - Semantic prefix (feat, fix, refactor, docs, test, chore), 50-char subject max
 - One logical change per commit — keep a feature with its test, split a feature from a drive-by refactor
-- Never commit `.planning/`, GSD artifacts, or workflow docs to a project repo — local orchestration state, not source
+
+## Git Identity (GitHub attribution)
+
+The `# userEmail` line auto-injected by Claude Code (`axatbhardwaj99@gmail.com`) is the **Anthropic account** email — it is NOT the GitHub commit-author identity and should never be used as `git config user.email`.
+
+**Verified emails on the GitHub account `axatbhardwaj`** (either is valid for commit attribution):
+- `axatbhardwaj@outlook.com`
+- `axatbhardwaj@gmail.com`
+
+GitHub username: `axatbhardwaj`
+
+**Rules:**
+- Use one of the two verified emails above for `git config user.email` in any repo whose work should appear on the GitHub profile.
+- If a repo has a `user.email` override that doesn't match one of these, flag it — commits will land as an unattributed grey avatar on github.com.
+- Never assume an email from the auto-injected `# userEmail` block is a usable git identity. Treat that block as account metadata only.

@@ -2,19 +2,22 @@
 input=$(cat)
 
 # ── parse JSON ──────────────────────────────────────────────────────────────
-cwd=$(echo "$input"        | jq -r '.cwd // .workspace.current_dir // empty')
-used=$(echo "$input"       | jq -r '.context_window.used_percentage // empty')
-branch=$(echo "$input"     | jq -r '.worktree.branch // empty')
-wt_name=$(echo "$input"    | jq -r '.worktree.name // empty')
-wt_path=$(echo "$input"    | jq -r '.worktree.path // empty')
-wt_orig=$(echo "$input"    | jq -r '.worktree.original_cwd // empty')
-five_pct=$(echo "$input"   | jq -r '.rate_limits.five_hour.used_percentage // empty')
-five_rst=$(echo "$input"   | jq -r '.rate_limits.five_hour.resets_at // empty')
-week_pct=$(echo "$input"   | jq -r '.rate_limits.seven_day.used_percentage // empty')
-week_rst=$(echo "$input"   | jq -r '.rate_limits.seven_day.resets_at // empty')
-agent_name=$(echo "$input" | jq -r '.agent.name // empty')
-cost=$(echo "$input"       | jq -r '.cost.total_cost_usd // empty')
-model_name=$(echo "$input" | jq -r '.model.display_name // empty')
+cwd=$(echo "$input"          | jq -r '.cwd // .workspace.current_dir // empty')
+used=$(echo "$input"         | jq -r '.context_window.used_percentage // empty')
+branch=$(echo "$input"       | jq -r '.worktree.branch // empty')
+wt_name=$(echo "$input"      | jq -r '.worktree.name // empty')
+wt_path=$(echo "$input"      | jq -r '.worktree.path // empty')
+wt_orig=$(echo "$input"      | jq -r '.worktree.original_cwd // empty')
+five_pct=$(echo "$input"     | jq -r '.rate_limits.five_hour.used_percentage // empty')
+five_rst=$(echo "$input"     | jq -r '.rate_limits.five_hour.resets_at // empty')
+week_pct=$(echo "$input"     | jq -r '.rate_limits.seven_day.used_percentage // empty')
+week_rst=$(echo "$input"     | jq -r '.rate_limits.seven_day.resets_at // empty')
+agent_name=$(echo "$input"   | jq -r '.agent.name // empty')
+cost=$(echo "$input"         | jq -r '.cost.total_cost_usd // empty')
+model_name=$(echo "$input"   | jq -r '.model.display_name // empty')
+effort_level=$(echo "$input" | jq -r '.effort.level // empty')
+thinking_on=$(echo "$input"  | jq -r '.thinking.enabled // false')
+fast_on=$(echo "$input"      | jq -r '.fast_mode // false')
 
 dir="${cwd:-$(pwd)}"
 dir="${dir/#$HOME/\~}"  # collapse $HOME → ~ ; \~ escape prevents bash tilde-expansion in the replacement
@@ -179,6 +182,23 @@ line_metrics=""
 if [ -n "$agent_name" ]; then
   agent_disp="${agent_name##*:}"
   line_metrics="${C_MAGENTA}$(agent_icon "$agent_name") ${agent_disp}${C_RESET}"
+fi
+
+# Reasoning effort — fast_mode wins (effort is moot when thinking is bypassed),
+# otherwise show the effort ladder, color-coded by tier
+if [ "$fast_on" = "true" ]; then
+  [ -n "$line_metrics" ] && line_metrics="${line_metrics}${SEP}"
+  line_metrics="${line_metrics}${C_YELLOW}⚡ fast${C_RESET}"
+elif [ -n "$effort_level" ] && [ "$thinking_on" = "true" ]; then
+  case "$effort_level" in
+    low)    eff_col="$C_DIM" ;;
+    medium) eff_col="$C_BLUE" ;;
+    high)   eff_col="$C_GREEN" ;;
+    xhigh)  eff_col="$C_MAGENTA" ;;
+    *)      eff_col="$C_FG" ;;
+  esac
+  [ -n "$line_metrics" ] && line_metrics="${line_metrics}${SEP}"
+  line_metrics="${line_metrics}${C_DIM}💭 ${eff_col}${effort_level}${C_RESET}"
 fi
 
 if [ -n "$cost" ] && [ "$cost" != "0" ] && [ "$cost" != "0.0" ]; then
