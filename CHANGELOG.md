@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.4.0 - 2026-05-14
+- Sync personal Claude config snapshot (`settings.json`, `CLAUDE.md`, `claude.json` runtime state, `statusline-command.sh`) from live `~/.claude/`.
+- CLAUDE.md: add a `## PR Reviews` routing section codifying the local-markdown-as-deliverable workflow — never auto-post; explicit per-session approval required; medium-shape format (verdict + severity table + condensed strengths + per-finding paragraphs) when posting to GitHub; verbatim code-block fixes go inline rather than expanding the body; `~/defi/misc/reviews/review-PR-<num>.md` is the canonical defi-com path.
+- settings.json: migrate effort selection from top-level `effortLevel: "xhigh"` to env-driven `env.CLAUDE_CODE_EFFORT_LEVEL: "max"`; drop the disabled `openai-codex` plugin (entry + source); add `editorMode: "normal"`.
+- statusline: render the new `max` effort tier with a per-character green → cyan → purple Dracula gradient (`#50FA7B` → `#8BE9FD` → `#BD93F9`). Refactor the effort branch to compose a full pre-colored token (`eff_render`) instead of computing only a color, which is what unlocks per-character rainbow rendering.
+
 ## 4.3.0 - 2026-05-11
 - Replace `--gsd` with `--superpowers`. The new flag idempotently enables the Superpowers plugin via a direct edit to `~/.claude/settings.json` (different shape from `--gsd`'s npx shell-out).
 - Remove dead `gsd-*` agent emoji entries from the Claude Code statusline (live + backed-up copy).

@@ -43,6 +43,11 @@ C_GREEN=$'\033[38;2;195;232;141m'   # green      #C3E88D — rl healthy
 C_BLUE=$'\033[38;2;130;170;255m'    # blue       #82AAFF — ctx healthy
 C_RED=$'\033[38;2;240;113;120m'     # red        #f07178 — critical band
 
+# Cool gradient for `max` effort — green → cyan → purple, Dracula palette
+C_RAIN1=$'\033[38;2;80;250;123m'    # vivid green  #50FA7B
+C_RAIN2=$'\033[38;2;139;233;253m'   # vivid cyan   #8BE9FD
+C_RAIN3=$'\033[38;2;189;147;249m'   # vivid purple #BD93F9
+
 # ── helper: format seconds as XD:YH / XH:YM / XM (drop trailing zero parts) ─
 fmt_diff() {
   local diff=$1
@@ -165,14 +170,15 @@ if [ "$fast_on" = "true" ]; then
   line_metrics="${line_metrics}${C_YELLOW}⚡ fast${C_RESET}"
 elif [ -n "$effort_level" ] && [ "$thinking_on" = "true" ]; then
   case "$effort_level" in
-    low)    eff_col="$C_DIM" ;;
-    medium) eff_col="$C_BLUE" ;;
-    high)   eff_col="$C_GREEN" ;;
-    xhigh)  eff_col="$C_MAGENTA" ;;
-    *)      eff_col="$C_FG" ;;
+    low)    eff_render="${C_DIM}low${C_RESET}" ;;
+    medium) eff_render="${C_BLUE}medium${C_RESET}" ;;
+    high)   eff_render="${C_GREEN}high${C_RESET}" ;;
+    xhigh)  eff_render="${C_MAGENTA}xhigh${C_RESET}" ;;
+    max)    eff_render="${C_RAIN1}m${C_RAIN2}a${C_RAIN3}x${C_RESET}" ;;
+    *)      eff_render="${C_FG}${effort_level}${C_RESET}" ;;
   esac
   [ -n "$line_metrics" ] && line_metrics="${line_metrics}${SEP}"
-  line_metrics="${line_metrics}${C_DIM}💭 ${eff_col}${effort_level}${C_RESET}"
+  line_metrics="${line_metrics}${C_DIM}💭 ${eff_render}"
 fi
 
 if [ -n "$cost" ] && [ "$cost" != "0" ] && [ "$cost" != "0.0" ]; then

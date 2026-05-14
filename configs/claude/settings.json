@@ -133,7 +133,6 @@
     "rust-analyzer-lsp@claude-plugins-official": true,
     "azure@azure-skills": true,
     "telegram@claude-plugins-official": false,
-    "codex@openai-codex": true,
     "superpowers@claude-plugins-official": true,
     "cloudflare@cloudflare": true,
     "ralph-loop@claude-plugins-official": true
@@ -145,12 +144,6 @@
         "repo": "microsoft/azure-skills"
       }
     },
-    "openai-codex": {
-      "source": {
-        "source": "github",
-        "repo": "openai/codex-plugin-cc"
-      }
-    },
     "cloudflare": {
       "source": {
         "source": "github",
@@ -158,8 +151,11 @@
       }
     }
   },
-  "effortLevel": "xhigh",
+  "env": {
+    "CLAUDE_CODE_EFFORT_LEVEL": "max"
+  },
   "skipDangerousModePermissionPrompt": true,
+  "editorMode": "normal",
   "verbose": true,
   "remoteControlAtStartup": true,
   "agentPushNotifEnabled": true,

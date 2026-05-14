@@ -120,6 +120,19 @@ When dispatching subagents via the `Agent` tool, **never use `haiku`**. Default 
 - Semantic prefix (feat, fix, refactor, docs, test, chore), 50-char subject max
 - One logical change per commit — keep a feature with its test, split a feature from a drive-by refactor
 
+## PR Reviews
+
+Applies to **any PR review, any repo**. The local markdown file is the canonical deliverable; the GitHub review is a notification surface.
+
+- **Never auto-post.** Posting to a PR (review body, top-level comment, inline comment, sub-agent posts) requires **explicit per-session user approval** — and even then, confirm the *form* (full / medium / specific finding) before posting. If a post happens without approval, delete it rather than edit it.
+- **Local file is the deliverable.** Write the review to a local markdown file with the full structure (verdict, severity table, strengths, issues with file:line refs + suggested fixes, ground-truth verification appendix). This is what gets re-read, refined for round 2, and cited.
+- **When approved to post, use the medium shape on GitHub:** Verdict + Severity table + Strengths (3–5 condensed bullets) + Issues (one short paragraph per finding — `file:line` + 2–3 sentences + suggested fix as prose, not a multi-line code block) + Recommendation + footer linking to the local file. Skip the ground-truth/verification appendix, file-read inventory, "couldn't verify" section, and multi-line suggested-fix code blocks. Never paste the whole local `review.md` into the GitHub body.
+- **Single-finding code-block detail → inline comment.** If one finding genuinely needs a verbatim code-block suggested fix on GitHub (the author needs to apply the patch directly), post that one finding as a targeted inline review comment on the file/line, not by expanding the top-level body.
+- **Editing after the fact:** if the posted body needs trimming, use `gh api -X PUT repos/{owner}/{repo}/pulls/{n}/reviews/{review_id}` with a `{body: …}` payload — review state (APPROVED/COMMENT/CHANGES_REQUESTED) is preserved across edits.
+- **Local file location:**
+  - **defi-com repos** (`monorepo`, `contracts`, `azure-next-hybrid`): `~/defi/misc/reviews/review-PR-<num>.md`. See `~/.claude/projects/-home-xzat-defi-monorepo/memory/reference_pr_review_convention.md` for the mandatory header structure, `Reviewed:` SHA pin, and round-2 severity-row vocabulary.
+  - **Other repos:** confirm a location with the user the first time, then stay consistent.
+
 ## Git Identity (GitHub attribution)
 
 The `# userEmail` line auto-injected by Claude Code (`axatbhardwaj99@gmail.com`) is the **Anthropic account** email — it is NOT the GitHub commit-author identity and should never be used as `git config user.email`.
