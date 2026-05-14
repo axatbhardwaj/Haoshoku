@@ -108,12 +108,14 @@ program
     }
 
     if (options.skillsUpdate) {
-      syncSkills({ update: true });
+      const result = syncSkills({ update: true });
+      if (result.status === "all-failed") process.exit(1);
       return;
     }
 
     if (options.skills) {
-      syncSkills({ update: false });
+      const result = syncSkills({ update: false });
+      if (result.status === "all-failed") process.exit(1);
       return;
     }
 
@@ -125,7 +127,12 @@ program
     if (options.claude) {
       if (!fs.existsSync(CACHE_DIR)) {
         log.info("Cache is empty, syncing skills first...");
-        syncSkills({ update: false });
+        const result = syncSkills({ update: false });
+        if (result.status !== "ok") {
+          log.warning(
+            `Skill sync skipped (${result.status}) — continuing with config deploy.`,
+          );
+        }
       }
 
       await syncClaudeConfig();

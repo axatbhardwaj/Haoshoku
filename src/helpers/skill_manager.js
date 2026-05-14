@@ -86,14 +86,14 @@ export function getRepoName(url) {
 }
 
 /** Create default config with empty skill sources. */
-function createDefaultConfig() {
+function createDefaultConfig(configPath = CONFIG_PATH) {
 	log.info("Creating default skill configuration...");
-	log.info(`Config file: ${CONFIG_PATH}`);
+	log.info(`Config file: ${configPath}`);
 	log.info(
-		`To add skill sources: edit ${CONFIG_PATH} and add git repo URLs to skillSources array`
+		`To add skill sources: edit ${configPath} and add git repo URLs to skillSources array`
 	);
 
-	fs.writeFileSync(CONFIG_PATH, JSON.stringify(DEFAULT_CONFIG, null, 2));
+	fs.writeFileSync(configPath, JSON.stringify(DEFAULT_CONFIG, null, 2));
 	return DEFAULT_CONFIG;
 }
 
@@ -102,40 +102,41 @@ function createDefaultConfig() {
  * Catches only SyntaxError (malformed JSON) - filesystem errors propagate
  * naturally for actionable error messages.
  */
-function handleConfigError(error) {
+function handleConfigError(error, configPath = CONFIG_PATH) {
 	if (error instanceof SyntaxError) {
-		log.warning(`Invalid JSON in ${CONFIG_PATH}, using defaults`);
+		log.warning(`Invalid JSON in ${configPath}, using defaults`);
 		return DEFAULT_CONFIG;
 	}
 	if (error.code === "EACCES" || error.code === "ENOENT") {
-		log.error(`Cannot read config file at ${CONFIG_PATH}: ${error.message}`);
+		log.error(`Cannot read config file at ${configPath}: ${error.message}`);
 		return DEFAULT_CONFIG;
 	}
 	throw error;
 }
 
 /**
- * Read ~/.haoshoku.json, return default config if missing/invalid.
+ * Read config file, return default config if missing/invalid.
+ * configPath defaults to ~/.haoshoku.json; tests inject a tmp path.
  * Soft validation: if schema is wrong (missing skillSources array), fallback
  * to defaults for forward compatibility.
  */
-export function loadConfig() {
-	if (!fs.existsSync(CONFIG_PATH)) {
-		return createDefaultConfig();
+export function loadConfig(configPath = CONFIG_PATH) {
+	if (!fs.existsSync(configPath)) {
+		return createDefaultConfig(configPath);
 	}
 
 	try {
-		const content = fs.readFileSync(CONFIG_PATH, "utf-8");
+		const content = fs.readFileSync(configPath, "utf-8");
 		const config = JSON.parse(content);
 
 		if (!Array.isArray(config.skillSources)) {
-			log.warning(`Config schema invalid in ${CONFIG_PATH}, using defaults`);
+			log.warning(`Config schema invalid in ${configPath}, using defaults`);
 			return DEFAULT_CONFIG;
 		}
 
 		return config;
 	} catch (error) {
-		return handleConfigError(error);
+		return handleConfigError(error, configPath);
 	}
 }
 
@@ -144,14 +145,14 @@ export function loadConfig() {
  * Mode 0o700: cached skills may contain sensitive paths (principle of least privilege).
  * Exits on fatal errors (cache dir is prerequisite for all operations).
  */
-export function ensureCacheDir() {
-	if (!fs.existsSync(CACHE_DIR)) {
+export function ensureCacheDir(cacheDir = CACHE_DIR) {
+	if (!fs.existsSync(cacheDir)) {
 		try {
-			fs.mkdirSync(CACHE_DIR, { recursive: true, mode: 0o700 });
+			fs.mkdirSync(cacheDir, { recursive: true, mode: 0o700 });
 		} catch (error) {
 			if (error.code === "ENOTDIR") {
 				log.error(
-					`Cannot create cache directory at ${CACHE_DIR}: path exists as regular file. Remove the file or set XDG_CACHE_HOME to a different location.`
+					`Cannot create cache directory at ${cacheDir}: path exists as regular file. Remove the file or set XDG_CACHE_HOME to a different location.`
 				);
 				process.exit(1);
 			}
@@ -226,7 +227,7 @@ function ensureGit() {
 }
 
 /** Validate URL and return repo path info, or null if invalid. */
-function getValidatedRepoPath(url) {
+function getValidatedRepoPath(url, cacheDir = CACHE_DIR) {
 	const repoName = getRepoName(url);
 	if (!repoName) {
 		log.error(
@@ -234,7 +235,7 @@ function getValidatedRepoPath(url) {
 		);
 		return null;
 	}
-	return { repoName, repoPath: path.join(CACHE_DIR, repoName) };
+	return { repoName, repoPath: path.join(cacheDir, repoName) };
 }
 
 /**
@@ -242,12 +243,12 @@ function getValidatedRepoPath(url) {
  * Returns null on failure to allow partial success when multiple sources
  * configured.
  */
-export function cloneOrPullRepo(url, update = false) {
+export function cloneOrPullRepo(url, update = false, cacheDir = CACHE_DIR) {
 	if (!ensureGit()) {
 		return null;
 	}
 
-	const validated = getValidatedRepoPath(url);
+	const validated = getValidatedRepoPath(url, cacheDir);
 	if (!validated) {
 		return null;
 	}
@@ -552,10 +553,10 @@ export function mergeAgents(sources) {
  * Collect sources from config.
  * Continues on individual source failures to allow partial success.
  */
-function collectSources(config, update) {
+function collectSources(config, update, cacheDir = CACHE_DIR) {
 	const sources = [];
 	for (const url of config.skillSources) {
-		const cachePath = cloneOrPullRepo(url, update);
+		const cachePath = cloneOrPullRepo(url, update, cacheDir);
 		if (cachePath) {
 			sources.push({
 				url,
@@ -603,19 +604,42 @@ export function printAvailableSkills() {
 
 /**
  * Main orchestrator: sync skills from configured sources.
- * Uses process.exit(1) on fatal errors for clear CLI exit codes.
+ *
+ * Returns a status object so callers (e.g. --claude auto-sync) can decide
+ * whether to abort or continue. Direct CLI invocations (`--skills`,
+ * `--skills-update`) translate non-"ok" statuses into non-zero exit codes
+ * in haoshoku.js so shell users still see failures.
+ *
+ * Status values:
+ *   - "ok"          → at least one source synced + skills/agents merged
+ *   - "no-sources"  → skillSources array is empty (informational, not failure)
+ *   - "all-failed"  → had sources, none could be cloned/updated (error)
  */
-export function syncSkills(options = { update: false }) {
-	const config = loadConfig();
-	ensureCacheDir();
+export function syncSkills(options = {}) {
+	const {
+		update = false,
+		configPath = CONFIG_PATH,
+		cacheDir = CACHE_DIR,
+	} = options;
 
-	const sources = collectSources(config, options.update);
+	const config = loadConfig(configPath);
+	ensureCacheDir(cacheDir);
+
+	if (config.skillSources.length === 0) {
+		log.info(
+			`No skill sources configured. Edit ${configPath} to add git repo URLs.`
+		);
+		return { status: "no-sources", merged: 0 };
+	}
+
+	const sources = collectSources(config, update, cacheDir);
 
 	if (sources.length === 0) {
-		log.error("All skill sources failed to sync");
-		process.exit(1);
+		log.error("All configured skill sources failed to sync");
+		return { status: "all-failed", merged: 0 };
 	}
 
 	mergeSkills(sources);
 	mergeAgents(sources);
+	return { status: "ok", merged: sources.length };
 }

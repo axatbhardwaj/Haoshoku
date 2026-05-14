@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.5.0 - 2026-05-14
+- Fix `--claude` aborting before deploying any config on a fresh install. When the cache was empty, the auto-skill-sync was treating an empty `skillSources` array as "all sources failed" and calling `process.exit(1)` — so `syncClaudeConfig()` never ran and `~/.claude/CLAUDE.md`, `~/.claude/settings.json`, `~/.claude/statusline-command.sh`, and `~/.claude.json` all silently failed to deploy.
+- `syncSkills` now returns `{ status, merged }` (one of `"ok" | "no-sources" | "all-failed"`) instead of calling `process.exit`. The `--claude` and `--claude-update` paths treat non-`ok` as a warning and continue with the config deploy; `--skills` and `--skills-update` translate `"all-failed"` into a non-zero exit code, preserving direct-CLI exit semantics.
+- `syncClaudeConfig` no longer silently skips when a source file is missing from the bundle — it now logs `⚠ Missing <file> in source bundle — skipped` so a partial/broken package is visible instead of looking like a successful sync. Added regression tests for the `PERSONAL_FILES` manifest (must include `statusline-command.sh`) and the missing-source warning.
+- Inject `srcDir`/`claudeHome` options into `syncClaudeConfig`/`backupClaudeConfig` and `configPath`/`cacheDir` into `syncSkills` (defaults unchanged) so tests can drive them against tmp dirs without touching live `~/.claude/`.
+
 ## 4.4.0 - 2026-05-14
 - Sync personal Claude config snapshot (`settings.json`, `CLAUDE.md`, `claude.json` runtime state, `statusline-command.sh`) from live `~/.claude/`.
 - CLAUDE.md: add a `## PR Reviews` routing section codifying the local-markdown-as-deliverable workflow — never auto-post; explicit per-session approval required; medium-shape format (verdict + severity table + condensed strengths + per-finding paragraphs) when posting to GitHub; verbatim code-block fixes go inline rather than expanding the body; `~/defi/misc/reviews/review-PR-<num>.md` is the canonical defi-com path.
