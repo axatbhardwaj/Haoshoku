@@ -1,0 +1,4 @@
+[Desktop Entry]
+Name=KDE Connect
+Exec=/usr/bin/kdeconnectd
+Type=Application

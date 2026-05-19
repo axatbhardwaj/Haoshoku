@@ -653,6 +653,53 @@ export function translateKdeWindowRulesToHyprland(kwinrulesrcText) {
 	return `${lines.join("\n")}\n`;
 }
 
+/**
+ * Exec binaries that should NOT be carried over from KDE autostart into
+ * Hyprland — KDE-specific services with no place in a Wayland tiling session.
+ */
+export const AUTOSTART_DENYLIST = [
+	"kdeconnectd",
+	"kded5",
+	"kded6",
+	"kaccess",
+	"polkit-kde-authentication-agent-1",
+	"plasmashell",
+	"plasma-discover-notifier",
+	"baloo_file",
+	"baloorunner",
+	"krunner",
+];
+
+/**
+ * Read all *.desktop files in `dir`, parse Exec=, denylist KDE-only services,
+ * return Hyprland exec-once lines. Idempotent: re-running yields the same
+ * output for the same input directory.
+ *
+ * Side effect: reads from the filesystem. Caller passes the path; pure with
+ * respect to the directory's contents.
+ */
+export function translateKdeAutostartToHyprland(dir) {
+	const lines = [
+		"# Translated from autostart .desktop files — DO NOT EDIT BY HAND",
+		"# Regenerate with: bun haoshoku.js --hyprland-rules",
+		"",
+	];
+	if (!fs.existsSync(dir)) return `${lines.join("\n")}\n`;
+
+	const entries = fs.readdirSync(dir).filter((f) => f.endsWith(".desktop"));
+	for (const entry of entries) {
+		const text = fs.readFileSync(path.join(dir, entry), "utf8");
+		const execMatch = text.match(/^Exec=(.+)$/m);
+		if (!execMatch) continue;
+		const exec = execMatch[1].trim();
+		const binName = path.basename(exec.split(/\s+/)[0]);
+		if (AUTOSTART_DENYLIST.includes(binName)) continue;
+		lines.push(`exec-once = ${exec}`);
+	}
+
+	return `${lines.join("\n")}\n`;
+}
+
 /** Path to user's KDE shortcuts kksrc in the haoshoku repo. */
 export const KDE_SHORTCUTS_PATH = path.join(
 	PROJECT_ROOT,

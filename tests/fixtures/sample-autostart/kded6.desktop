@@ -1,0 +1,4 @@
+[Desktop Entry]
+Name=KDE Daemon
+Exec=/usr/bin/kded6
+Type=Application

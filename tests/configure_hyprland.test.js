@@ -374,3 +374,31 @@ describe("translateKdeWindowRulesToHyprland", () => {
 		expect(out).not.toMatch(/windowrulev2 = .*brave-browser/);
 	});
 });
+
+describe("translateKdeAutostartToHyprland", () => {
+	const fixtureDir = path.join(
+		__dirname,
+		"fixtures",
+		"sample-autostart",
+	);
+
+	it("filters out KDE-only services via the denylist", () => {
+		const out = hyprland.translateKdeAutostartToHyprland(fixtureDir);
+		expect(out).not.toMatch(/kdeconnectd/);
+		expect(out).not.toMatch(/kded6/);
+	});
+
+	it("emits exec-once for surviving entries", () => {
+		const out = hyprland.translateKdeAutostartToHyprland(fixtureDir);
+		expect(out).toMatch(/exec-once = \/usr\/bin\/nm-applet --indicator/);
+		expect(out).toMatch(/exec-once = wl-paste --watch cliphist store/);
+	});
+
+	it("returns header-only output when the dir does not exist", () => {
+		const out = hyprland.translateKdeAutostartToHyprland(
+			"/tmp/haoshoku-nonexistent-autostart-dir-XYZ",
+		);
+		expect(out).toMatch(/Translated from autostart/);
+		expect(out).not.toMatch(/exec-once = /);
+	});
+});
