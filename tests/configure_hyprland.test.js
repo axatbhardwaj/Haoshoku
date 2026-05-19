@@ -144,7 +144,9 @@ describe("syncHyprlandOverlay (injectable paths)", () => {
 
 	beforeEach(() => {
 		tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-hypr-home-"));
-		tmpProjectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-hypr-pr-"));
+		tmpProjectRoot = fs.mkdtempSync(
+			path.join(os.tmpdir(), "haoshoku-hypr-pr-"),
+		);
 
 		const bundleConfD = path.join(tmpProjectRoot, "configs", "hypr", "conf.d");
 		fs.mkdirSync(bundleConfD, { recursive: true });
@@ -181,12 +183,12 @@ describe("syncHyprlandOverlay (injectable paths)", () => {
 			fs.existsSync(path.join(overlay, "conf.d", "00-ocean-borders.conf")),
 		).toBe(true);
 		expect(fs.existsSync(path.join(overlay, "hyprpaper.conf"))).toBe(true);
-		expect(
-			fs.existsSync(path.join(overlay, "wallpapers", "ocean.jpg")),
-		).toBe(true);
-		expect(
-			fs.existsSync(path.join(tmpHome, ".config", "mako", "config")),
-		).toBe(true);
+		expect(fs.existsSync(path.join(overlay, "wallpapers", "ocean.jpg"))).toBe(
+			true,
+		);
+		expect(fs.existsSync(path.join(tmpHome, ".config", "mako", "config"))).toBe(
+			true,
+		);
 	});
 
 	it("never writes into ~/.config/hypr/ (Caelestia's symlinked tree)", async () => {
@@ -227,6 +229,76 @@ describe("syncHyprlandOverlay (injectable paths)", () => {
 	});
 });
 
+describe("backupHyprland (injectable paths)", () => {
+	let tmpHome;
+	let tmpProjectRoot;
+
+	beforeEach(() => {
+		tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-hypr-home-"));
+		tmpProjectRoot = fs.mkdtempSync(
+			path.join(os.tmpdir(), "haoshoku-hypr-pr-"),
+		);
+
+		const overlay = path.join(tmpHome, ".config", "hypr-ocean");
+		fs.mkdirSync(path.join(overlay, "conf.d"), { recursive: true });
+		fs.writeFileSync(
+			path.join(overlay, "conf.d", "50-monitors.conf"),
+			"monitor = , preferred, auto, 1\n",
+		);
+		fs.writeFileSync(path.join(overlay, "hyprpaper.conf"), "# hyprpaper\n");
+		fs.writeFileSync(path.join(overlay, "hyprlock.conf"), "# hyprlock\n");
+		fs.writeFileSync(path.join(overlay, "hypridle.conf"), "# hypridle\n");
+
+		const mako = path.join(tmpHome, ".config", "mako");
+		fs.mkdirSync(mako, { recursive: true });
+		fs.writeFileSync(path.join(mako, "config"), "# mako\n");
+	});
+
+	afterEach(() => {
+		fs.rmSync(tmpHome, { recursive: true, force: true });
+		fs.rmSync(tmpProjectRoot, { recursive: true, force: true });
+	});
+
+	it("backs up live Ocean overlay files into configs/hypr/", async () => {
+		await hyprland.backupHyprland({
+			home: tmpHome,
+			projectRoot: tmpProjectRoot,
+		});
+
+		const bundle = path.join(tmpProjectRoot, "configs", "hypr");
+		expect(
+			fs.readFileSync(path.join(bundle, "conf.d", "50-monitors.conf"), "utf8"),
+		).toBe("monitor = , preferred, auto, 1\n");
+		expect(fs.readFileSync(path.join(bundle, "hyprpaper.conf"), "utf8")).toBe(
+			"# hyprpaper\n",
+		);
+		expect(fs.readFileSync(path.join(bundle, "hyprlock.conf"), "utf8")).toBe(
+			"# hyprlock\n",
+		);
+		expect(fs.readFileSync(path.join(bundle, "hypridle.conf"), "utf8")).toBe(
+			"# hypridle\n",
+		);
+		expect(fs.readFileSync(path.join(bundle, "mako", "config"), "utf8")).toBe(
+			"# mako\n",
+		);
+	});
+
+	it("does not throw when no live overlay exists yet", async () => {
+		fs.rmSync(path.join(tmpHome, ".config"), { recursive: true, force: true });
+
+		await expect(
+			hyprland.backupHyprland({
+				home: tmpHome,
+				projectRoot: tmpProjectRoot,
+			}),
+		).resolves.toBeUndefined();
+
+		expect(fs.existsSync(path.join(tmpProjectRoot, "configs", "hypr"))).toBe(
+			true,
+		);
+	});
+});
+
 describe("translateKdeShortcutsToHyprland", () => {
 	const fixturePath = path.join(
 		__dirname,
@@ -244,7 +316,9 @@ describe("translateKdeShortcutsToHyprland", () => {
 
 	it("translates lock session to hyprlock", () => {
 		const out = hyprland.translateKdeShortcutsToHyprland(fixture);
-		expect(out).toMatch(/bind = SUPER, L, exec, hyprlock/);
+		expect(out).toMatch(
+			/bind = SUPER, L, exec, hyprlock --config ~\/.config\/hypr-ocean\/hyprlock\.conf/,
+		);
 	});
 
 	it("translates Spectacle rectangular screenshot to hyprshot", () => {
@@ -252,14 +326,11 @@ describe("translateKdeShortcutsToHyprland", () => {
 RectangularRegionScreenShot=Meta+Shift+S,Print,Capture Rectangular Region
 `;
 		const out = hyprland.translateKdeShortcutsToHyprland(text);
-		expect(out).toMatch(
-			/bind = SUPER_SHIFT, S, exec, hyprshot -m region/,
-		);
+		expect(out).toMatch(/bind = SUPER_SHIFT, S, exec, hyprshot -m region/);
 	});
 
 	it("emits # UNTRANSLATED comments for actions with no Hyprland equivalent", () => {
-		const text =
-			"[kglobalaccel]\nUNKNOWN_ACTION=Ctrl+Alt+Z,,Some Action\n";
+		const text = "[kglobalaccel]\nUNKNOWN_ACTION=Ctrl+Alt+Z,,Some Action\n";
 		const out = hyprland.translateKdeShortcutsToHyprland(text);
 		expect(out).toMatch(/# UNTRANSLATED: UNKNOWN_ACTION/);
 	});
@@ -314,9 +385,7 @@ RectangularRegionScreenShot=Meta+Shift+S,Print,Capture Rectangular Region
 		const text =
 			"[services][app-a.desktop]\n_launch=Meta+G\n[services][app-b.desktop]\n_launch=Meta+G\n";
 		const out = hyprland.translateKdeShortcutsToHyprland(text);
-		expect(out).toMatch(
-			/bind = SUPER, G, exec, gtk-launch app-a/,
-		);
+		expect(out).toMatch(/bind = SUPER, G, exec, gtk-launch app-a/);
 		expect(out).toMatch(
 			/# DUPLICATE BINDING.*bind = SUPER, G, exec, gtk-launch app-b/,
 		);
@@ -376,11 +445,7 @@ describe("translateKdeWindowRulesToHyprland", () => {
 });
 
 describe("translateKdeAutostartToHyprland", () => {
-	const fixtureDir = path.join(
-		__dirname,
-		"fixtures",
-		"sample-autostart",
-	);
+	const fixtureDir = path.join(__dirname, "fixtures", "sample-autostart");
 
 	it("filters out KDE-only services via the denylist", () => {
 		const out = hyprland.translateKdeAutostartToHyprland(fixtureDir);

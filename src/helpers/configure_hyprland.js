@@ -187,7 +187,7 @@ const KDE_TO_HYPRLAND_ACTIONS = {
 	KrohnkiteFloat: "togglefloating",
 
 	// ksmserver — session lifecycle
-	"Lock Session": "exec, hyprlock",
+	"Lock Session": "exec, hyprlock --config ~/.config/hypr-ocean/hyprlock.conf",
 	"Log Out": "exec, hyprctl dispatch exit",
 
 	// spectacle — screenshots
@@ -367,7 +367,9 @@ export function translateKdeShortcutsToHyprland(kksrcText) {
 
 	if (untranslated.length > 0) {
 		lines.push("");
-		lines.push("# === Actions with no Hyprland equivalent — translate manually ===");
+		lines.push(
+			"# === Actions with no Hyprland equivalent — translate manually ===",
+		);
 		for (const ut of untranslated) lines.push(ut);
 	}
 
@@ -763,11 +765,7 @@ export const AUTOSTART_DIR = path.join(HOME, ".config", "autostart");
  * changes their KDE rules/autostart on a still-KDE machine.
  */
 export async function regenerateHyprlandRules() {
-	const wrTarget = path.join(
-		HYPR_BUNDLE_DIR,
-		"conf.d",
-		"30-windowrules.conf",
-	);
+	const wrTarget = path.join(HYPR_BUNDLE_DIR, "conf.d", "30-windowrules.conf");
 	if (fs.existsSync(KWIN_RULES_PATH)) {
 		const rules = translateKdeWindowRulesToHyprland(
 			fs.readFileSync(KWIN_RULES_PATH, "utf8"),
@@ -776,7 +774,9 @@ export async function regenerateHyprlandRules() {
 		fs.writeFileSync(wrTarget, rules);
 		log.success(`Wrote ${wrTarget}`);
 	} else {
-		log.warning(`${KWIN_RULES_PATH} not found — skipping window-rule generation.`);
+		log.warning(
+			`${KWIN_RULES_PATH} not found — skipping window-rule generation.`,
+		);
 	}
 
 	const asTarget = path.join(HYPR_BUNDLE_DIR, "conf.d", "40-autostart.conf");
@@ -786,10 +786,39 @@ export async function regenerateHyprlandRules() {
 	log.success(`Wrote ${asTarget}`);
 }
 
-/** Stub. Implemented in Phase 5. */
+/**
+ * Backup live ~/.config/hypr-ocean/* overlay-managed files plus ~/.config/mako/
+ * back into configs/hypr/. `home` and `projectRoot` are injectable for tests.
+ */
 export async function backupHyprland({
-	home: _home = HOME,
-	projectRoot: _projectRoot = PROJECT_ROOT,
+	home = HOME,
+	projectRoot = PROJECT_ROOT,
 } = {}) {
-	throw new Error("backupHyprland: not yet implemented (Phase 5)");
+	const overlayDir = path.join(home, ".config", "hypr-ocean");
+	const liveConfDDir = path.join(overlayDir, "conf.d");
+	const liveMakoDir = path.join(home, ".config", "mako");
+	const bundleDir = path.join(projectRoot, "configs", "hypr");
+
+	log.info(`Backing up Hyprland overlay from ${overlayDir} to ${bundleDir}...`);
+	fs.mkdirSync(bundleDir, { recursive: true });
+
+	if (fs.existsSync(liveConfDDir)) {
+		copyDirRecursive(liveConfDDir, path.join(bundleDir, "conf.d"));
+		log.info("Backed up conf.d/");
+	}
+
+	for (const file of ["hyprpaper.conf", "hyprlock.conf", "hypridle.conf"]) {
+		const src = path.join(overlayDir, file);
+		if (fs.existsSync(src)) {
+			fs.copyFileSync(src, path.join(bundleDir, file));
+			log.info(`Backed up ${file}`);
+		}
+	}
+
+	if (fs.existsSync(liveMakoDir)) {
+		copyDirRecursive(liveMakoDir, path.join(bundleDir, "mako"));
+		log.info("Backed up mako/");
+	}
+
+	log.success(`Hyprland overlay backed up to ${bundleDir}`);
 }

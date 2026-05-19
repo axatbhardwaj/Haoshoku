@@ -77,6 +77,18 @@ haoshoku --zed-backup
 
 # Install/reinstall KDE Glass blur effect (CachyOS/Arch only)
 haoshoku --kde-glass
+
+# Install Hyprland + Caelestia + Ocean overlay (CachyOS/Arch only)
+haoshoku --hyprland
+
+# Regenerate Hyprland keybinds from configs/kde_shortcuts.kksrc
+haoshoku --hyprland-keybinds
+
+# Regenerate Hyprland window rules + autostart from live KDE config
+haoshoku --hyprland-rules
+
+# Backup live Hyprland overlay to configs/hypr/
+haoshoku --hyprland-backup
 ```
 
 ## Features
@@ -107,6 +119,61 @@ haoshoku --kde-glass
     -   **Claude Backup**: Backs up personal config to `configs/claude/` (`haoshoku --claude-backup`).
     -   **Skill Management**: Runtime git cloning of Claude skills and agents (`haoshoku --skills`).
     -   **Superpowers**: Idempotently enables the Superpowers plugin in `~/.claude/settings.json` (`haoshoku --superpowers`).
+
+## Hyprland (parallel to KDE)
+
+Bootstraps Caelestia rice plus the Ocean overlay. KDE Plasma stays installed; SDDM shows both sessions.
+
+```bash
+# Install Hyprland + Caelestia + Ocean overlay
+haoshoku --hyprland
+
+# Regenerate keybinds from configs/kde_shortcuts.kksrc
+haoshoku --hyprland-keybinds
+
+# Regenerate window rules + autostart from live KDE config
+haoshoku --hyprland-rules
+
+# Backup live overlay to configs/hypr/
+haoshoku --hyprland-backup
+```
+
+### Parity matrix
+
+| KDE feature | Hyprland equivalent | Provided by |
+|---|---|---|
+| KWin window borders | `general.col.active_border` | `configs/hypr/conf.d/00-ocean-borders.conf` |
+| KDE Glass blur | Hyprland gaussian blur | `configs/hypr/conf.d/10-blur.conf` |
+| Volantes cursor | XCURSOR_THEME env | `configs/hypr/conf.d/90-env.conf` |
+| Juno-ocean GTK | GTK_THEME env | `configs/hypr/conf.d/90-env.conf` |
+| KDE shortcuts | Hyprland `bind =` | `configs/hypr/conf.d/20-keybinds.conf` |
+| KWin window rules | `windowrulev2 =` | `configs/hypr/conf.d/30-windowrules.conf` |
+| KDE autostart | `exec-once =` | `configs/hypr/conf.d/40-autostart.conf` |
+| Plasma lockscreen | hyprlock | `configs/hypr/hyprlock.conf` |
+| KDE idle | hypridle | `configs/hypr/hypridle.conf` |
+| KDE Plasma panel | Caelestia Quickshell | upstream Caelestia |
+| Plasma launcher | Caelestia Quickshell launcher | upstream Caelestia |
+| KDE notifications | mako | `configs/hypr/mako/config` |
+
+### Rollback
+
+If Hyprland breaks, log out and pick "Plasma" at SDDM. No Haoshoku command is required.
+
+### Manual uninstall
+
+```bash
+# Remove the Ocean overlay (haoshoku-owned)
+rm -rf ~/.config/hypr-ocean ~/.config/mako
+
+# Unwire the overlay from Caelestia's user include
+sed -i '/^source = ~\/.config\/hypr-ocean\/conf\.d\/\*\.conf$/d' \
+  ~/.config/caelestia/hypr-user.conf
+
+# Remove Caelestia itself
+rm -rf ~/.local/share/caelestia
+```
+
+Haoshoku deliberately does not delete `~/.config/hypr/`; Caelestia owns that symlinked tree.
 
 ## Skill Management
 

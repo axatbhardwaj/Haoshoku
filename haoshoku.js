@@ -1,6 +1,5 @@
 #!/usr/bin/env bun
 import fs from "node:fs";
-import path from "node:path";
 
 import { Command } from "commander";
 import prompts from "prompts";
@@ -17,6 +16,7 @@ import {
   syncKdeTheme,
 } from "./src/helpers/configure_kde_theme.js";
 import {
+  backupHyprland,
   installCaelestia,
   syncHyprlandOverlay,
 } from "./src/helpers/configure_hyprland.js";
@@ -38,7 +38,7 @@ const program = new Command();
 program
   .name("haoshoku")
   .description("Haoshoku: Color of the Supreme King. Dominate your setup.")
-  .version("4.5.0")
+  .version("4.6.0")
   .addHelpText("before", getBanner());
 
 function detectOS() {
@@ -103,6 +103,10 @@ program
   .option(
     "--hyprland-rules",
     "Regenerate Hyprland window rules + autostart from live KDE config",
+  )
+  .option(
+    "--hyprland-backup",
+    "Backup live Hyprland overlay from ~/.config/hypr-ocean/ to configs/hypr/",
   )
   .action(async (options) => {
     showBanner();
@@ -211,6 +215,18 @@ program
         "./src/helpers/configure_hyprland.js"
       );
       await regenerateHyprlandRules();
+      return;
+    }
+
+    if (options.hyprlandBackup) {
+      const os = detectOS();
+      if (os !== "cachyos") {
+        log.error(
+          `--hyprland-backup is gated to CachyOS/Arch (detected: ${os || "unknown"}).`,
+        );
+        process.exit(1);
+      }
+      await backupHyprland();
       return;
     }
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.6.0 - 2026-05-19
+- Add `--hyprland`: bootstrap Hyprland plus upstream Caelestia rice and deploy the Ocean overlay on CachyOS/Arch. KDE Plasma remains installed as the SDDM fallback session.
+- Add `--hyprland-keybinds`: regenerate `configs/hypr/conf.d/20-keybinds.conf` from `configs/kde_shortcuts.kksrc` with translated Hyprland binds.
+- Add `--hyprland-rules`: regenerate `configs/hypr/conf.d/30-windowrules.conf` and `40-autostart.conf` from live KDE config with KDE-only autostart services denylisted.
+- Add `--hyprland-backup`: pull live `~/.config/hypr-ocean/` and `~/.config/mako/` overlay state back into `configs/hypr/`.
+- Bundle the Ocean Hyprland overlay: Ocean borders, KDE Glass-style blur, Wayland env, keybind/rule/autostart translations, hyprpaper, hyprlock, hypridle, mako, and a safe monitor fallback.
+
 ## 4.5.0 - 2026-05-14
 - Fix `--claude` aborting before deploying any config on a fresh install. When the cache was empty, the auto-skill-sync was treating an empty `skillSources` array as "all sources failed" and calling `process.exit(1)` — so `syncClaudeConfig()` never ran and `~/.claude/CLAUDE.md`, `~/.claude/settings.json`, `~/.claude/statusline-command.sh`, and `~/.claude.json` all silently failed to deploy.
 - `syncSkills` now returns `{ status, merged }` (one of `"ok" | "no-sources" | "all-failed"`) instead of calling `process.exit`. The `--claude` and `--claude-update` paths treat non-`ok` as a warning and continue with the config deploy; `--skills` and `--skills-update` translate `"all-failed"` into a non-zero exit code, preserving direct-CLI exit semantics.
