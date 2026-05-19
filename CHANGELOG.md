@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.6.1 - 2026-05-19
+- Exclude local agent/runtime state (`.claude/`, `.dvandva/`, `superpowers/`) and generated video output from package dry-runs/publishes.
+- Fix lint-only issues in the Remotion video components so the release branch passes `bun run lint` cleanly.
+
 ## 4.6.0 - 2026-05-19
 - Add `--hyprland`: bootstrap Hyprland plus upstream Caelestia rice and deploy the Ocean overlay on CachyOS/Arch. KDE Plasma remains installed as the SDDM fallback session.
 - Add `--hyprland-keybinds`: regenerate `configs/hypr/conf.d/20-keybinds.conf` from `configs/kde_shortcuts.kksrc` with translated Hyprland binds.

@@ -1,0 +1,19 @@
+# Local agent/runtime state
+.claude/
+.dvandva/
+superpowers/
+BRANCH-NOTES.md
+
+# Secrets and local environment
+.env
+.env.*
+
+# Local tooling and caches
+.sidecar/
+.todos/
+node_modules/
+coverage/
+dist/
+out/
+video/out/
+*.tgz

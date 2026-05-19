@@ -61,6 +61,7 @@ export const HaoshokuLogo = () => {
       >
         {/* Conqueror's Haki black lightning bolts */}
         <svg
+          aria-hidden="true"
           width="450"
           height="450"
           viewBox="0 0 450 450"
@@ -126,6 +127,7 @@ export const HaoshokuLogo = () => {
 
         {/* Pressure crack lines at bottom */}
         <svg
+          aria-hidden="true"
           width="300"
           height="60"
           viewBox="0 0 300 60"
@@ -166,6 +168,7 @@ export const HaoshokuLogoMinimal = () => {
 
       {/* Black lightning accents */}
       <svg
+        aria-hidden="true"
         width="400"
         height="400"
         viewBox="0 0 400 400"

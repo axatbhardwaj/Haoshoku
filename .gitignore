@@ -313,6 +313,8 @@ pyrightconfig.json
 # Local tooling
 .sidecar/
 .todos/
+.claude/
+.dvandva/
 
 # Superpowers brainstorming + planning artifacts (local-only, never committed)
 /superpowers/

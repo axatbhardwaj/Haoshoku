@@ -119,7 +119,7 @@ const HakiWaves = () => {
 
 const HakiLightning = () => {
   const frame = useCurrentFrame();
-  const { fps, width, height } = useVideoConfig();
+  const { width, height } = useVideoConfig();
 
   const opacity = interpolate(frame, [0, 15], [0, 0.85], {
     extrapolateLeft: "clamp",
@@ -131,7 +131,7 @@ const HakiLightning = () => {
 
   return (
     <AbsoluteFill style={{ opacity: opacity * flicker }}>
-      <svg width={width} height={height} style={{ position: "absolute" }}>
+      <svg aria-hidden="true" width={width} height={height} style={{ position: "absolute" }}>
         {/* Left lightning cluster */}
         <g stroke={COLORS.lightning} fill="none" strokeLinecap="round" strokeLinejoin="round">
           <path d="M120 100 L160 160 L130 175 L180 260" strokeWidth="6" />
@@ -330,7 +330,7 @@ const Features = () => {
     >
       <div style={{ display: "flex", gap: 20 }}>
         {features.map((f, i) => (
-          <FeatureBadge key={i} icon={f.icon} label={f.label} delay={i * 4} />
+          <FeatureBadge key={f.label} icon={f.icon} label={f.label} delay={i * 4} />
         ))}
       </div>
     </AbsoluteFill>
