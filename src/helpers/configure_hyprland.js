@@ -80,12 +80,16 @@ export const CAELESTIA_PINNED_SHA = "main"; // TODO Task 1.6: replace with the S
  * KDE action ID → Hyprland dispatcher + args.
  * Each entry returns a string that becomes the RHS of a `bind = MODS, KEY, ...` line.
  *
+ * Real KDE action IDs verified against the user's live configs/kde_shortcuts.kksrc:
+ * kmix uses snake_case (increase_volume, mic_mute, …); powerdevil uses Title Case
+ * with the word "Screen" (Increase Screen Brightness); mediacontrol uses lowercase
+ * (nextmedia, playpausemedia, …). Don't confuse them with their friendly-name
+ * "Increase Volume" — that's the localized description after the second comma.
+ *
  * NOTE on launcher: KRunner / "Run Command" / "Show Application Launcher" are
- * INTENTIONALLY OMITTED from this table. Caelestia's Quickshell ships its own
- * launcher on `Super` by default. If we bind a launcher here we'd either collide
- * with Caelestia's bind or pre-empt their UI. Users who want a different launcher
- * can drop a one-line override into ~/.config/hypr-ocean/conf.d/91-execs.conf
- * or a new conf.d/92-user.conf file.
+ * INTENTIONALLY OMITTED. Caelestia's Quickshell ships its own launcher on
+ * `Super` by default. Custom `[services][X.desktop]` launchers ARE handled
+ * specially by `serviceLauncherDispatcher` below — they emit `gtk-launch X`.
  */
 const KDE_TO_HYPRLAND_ACTIONS = {
 	// kwin — window management
@@ -118,6 +122,69 @@ const KDE_TO_HYPRLAND_ACTIONS = {
 	"Window to Desktop 8": "movetoworkspace, 8",
 	"Window to Desktop 9": "movetoworkspace, 9",
 	"Show Desktop": "exec, hyprctl dispatch togglespecialworkspace",
+	"Window to Next Screen": "movewindow, mon:+1",
+	"Window to Previous Screen": "movewindow, mon:-1",
+	"Kill Window": "exec, hyprctl kill",
+	// Quick Tile — KDE-specific snap; Hyprland approximation via splitratio
+	// adjustments. Not pixel-identical but close in feel.
+	"Window Quick Tile Left": "movewindow, l",
+	"Window Quick Tile Right": "movewindow, r",
+	"Window Quick Tile Top": "movewindow, u",
+	"Window Quick Tile Bottom": "movewindow, d",
+	// Window to Desktop directional — map to adjacent workspace numbers
+	"Window One Desktop Up": "movetoworkspace, -1",
+	"Window One Desktop Down": "movetoworkspace, +1",
+	"Window One Desktop to the Left": "movetoworkspace, -1",
+	"Window One Desktop to the Right": "movetoworkspace, +1",
+	// Switch (focus) One Desktop directional — same workspace nav without moving window
+	"Switch One Desktop Up": "workspace, -1",
+	"Switch One Desktop Down": "workspace, +1",
+	"Switch One Desktop to the Left": "workspace, -1",
+	"Switch One Desktop to the Right": "workspace, +1",
+	// Walk Through Windows of Current Application — Hyprland's group cycle
+	"Walk Through Windows of Current Application": "cyclenext, sameclass",
+	"Walk Through Windows of Current Application (Reverse)":
+		"cyclenext, prev sameclass",
+	// kwin Activate Window Demanding Attention — Hyprland focuses urgent
+	"Activate Window Demanding Attention": "focusurgentorlast",
+	// Switch Activity — Hyprland doesn't have activities; map to special
+	// workspaces 1..3 as the closest behavioral match (isolated workspace).
+	"Walk Through Windows": "cyclenext",
+	"Walk Through Windows (Reverse)": "cyclenext, prev",
+
+	// Krohnkite focus directions — Hyprland is itself a tiling WM, so these
+	// map to the same movefocus dispatch as kwin's Switch Window equivalents.
+	KrohnkiteFocusUp: "movefocus, u",
+	KrohnkiteFocusDown: "movefocus, d",
+	KrohnkiteFocusLeft: "movefocus, l",
+	KrohnkiteFocusRight: "movefocus, r",
+	KrohnkiteFocusNext: "cyclenext",
+	KrohnkiteFocusPrev: "cyclenext, prev",
+	// Krohnkite shuffle/shift — Hyprland's swapwindow
+	KrohnkiteShuffleUp: "swapwindow, u",
+	KrohnkiteShuffleDown: "swapwindow, d",
+	KrohnkiteShuffleLeft: "swapwindow, l",
+	KrohnkiteShuffleRight: "swapwindow, r",
+	KrohnkiteShiftUp: "swapwindow, u",
+	KrohnkiteShiftDown: "swapwindow, d",
+	KrohnkiteShiftLeft: "swapwindow, l",
+	KrohnkiteShiftRight: "swapwindow, r",
+	KrohnkiteToggleFloat: "togglefloating",
+	// Real kksrc has a lowercase typo: KrohnkitegrowWidth (single 'g')
+	KrohnkitegrowWidth: "resizeactive, 50 0",
+	// Krohnkite resize — Hyprland resizeactive
+	KrohnkiteIncrease: "resizeactive, 50 0",
+	KrohnkiteDecrease: "resizeactive, -50 0",
+	KrohnkiteGrowHeight: "resizeactive, 0 50",
+	KrohnkiteShrinkHeight: "resizeactive, 0 -50",
+	KrohnkiteGrowWidth: "resizeactive, 50 0",
+	KrohnkiteShrinkWidth: "resizeactive, -50 0",
+	// Krohnkite layout — Hyprland layout cycling
+	KrohnkiteNextLayout: "layoutmsg, cyclenext",
+	KrohnkitePreviousLayout: "layoutmsg, cycleprev",
+	KrohnkiteMonocleLayout: "fullscreen, 1",
+	KrohnkiteFloatAll: "togglefloating",
+	KrohnkiteFloat: "togglefloating",
 
 	// ksmserver — session lifecycle
 	"Lock Session": "exec, hyprlock",
@@ -128,15 +195,62 @@ const KDE_TO_HYPRLAND_ACTIONS = {
 	FullScreenScreenShot: "exec, hyprshot -m output",
 	ActiveWindowScreenShot: "exec, hyprshot -m window",
 
-	// kmix / audio — multimedia keys via wpctl
-	"Volume Up": "exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+",
-	"Volume Down": "exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-",
-	Mute: "exec, wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
-	"Mic Mute": "exec, wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle",
+	// kmix — REAL action IDs (snake_case). Emit Hyprland exec via wpctl.
+	increase_volume: "exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+",
+	decrease_volume: "exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-",
+	increase_volume_small: "exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 1%+",
+	decrease_volume_small: "exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 1%-",
+	mute: "exec, wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
+	mic_mute: "exec, wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle",
+	increase_microphone_volume:
+		"exec, wpctl set-volume @DEFAULT_AUDIO_SOURCE@ 5%+",
+	decrease_microphone_volume:
+		"exec, wpctl set-volume @DEFAULT_AUDIO_SOURCE@ 5%-",
 
-	// brightness
-	"Brightness Up": "exec, brightnessctl set +5%",
-	"Brightness Down": "exec, brightnessctl set 5%-",
+	// org_kde_powerdevil — REAL action IDs (include "Screen").
+	"Increase Screen Brightness": "exec, brightnessctl set +5%",
+	"Decrease Screen Brightness": "exec, brightnessctl set 5%-",
+	"Increase Screen Brightness Small": "exec, brightnessctl set +1%",
+	"Decrease Screen Brightness Small": "exec, brightnessctl set 1%-",
+	"Increase Keyboard Brightness":
+		"exec, brightnessctl --device='*kbd_backlight*' set +5%",
+	"Decrease Keyboard Brightness":
+		"exec, brightnessctl --device='*kbd_backlight*' set 5%-",
+	"Toggle Keyboard Backlight":
+		"exec, brightnessctl --device='*kbd_backlight*' set 50%",
+	Sleep: "exec, systemctl suspend",
+	Hibernate: "exec, systemctl hibernate",
+	PowerOff: "exec, systemctl poweroff",
+	PowerDown: "exec, systemctl poweroff",
+
+	// mediacontrol — REAL action IDs (lowercase concatenated).
+	playpausemedia: "exec, playerctl play-pause",
+	playmedia: "exec, playerctl play",
+	pausemedia: "exec, playerctl pause",
+	stopmedia: "exec, playerctl stop",
+	nextmedia: "exec, playerctl next",
+	previousmedia: "exec, playerctl previous",
+};
+
+/**
+ * Translate KDE key names to Hyprland key names. KDE uses human-readable
+ * multimedia key names with spaces; Hyprland uses XF86<Foo> standard names.
+ * Anything not in this map falls back to .toUpperCase().
+ */
+const KDE_KEY_TO_HYPRLAND_KEY = {
+	"Volume Up": "XF86AudioRaiseVolume",
+	"Volume Down": "XF86AudioLowerVolume",
+	"Volume Mute": "XF86AudioMute",
+	"Microphone Mute": "XF86AudioMicMute",
+	"Microphone Volume Up": "XF86AudioMicMute", // no separate raise key — alias
+	"Microphone Volume Down": "XF86AudioMicMute", // no separate lower key — alias
+	"Monitor Brightness Up": "XF86MonBrightnessUp",
+	"Monitor Brightness Down": "XF86MonBrightnessDown",
+	"Media Next": "XF86AudioNext",
+	"Media Previous": "XF86AudioPrev",
+	"Media Play": "XF86AudioPlay",
+	"Media Pause": "XF86AudioPause",
+	"Media Stop": "XF86AudioStop",
 };
 
 /**
@@ -146,12 +260,26 @@ const KDE_TO_HYPRLAND_ACTIONS = {
  */
 function translateModifiers(kdeBinding) {
 	const tokens = kdeBinding.split("+");
-	const key = tokens.pop();
+	const rawKey = tokens.pop();
 	// Hyprland accepts both META and SUPER for the Windows/Command key; SUPER
 	// is the community-idiomatic spelling, so we emit that.
 	const map = { Ctrl: "CTRL", Alt: "ALT", Shift: "SHIFT", Meta: "SUPER" };
 	const mods = tokens.map((t) => map[t] || t.toUpperCase()).join("_");
-	return { mods, key: key.toUpperCase() };
+	const key = KDE_KEY_TO_HYPRLAND_KEY[rawKey] || rawKey.toUpperCase();
+	return { mods, key };
+}
+
+/**
+ * If a section name matches `[services][X.desktop]` (KDE's custom-launcher
+ * pattern from kglobalshortcutsrc / kksrc), return the launcher dispatcher.
+ * Otherwise null. Picks gtk-launch since it's part of GTK and ships on all
+ * desktop distros — works for both regular .desktop files and Chrome PWAs.
+ */
+function serviceLauncherDispatcher(section, actionName) {
+	if (actionName !== "_launch") return null;
+	const match = section.match(/^services\]\[(.+?)\.desktop$/);
+	if (!match) return null;
+	return `exec, gtk-launch ${match[1]}`;
 }
 
 /**
@@ -166,6 +294,7 @@ export function translateKdeShortcutsToHyprland(kksrcText) {
 		"",
 	];
 	const untranslated = [];
+	const seenBindings = new Set();
 
 	let section = null;
 	for (const rawLine of kksrcText.split("\n")) {
@@ -186,7 +315,9 @@ export function translateKdeShortcutsToHyprland(kksrcText) {
 		const primaryBinding = (valueParts[0] || "").split("\\t")[0].trim();
 		if (!primaryBinding || primaryBinding.toLowerCase() === "none") continue;
 
-		const dispatcher = KDE_TO_HYPRLAND_ACTIONS[actionName];
+		const dispatcher =
+			KDE_TO_HYPRLAND_ACTIONS[actionName] ||
+			serviceLauncherDispatcher(section, actionName);
 		if (!dispatcher) {
 			untranslated.push(
 				`# UNTRANSLATED: ${actionName} (section=[${section}], binding=${primaryBinding})`,
@@ -196,7 +327,15 @@ export function translateKdeShortcutsToHyprland(kksrcText) {
 
 		const { mods, key } = translateModifiers(primaryBinding);
 		const prefix = mods ? `${mods}, ${key}` : `, ${key}`;
-		lines.push(`bind = ${prefix}, ${dispatcher}`);
+		const bindLine = `bind = ${prefix}, ${dispatcher}`;
+		// Dedupe: if this exact (mods, key) was already bound, comment the dupe.
+		const sigKey = `${mods}|${key}`;
+		if (seenBindings.has(sigKey)) {
+			lines.push(`# DUPLICATE BINDING (${prefix} already bound): ${bindLine}`);
+		} else {
+			seenBindings.add(sigKey);
+			lines.push(bindLine);
+		}
 	}
 
 	if (untranslated.length > 0) {

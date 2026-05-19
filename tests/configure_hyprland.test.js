@@ -271,4 +271,54 @@ RectangularRegionScreenShot=Meta+Shift+S,Print,Capture Rectangular Region
 		// "Window Fullscreen=,,Full Screen Window" — empty binding, should not emit
 		expect(out).not.toMatch(/bind = .*fullscreen, 0/);
 	});
+
+	it("translates kmix snake_case actions with XF86 multimedia keys", () => {
+		const text =
+			"[kmix]\nincrease_volume=Volume Up,Volume Up,Increase Volume\nmute=Volume Mute,Volume Mute,Mute\n";
+		const out = hyprland.translateKdeShortcutsToHyprland(text);
+		expect(out).toMatch(
+			/bind = , XF86AudioRaiseVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%\+/,
+		);
+		expect(out).toMatch(
+			/bind = , XF86AudioMute, exec, wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle/,
+		);
+	});
+
+	it("translates powerdevil brightness with XF86MonBrightness keys", () => {
+		const text =
+			"[org_kde_powerdevil]\nIncrease Screen Brightness=Monitor Brightness Up,Monitor Brightness Up,Increase Screen Brightness\n";
+		const out = hyprland.translateKdeShortcutsToHyprland(text);
+		expect(out).toMatch(
+			/bind = , XF86MonBrightnessUp, exec, brightnessctl set \+5%/,
+		);
+	});
+
+	it("translates mediacontrol playback to playerctl XF86Audio binds", () => {
+		const text =
+			"[mediacontrol]\nplaypausemedia=Media Play,Media Play,Play/Pause\nnextmedia=Media Next,Media Next,Next\n";
+		const out = hyprland.translateKdeShortcutsToHyprland(text);
+		expect(out).toMatch(/bind = , XF86AudioPlay, exec, playerctl play-pause/);
+		expect(out).toMatch(/bind = , XF86AudioNext, exec, playerctl next/);
+	});
+
+	it("translates [services][X.desktop] _launch to gtk-launch X", () => {
+		const text =
+			"[services][com.mitchellh.ghostty.desktop]\n_launch=Meta+Return\n";
+		const out = hyprland.translateKdeShortcutsToHyprland(text);
+		expect(out).toMatch(
+			/bind = SUPER, RETURN, exec, gtk-launch com\.mitchellh\.ghostty/,
+		);
+	});
+
+	it("dedupes duplicate bindings, keeping the first and commenting the rest", () => {
+		const text =
+			"[services][app-a.desktop]\n_launch=Meta+G\n[services][app-b.desktop]\n_launch=Meta+G\n";
+		const out = hyprland.translateKdeShortcutsToHyprland(text);
+		expect(out).toMatch(
+			/bind = SUPER, G, exec, gtk-launch app-a/,
+		);
+		expect(out).toMatch(
+			/# DUPLICATE BINDING.*bind = SUPER, G, exec, gtk-launch app-b/,
+		);
+	});
 });
