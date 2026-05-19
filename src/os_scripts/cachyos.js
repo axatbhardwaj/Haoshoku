@@ -10,6 +10,10 @@ import {
   safeCopyFile,
 } from "../common/utils.js";
 import { configureClaude } from "../helpers/configure_claude.js";
+import {
+  installCaelestia,
+  syncHyprlandOverlay,
+} from "../helpers/configure_hyprland.js";
 import { configureKdeTheme } from "../helpers/configure_kde_theme.js";
 import { configureZed } from "../helpers/configure_zed.js";
 
@@ -327,6 +331,22 @@ async function configureKde() {
   }
 }
 
+async function configureHyprland() {
+  if (
+    await promptUser(
+      "Install Hyprland + Caelestia rice (parallel to KDE)?",
+      false,
+    )
+  ) {
+    log.info("Bootstrapping Caelestia + Hyprland...");
+    await installCaelestia();
+    await syncHyprlandOverlay();
+    log.success(
+      "Hyprland installed. Select 'Hyprland' at SDDM to use it; 'Plasma' still available as fallback.",
+    );
+  }
+}
+
 export async function installKdeGlass() {
   log.info("Installing prerequisites for KDE Glass blur effect...");
   await runCommand(
@@ -403,6 +423,7 @@ async function configureUserApps() {
   await configureTerminals();
   await configureZed();
   await configureKde();
+  await configureHyprland();
 
   log.info("Installing uosc for MPV...");
   await runCommand(`curl -fsSL ${UOSC_INSTALL_URL} | bash`);
