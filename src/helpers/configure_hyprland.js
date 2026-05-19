@@ -407,6 +407,33 @@ export async function installCaelestia({ home = HOME } = {}) {
 	}
 }
 
+/** Path to user's KDE shortcuts kksrc in the haoshoku repo. */
+export const KDE_SHORTCUTS_PATH = path.join(
+	PROJECT_ROOT,
+	"configs",
+	"kde_shortcuts.kksrc",
+);
+
+/**
+ * Read configs/kde_shortcuts.kksrc, translate, write
+ * configs/hypr/conf.d/20-keybinds.conf. Intended as a one-shot --hyprland-keybinds
+ * CLI command users invoke whenever they update their KDE shortcuts.
+ */
+export async function regenerateHyprlandKeybinds() {
+	if (!fs.existsSync(KDE_SHORTCUTS_PATH)) {
+		log.warning(
+			`${KDE_SHORTCUTS_PATH} not found — skipping keybind generation.`,
+		);
+		return;
+	}
+	const kksrc = fs.readFileSync(KDE_SHORTCUTS_PATH, "utf8");
+	const out = translateKdeShortcutsToHyprland(kksrc);
+	const target = path.join(HYPR_BUNDLE_DIR, "conf.d", "20-keybinds.conf");
+	fs.mkdirSync(path.dirname(target), { recursive: true });
+	fs.writeFileSync(target, out);
+	log.success(`Wrote ${target}`);
+}
+
 /** Stub. Implemented in Phase 5. */
 export async function backupHyprland({
 	home: _home = HOME,

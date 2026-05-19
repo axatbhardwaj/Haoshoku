@@ -96,6 +96,10 @@ program
     "--hyprland",
     "Install Hyprland + Caelestia rice and deploy Ocean overlay (CachyOS/Arch only)",
   )
+  .option(
+    "--hyprland-keybinds",
+    "Regenerate configs/hypr/conf.d/20-keybinds.conf from configs/kde_shortcuts.kksrc",
+  )
   .action(async (options) => {
     showBanner();
 
@@ -187,6 +191,14 @@ program
       }
       await installCaelestia();
       await syncHyprlandOverlay();
+      return;
+    }
+
+    if (options.hyprlandKeybinds) {
+      const { regenerateHyprlandKeybinds } = await import(
+        "./src/helpers/configure_hyprland.js"
+      );
+      await regenerateHyprlandKeybinds();
       return;
     }
 
