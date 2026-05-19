@@ -17,6 +17,10 @@ import {
   syncKdeTheme,
 } from "./src/helpers/configure_kde_theme.js";
 import {
+  installCaelestia,
+  syncHyprlandOverlay,
+} from "./src/helpers/configure_hyprland.js";
+import {
   backupZedConfig,
   syncZedConfig,
   syncZedTheme,
@@ -87,6 +91,10 @@ program
   .option(
     "--kde-glass",
     "Install/reinstall KDE Glass blur effect (CachyOS/Arch only)",
+  )
+  .option(
+    "--hyprland",
+    "Install Hyprland + Caelestia rice and deploy Ocean overlay (CachyOS/Arch only)",
   )
   .action(async (options) => {
     showBanner();
@@ -166,6 +174,19 @@ program
 
     if (options.kdeGlass) {
       await installKdeGlass();
+      return;
+    }
+
+    if (options.hyprland) {
+      const os = detectOS();
+      if (os !== "cachyos") {
+        log.error(
+          `--hyprland is gated to CachyOS/Arch (detected: ${os || "unknown"}). Run on an Arch-family system.`,
+        );
+        process.exit(1);
+      }
+      await installCaelestia();
+      await syncHyprlandOverlay();
       return;
     }
 

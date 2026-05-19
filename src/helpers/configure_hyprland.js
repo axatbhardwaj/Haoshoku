@@ -82,10 +82,7 @@ export function ensureLineInFile(filePath, line) {
 		return false;
 	}
 	const needsNewline = contents.length > 0 && !contents.endsWith("\n");
-	fs.writeFileSync(
-		filePath,
-		contents + (needsNewline ? "\n" : "") + line + "\n",
-	);
+	fs.writeFileSync(filePath, `${contents}${needsNewline ? "\n" : ""}${line}\n`);
 	return true;
 }
 
@@ -178,7 +175,9 @@ export async function installCaelestia({ home = HOME } = {}) {
 }
 
 /** Stub. Implemented in Phase 5. */
-// biome-ignore lint/correctness/noUnusedVariables: signature established for Phase 1; impl in Phase 5
-export async function backupHyprland({ home = HOME, projectRoot = PROJECT_ROOT } = {}) {
+export async function backupHyprland({
+	home: _home = HOME,
+	projectRoot: _projectRoot = PROJECT_ROOT,
+} = {}) {
 	throw new Error("backupHyprland: not yet implemented (Phase 5)");
 }
