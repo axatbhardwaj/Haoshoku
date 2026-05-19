@@ -100,6 +100,10 @@ program
     "--hyprland-keybinds",
     "Regenerate configs/hypr/conf.d/20-keybinds.conf from configs/kde_shortcuts.kksrc",
   )
+  .option(
+    "--hyprland-rules",
+    "Regenerate Hyprland window rules + autostart from live KDE config",
+  )
   .action(async (options) => {
     showBanner();
 
@@ -199,6 +203,14 @@ program
         "./src/helpers/configure_hyprland.js"
       );
       await regenerateHyprlandKeybinds();
+      return;
+    }
+
+    if (options.hyprlandRules) {
+      const { regenerateHyprlandRules } = await import(
+        "./src/helpers/configure_hyprland.js"
+      );
+      await regenerateHyprlandRules();
       return;
     }
 

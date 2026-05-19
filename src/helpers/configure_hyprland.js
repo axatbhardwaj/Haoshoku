@@ -727,6 +727,41 @@ export async function regenerateHyprlandKeybinds() {
 	log.success(`Wrote ${target}`);
 }
 
+/** Path to user's live KDE window rules file. */
+export const KWIN_RULES_PATH = path.join(HOME, ".config", "kwinrulesrc");
+
+/** Path to user's live KDE autostart directory. */
+export const AUTOSTART_DIR = path.join(HOME, ".config", "autostart");
+
+/**
+ * Read live KDE config + autostart, translate, write to configs/hypr/conf.d/.
+ * One-shot regeneration command. Designed to be re-run whenever the user
+ * changes their KDE rules/autostart on a still-KDE machine.
+ */
+export async function regenerateHyprlandRules() {
+	const wrTarget = path.join(
+		HYPR_BUNDLE_DIR,
+		"conf.d",
+		"30-windowrules.conf",
+	);
+	if (fs.existsSync(KWIN_RULES_PATH)) {
+		const rules = translateKdeWindowRulesToHyprland(
+			fs.readFileSync(KWIN_RULES_PATH, "utf8"),
+		);
+		fs.mkdirSync(path.dirname(wrTarget), { recursive: true });
+		fs.writeFileSync(wrTarget, rules);
+		log.success(`Wrote ${wrTarget}`);
+	} else {
+		log.warning(`${KWIN_RULES_PATH} not found — skipping window-rule generation.`);
+	}
+
+	const asTarget = path.join(HYPR_BUNDLE_DIR, "conf.d", "40-autostart.conf");
+	const autostart = translateKdeAutostartToHyprland(AUTOSTART_DIR);
+	fs.mkdirSync(path.dirname(asTarget), { recursive: true });
+	fs.writeFileSync(asTarget, autostart);
+	log.success(`Wrote ${asTarget}`);
+}
+
 /** Stub. Implemented in Phase 5. */
 export async function backupHyprland({
 	home: _home = HOME,
