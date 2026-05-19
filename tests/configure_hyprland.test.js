@@ -106,6 +106,45 @@ describe("checkoutPinnedCaelestia", () => {
 	});
 });
 
+describe("recoverCaelestiaPackages", () => {
+	it("refreshes CachyOS mirrors and package databases before a final retry", async () => {
+		const commands = [];
+		const existsCalls = [];
+		const caelestiaExists = [false, true];
+
+		const recovered = await hyprland.recoverCaelestiaPackages({
+			run: async (command) => {
+				commands.push(command);
+				return (
+					!(
+						command ===
+						"paru -S --needed --noconfirm caelestia-cli caelestia-shell"
+					) || commands.filter((c) => c === command).length > 1
+				);
+			},
+			exists: async (command) => {
+				existsCalls.push(command);
+				if (command === "cachyos-rate-mirrors") return true;
+				if (command === "caelestia") return caelestiaExists.shift() ?? true;
+				return false;
+			},
+		});
+
+		expect(recovered).toBe(true);
+		expect(commands).toEqual([
+			"paru -S --needed --noconfirm caelestia-cli caelestia-shell",
+			"sudo cachyos-rate-mirrors",
+			"sudo pacman -Syy --noconfirm",
+			"paru -S --needed --noconfirm caelestia-cli caelestia-shell",
+		]);
+		expect(existsCalls).toEqual([
+			"caelestia",
+			"cachyos-rate-mirrors",
+			"caelestia",
+		]);
+	});
+});
+
 describe("parseOceanPalette", () => {
 	const fixturePath = path.join(__dirname, "fixtures", "ocean.colors");
 
@@ -523,7 +562,9 @@ describe("Adversarial coverage — confirmed bug surfaces", () => {
 	});
 
 	it("kdeRgbToHyprlandRgba output always has an 8-hex-char body when input is valid", () => {
-		expect(hyprland.kdeRgbToHyprlandRgba("0,169,165")).toMatch(/^rgba\([0-9a-f]{8}\)$/);
+		expect(hyprland.kdeRgbToHyprlandRgba("0,169,165")).toMatch(
+			/^rgba\([0-9a-f]{8}\)$/,
+		);
 	});
 
 	// ── translateKdeWindowRulesToHyprland: 3-token wmclass picks wrong token ─
@@ -598,7 +639,9 @@ describe("Adversarial coverage — confirmed bug surfaces", () => {
 		let tmpDir;
 
 		beforeEach(() => {
-			tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-autostart-env-"));
+			tmpDir = fs.mkdtempSync(
+				path.join(os.tmpdir(), "haoshoku-autostart-env-"),
+			);
 			fs.writeFileSync(
 				path.join(tmpDir, "kdeconnectd-env.desktop"),
 				"[Desktop Entry]\nType=Application\nExec=env DISPLAY=:0 kdeconnectd\n",
@@ -645,7 +688,10 @@ describe("Adversarial coverage — confirmed bug surfaces", () => {
 			hyprland.checkoutPinnedCaelestia({
 				cloneDir: "/tmp/x",
 				pinnedSha: "abc1234; rm -rf $HOME",
-				run: async () => { called = true; return true; },
+				run: async () => {
+					called = true;
+					return true;
+				},
 			}),
 		).rejects.toThrow();
 		expect(called).toBe(false);
@@ -657,7 +703,10 @@ describe("Adversarial coverage — confirmed bug surfaces", () => {
 		await hyprland.checkoutPinnedCaelestia({
 			cloneDir: "/tmp/x",
 			pinnedSha: validSha,
-			run: async (cmd) => { received = cmd; return true; },
+			run: async (cmd) => {
+				received = cmd;
+				return true;
+			},
 		});
 		expect(received).toBe(`git checkout ${validSha}`);
 	});

@@ -424,11 +424,15 @@ export function kdeRgbToHyprlandRgba(rgb, alphaHex = "ff") {
 	// produce wrong-length hex segments (e.g. 256 → "100", -1 → "-1") and
 	// corrupt the rgba() token, which Hyprland silently rejects file-wide.
 	if (parts.some((n) => n < 0 || n > 255)) {
-		throw new Error(`kdeRgbToHyprlandRgba: component out of 0-255 range in "${rgb}"`);
+		throw new Error(
+			`kdeRgbToHyprlandRgba: component out of 0-255 range in "${rgb}"`,
+		);
 	}
 	// alphaHex is interpolated verbatim — must be exactly 2 hex chars.
 	if (!/^[0-9a-fA-F]{2}$/.test(alphaHex)) {
-		throw new Error(`kdeRgbToHyprlandRgba: alphaHex must be 2 hex chars, got "${alphaHex}"`);
+		throw new Error(
+			`kdeRgbToHyprlandRgba: alphaHex must be 2 hex chars, got "${alphaHex}"`,
+		);
 	}
 	const hex = parts.map((n) => n.toString(16).padStart(2, "0")).join("");
 	return `rgba(${hex}${alphaHex})`;
@@ -537,6 +541,40 @@ export async function checkoutPinnedCaelestia({
 	return true;
 }
 
+const CAELESTIA_LEAF_INSTALL_COMMAND =
+	"paru -S --needed --noconfirm caelestia-cli caelestia-shell";
+
+export async function recoverCaelestiaPackages({
+	run = runCommand,
+	exists = commandExists,
+} = {}) {
+	await run(CAELESTIA_LEAF_INSTALL_COMMAND);
+	if (await exists("caelestia")) return true;
+
+	log.warning(
+		"Explicit Caelestia package install failed. Refreshing CachyOS mirrors/package databases once before retrying...",
+	);
+
+	if (await exists("cachyos-rate-mirrors")) {
+		const mirrorsRefreshed = await run("sudo cachyos-rate-mirrors");
+		if (!mirrorsRefreshed) {
+			log.warning(
+				"cachyos-rate-mirrors failed; continuing with pacman database refresh.",
+			);
+		}
+	}
+
+	const databasesRefreshed = await run("sudo pacman -Syy --noconfirm");
+	if (!databasesRefreshed) {
+		log.warning(
+			"pacman database refresh failed; retrying Caelestia packages once anyway.",
+		);
+	}
+
+	const secondAttempt = await run(CAELESTIA_LEAF_INSTALL_COMMAND);
+	return secondAttempt && (await exists("caelestia"));
+}
+
 /**
  * Clone or update Caelestia and run its installer. Idempotent: re-run safe.
  * After install, ensure the user-owned hypr-user.conf sources our Ocean overlay
@@ -605,13 +643,11 @@ export async function installCaelestia({ home = HOME } = {}) {
 			"caelestia CLI missing after install.fish (likely an AUR mirror failure during paru -Ui). " +
 				"Retrying with explicit `paru -S caelestia-cli caelestia-shell`...",
 		);
-		const recovered = await runCommand(
-			"paru -S --needed --noconfirm caelestia-cli caelestia-shell",
-		);
+		const recovered = await recoverCaelestiaPackages();
 		if (!recovered || !(await commandExists("caelestia"))) {
 			throw new Error(
-				"caelestia CLI still missing after retry. Likely the AUR mirror is still flaking. " +
-					"Try `sudo pacman -Syyu` to refresh mirrors, then re-run `bun haoshoku.js --hyprland`. " +
+				"caelestia CLI still missing after mirror/database refresh and retry. " +
+					"Try `sudo cachyos-rate-mirrors && sudo pacman -Syyu` to refresh mirrors and upgrade, then re-run `bun haoshoku.js --hyprland`. " +
 					"If that fails, install caelestia-cli + caelestia-shell manually and re-run.",
 			);
 		}
@@ -628,7 +664,9 @@ export async function installCaelestia({ home = HOME } = {}) {
 		const target = path.join(path.dirname(userInclude), f);
 		if (!fs.existsSync(target)) {
 			fs.writeFileSync(target, "");
-			log.info(`Pre-created empty ${target} (Caelestia would create lazily on first boot)`);
+			log.info(
+				`Pre-created empty ${target} (Caelestia would create lazily on first boot)`,
+			);
 		}
 	}
 
@@ -777,8 +815,7 @@ function realBinName(exec) {
 		// both forms so the denylist check sees the real binary.
 		while (
 			i < tokens.length &&
-			(tokens[i].startsWith("-") ||
-				/^[A-Za-z_][A-Za-z0-9_]*=/.test(tokens[i]))
+			(tokens[i].startsWith("-") || /^[A-Za-z_][A-Za-z0-9_]*=/.test(tokens[i]))
 		) {
 			i++;
 		}

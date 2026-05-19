@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.6.5 - 2026-05-19
+- Fix `--hyprland` Caelestia recovery when CachyOS package mirrors or sync databases are stale. If the explicit `paru -S caelestia-cli caelestia-shell` retry fails, Haoshoku now runs one CachyOS mirror refresh plus forced pacman database refresh, then retries the Caelestia leaf packages before failing.
+- Add regression coverage for the mirror/database refresh retry path so the installer no longer gives up immediately on transient CachyOS `.sig` retrieval failures.
+
 ## 4.6.2 - 2026-05-19
 - Fix 14 KDE→Hyprland translation bugs found via adversarial test coverage of `src/helpers/configure_hyprland.js`. Most produced malformed Hyprland directives that would cause Hyprland to silently reject the entire `conf.d/` file, dropping every keybind or rule it contained.
 - Security: `checkoutPinnedCaelestia` now validates `pinnedSha` against `/^[a-f0-9]{7,40}$/i` before interpolating it into the `git checkout` command. The shared `runCommand` helper auto-routes commands containing shell metacharacters through `sh -c`, so an unvalidated SHA like `"abc; rm -rf $HOME"` would have executed shell injection.
