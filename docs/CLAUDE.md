@@ -8,3 +8,4 @@ Project documentation and design notes.
 | ------------- | ----------------------------- | ----------------------------------------- |
 | `haoshoku.md` | Detailed project architecture | Deep dive into system design              |
 | `hyprland-parity-gap.md` | KDE shortcuts without Hyprland equivalents | Understanding/filling the v4.6 port gap   |
+| `hyprland-monitor-multihost-todo.md` | Per-host monitor layout TODO (graduates `conf.d/50-monitors.conf` placeholder) | Implementing per-host monitor selection across desktop / laptop |
