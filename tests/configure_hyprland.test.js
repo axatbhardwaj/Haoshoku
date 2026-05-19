@@ -463,23 +463,23 @@ describe("translateKdeWindowRulesToHyprland", () => {
 
 	it("emits a workspace pin rule for desktops=N", () => {
 		const out = hyprland.translateKdeWindowRulesToHyprland(fixture);
-		expect(out).toMatch(/windowrulev2 = workspace 4,class:\^\(discord\)\$/);
+		expect(out).toMatch(/windowrule = workspace 4, match:class \^discord\$/);
 	});
 
 	it("emits a float rule for above=true entries", () => {
 		const out = hyprland.translateKdeWindowRulesToHyprland(fixture);
-		expect(out).toMatch(/windowrulev2 = float,class:\^\(spotify\)\$/);
+		expect(out).toMatch(/windowrule = float true, match:class \^spotify\$/);
 	});
 
 	it("emits an opacity rule from opacityactive (percent → 0-1 float)", () => {
 		const out = hyprland.translateKdeWindowRulesToHyprland(fixture);
-		expect(out).toMatch(/windowrulev2 = opacity 0\.90,class:\^\(frame\)\$/);
+		expect(out).toMatch(/windowrule = opacity 0\.90, match:class \^frame\$/);
 	});
 
 	it("skips Activity-only rules (no useful Hyprland property)", () => {
 		const out = hyprland.translateKdeWindowRulesToHyprland(fixture);
-		// brave-browser had only activity rule — should produce no windowrulev2
-		expect(out).not.toMatch(/windowrulev2 = .*brave-browser/);
+		// brave-browser had only activity rule — should produce no windowrule
+		expect(out).not.toMatch(/windowrule = .*brave-browser/);
 	});
 });
 
@@ -572,8 +572,8 @@ describe("Adversarial coverage — confirmed bug surfaces", () => {
 	it("3-token wmclasscomplete picks second token (class), not last", () => {
 		const input = "[UUID]\nwmclass=a b c\nwmclasscomplete=true\ndesktops=2\n";
 		const out = hyprland.translateKdeWindowRulesToHyprland(input);
-		expect(out).toMatch(/class:\^\(b\)\$/);
-		expect(out).not.toMatch(/class:\^\(c\)\$/);
+		expect(out).toMatch(/match:class \^b\$/);
+		expect(out).not.toMatch(/match:class \^c\$/);
 	});
 
 	// ── translateKdeWindowRulesToHyprland: regex metachar escaping ───────────

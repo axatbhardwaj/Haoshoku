@@ -1,5 +1,10 @@
 # Changelog
 
+## 4.6.6 - 2026-05-20
+- Fix `translateKdeWindowRulesToHyprland` emitting deprecated `windowrulev2 =` lines. Hyprland 0.45+ renamed the keyword to `windowrule =` and changed the matcher grammar: inline `class:^(foo)$` selectors became space-separated `match:class ^foo$` after a comma, and boolean rules now require an explicit value (`float` → `float true`). Output now reads `windowrule = float true, match:class ^foo$` / `windowrule = opacity 0.90, match:class ^foo$` / `windowrule = workspace N, match:class ^foo$`. Regex metacharacters in the class name are still escaped, and explicit `^...$` anchors are kept to preserve v2's exact-class match semantics. On current Hyprland (0.55.2), the prior v2 output was both spamming `configerrors` and on track to stop applying entirely in a future release.
+- Update the 6 test assertions that pinned the old syntax (including 2 in the "Adversarial coverage" block that asserted on the bare `class:^(b)$` substring), and regenerate `configs/hypr/conf.d/30-windowrules.conf` via `bun haoshoku.js --hyprland-rules`.
+- Add `docs/hyprland-monitor-multihost-todo.md` capturing the deferred multi-host monitor work: today's live topology on host `io` (positions, transforms, EDIDs so it's reconstructable), already-made decisions (per-host strategy, primary monitor, vertical alignment, portrait rotation), and open questions for the next pass on `configs/hypr/conf.d/50-monitors.conf`.
+
 ## 4.6.5 - 2026-05-19
 - Fix `--hyprland` Caelestia recovery when CachyOS package mirrors or sync databases are stale. If the explicit `paru -S caelestia-cli caelestia-shell` retry fails, Haoshoku now runs one CachyOS mirror refresh plus forced pacman database refresh, then retries the Caelestia leaf packages before failing.
 - Add regression coverage for the mirror/database refresh retry path so the installer no longer gives up immediately on transient CachyOS `.sig` retrieval failures.

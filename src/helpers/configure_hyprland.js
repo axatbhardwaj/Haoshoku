@@ -705,7 +705,8 @@ function parseIniSections(text) {
 }
 
 /**
- * Translate ~/.config/kwinrulesrc → Hyprland windowrulev2 lines.
+ * Translate ~/.config/kwinrulesrc → Hyprland `windowrule =` lines
+ * (unified syntax, Hyprland 0.45+: `windowrule = RULE_VALUE, match:KEY VALUE`).
  * Pure: string in → string out.
  *
  * KDE rules group properties by [UUID] sections. We extract the subset that
@@ -733,18 +734,20 @@ export function translateKdeWindowRulesToHyprland(kwinrulesrcText) {
 			props.wmclasscomplete === "true" && wmclass.includes(" ")
 				? wmclass.split(" ")[1]
 				: wmclass;
-		// Escape regex metacharacters — Hyprland's PCRE engine would otherwise
-		// reject `class:^(foo(bar)$` and silently drop the entire rule.
+		// Escape regex metacharacters — Hyprland's PCRE matcher would otherwise
+		// reject `match:class foo(bar` and silently drop the entire rule.
+		// `^...$` anchors preserve exact-class semantics from the v2 selector.
 		const escapedCls = cls.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-		const selector = `class:^(${escapedCls})$`;
+		const selector = `match:class ^${escapedCls}$`;
 
 		let emitted = 0;
 		if (props.desktops) {
-			lines.push(`windowrulev2 = workspace ${props.desktops},${selector}`);
+			lines.push(`windowrule = workspace ${props.desktops}, ${selector}`);
 			emitted++;
 		}
 		if (props.above === "true") {
-			lines.push(`windowrulev2 = float,${selector}`);
+			// Hyprland 0.45+: `float` is a boolean, requires explicit value.
+			lines.push(`windowrule = float true, ${selector}`);
 			emitted++;
 		}
 		if (props.opacityactive) {
@@ -753,13 +756,13 @@ export function translateKdeWindowRulesToHyprland(kwinrulesrcText) {
 			// configs can carry negatives or >100, producing invalid opacity.
 			if (!Number.isNaN(pct) && pct >= 0 && pct <= 100) {
 				const opacity = (pct / 100).toFixed(2);
-				lines.push(`windowrulev2 = opacity ${opacity},${selector}`);
+				lines.push(`windowrule = opacity ${opacity}, ${selector}`);
 				emitted++;
 			}
 		}
 		if (emitted === 0 && (props.activity || props.title)) {
 			// Activity-only or title-only KDE rules have no Hyprland equivalent;
-			// don't emit a no-op windowrulev2.
+			// don't emit a no-op windowrule.
 		}
 	}
 

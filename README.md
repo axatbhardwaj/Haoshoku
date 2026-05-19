@@ -147,7 +147,7 @@ haoshoku --hyprland-backup
 | Volantes cursor | XCURSOR_THEME env | `configs/hypr/conf.d/90-env.conf` |
 | Juno-ocean GTK | GTK_THEME env | `configs/hypr/conf.d/90-env.conf` |
 | KDE shortcuts | Hyprland `bind =` | `configs/hypr/conf.d/20-keybinds.conf` |
-| KWin window rules | `windowrulev2 =` | `configs/hypr/conf.d/30-windowrules.conf` |
+| KWin window rules | `windowrule =` | `configs/hypr/conf.d/30-windowrules.conf` |
 | KDE autostart | `exec-once =` | `configs/hypr/conf.d/40-autostart.conf` |
 | Plasma lockscreen | hyprlock | `configs/hypr/hyprlock.conf` |
 | KDE idle | hypridle | `configs/hypr/hypridle.conf` |
