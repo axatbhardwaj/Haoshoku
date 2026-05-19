@@ -96,10 +96,85 @@ export async function syncHyprlandOverlay({ home = HOME } = {}) {
 	log.info(`Overlay directory ensured at ${overlayDir}`);
 }
 
-/** Stub. Implemented in Task 1.3 (this same phase). */
-// biome-ignore lint/correctness/noUnusedVariables: signature established for Phase 1; impl in Task 1.3
+/**
+ * Clone or update Caelestia and run its installer. Idempotent: re-run safe.
+ * After install, ensure the user-owned hypr-user.conf sources our Ocean overlay
+ * directory. We never write to Caelestia's tracked hyprland.conf.
+ */
 export async function installCaelestia({ home = HOME } = {}) {
-	throw new Error("installCaelestia: not yet implemented (Task 1.3)");
+	const caelestiaCloneDir = path.join(home, ".local", "share", "caelestia");
+	const caelestiaInstaller = path.join(caelestiaCloneDir, "install.fish");
+	const userInclude = path.join(home, ".config", "caelestia", "hypr-user.conf");
+	const oceanOverlayDir = path.join(home, ".config", "hypr-ocean", "conf.d");
+
+	if (!(await commandExists("fish"))) {
+		log.error(
+			"fish is required by Caelestia's install.fish — installing fish first.",
+		);
+		const ok = await runCommand("sudo pacman -S --needed --noconfirm fish");
+		if (!ok) throw new Error("Failed to install fish");
+	}
+
+	log.info("Installing Hyprland package set via pacman...");
+	const pkgInstall = await runCommand(
+		`sudo pacman -S --needed --noconfirm ${HYPRLAND_PACKAGES.join(" ")}`,
+	);
+	if (!pkgInstall) {
+		log.warning(
+			"Hyprland package install had issues; Caelestia installer may catch the rest.",
+		);
+	}
+
+	if (fs.existsSync(path.join(caelestiaCloneDir, ".git"))) {
+		log.info(
+			`Caelestia already cloned at ${caelestiaCloneDir}; pulling updates.`,
+		);
+		const pulled = await runCommand("git pull --ff-only", {
+			cwd: caelestiaCloneDir,
+		});
+		if (!pulled) {
+			log.warning("git pull failed; continuing with existing clone.");
+		}
+	} else {
+		log.info(`Cloning Caelestia into ${caelestiaCloneDir}...`);
+		fs.mkdirSync(path.dirname(caelestiaCloneDir), { recursive: true });
+		const cloned = await runCommand(
+			`git clone ${CAELESTIA_REPO} ${caelestiaCloneDir}`,
+		);
+		if (!cloned) throw new Error("Caelestia clone failed");
+	}
+
+	if (CAELESTIA_PINNED_SHA !== "main") {
+		log.info(`Checking out pinned Caelestia commit ${CAELESTIA_PINNED_SHA}`);
+		await runCommand(`git checkout ${CAELESTIA_PINNED_SHA}`, {
+			cwd: caelestiaCloneDir,
+		});
+	}
+
+	log.info(
+		"Running Caelestia install.fish (may prompt for sudo + package confirmations)...",
+	);
+	const installed = await runCommand(`fish ${caelestiaInstaller}`);
+	if (!installed) throw new Error("Caelestia install.fish exited non-zero");
+
+	// Caelestia's installer must create ~/.config/caelestia/hypr-user.conf as a
+	// user-owned include. Missing = upstream layout drift — hand back loudly
+	// rather than silently masking the breakage.
+	if (!fs.existsSync(userInclude)) {
+		throw new Error(
+			`Expected Caelestia user-include at ${userInclude} but it does not exist after install.fish. ` +
+				`Caelestia's upstream layout may have changed. Investigate the new include path and update CAELESTIA_USER_INCLUDE.`,
+		);
+	}
+
+	fs.mkdirSync(oceanOverlayDir, { recursive: true });
+
+	const appended = ensureLineInFile(userInclude, OVERLAY_SOURCE_LINE);
+	if (appended) {
+		log.success(`Wired ${OVERLAY_SOURCE_LINE} into ${userInclude}`);
+	} else {
+		log.info("Overlay source line already present; skipping.");
+	}
 }
 
 /** Stub. Implemented in Phase 5. */
