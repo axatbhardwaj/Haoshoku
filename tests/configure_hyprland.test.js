@@ -346,3 +346,31 @@ PowerOff=Power Off,Power Off,PowerOff
 		expect(out).toMatch(/bind = , XF86PowerOff, exec, systemctl poweroff/);
 	});
 });
+
+describe("translateKdeWindowRulesToHyprland", () => {
+	const fixture = fs.readFileSync(
+		path.join(__dirname, "fixtures", "sample-kwinrulesrc"),
+		"utf8",
+	);
+
+	it("emits a workspace pin rule for desktops=N", () => {
+		const out = hyprland.translateKdeWindowRulesToHyprland(fixture);
+		expect(out).toMatch(/windowrulev2 = workspace 4,class:\^\(discord\)\$/);
+	});
+
+	it("emits a float rule for above=true entries", () => {
+		const out = hyprland.translateKdeWindowRulesToHyprland(fixture);
+		expect(out).toMatch(/windowrulev2 = float,class:\^\(spotify\)\$/);
+	});
+
+	it("emits an opacity rule from opacityactive (percent → 0-1 float)", () => {
+		const out = hyprland.translateKdeWindowRulesToHyprland(fixture);
+		expect(out).toMatch(/windowrulev2 = opacity 0\.90,class:\^\(frame\)\$/);
+	});
+
+	it("skips Activity-only rules (no useful Hyprland property)", () => {
+		const out = hyprland.translateKdeWindowRulesToHyprland(fixture);
+		// brave-browser had only activity rule — should produce no windowrulev2
+		expect(out).not.toMatch(/windowrulev2 = .*brave-browser/);
+	});
+});

@@ -573,6 +573,86 @@ export async function installCaelestia({ home = HOME } = {}) {
 	}
 }
 
+/**
+ * Parse INI sections from text into { sectionName: { key: value, … } }.
+ * Used by both window-rule and (later) other section-based KDE configs.
+ */
+function parseIniSections(text) {
+	const result = {};
+	let current = null;
+	for (const rawLine of text.split("\n")) {
+		const line = rawLine.trim();
+		if (!line || line.startsWith("#")) continue;
+		const sec = line.match(/^\[(.+)\]$/);
+		if (sec) {
+			current = sec[1];
+			result[current] = {};
+			continue;
+		}
+		if (!current) continue;
+		const eq = line.indexOf("=");
+		if (eq < 0) continue;
+		result[current][line.slice(0, eq).trim()] = line.slice(eq + 1).trim();
+	}
+	return result;
+}
+
+/**
+ * Translate ~/.config/kwinrulesrc → Hyprland windowrulev2 lines.
+ * Pure: string in → string out.
+ *
+ * KDE rules group properties by [UUID] sections. We extract the subset that
+ * has Hyprland equivalents: wmclass (class selector), desktops (workspace
+ * pin), above (float), opacityactive (window opacity). Activity-only rules
+ * are skipped — KDE Activities don't exist in Hyprland.
+ */
+export function translateKdeWindowRulesToHyprland(kwinrulesrcText) {
+	const lines = [
+		"# Translated from ~/.config/kwinrulesrc — DO NOT EDIT BY HAND",
+		"# Regenerate with: bun haoshoku.js --hyprland-rules",
+		"",
+	];
+	const sections = parseIniSections(kwinrulesrcText);
+
+	for (const [name, props] of Object.entries(sections)) {
+		if (name === "General") continue;
+		const wmclass = props.wmclass;
+		if (!wmclass) continue;
+		// `wmclasscomplete=true` indicates the class string is "instance class"
+		// (two tokens). Hyprland's regex needs only the class half — pick the
+		// second token. Otherwise wmclass is just the class.
+		const cls =
+			props.wmclasscomplete === "true" && wmclass.includes(" ")
+				? wmclass.split(" ").pop()
+				: wmclass;
+		const selector = `class:^(${cls})$`;
+
+		let emitted = 0;
+		if (props.desktops) {
+			lines.push(`windowrulev2 = workspace ${props.desktops},${selector}`);
+			emitted++;
+		}
+		if (props.above === "true") {
+			lines.push(`windowrulev2 = float,${selector}`);
+			emitted++;
+		}
+		if (props.opacityactive) {
+			const pct = Number.parseInt(props.opacityactive, 10);
+			if (!Number.isNaN(pct)) {
+				const opacity = (pct / 100).toFixed(2);
+				lines.push(`windowrulev2 = opacity ${opacity},${selector}`);
+				emitted++;
+			}
+		}
+		if (emitted === 0 && (props.activity || props.title)) {
+			// Activity-only or title-only KDE rules have no Hyprland equivalent;
+			// don't emit a no-op windowrulev2.
+		}
+	}
+
+	return `${lines.join("\n")}\n`;
+}
+
 /** Path to user's KDE shortcuts kksrc in the haoshoku repo. */
 export const KDE_SHORTCUTS_PATH = path.join(
 	PROJECT_ROOT,
