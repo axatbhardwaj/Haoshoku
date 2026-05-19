@@ -2,7 +2,12 @@ import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 
-import { log, runCommand, commandExists } from "../common/utils.js";
+import {
+	commandExists,
+	copyDirRecursive,
+	log,
+	runCommand,
+} from "../common/utils.js";
 
 const HOME = homedir();
 const PROJECT_ROOT = path.resolve(__dirname, "..", "..");
@@ -123,11 +128,60 @@ export function ensureLineInFile(filePath, line) {
 	return true;
 }
 
-/** Phase 1 stub. Implemented in Phase 2. */
-export async function syncHyprlandOverlay({ home = HOME } = {}) {
-	const overlayDir = path.join(home, ".config", "hypr-ocean", "conf.d");
-	fs.mkdirSync(overlayDir, { recursive: true });
-	log.info(`Overlay directory ensured at ${overlayDir}`);
+/**
+ * Deploy Ocean overlay from configs/hypr/ to ~/.config/hypr-ocean/ (and ~/.config/mako/).
+ * Idempotent: re-running converges to the bundle's state, overwriting per file.
+ *
+ * `home` and `projectRoot` are injectable so tests run against tmp dirs.
+ */
+export async function syncHyprlandOverlay({
+	home = HOME,
+	projectRoot = PROJECT_ROOT,
+} = {}) {
+	const overlayDir = path.join(home, ".config", "hypr-ocean");
+	const overlayConfDDir = path.join(overlayDir, "conf.d");
+	const overlayWallpaperDir = path.join(overlayDir, "wallpapers");
+	const makoDir = path.join(home, ".config", "mako");
+
+	const bundleDir = path.join(projectRoot, "configs", "hypr");
+	const bundleConfDDir = path.join(bundleDir, "conf.d");
+	const bundleMakoDir = path.join(bundleDir, "mako");
+	const wallpaperBundleDir = path.join(projectRoot, "deskback");
+
+	fs.mkdirSync(overlayConfDDir, { recursive: true });
+	fs.mkdirSync(overlayWallpaperDir, { recursive: true });
+
+	if (fs.existsSync(bundleConfDDir)) {
+		copyDirRecursive(bundleConfDDir, overlayConfDDir);
+		log.info("Synced conf.d/ overlays");
+	}
+
+	for (const file of ["hyprpaper.conf", "hyprlock.conf", "hypridle.conf"]) {
+		const src = path.join(bundleDir, file);
+		if (fs.existsSync(src)) {
+			fs.copyFileSync(src, path.join(overlayDir, file));
+			log.info(`Synced ${file}`);
+		}
+	}
+
+	if (fs.existsSync(bundleMakoDir)) {
+		copyDirRecursive(bundleMakoDir, makoDir);
+		log.info("Synced mako config");
+	}
+
+	if (fs.existsSync(wallpaperBundleDir)) {
+		for (const entry of fs.readdirSync(wallpaperBundleDir)) {
+			if (/\.(jpe?g|png|webp)$/i.test(entry)) {
+				fs.copyFileSync(
+					path.join(wallpaperBundleDir, entry),
+					path.join(overlayWallpaperDir, entry),
+				);
+			}
+		}
+		log.info("Synced wallpapers");
+	}
+
+	log.success(`Ocean overlay synced to ${overlayDir}`);
 }
 
 export async function checkoutPinnedCaelestia({

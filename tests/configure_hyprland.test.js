@@ -137,3 +137,92 @@ describe("kdeRgbToHyprlandRgba", () => {
 		expect(() => hyprland.kdeRgbToHyprlandRgba("1,2")).toThrow();
 	});
 });
+
+describe("syncHyprlandOverlay (injectable paths)", () => {
+	let tmpHome;
+	let tmpProjectRoot;
+
+	beforeEach(() => {
+		tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-hypr-home-"));
+		tmpProjectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-hypr-pr-"));
+
+		const bundleConfD = path.join(tmpProjectRoot, "configs", "hypr", "conf.d");
+		fs.mkdirSync(bundleConfD, { recursive: true });
+		fs.writeFileSync(
+			path.join(bundleConfD, "00-ocean-borders.conf"),
+			"# borders\n",
+		);
+		fs.writeFileSync(
+			path.join(tmpProjectRoot, "configs", "hypr", "hyprpaper.conf"),
+			"# hyprpaper\n",
+		);
+		const bundleMako = path.join(tmpProjectRoot, "configs", "hypr", "mako");
+		fs.mkdirSync(bundleMako, { recursive: true });
+		fs.writeFileSync(path.join(bundleMako, "config"), "# mako\n");
+
+		const deskback = path.join(tmpProjectRoot, "deskback");
+		fs.mkdirSync(deskback, { recursive: true });
+		fs.writeFileSync(path.join(deskback, "ocean.jpg"), "fake-jpeg");
+	});
+
+	afterEach(() => {
+		fs.rmSync(tmpHome, { recursive: true, force: true });
+		fs.rmSync(tmpProjectRoot, { recursive: true, force: true });
+	});
+
+	it("deploys overlay files to ~/.config/hypr-ocean/ and ~/.config/mako/", async () => {
+		await hyprland.syncHyprlandOverlay({
+			home: tmpHome,
+			projectRoot: tmpProjectRoot,
+		});
+
+		const overlay = path.join(tmpHome, ".config", "hypr-ocean");
+		expect(
+			fs.existsSync(path.join(overlay, "conf.d", "00-ocean-borders.conf")),
+		).toBe(true);
+		expect(fs.existsSync(path.join(overlay, "hyprpaper.conf"))).toBe(true);
+		expect(
+			fs.existsSync(path.join(overlay, "wallpapers", "ocean.jpg")),
+		).toBe(true);
+		expect(
+			fs.existsSync(path.join(tmpHome, ".config", "mako", "config")),
+		).toBe(true);
+	});
+
+	it("never writes into ~/.config/hypr/ (Caelestia's symlinked tree)", async () => {
+		const caelestiaTree = path.join(tmpHome, ".config", "hypr");
+		fs.mkdirSync(caelestiaTree, { recursive: true });
+		fs.writeFileSync(
+			path.join(caelestiaTree, "hyprland.conf"),
+			"caelestia-tracked",
+		);
+
+		await hyprland.syncHyprlandOverlay({
+			home: tmpHome,
+			projectRoot: tmpProjectRoot,
+		});
+
+		const after = fs.readFileSync(
+			path.join(caelestiaTree, "hyprland.conf"),
+			"utf8",
+		);
+		expect(after).toBe("caelestia-tracked");
+	});
+
+	it("is idempotent — running twice produces the same filesystem state", async () => {
+		await hyprland.syncHyprlandOverlay({
+			home: tmpHome,
+			projectRoot: tmpProjectRoot,
+		});
+		const overlay = path.join(tmpHome, ".config", "hypr-ocean");
+		const before = fs.readdirSync(path.join(overlay, "conf.d")).sort();
+
+		await hyprland.syncHyprlandOverlay({
+			home: tmpHome,
+			projectRoot: tmpProjectRoot,
+		});
+		const after = fs.readdirSync(path.join(overlay, "conf.d")).sort();
+
+		expect(after).toEqual(before);
+	});
+});
