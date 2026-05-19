@@ -321,4 +321,28 @@ RectangularRegionScreenShot=Meta+Shift+S,Print,Capture Rectangular Region
 			/# DUPLICATE BINDING.*bind = SUPER, G, exec, gtk-launch app-b/,
 		);
 	});
+
+	it("emits UNTRANSLATED instead of an invalid bind when the key has no xkb/XF86 mapping", () => {
+		// "Microphone Volume Up" is not a real keysym; translateModifiers falls
+		// through .toUpperCase() to "MICROPHONE VOLUME UP" which contains spaces.
+		const text =
+			"[kmix]\nincrease_microphone_volume=Microphone Volume Up,Microphone Volume Up,Increase Mic\n";
+		const out = hyprland.translateKdeShortcutsToHyprland(text);
+		expect(out).not.toMatch(/MICROPHONE VOLUME UP/);
+		expect(out).toMatch(/# UNTRANSLATED: increase_microphone_volume/);
+	});
+
+	it("emits valid XF86 keys for keyboard brightness, sleep, hibernate, power", () => {
+		const text = `[org_kde_powerdevil]
+Increase Keyboard Brightness=Keyboard Brightness Up,Keyboard Brightness Up,Kbd Up
+Sleep=Sleep,Sleep,Sleep
+Hibernate=Hibernate,Hibernate,Hibernate
+PowerOff=Power Off,Power Off,PowerOff
+`;
+		const out = hyprland.translateKdeShortcutsToHyprland(text);
+		expect(out).toMatch(/bind = , XF86KbdBrightnessUp, exec/);
+		expect(out).toMatch(/bind = , XF86Sleep, exec, systemctl suspend/);
+		expect(out).toMatch(/bind = , XF86Hibernate, exec, systemctl hibernate/);
+		expect(out).toMatch(/bind = , XF86PowerOff, exec, systemctl poweroff/);
+	});
 });

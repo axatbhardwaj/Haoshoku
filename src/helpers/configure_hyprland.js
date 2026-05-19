@@ -242,16 +242,33 @@ const KDE_KEY_TO_HYPRLAND_KEY = {
 	"Volume Down": "XF86AudioLowerVolume",
 	"Volume Mute": "XF86AudioMute",
 	"Microphone Mute": "XF86AudioMicMute",
-	"Microphone Volume Up": "XF86AudioMicMute", // no separate raise key — alias
-	"Microphone Volume Down": "XF86AudioMicMute", // no separate lower key — alias
+	// "Microphone Volume Up/Down" — no real keysym exists; intentionally NOT
+	// aliased to XF86AudioMicMute (doing so would shadow the real mic-mute
+	// binding via dedupe). Let the translator emit UNTRANSLATED for those.
 	"Monitor Brightness Up": "XF86MonBrightnessUp",
 	"Monitor Brightness Down": "XF86MonBrightnessDown",
+	"Keyboard Brightness Up": "XF86KbdBrightnessUp",
+	"Keyboard Brightness Down": "XF86KbdBrightnessDown",
+	"Keyboard Light On/Off": "XF86KbdLightOnOff",
 	"Media Next": "XF86AudioNext",
 	"Media Previous": "XF86AudioPrev",
 	"Media Play": "XF86AudioPlay",
 	"Media Pause": "XF86AudioPause",
 	"Media Stop": "XF86AudioStop",
+	Sleep: "XF86Sleep",
+	Hibernate: "XF86Hibernate",
+	"Power Off": "XF86PowerOff",
+	"Power Down": "XF86PowerDown",
 };
+
+/**
+ * After applying the key-name map, a fallback `.toUpperCase()` can leave a key
+ * with spaces (e.g. "MICROPHONE VOLUME UP") — Hyprland can't parse those.
+ * Use this to detect-and-reject before emitting an invalid `bind = ...` line.
+ */
+function isValidHyprlandKey(key) {
+	return !/\s/.test(key);
+}
 
 /**
  * Translate KDE modifier syntax (Ctrl+Alt+Shift+Meta+Key) to Hyprland's
@@ -326,6 +343,16 @@ export function translateKdeShortcutsToHyprland(kksrcText) {
 		}
 
 		const { mods, key } = translateModifiers(primaryBinding);
+
+		// Reject keys that fall through .toUpperCase() with spaces — those are
+		// not real xkb/XF86 keysyms and Hyprland won't match them.
+		if (!isValidHyprlandKey(key)) {
+			untranslated.push(
+				`# UNTRANSLATED: ${actionName} (section=[${section}], binding=${primaryBinding} — no Hyprland key for "${primaryBinding.split("+").pop()}")`,
+			);
+			continue;
+		}
+
 		const prefix = mods ? `${mods}, ${key}` : `, ${key}`;
 		const bindLine = `bind = ${prefix}, ${dispatcher}`;
 		// Dedupe: if this exact (mods, key) was already bound, comment the dupe.
