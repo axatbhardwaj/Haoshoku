@@ -671,9 +671,32 @@ export const AUTOSTART_DENYLIST = [
 ];
 
 /**
+ * Strip freedesktop Exec field codes (%f %F %u %U %d %D %n %N %v %m %i %c %k)
+ * and Flatpak file-forwarding wrappers (@@u … @@ / @@ … @@) so the resulting
+ * string is safe to pass to Hyprland's `exec-once`, which runs via direct
+ * process spawn with no field-code expansion. Pure.
+ *
+ * Behavior:
+ * - Removes @@u/@@U/@@f/@@F-bracketed blocks first (Flatpak's file forwarding)
+ * - Removes single-token field codes (%f %F %u %U %d %D %n %N %v %m %k %c %i)
+ * - Collapses resulting double spaces and trims edges
+ */
+export function sanitizeDesktopExec(exec) {
+	let s = exec;
+	// Flatpak file-forwarding: matches "@@u ... @@", "@@U ... @@", "@@f ... @@",
+	// "@@F ... @@", and the bare "@@ ... @@" form.
+	s = s.replace(/\s*@@[uUfF]?\s+[^@]*?\s+@@/g, "");
+	// Single-token field codes — be careful: %% is a literal %, not a code.
+	// Walk the string and replace standalone %X tokens.
+	s = s.replace(/(^|\s)%[fFuUdDnNvmkci](?=\s|$)/g, "$1");
+	// Collapse repeated whitespace and trim.
+	return s.replace(/\s+/g, " ").trim();
+}
+
+/**
  * Read all *.desktop files in `dir`, parse Exec=, denylist KDE-only services,
- * return Hyprland exec-once lines. Idempotent: re-running yields the same
- * output for the same input directory.
+ * sanitize desktop field codes, return Hyprland exec-once lines. Idempotent:
+ * re-running yields the same output for the same input directory.
  *
  * Side effect: reads from the filesystem. Caller passes the path; pure with
  * respect to the directory's contents.
@@ -691,7 +714,8 @@ export function translateKdeAutostartToHyprland(dir) {
 		const text = fs.readFileSync(path.join(dir, entry), "utf8");
 		const execMatch = text.match(/^Exec=(.+)$/m);
 		if (!execMatch) continue;
-		const exec = execMatch[1].trim();
+		const exec = sanitizeDesktopExec(execMatch[1]);
+		if (!exec) continue;
 		const binName = path.basename(exec.split(/\s+/)[0]);
 		if (AUTOSTART_DENYLIST.includes(binName)) continue;
 		lines.push(`exec-once = ${exec}`);

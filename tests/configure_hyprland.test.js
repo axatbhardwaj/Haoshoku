@@ -402,3 +402,38 @@ describe("translateKdeAutostartToHyprland", () => {
 		expect(out).not.toMatch(/exec-once = /);
 	});
 });
+
+describe("sanitizeDesktopExec", () => {
+	it("strips trailing %U/%F field codes", () => {
+		expect(hyprland.sanitizeDesktopExec("/usr/bin/steam-native %U")).toBe(
+			"/usr/bin/steam-native",
+		);
+		expect(hyprland.sanitizeDesktopExec("/usr/bin/vesktop %U")).toBe(
+			"/usr/bin/vesktop",
+		);
+	});
+
+	it("strips Flatpak file-forwarding @@u … @@ wrappers", () => {
+		const raw =
+			"/usr/bin/flatpak run --branch=stable --arch=x86_64 --command=cohesion --file-forwarding io.github.brunofin.Cohesion @@u %U @@";
+		expect(hyprland.sanitizeDesktopExec(raw)).toBe(
+			"/usr/bin/flatpak run --branch=stable --arch=x86_64 --command=cohesion --file-forwarding io.github.brunofin.Cohesion",
+		);
+	});
+
+	it("strips standalone %f/%u/%d/%n/%k/%c/%i codes in any position", () => {
+		expect(
+			hyprland.sanitizeDesktopExec("/usr/bin/foo %f --extra %i icon %c"),
+		).toBe("/usr/bin/foo --extra icon");
+	});
+
+	it("collapses whitespace and trims edges", () => {
+		expect(hyprland.sanitizeDesktopExec("  foo   %U   ")).toBe("foo");
+	});
+
+	it("leaves commands without field codes untouched", () => {
+		expect(
+			hyprland.sanitizeDesktopExec("/opt/1Password/1password --silent"),
+		).toBe("/opt/1Password/1password --silent");
+	});
+});
