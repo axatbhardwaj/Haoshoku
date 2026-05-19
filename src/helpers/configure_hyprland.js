@@ -93,6 +93,21 @@ export async function syncHyprlandOverlay({ home = HOME } = {}) {
 	log.info(`Overlay directory ensured at ${overlayDir}`);
 }
 
+export async function checkoutPinnedCaelestia({
+	cloneDir,
+	pinnedSha = CAELESTIA_PINNED_SHA,
+	run = runCommand,
+} = {}) {
+	if (pinnedSha === "main") return false;
+
+	log.info(`Checking out pinned Caelestia commit ${pinnedSha}`);
+	const checkedOut = await run(`git checkout ${pinnedSha}`, { cwd: cloneDir });
+	if (!checkedOut) {
+		throw new Error(`Failed to checkout pinned Caelestia commit ${pinnedSha}`);
+	}
+	return true;
+}
+
 /**
  * Clone or update Caelestia and run its installer. Idempotent: re-run safe.
  * After install, ensure the user-owned hypr-user.conf sources our Ocean overlay
@@ -141,12 +156,7 @@ export async function installCaelestia({ home = HOME } = {}) {
 		if (!cloned) throw new Error("Caelestia clone failed");
 	}
 
-	if (CAELESTIA_PINNED_SHA !== "main") {
-		log.info(`Checking out pinned Caelestia commit ${CAELESTIA_PINNED_SHA}`);
-		await runCommand(`git checkout ${CAELESTIA_PINNED_SHA}`, {
-			cwd: caelestiaCloneDir,
-		});
-	}
+	await checkoutPinnedCaelestia({ cloneDir: caelestiaCloneDir });
 
 	log.info(
 		"Running Caelestia install.fish (may prompt for sudo + package confirmations)...",

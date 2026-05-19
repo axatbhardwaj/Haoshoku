@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { ensureLineInFile } from "../src/helpers/configure_hyprland.js";
+import * as hyprland from "../src/helpers/configure_hyprland.js";
 
 describe("ensureLineInFile", () => {
 	let tmpDir;
@@ -20,7 +20,7 @@ describe("ensureLineInFile", () => {
 
 	it("appends the line when missing and adds a trailing newline", () => {
 		fs.writeFileSync(target, "monitor=,preferred,auto,1\n");
-		const appended = ensureLineInFile(
+		const appended = hyprland.ensureLineInFile(
 			target,
 			"source = ~/.config/hypr-ocean/conf.d/*.conf",
 		);
@@ -35,7 +35,7 @@ describe("ensureLineInFile", () => {
 			target,
 			"monitor=,preferred,auto,1\nsource = ~/.config/hypr-ocean/conf.d/*.conf\n",
 		);
-		const appended = ensureLineInFile(
+		const appended = hyprland.ensureLineInFile(
 			target,
 			"source = ~/.config/hypr-ocean/conf.d/*.conf",
 		);
@@ -47,7 +47,7 @@ describe("ensureLineInFile", () => {
 
 	it("inserts a missing trailing newline before appending", () => {
 		fs.writeFileSync(target, "monitor=,preferred,auto,1"); // no trailing newline
-		ensureLineInFile(
+		hyprland.ensureLineInFile(
 			target,
 			"source = ~/.config/hypr-ocean/conf.d/*.conf",
 		);
@@ -57,6 +57,51 @@ describe("ensureLineInFile", () => {
 	});
 
 	it("throws if the file does not exist", () => {
-		expect(() => ensureLineInFile(path.join(tmpDir, "missing"), "x")).toThrow();
+		expect(() =>
+			hyprland.ensureLineInFile(path.join(tmpDir, "missing"), "x"),
+		).toThrow();
+	});
+});
+
+describe("checkoutPinnedCaelestia", () => {
+	it("throws when the pinned checkout command fails", async () => {
+		const commands = [];
+		expect(typeof hyprland.checkoutPinnedCaelestia).toBe("function");
+
+		await expect(
+			hyprland.checkoutPinnedCaelestia({
+				cloneDir: "/tmp/caelestia",
+				pinnedSha: "abc123",
+				run: async (command, options) => {
+					commands.push({ command, options });
+					return false;
+				},
+			}),
+		).rejects.toThrow("Failed to checkout pinned Caelestia commit abc123");
+
+		expect(commands).toEqual([
+			{
+				command: "git checkout abc123",
+				options: { cwd: "/tmp/caelestia" },
+			},
+		]);
+	});
+
+	it("skips checkout when the pin is main", async () => {
+		let called = false;
+
+		expect(typeof hyprland.checkoutPinnedCaelestia).toBe("function");
+
+		const checkedOut = await hyprland.checkoutPinnedCaelestia({
+			cloneDir: "/tmp/caelestia",
+			pinnedSha: "main",
+			run: async () => {
+				called = true;
+				return true;
+			},
+		});
+
+		expect(checkedOut).toBe(false);
+		expect(called).toBe(false);
 	});
 });
