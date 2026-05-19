@@ -24,6 +24,7 @@ export async function runCommand(command, options = { check: true }) {
 	try {
 		const proc = spawn(useShell ? ["sh", "-c", command] : command.split(" "), {
 			cwd: options.cwd,
+			stdin: "inherit",
 			stdout: "inherit",
 			stderr: "inherit",
 		});
