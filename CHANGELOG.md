@@ -1,5 +1,24 @@
 # Changelog
 
+## 5.0.0 - 2026-05-20
+
+**Breaking change.** Removes the haoshoku-managed "Ocean" Hyprland overlay layer (curated borders/blur/keybinds/window-rules/autostart/hyprlock/hypridle/hyprpaper/mako) on top of upstream Caelestia. `--hyprland` now installs Caelestia + nothing else. Monitor configuration becomes the user's responsibility.
+
+- Remove CLI subcommands `--hyprland-keybinds`, `--hyprland-rules`, `--hyprland-backup`. The functions backing them (`syncHyprlandOverlay`, `backupHyprland`, the KDE→Hyprland translators for shortcuts/window-rules/autostart, the Ocean palette parser, `kdeRgbToHyprlandRgba`, `sanitizeDesktopExec`, `ensureLineInFile`, the `OVERLAY_SOURCE_LINE` / `CAELESTIA_USER_INCLUDE` / `OCEAN_OVERLAY_DIR` / `HYPR_BUNDLE_DIR` constants) are gone with them. `src/helpers/configure_hyprland.js` shrinks from 987 LOC to ~270.
+- Delete `configs/hypr/` (8 `conf.d/` files + `hyprpaper.conf` + `hyprlock.conf` + `hypridle.conf` + `mako/config`) — Caelestia's Quickshell ships its own lockscreen / idle / wallpaper / notification handling (the Quickshell daemon `qs -c caelestia -n -d` owns `org.freedesktop.Notifications` directly).
+- Delete `docs/hyprland-parity-gap.md` (KDE shortcut → Hyprland bind translation tracker — no longer relevant without the translators).
+- `installCaelestia` no longer writes a `source = ~/.config/hypr-ocean/conf.d/*.conf` line into `~/.config/caelestia/hypr-user.conf` and no longer creates `~/.config/hypr-ocean/`. `hypr-user.conf` is now pure user-owned space (pre-created empty so Hyprland's first `source =` doesn't error before Caelestia's lazy-init exec hook runs).
+- `installCaelestia` accepts a new `skipHyprlandPackages` option to bypass the `pacman -S hyprland …` step when the caller is already running Hyprland. Also drops `mako` from `HYPRLAND_PACKAGES` (Caelestia covers notifications).
+- `--hyprland` now prompts for two things up front:
+  - **Current desktop environment** (auto-detected via `$XDG_CURRENT_DESKTOP`; user can override). When the answer is `hyprland`, `installCaelestia` runs with `skipHyprlandPackages: true`.
+  - **Device type** (Main PC / Laptop / Other / Skip). Non-skip answers persist to `~/.haoshoku.json` as `deviceType`, merging with any existing keys. The answer isn't consumed yet — it's the seed for future per-device monitor configuration (see `docs/hyprland-monitor-multihost-todo.md`).
+- Add 20 tests in `tests/configure_hyprland.test.js` covering `installCaelestia` (happy path, `skipHyprlandPackages`, idempotent re-run, recovery, two regression guards against re-introducing Ocean), `promptDesktopEnvironment` (4 cases including cancel), `promptDeviceType` (4 cases including merge-don't-overwrite), and the existing `checkoutPinnedCaelestia` / `recoverCaelestiaPackages` paths. Full project suite drops from 80 to 38 tests — the 50+ removed tests exercised the deleted KDE translators and overlay sync.
+- Update `README.md`, `docs/CLAUDE.md`, and `docs/hyprland-monitor-multihost-todo.md` to reflect the slimmed scope and the `deviceType` workflow. Refresh `cachyos.js` to stop calling `syncHyprlandOverlay()`.
+
+**Rollback / pinning.** `npm install -g haoshoku@4.6.6` (or checkout `v4.6.6` from git) restores the Ocean overlay. No deprecation branch — the git tag is the rollback point.
+
+**Known caveat on existing installs.** `~/.config/hypr/scheme/default.conf` may contain alpha-suffixed Caelestia color variants (`$primarye6` etc.) added during the 4.6.x color-scheme fix. They're in Caelestia's symlinked tree and Caelestia normally regenerates `current.conf` dynamically from your wallpaper — a future Caelestia update will clobber them. Not addressed by 5.0.0; flagged here for visibility.
+
 ## 4.6.6 - 2026-05-20
 - Fix `translateKdeWindowRulesToHyprland` emitting deprecated `windowrulev2 =` lines. Hyprland 0.45+ renamed the keyword to `windowrule =` and changed the matcher grammar: inline `class:^(foo)$` selectors became space-separated `match:class ^foo$` after a comma, and boolean rules now require an explicit value (`float` → `float true`). Output now reads `windowrule = float true, match:class ^foo$` / `windowrule = opacity 0.90, match:class ^foo$` / `windowrule = workspace N, match:class ^foo$`. Regex metacharacters in the class name are still escaped, and explicit `^...$` anchors are kept to preserve v2's exact-class match semantics. On current Hyprland (0.55.2), the prior v2 output was both spamming `configerrors` and on track to stop applying entirely in a future release.
 - Update the 6 test assertions that pinned the old syntax (including 2 in the "Adversarial coverage" block that asserted on the bare `class:^(b)$` substring), and regenerate `configs/hypr/conf.d/30-windowrules.conf` via `bun haoshoku.js --hyprland-rules`.

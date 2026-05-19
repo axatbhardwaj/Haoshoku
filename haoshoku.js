@@ -16,9 +16,9 @@ import {
   syncKdeTheme,
 } from "./src/helpers/configure_kde_theme.js";
 import {
-  backupHyprland,
   installCaelestia,
-  syncHyprlandOverlay,
+  promptDesktopEnvironment,
+  promptDeviceType,
 } from "./src/helpers/configure_hyprland.js";
 import {
   backupZedConfig,
@@ -94,19 +94,7 @@ program
   )
   .option(
     "--hyprland",
-    "Install Hyprland + Caelestia rice and deploy Ocean overlay (CachyOS/Arch only)",
-  )
-  .option(
-    "--hyprland-keybinds",
-    "Regenerate configs/hypr/conf.d/20-keybinds.conf from configs/kde_shortcuts.kksrc",
-  )
-  .option(
-    "--hyprland-rules",
-    "Regenerate Hyprland window rules + autostart from live KDE config",
-  )
-  .option(
-    "--hyprland-backup",
-    "Backup live Hyprland overlay from ~/.config/hypr-ocean/ to configs/hypr/",
+    "Install Hyprland + upstream Caelestia rice (CachyOS/Arch only). Asks about your current DE and which device this is; persists the device answer to ~/.haoshoku.json for future per-host configs.",
   )
   .action(async (options) => {
     showBanner();
@@ -197,36 +185,24 @@ program
         );
         process.exit(1);
       }
-      await installCaelestia();
-      await syncHyprlandOverlay();
-      return;
-    }
-
-    if (options.hyprlandKeybinds) {
-      const { regenerateHyprlandKeybinds } = await import(
-        "./src/helpers/configure_hyprland.js"
-      );
-      await regenerateHyprlandKeybinds();
-      return;
-    }
-
-    if (options.hyprlandRules) {
-      const { regenerateHyprlandRules } = await import(
-        "./src/helpers/configure_hyprland.js"
-      );
-      await regenerateHyprlandRules();
-      return;
-    }
-
-    if (options.hyprlandBackup) {
-      const os = detectOS();
-      if (os !== "cachyos") {
-        log.error(
-          `--hyprland-backup is gated to CachyOS/Arch (detected: ${os || "unknown"}).`,
-        );
-        process.exit(1);
+      const de = await promptDesktopEnvironment();
+      if (de === null) {
+        log.warning("Desktop environment prompt cancelled — aborting.");
+        process.exit(0);
       }
-      await backupHyprland();
+      const device = await promptDeviceType();
+      if (device === null) {
+        log.info("Device type skipped (no entry written to ~/.haoshoku.json).");
+      } else {
+        log.info(`Recorded device type as '${device}' in ~/.haoshoku.json.`);
+      }
+      await installCaelestia({ skipHyprlandPackages: de === "hyprland" });
+      log.success(
+        "Caelestia installed. Log out and select 'Hyprland' at SDDM to use it.",
+      );
+      log.info(
+        "Monitor configuration is your responsibility: edit ~/.config/caelestia/hypr-user.conf.",
+      );
       return;
     }
 

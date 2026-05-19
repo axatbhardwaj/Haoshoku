@@ -10,10 +10,7 @@ import {
   safeCopyFile,
 } from "../common/utils.js";
 import { configureClaude } from "../helpers/configure_claude.js";
-import {
-  installCaelestia,
-  syncHyprlandOverlay,
-} from "../helpers/configure_hyprland.js";
+import { installCaelestia } from "../helpers/configure_hyprland.js";
 import { configureKdeTheme } from "../helpers/configure_kde_theme.js";
 import { configureZed } from "../helpers/configure_zed.js";
 
@@ -340,9 +337,11 @@ async function configureHyprland() {
   ) {
     log.info("Bootstrapping Caelestia + Hyprland...");
     await installCaelestia();
-    await syncHyprlandOverlay();
     log.success(
       "Hyprland installed. Select 'Hyprland' at SDDM to use it; 'Plasma' still available as fallback.",
+    );
+    log.info(
+      "Monitor configuration is your responsibility: edit ~/.config/caelestia/hypr-user.conf.",
     );
   }
 }

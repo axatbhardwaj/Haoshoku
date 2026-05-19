@@ -78,17 +78,10 @@ haoshoku --zed-backup
 # Install/reinstall KDE Glass blur effect (CachyOS/Arch only)
 haoshoku --kde-glass
 
-# Install Hyprland + Caelestia + Ocean overlay (CachyOS/Arch only)
+# Install Hyprland + upstream Caelestia rice (CachyOS/Arch only).
+# Asks about your current DE and which device this is (PC / laptop);
+# persists the device answer to ~/.haoshoku.json for future per-host configs.
 haoshoku --hyprland
-
-# Regenerate Hyprland keybinds from configs/kde_shortcuts.kksrc
-haoshoku --hyprland-keybinds
-
-# Regenerate Hyprland window rules + autostart from live KDE config
-haoshoku --hyprland-rules
-
-# Backup live Hyprland overlay to configs/hypr/
-haoshoku --hyprland-backup
 ```
 
 ## Features
@@ -122,55 +115,33 @@ haoshoku --hyprland-backup
 
 ## Hyprland (parallel to KDE)
 
-Bootstraps Caelestia rice plus the Ocean overlay. KDE Plasma stays installed; SDDM shows both sessions.
+Bootstraps upstream Caelestia rice. KDE Plasma stays installed; SDDM shows both sessions.
 
 ```bash
-# Install Hyprland + Caelestia + Ocean overlay
 haoshoku --hyprland
-
-# Regenerate keybinds from configs/kde_shortcuts.kksrc
-haoshoku --hyprland-keybinds
-
-# Regenerate window rules + autostart from live KDE config
-haoshoku --hyprland-rules
-
-# Backup live overlay to configs/hypr/
-haoshoku --hyprland-backup
 ```
 
-### Parity matrix
+The command:
+1. Asks for your current desktop environment (auto-detected via `$XDG_CURRENT_DESKTOP`; you can override). When the answer is `hyprland`, the Hyprland package install is skipped — Caelestia still gets cloned and installed.
+2. Asks which device this is (Main PC / Laptop / Other / Skip). Non-skip answers persist to `~/.haoshoku.json` as `deviceType`. The answer isn't consumed today — it's the seed for future per-host configuration (e.g., per-device monitor layouts).
+3. Installs Hyprland packages (when not skipped), clones [upstream Caelestia](https://github.com/caelestia-dots/caelestia), and runs `install.fish`. Recovers automatically when an AUR mirror failure leaves `caelestia-cli`/`caelestia-shell` uninstalled.
 
-| KDE feature | Hyprland equivalent | Provided by |
-|---|---|---|
-| KWin window borders | `general.col.active_border` | `configs/hypr/conf.d/00-ocean-borders.conf` |
-| KDE Glass blur | Hyprland gaussian blur | `configs/hypr/conf.d/10-blur.conf` |
-| Volantes cursor | XCURSOR_THEME env | `configs/hypr/conf.d/90-env.conf` |
-| Juno-ocean GTK | GTK_THEME env | `configs/hypr/conf.d/90-env.conf` |
-| KDE shortcuts | Hyprland `bind =` | `configs/hypr/conf.d/20-keybinds.conf` |
-| KWin window rules | `windowrule =` | `configs/hypr/conf.d/30-windowrules.conf` |
-| KDE autostart | `exec-once =` | `configs/hypr/conf.d/40-autostart.conf` |
-| Plasma lockscreen | hyprlock | `configs/hypr/hyprlock.conf` |
-| KDE idle | hypridle | `configs/hypr/hypridle.conf` |
-| KDE Plasma panel | Caelestia Quickshell | upstream Caelestia |
-| Plasma launcher | Caelestia Quickshell launcher | upstream Caelestia |
-| KDE notifications | mako | `configs/hypr/mako/config` |
+After install, monitor configuration is your responsibility. Caelestia sources `~/.config/caelestia/hypr-user.conf` last from its `hyprland.conf`, so any `monitor = ...` directives you put in that file override Caelestia's catch-all without dirtying the symlinked Caelestia tree.
+
+Releases prior to 5.0.0 (`haoshoku <= 4.6.6`) shipped an opinionated "Ocean" overlay on top of Caelestia — KDE→Hyprland keybind translation, window rules, autostart, custom borders/blur, hyprlock/hypridle/hyprpaper/mako configs, plus monitor presets — under `--hyprland-keybinds` / `--hyprland-rules` / `--hyprland-backup`. 5.0.0 drops all of it. Pin `haoshoku@4.6.6` if you need it back.
 
 ### Rollback
 
-If Hyprland breaks, log out and pick "Plasma" at SDDM. No Haoshoku command is required.
+If Hyprland breaks, log out and pick "Plasma" at SDDM. No haoshoku command required.
 
 ### Manual uninstall
 
 ```bash
-# Remove the Ocean overlay (haoshoku-owned)
-rm -rf ~/.config/hypr-ocean ~/.config/mako
-
-# Unwire the overlay from Caelestia's user include
-sed -i '/^source = ~\/.config\/hypr-ocean\/conf\.d\/\*\.conf$/d' \
-  ~/.config/caelestia/hypr-user.conf
-
 # Remove Caelestia itself
 rm -rf ~/.local/share/caelestia
+
+# Optional: clear your monitor / user overrides
+: > ~/.config/caelestia/hypr-user.conf
 ```
 
 Haoshoku deliberately does not delete `~/.config/hypr/`; Caelestia owns that symlinked tree.
