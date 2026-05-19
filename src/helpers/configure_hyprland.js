@@ -71,6 +71,43 @@ export const HYPRLAND_PACKAGES = [
  */
 export const CAELESTIA_PINNED_SHA = "main"; // TODO Task 1.6: replace with the SHA you tested
 
+/**
+ * Parse a KDE color scheme INI string. Returns a flat map of "Section.Key" → "r,g,b".
+ * Pure function — no IO. Ignores comments, blank lines, non-triplet values.
+ */
+export function parseOceanPalette(iniText) {
+	const result = {};
+	let section = null;
+	for (const rawLine of iniText.split("\n")) {
+		const line = rawLine.trim();
+		if (!line || line.startsWith("#") || line.startsWith(";")) continue;
+		const sectionMatch = line.match(/^\[(.+)\]$/);
+		if (sectionMatch) {
+			section = sectionMatch[1];
+			continue;
+		}
+		if (!section) continue;
+		const eq = line.indexOf("=");
+		if (eq < 0) continue;
+		const key = line.slice(0, eq).trim();
+		const value = line.slice(eq + 1).trim();
+		if (/^\d+,\d+,\d+$/.test(value)) {
+			result[`${section}.${key}`] = value;
+		}
+	}
+	return result;
+}
+
+/** Convert a KDE "r,g,b" string to Hyprland's "rgba(rrggbbaa)" hex form. Pure. */
+export function kdeRgbToHyprlandRgba(rgb, alphaHex = "ff") {
+	const parts = rgb.split(",").map((n) => Number.parseInt(n.trim(), 10));
+	if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) {
+		throw new Error(`kdeRgbToHyprlandRgba: invalid input "${rgb}"`);
+	}
+	const hex = parts.map((n) => n.toString(16).padStart(2, "0")).join("");
+	return `rgba(${hex}${alphaHex})`;
+}
+
 /** Append a single line to a file if it isn't already present (exact-match check). */
 export function ensureLineInFile(filePath, line) {
 	if (!fs.existsSync(filePath)) {
