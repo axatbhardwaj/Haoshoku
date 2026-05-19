@@ -77,6 +77,138 @@ export const HYPRLAND_PACKAGES = [
 export const CAELESTIA_PINNED_SHA = "main"; // TODO Task 1.6: replace with the SHA you tested
 
 /**
+ * KDE action ID → Hyprland dispatcher + args.
+ * Each entry returns a string that becomes the RHS of a `bind = MODS, KEY, ...` line.
+ *
+ * NOTE on launcher: KRunner / "Run Command" / "Show Application Launcher" are
+ * INTENTIONALLY OMITTED from this table. Caelestia's Quickshell ships its own
+ * launcher on `Super` by default. If we bind a launcher here we'd either collide
+ * with Caelestia's bind or pre-empt their UI. Users who want a different launcher
+ * can drop a one-line override into ~/.config/hypr-ocean/conf.d/91-execs.conf
+ * or a new conf.d/92-user.conf file.
+ */
+const KDE_TO_HYPRLAND_ACTIONS = {
+	// kwin — window management
+	"Window Close": "killactive",
+	"Window Maximize": "fullscreen, 1",
+	"Window Fullscreen": "fullscreen, 0",
+	"Window Minimize": "movetoworkspacesilent, special",
+	"Window Move": "movewindow",
+	"Window Resize": "resizewindow",
+	"Switch Window Up": "movefocus, u",
+	"Switch Window Down": "movefocus, d",
+	"Switch Window Left": "movefocus, l",
+	"Switch Window Right": "movefocus, r",
+	"Switch to Desktop 1": "workspace, 1",
+	"Switch to Desktop 2": "workspace, 2",
+	"Switch to Desktop 3": "workspace, 3",
+	"Switch to Desktop 4": "workspace, 4",
+	"Switch to Desktop 5": "workspace, 5",
+	"Switch to Desktop 6": "workspace, 6",
+	"Switch to Desktop 7": "workspace, 7",
+	"Switch to Desktop 8": "workspace, 8",
+	"Switch to Desktop 9": "workspace, 9",
+	"Window to Desktop 1": "movetoworkspace, 1",
+	"Window to Desktop 2": "movetoworkspace, 2",
+	"Window to Desktop 3": "movetoworkspace, 3",
+	"Window to Desktop 4": "movetoworkspace, 4",
+	"Window to Desktop 5": "movetoworkspace, 5",
+	"Window to Desktop 6": "movetoworkspace, 6",
+	"Window to Desktop 7": "movetoworkspace, 7",
+	"Window to Desktop 8": "movetoworkspace, 8",
+	"Window to Desktop 9": "movetoworkspace, 9",
+	"Show Desktop": "exec, hyprctl dispatch togglespecialworkspace",
+
+	// ksmserver — session lifecycle
+	"Lock Session": "exec, hyprlock",
+	"Log Out": "exec, hyprctl dispatch exit",
+
+	// spectacle — screenshots
+	RectangularRegionScreenShot: "exec, hyprshot -m region",
+	FullScreenScreenShot: "exec, hyprshot -m output",
+	ActiveWindowScreenShot: "exec, hyprshot -m window",
+
+	// kmix / audio — multimedia keys via wpctl
+	"Volume Up": "exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+",
+	"Volume Down": "exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-",
+	Mute: "exec, wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
+	"Mic Mute": "exec, wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle",
+
+	// brightness
+	"Brightness Up": "exec, brightnessctl set +5%",
+	"Brightness Down": "exec, brightnessctl set 5%-",
+};
+
+/**
+ * Translate KDE modifier syntax (Ctrl+Alt+Shift+Meta+Key) to Hyprland's
+ * (CTRL_ALT_SHIFT_META, KEY). Hyprland concatenates mods with underscores in
+ * its `bind = MODS, KEY, ...` form.
+ */
+function translateModifiers(kdeBinding) {
+	const tokens = kdeBinding.split("+");
+	const key = tokens.pop();
+	// Hyprland accepts both META and SUPER for the Windows/Command key; SUPER
+	// is the community-idiomatic spelling, so we emit that.
+	const map = { Ctrl: "CTRL", Alt: "ALT", Shift: "SHIFT", Meta: "SUPER" };
+	const mods = tokens.map((t) => map[t] || t.toUpperCase()).join("_");
+	return { mods, key: key.toUpperCase() };
+}
+
+/**
+ * Translate a KDE kksrc string into a Hyprland conf.d/20-keybinds.conf body.
+ * Pure: string in → string out. Unmapped KDE actions become `# UNTRANSLATED`
+ * comment lines so the user can hand-fill if needed.
+ */
+export function translateKdeShortcutsToHyprland(kksrcText) {
+	const lines = [
+		"# Translated from kde_shortcuts.kksrc — DO NOT EDIT BY HAND",
+		"# Regenerate with: bun haoshoku.js --hyprland-keybinds",
+		"",
+	];
+	const untranslated = [];
+
+	let section = null;
+	for (const rawLine of kksrcText.split("\n")) {
+		const line = rawLine.trim();
+		if (!line || line.startsWith("#")) continue;
+		const secMatch = line.match(/^\[(.+)\]$/);
+		if (secMatch) {
+			section = secMatch[1];
+			continue;
+		}
+		const eq = line.indexOf("=");
+		if (eq < 0) continue;
+		const actionName = line.slice(0, eq).trim();
+		if (actionName === "_k_friendly_name") continue;
+		const valueParts = line.slice(eq + 1).split(",");
+		// KDE separates alternative bindings with a LITERAL "\t" (backslash+t),
+		// not a real tab character. Split on the two-character sequence.
+		const primaryBinding = (valueParts[0] || "").split("\\t")[0].trim();
+		if (!primaryBinding || primaryBinding.toLowerCase() === "none") continue;
+
+		const dispatcher = KDE_TO_HYPRLAND_ACTIONS[actionName];
+		if (!dispatcher) {
+			untranslated.push(
+				`# UNTRANSLATED: ${actionName} (section=[${section}], binding=${primaryBinding})`,
+			);
+			continue;
+		}
+
+		const { mods, key } = translateModifiers(primaryBinding);
+		const prefix = mods ? `${mods}, ${key}` : `, ${key}`;
+		lines.push(`bind = ${prefix}, ${dispatcher}`);
+	}
+
+	if (untranslated.length > 0) {
+		lines.push("");
+		lines.push("# === Actions with no Hyprland equivalent — translate manually ===");
+		for (const ut of untranslated) lines.push(ut);
+	}
+
+	return `${lines.join("\n")}\n`;
+}
+
+/**
  * Parse a KDE color scheme INI string. Returns a flat map of "Section.Key" → "r,g,b".
  * Pure function — no IO. Ignores comments, blank lines, non-triplet values.
  */

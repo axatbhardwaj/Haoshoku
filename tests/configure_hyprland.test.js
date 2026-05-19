@@ -226,3 +226,49 @@ describe("syncHyprlandOverlay (injectable paths)", () => {
 		expect(after).toEqual(before);
 	});
 });
+
+describe("translateKdeShortcutsToHyprland", () => {
+	const fixturePath = path.join(
+		__dirname,
+		"fixtures",
+		"sample-kde_shortcuts.kksrc",
+	);
+	const fixture = fs.readFileSync(fixturePath, "utf8");
+
+	it("emits Hyprland bind lines for known KWin window-management actions", () => {
+		const out = hyprland.translateKdeShortcutsToHyprland(fixture);
+		expect(out).toMatch(/bind = ALT, F4, killactive/);
+		expect(out).toMatch(/bind = CTRL, F1, workspace, 1/);
+		expect(out).toMatch(/bind = SUPER_ALT, DOWN, movefocus, d/);
+	});
+
+	it("translates lock session to hyprlock", () => {
+		const out = hyprland.translateKdeShortcutsToHyprland(fixture);
+		expect(out).toMatch(/bind = SUPER, L, exec, hyprlock/);
+	});
+
+	it("translates Spectacle rectangular screenshot to hyprshot", () => {
+		const text = `[org.kde.spectacle.desktop]
+RectangularRegionScreenShot=Meta+Shift+S,Print,Capture Rectangular Region
+`;
+		const out = hyprland.translateKdeShortcutsToHyprland(text);
+		expect(out).toMatch(
+			/bind = SUPER_SHIFT, S, exec, hyprshot -m region/,
+		);
+	});
+
+	it("emits # UNTRANSLATED comments for actions with no Hyprland equivalent", () => {
+		const text =
+			"[kglobalaccel]\nUNKNOWN_ACTION=Ctrl+Alt+Z,,Some Action\n";
+		const out = hyprland.translateKdeShortcutsToHyprland(text);
+		expect(out).toMatch(/# UNTRANSLATED: UNKNOWN_ACTION/);
+	});
+
+	it("ignores entries with empty or 'none' binding values", () => {
+		const out = hyprland.translateKdeShortcutsToHyprland(fixture);
+		// "Switch to Desktop 5=none" — should not emit a bind
+		expect(out).not.toMatch(/Switch to Desktop 5/);
+		// "Window Fullscreen=,,Full Screen Window" — empty binding, should not emit
+		expect(out).not.toMatch(/bind = .*fullscreen, 0/);
+	});
+});
