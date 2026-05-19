@@ -593,14 +593,43 @@ export async function installCaelestia({ home = HOME } = {}) {
 	const installed = await runCommand(`fish ${caelestiaInstaller}`);
 	if (!installed) throw new Error("Caelestia install.fish exited non-zero");
 
-	// Caelestia's installer must create ~/.config/caelestia/hypr-user.conf as a
-	// user-owned include. Missing = upstream layout drift — hand back loudly
-	// rather than silently masking the breakage.
-	if (!fs.existsSync(userInclude)) {
-		throw new Error(
-			`Expected Caelestia user-include at ${userInclude} but it does not exist after install.fish. ` +
-				`Caelestia's upstream layout may have changed. Investigate the new include path and update CAELESTIA_USER_INCLUDE.`,
+	// install.fish invokes `paru -Ui` on the local PKGBUILD to install the
+	// caelestia-meta umbrella (which pulls in caelestia-cli + caelestia-shell).
+	// If a transitive dep (e.g. python-uv) fails to fetch from an AUR mirror,
+	// install.fish silently continues to the config-copy phase but the
+	// `caelestia` CLI never lands. Without it, `exec-once = caelestia shell -d`
+	// in execs.conf is a no-op and the user boots into a bare Hyprland session.
+	// Detect-and-recover: try paru -S explicitly for the two leaf packages.
+	if (!(await commandExists("caelestia"))) {
+		log.warning(
+			"caelestia CLI missing after install.fish (likely an AUR mirror failure during paru -Ui). " +
+				"Retrying with explicit `paru -S caelestia-cli caelestia-shell`...",
 		);
+		const recovered = await runCommand(
+			"paru -S --needed --noconfirm caelestia-cli caelestia-shell",
+		);
+		if (!recovered || !(await commandExists("caelestia"))) {
+			throw new Error(
+				"caelestia CLI still missing after retry. Likely the AUR mirror is still flaking. " +
+					"Try `sudo pacman -Syyu` to refresh mirrors, then re-run `bun haoshoku.js --hyprland`. " +
+					"If that fails, install caelestia-cli + caelestia-shell manually and re-run.",
+			);
+		}
+	}
+
+	// Caelestia creates ~/.config/caelestia/hypr-user.conf LAZILY on first
+	// Hyprland boot via the configs.fish exec hook in hyprland.conf. Since
+	// haoshoku --hyprland runs from your KDE session, that boot hasn't
+	// happened yet. Pre-create the file ourselves (same touch-empty behavior
+	// configs.fish would do), so our `source = ` line lands somewhere Caelestia
+	// will read on first boot. Also pre-create hypr-vars.conf for symmetry.
+	fs.mkdirSync(path.dirname(userInclude), { recursive: true });
+	for (const f of ["hypr-vars.conf", "hypr-user.conf"]) {
+		const target = path.join(path.dirname(userInclude), f);
+		if (!fs.existsSync(target)) {
+			fs.writeFileSync(target, "");
+			log.info(`Pre-created empty ${target} (Caelestia would create lazily on first boot)`);
+		}
 	}
 
 	fs.mkdirSync(oceanOverlayDir, { recursive: true });
