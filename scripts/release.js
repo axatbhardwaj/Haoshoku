@@ -12,6 +12,39 @@ const log = {
 	dim: (msg) => console.log(chalk.dim(msg)),
 };
 
+const USAGE = `Usage: bun run release [options]
+
+Options:
+  --bump=<type>     Version bump type: patch | minor | major | custom
+  --version=<x.y.z> Explicit version (implies --bump=custom)
+  --yes, -y         Skip the "Ready to release?" confirmation
+  --help, -h        Show this help
+
+Examples:
+  bun run release                         # interactive (prompts for both)
+  bun run release --bump=patch --yes      # non-interactive patch release
+  bun run release --version=5.0.0 --yes   # non-interactive custom version
+
+Non-interactive mode is intended for agent / CI use. The git-clean check
+is enforced in all modes — there is no --force flag by design.`;
+
+/** Parse argv into { bump, version, yes, help } — no external dep. */
+function parseArgs(argv) {
+	const args = { bump: null, version: null, yes: false, help: false };
+	for (const raw of argv) {
+		if (raw === "--help" || raw === "-h") args.help = true;
+		else if (raw === "--yes" || raw === "-y") args.yes = true;
+		else if (raw.startsWith("--bump=")) args.bump = raw.slice("--bump=".length);
+		else if (raw.startsWith("--version=")) args.version = raw.slice("--version=".length);
+		else {
+			log.error(`Unknown argument: ${raw}`);
+			log.info(USAGE);
+			process.exit(2);
+		}
+	}
+	return args;
+}
+
 async function runCommand(command, args, options = {}) {
 	log.dim(`Executing: ${command} ${args.join(" ")}`);
 
@@ -38,6 +71,29 @@ async function isGitClean() {
 }
 
 async function main() {
+	const args = parseArgs(process.argv.slice(2));
+	if (args.help) {
+		log.info(USAGE);
+		process.exit(0);
+	}
+
+	// --version=X.Y.Z implies --bump=custom; let users pass either.
+	if (args.version && !args.bump) args.bump = "custom";
+
+	const validBumps = new Set(["patch", "minor", "major", "custom"]);
+	if (args.bump && !validBumps.has(args.bump)) {
+		log.error(`Invalid --bump value: ${args.bump} (expected patch|minor|major|custom)`);
+		process.exit(2);
+	}
+	if (args.bump === "custom" && !args.version) {
+		// We'll fall back to prompting for the version below, but only if a TTY
+		// is available. Headless agents/CI lacking a TTY must supply --version.
+		if (!process.stdin.isTTY) {
+			log.error("--bump=custom requires --version=X.Y.Z when no TTY is attached");
+			process.exit(2);
+		}
+	}
+
 	log.info("🚀 Starting release process...");
 
 	// 1. Check git status
@@ -55,34 +111,47 @@ async function main() {
 
 	log.info(`Current version: ${chalk.bold(currentVersion)}`);
 
-	// 3. Prompt for version
-	const response = await prompts({
-		type: "select",
-		name: "bump",
-		message: "Select version bump",
-		choices: [
-			{ title: "Patch", value: "patch" },
-			{ title: "Minor", value: "minor" },
-			{ title: "Major", value: "major" },
-			{ title: "Custom", value: "custom" },
-		],
-	});
-
-	if (!response.bump) process.exit(0);
+	// 3. Determine bump (flag or prompt)
+	let bump = args.bump;
+	if (!bump) {
+		const response = await prompts({
+			type: "select",
+			name: "bump",
+			message: "Select version bump",
+			choices: [
+				{ title: "Patch", value: "patch" },
+				{ title: "Minor", value: "minor" },
+				{ title: "Major", value: "major" },
+				{ title: "Custom", value: "custom" },
+			],
+		});
+		if (!response.bump) process.exit(0);
+		bump = response.bump;
+	} else {
+		log.info(`Bump: ${chalk.bold(bump)}${args.version ? ` (${args.version})` : ""}`);
+	}
 
 	let newVersion;
-	if (response.bump === "custom") {
-		const custom = await prompts({
-			type: "text",
-			name: "version",
-			message: "Enter version number",
-			validate: (value) =>
-				/^\d+\.\d+\.\d+/.test(value) ? true : "Invalid version format (x.y.z)",
-		});
-		newVersion = custom.version;
+	if (bump === "custom") {
+		if (args.version) {
+			newVersion = args.version;
+		} else {
+			const custom = await prompts({
+				type: "text",
+				name: "version",
+				message: "Enter version number",
+				validate: (value) =>
+					/^\d+\.\d+\.\d+/.test(value) ? true : "Invalid version format (x.y.z)",
+			});
+			newVersion = custom.version;
+		}
+		if (!/^\d+\.\d+\.\d+$/.test(newVersion || "")) {
+			log.error(`Invalid --version value: ${newVersion} (expected x.y.z)`);
+			process.exit(2);
+		}
 	} else {
 		const [major, minor, patch] = currentVersion.split(".").map(Number);
-		switch (response.bump) {
+		switch (bump) {
 			case "patch":
 				newVersion = `${major}.${minor}.${patch + 1}`;
 				break;
@@ -97,14 +166,18 @@ async function main() {
 
 	if (!newVersion) process.exit(0);
 
-	const confirm = await prompts({
-		type: "confirm",
-		name: "value",
-		message: `Ready to release v${newVersion}?`,
-		initial: true,
-	});
-
-	if (!confirm.value) process.exit(0);
+	// 4. Confirm (skip with --yes)
+	if (!args.yes) {
+		const confirm = await prompts({
+			type: "confirm",
+			name: "value",
+			message: `Ready to release v${newVersion}?`,
+			initial: true,
+		});
+		if (!confirm.value) process.exit(0);
+	} else {
+		log.info(`Releasing v${newVersion} (--yes)`);
+	}
 
 	try {
 		// 4. Update package.json
