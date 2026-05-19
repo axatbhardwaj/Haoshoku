@@ -264,10 +264,11 @@ const KDE_KEY_TO_HYPRLAND_KEY = {
 /**
  * After applying the key-name map, a fallback `.toUpperCase()` can leave a key
  * with spaces (e.g. "MICROPHONE VOLUME UP") — Hyprland can't parse those.
- * Use this to detect-and-reject before emitting an invalid `bind = ...` line.
+ * Empty keys (e.g. trailing-`+` bindings like "Meta+") are also invalid; without
+ * this guard they would emit `bind = SUPER, , dispatcher` — malformed syntax.
  */
 function isValidHyprlandKey(key) {
-	return !/\s/.test(key);
+	return key.length > 0 && !/\s/.test(key);
 }
 
 /**
@@ -281,7 +282,17 @@ function translateModifiers(kdeBinding) {
 	// Hyprland accepts both META and SUPER for the Windows/Command key; SUPER
 	// is the community-idiomatic spelling, so we emit that.
 	const map = { Ctrl: "CTRL", Alt: "ALT", Shift: "SHIFT", Meta: "SUPER" };
-	const mods = tokens.map((t) => map[t] || t.toUpperCase()).join("_");
+	// Dedupe modifier tokens — e.g. "Ctrl+Alt+Ctrl+X" would otherwise emit
+	// "CTRL_ALT_CTRL" which Hyprland rejects as an unknown modifier string.
+	const seen = new Set();
+	const mods = tokens
+		.map((t) => map[t] || t.toUpperCase())
+		.filter((m) => {
+			if (seen.has(m)) return false;
+			seen.add(m);
+			return true;
+		})
+		.join("_");
 	const key = KDE_KEY_TO_HYPRLAND_KEY[rawKey] || rawKey.toUpperCase();
 	return { mods, key };
 }
@@ -409,6 +420,16 @@ export function kdeRgbToHyprlandRgba(rgb, alphaHex = "ff") {
 	if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) {
 		throw new Error(`kdeRgbToHyprlandRgba: invalid input "${rgb}"`);
 	}
+	// Each component must fit one byte. Out-of-range values would otherwise
+	// produce wrong-length hex segments (e.g. 256 → "100", -1 → "-1") and
+	// corrupt the rgba() token, which Hyprland silently rejects file-wide.
+	if (parts.some((n) => n < 0 || n > 255)) {
+		throw new Error(`kdeRgbToHyprlandRgba: component out of 0-255 range in "${rgb}"`);
+	}
+	// alphaHex is interpolated verbatim — must be exactly 2 hex chars.
+	if (!/^[0-9a-fA-F]{2}$/.test(alphaHex)) {
+		throw new Error(`kdeRgbToHyprlandRgba: alphaHex must be 2 hex chars, got "${alphaHex}"`);
+	}
 	const hex = parts.map((n) => n.toString(16).padStart(2, "0")).join("");
 	return `rgba(${hex}${alphaHex})`;
 }
@@ -417,6 +438,13 @@ export function kdeRgbToHyprlandRgba(rgb, alphaHex = "ff") {
 export function ensureLineInFile(filePath, line) {
 	if (!fs.existsSync(filePath)) {
 		throw new Error(`ensureLineInFile: ${filePath} does not exist`);
+	}
+	// Reject embedded newlines — the function name says "line" (singular). Without
+	// this guard, a caller passing "source = a\nexec-once = evil" would append
+	// arbitrary extra Hyprland directives, AND the trim-based dedupe would always
+	// miss (single-line entries in the file never equal the multi-line blob).
+	if (line.includes("\n")) {
+		throw new Error("ensureLineInFile: line must not contain a newline");
 	}
 	const contents = fs.readFileSync(filePath, "utf8");
 	const lines = contents.split("\n");
@@ -490,6 +518,16 @@ export async function checkoutPinnedCaelestia({
 	run = runCommand,
 } = {}) {
 	if (pinnedSha === "main") return false;
+
+	// pinnedSha flows into a shell-interpolated command in runCommand (utils.js
+	// auto-detects shell metacharacters and routes via `sh -c`). Reject anything
+	// that isn't a plain hex SHA before constructing the command — a value like
+	// "abc; rm -rf $HOME" would otherwise execute as `sh -c "git checkout abc; rm -rf $HOME"`.
+	if (!/^[a-f0-9]{7,40}$/i.test(pinnedSha)) {
+		throw new Error(
+			`checkoutPinnedCaelestia: pinnedSha "${pinnedSha}" is not a valid hex SHA (7-40 chars)`,
+		);
+	}
 
 	log.info(`Checking out pinned Caelestia commit ${pinnedSha}`);
 	const checkedOut = await run(`git checkout ${pinnedSha}`, { cwd: cloneDir });
@@ -621,13 +659,17 @@ export function translateKdeWindowRulesToHyprland(kwinrulesrcText) {
 		const wmclass = props.wmclass;
 		if (!wmclass) continue;
 		// `wmclasscomplete=true` indicates the class string is "instance class"
-		// (two tokens). Hyprland's regex needs only the class half — pick the
-		// second token. Otherwise wmclass is just the class.
+		// (two tokens per KDE spec). Class is always the SECOND token regardless of
+		// extra whitespace tokens — `.pop()` was wrong for 3-token inputs from Qt
+		// apps with names like "org.kde.foo bar baz".
 		const cls =
 			props.wmclasscomplete === "true" && wmclass.includes(" ")
-				? wmclass.split(" ").pop()
+				? wmclass.split(" ")[1]
 				: wmclass;
-		const selector = `class:^(${cls})$`;
+		// Escape regex metacharacters — Hyprland's PCRE engine would otherwise
+		// reject `class:^(foo(bar)$` and silently drop the entire rule.
+		const escapedCls = cls.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+		const selector = `class:^(${escapedCls})$`;
 
 		let emitted = 0;
 		if (props.desktops) {
@@ -640,7 +682,9 @@ export function translateKdeWindowRulesToHyprland(kwinrulesrcText) {
 		}
 		if (props.opacityactive) {
 			const pct = Number.parseInt(props.opacityactive, 10);
-			if (!Number.isNaN(pct)) {
+			// Skip out-of-range percentages — KDE stores 0-100 but malformed
+			// configs can carry negatives or >100, producing invalid opacity.
+			if (!Number.isNaN(pct) && pct >= 0 && pct <= 100) {
 				const opacity = (pct / 100).toFixed(2);
 				lines.push(`windowrulev2 = opacity ${opacity},${selector}`);
 				emitted++;
@@ -673,6 +717,47 @@ export const AUTOSTART_DENYLIST = [
 ];
 
 /**
+ * Shim/wrapper binaries that prefix the real command in `.desktop` Exec lines.
+ * We peel these off before checking the binary name against AUTOSTART_DENYLIST,
+ * otherwise an entry like `Exec=env DISPLAY=:0 kdeconnectd` would silently
+ * bypass the denylist (basename of the first token is `env`, not `kdeconnectd`).
+ */
+const AUTOSTART_WRAPPER_BINS = new Set([
+	"env",
+	"dbus-run-session",
+	"dbus-launch",
+	"nohup",
+	"setsid",
+	"stdbuf",
+]);
+
+/**
+ * Walk past wrapper binaries (env, dbus-run-session, …) and any KEY=VALUE
+ * arguments they take, returning the basename of the first REAL binary in the
+ * command. Pure — no IO.
+ */
+function realBinName(exec) {
+	const tokens = exec.split(/\s+/).filter(Boolean);
+	let i = 0;
+	while (i < tokens.length) {
+		const bn = path.basename(tokens[i]);
+		if (!AUTOSTART_WRAPPER_BINS.has(bn)) return bn;
+		i++;
+		// env(1) and friends accept flag args (e.g. `env -i`, `env -u VAR`) and
+		// any number of NAME=VALUE assignments before the actual command. Skip
+		// both forms so the denylist check sees the real binary.
+		while (
+			i < tokens.length &&
+			(tokens[i].startsWith("-") ||
+				/^[A-Za-z_][A-Za-z0-9_]*=/.test(tokens[i]))
+		) {
+			i++;
+		}
+	}
+	return path.basename(tokens[0] || "");
+}
+
+/**
  * Strip freedesktop Exec field codes (%f %F %u %U %d %D %n %N %v %m %i %c %k)
  * and Flatpak file-forwarding wrappers (@@u … @@ / @@ … @@) so the resulting
  * string is safe to pass to Hyprland's `exec-once`, which runs via direct
@@ -685,12 +770,21 @@ export const AUTOSTART_DENYLIST = [
  */
 export function sanitizeDesktopExec(exec) {
 	let s = exec;
-	// Flatpak file-forwarding: matches "@@u ... @@", "@@U ... @@", "@@f ... @@",
-	// "@@F ... @@", and the bare "@@ ... @@" form.
-	s = s.replace(/\s*@@[uUfF]?\s+[^@]*?\s+@@/g, "");
-	// Single-token field codes — be careful: %% is a literal %, not a code.
-	// Walk the string and replace standalone %X tokens.
-	s = s.replace(/(^|\s)%[fFuUdDnNvmkci](?=\s|$)/g, "$1");
+	// Flatpak file-forwarding: matches "@@<letter> ... @@" and bare "@@ ... @@".
+	// Previously hardcoded [uUfF]? — broader [a-zA-Z]? catches future Flatpak
+	// variants and unknown prefixes that would otherwise leak `@@x @@` tokens.
+	s = s.replace(/\s*@@[a-zA-Z]?\s+[^@]*?\s+@@/g, "");
+	// Field codes — strip %X tokens whose `%` is NOT preceded by another `%`.
+	// The negative lookbehind keeps `%%` (freedesktop literal-`%`) intact while
+	// removing real field codes. Iterate until stable so adjacent codes like
+	// "%f%u" are both removed (the previous /(^|\s)%X(?=\s|$)/ regex required
+	// whitespace boundaries and silently leaked concatenated codes).
+	const codeRe = /(?<!%)%[fFuUdDnNvmkci]/g;
+	let prev;
+	do {
+		prev = s;
+		s = s.replace(codeRe, "");
+	} while (s !== prev);
 	// Collapse repeated whitespace and trim.
 	return s.replace(/\s+/g, " ").trim();
 }
@@ -718,7 +812,7 @@ export function translateKdeAutostartToHyprland(dir) {
 		if (!execMatch) continue;
 		const exec = sanitizeDesktopExec(execMatch[1]);
 		if (!exec) continue;
-		const binName = path.basename(exec.split(/\s+/)[0]);
+		const binName = realBinName(exec);
 		if (AUTOSTART_DENYLIST.includes(binName)) continue;
 		lines.push(`exec-once = ${exec}`);
 	}

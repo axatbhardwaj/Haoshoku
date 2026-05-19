@@ -71,17 +71,17 @@ describe("checkoutPinnedCaelestia", () => {
 		await expect(
 			hyprland.checkoutPinnedCaelestia({
 				cloneDir: "/tmp/caelestia",
-				pinnedSha: "abc123",
+				pinnedSha: "abc1234",
 				run: async (command, options) => {
 					commands.push({ command, options });
 					return false;
 				},
 			}),
-		).rejects.toThrow("Failed to checkout pinned Caelestia commit abc123");
+		).rejects.toThrow("Failed to checkout pinned Caelestia commit abc1234");
 
 		expect(commands).toEqual([
 			{
-				command: "git checkout abc123",
+				command: "git checkout abc1234",
 				options: { cwd: "/tmp/caelestia" },
 			},
 		]);
@@ -500,5 +500,191 @@ describe("sanitizeDesktopExec", () => {
 		expect(
 			hyprland.sanitizeDesktopExec("/opt/1Password/1password --silent"),
 		).toBe("/opt/1Password/1password --silent");
+	});
+});
+
+describe("Adversarial coverage — confirmed bug surfaces", () => {
+	// ── kdeRgbToHyprlandRgba: out-of-range and bad-alpha bugs ───────────────
+
+	it("rejects out-of-range component (256)", () => {
+		expect(() => hyprland.kdeRgbToHyprlandRgba("256,0,0")).toThrow();
+	});
+
+	it("rejects negative component (-1)", () => {
+		expect(() => hyprland.kdeRgbToHyprlandRgba("-1,0,0")).toThrow();
+	});
+
+	it("rejects non-hex alphaHex ('xyz')", () => {
+		expect(() => hyprland.kdeRgbToHyprlandRgba("0,0,0", "xyz")).toThrow();
+	});
+
+	it("rejects wrong-length alphaHex ('ffff')", () => {
+		expect(() => hyprland.kdeRgbToHyprlandRgba("0,0,0", "ffff")).toThrow();
+	});
+
+	it("kdeRgbToHyprlandRgba output always has an 8-hex-char body when input is valid", () => {
+		expect(hyprland.kdeRgbToHyprlandRgba("0,169,165")).toMatch(/^rgba\([0-9a-f]{8}\)$/);
+	});
+
+	// ── translateKdeWindowRulesToHyprland: 3-token wmclass picks wrong token ─
+
+	it("3-token wmclasscomplete picks second token (class), not last", () => {
+		const input = "[UUID]\nwmclass=a b c\nwmclasscomplete=true\ndesktops=2\n";
+		const out = hyprland.translateKdeWindowRulesToHyprland(input);
+		expect(out).toMatch(/class:\^\(b\)\$/);
+		expect(out).not.toMatch(/class:\^\(c\)\$/);
+	});
+
+	// ── translateKdeWindowRulesToHyprland: regex metachar escaping ───────────
+
+	it("regex metacharacters in wmclass are escaped", () => {
+		const input = "[UUID]\nwmclass=foo(bar\ndesktops=2\n";
+		const out = hyprland.translateKdeWindowRulesToHyprland(input);
+		expect(out).not.toMatch(/foo\(bar\)\$/);
+		expect(out).toMatch(/foo\\\(bar/);
+	});
+
+	// ── translateKdeWindowRulesToHyprland: invalid opacityactive values ──────
+
+	it("negative opacityactive is not emitted", () => {
+		const input = "[UUID]\nwmclass=app\nopacityactive=-50\n";
+		const out = hyprland.translateKdeWindowRulesToHyprland(input);
+		expect(out).not.toMatch(/opacity -/);
+		expect(out).not.toMatch(/opacity \d/);
+	});
+
+	it("opacityactive > 100 is not emitted", () => {
+		const input = "[UUID]\nwmclass=app\nopacityactive=150\n";
+		const out = hyprland.translateKdeWindowRulesToHyprland(input);
+		// Stronger: directive must be absent entirely, not just !~ /1\.\d/.
+		expect(out).not.toMatch(/opacity/);
+	});
+
+	// ── sanitizeDesktopExec: adjacent field codes ─────────────────────────────
+
+	it("adjacent field codes (%f%u) are both stripped", () => {
+		expect(hyprland.sanitizeDesktopExec("%f%u --extra")).toBe("--extra");
+	});
+
+	// ── sanitizeDesktopExec: unknown Flatpak @@x ... @@ prefix ──────────────
+
+	it("@@x ... @@ block is fully stripped", () => {
+		expect(
+			hyprland.sanitizeDesktopExec("/usr/bin/flatpak run io.app @@x %U @@"),
+		).toBe("/usr/bin/flatpak run io.app");
+	});
+
+	// ── translateKdeShortcutsToHyprland: trailing + → empty key ──────────────
+
+	it("trailing '+' produces UNTRANSLATED, not empty key field", () => {
+		const input = "[services][app.desktop]\n_launch=Meta+\n";
+		const out = hyprland.translateKdeShortcutsToHyprland(input);
+		expect(out).not.toMatch(/bind = SUPER, , /);
+		expect(out).toMatch(/UNTRANSLATED/);
+	});
+
+	// ── translateKdeShortcutsToHyprland: duplicate modifiers not deduped ─────
+
+	it("duplicate modifiers in binding are deduped", () => {
+		const input = "[services][app.desktop]\n_launch=Ctrl+Alt+Ctrl+X\n";
+		const out = hyprland.translateKdeShortcutsToHyprland(input);
+		expect(out).not.toMatch(/CTRL_ALT_CTRL/);
+		expect(out).toMatch(/bind = CTRL_ALT, X, exec, gtk-launch app/);
+	});
+
+	// ── translateKdeAutostartToHyprland: env-wrapper denylist bypass ─────────
+
+	describe("env-wrapper bypass of denylist", () => {
+		let tmpDir;
+
+		beforeEach(() => {
+			tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-autostart-env-"));
+			fs.writeFileSync(
+				path.join(tmpDir, "kdeconnectd-env.desktop"),
+				"[Desktop Entry]\nType=Application\nExec=env DISPLAY=:0 kdeconnectd\n",
+			);
+		});
+
+		afterEach(() => {
+			fs.rmSync(tmpDir, { recursive: true, force: true });
+		});
+
+		it("env-wrapped denylist binary is still blocked", () => {
+			const out = hyprland.translateKdeAutostartToHyprland(tmpDir);
+			// Stronger: the entry must be fully suppressed, not just the binary name.
+			// A weak fix that strips `kdeconnectd` but leaves `exec-once = env DISPLAY=:0`
+			// would still be a bug — the autostart entry should not exist at all.
+			expect(out).not.toMatch(/kdeconnectd/);
+			expect(out).not.toMatch(/exec-once/);
+		});
+
+		it("blocks denylist binary wrapped with env flag args (env -i kdeconnectd)", () => {
+			fs.writeFileSync(
+				path.join(tmpDir, "kdeconnectd-flag.desktop"),
+				"[Desktop Entry]\nType=Application\nExec=env -i kdeconnectd\n",
+			);
+			const out = hyprland.translateKdeAutostartToHyprland(tmpDir);
+			expect(out).not.toMatch(/kdeconnectd/);
+		});
+
+		it("blocks denylist binary wrapped with dbus-run-session", () => {
+			fs.writeFileSync(
+				path.join(tmpDir, "kdeconnectd-dbus.desktop"),
+				"[Desktop Entry]\nType=Application\nExec=dbus-run-session -- kdeconnectd\n",
+			);
+			const out = hyprland.translateKdeAutostartToHyprland(tmpDir);
+			expect(out).not.toMatch(/kdeconnectd/);
+		});
+	});
+
+	// ── checkoutPinnedCaelestia: SHA shape validation ────────────────────────
+
+	it("rejects pinnedSha containing shell metacharacters before invoking git", async () => {
+		let called = false;
+		await expect(
+			hyprland.checkoutPinnedCaelestia({
+				cloneDir: "/tmp/x",
+				pinnedSha: "abc1234; rm -rf $HOME",
+				run: async () => { called = true; return true; },
+			}),
+		).rejects.toThrow();
+		expect(called).toBe(false);
+	});
+
+	it("accepts a valid 40-char hex SHA and forwards it to run", async () => {
+		const validSha = "a".repeat(40);
+		let received;
+		await hyprland.checkoutPinnedCaelestia({
+			cloneDir: "/tmp/x",
+			pinnedSha: validSha,
+			run: async (cmd) => { received = cmd; return true; },
+		});
+		expect(received).toBe(`git checkout ${validSha}`);
+	});
+
+	// ── ensureLineInFile: newline in line parameter ───────────────────────────
+
+	describe("ensureLineInFile rejects multi-line input", () => {
+		let tmpDir;
+		let target;
+
+		beforeEach(() => {
+			tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-ensure-"));
+			target = path.join(tmpDir, "test.conf");
+			fs.writeFileSync(target, "# existing\n");
+		});
+
+		afterEach(() => {
+			fs.rmSync(tmpDir, { recursive: true, force: true });
+		});
+
+		it("throws when line parameter contains a newline", () => {
+			expect(() =>
+				hyprland.ensureLineInFile(target, "source = a\nexec-once = pwned"),
+			).toThrow(/newline/i);
+			// File must remain unmodified — a silent-strip fix that writes only the
+			// first line would not throw, and that is also a bug we want to catch.
+			expect(fs.readFileSync(target, "utf8")).toBe("# existing\n");
+		});
 	});
 });

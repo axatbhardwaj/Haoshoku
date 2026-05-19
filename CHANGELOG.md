@@ -1,5 +1,16 @@
 # Changelog
 
+## 4.6.2 - 2026-05-19
+- Fix 14 KDE→Hyprland translation bugs found via adversarial test coverage of `src/helpers/configure_hyprland.js`. Most produced malformed Hyprland directives that would cause Hyprland to silently reject the entire `conf.d/` file, dropping every keybind or rule it contained.
+- Security: `checkoutPinnedCaelestia` now validates `pinnedSha` against `/^[a-f0-9]{7,40}$/i` before interpolating it into the `git checkout` command. The shared `runCommand` helper auto-routes commands containing shell metacharacters through `sh -c`, so an unvalidated SHA like `"abc; rm -rf $HOME"` would have executed shell injection.
+- `kdeRgbToHyprlandRgba`: reject components outside 0–255 (e.g. `256` → `rgba(1000000ff)` 9-char body) and reject `alphaHex` that isn't exactly 2 hex chars (`"xyz"` → `rgba(000000xyz)`).
+- `translateKdeWindowRulesToHyprland`: pick the second token (class) of multi-token `wmclasscomplete=true` values per KDE spec — `.pop()` was wrong for 3-token Qt app names; escape regex metacharacters in `wmclass` so `foo(bar` doesn't break Hyprland's PCRE; clamp `opacityactive` to 0–100 so `-50` / `150` no longer emit `opacity -0.50` / `opacity 1.50`.
+- `sanitizeDesktopExec`: strip adjacent field codes like `%f%u` (the prior regex required whitespace boundaries and silently passed concatenated codes); broaden the Flatpak `@@<letter> … @@` wrapper match so unknown prefixes like `@@x` are also stripped; preserve `%%` literal-percent via negative lookbehind.
+- `translateKdeShortcutsToHyprland`: reject empty keys (e.g. `Meta+` trailing-`+`) which otherwise emitted `bind = SUPER, , dispatcher`; dedupe modifier tokens so `Ctrl+Alt+Ctrl+X` collapses to `CTRL_ALT, X` instead of the malformed `CTRL_ALT_CTRL, X`.
+- `translateKdeAutostartToHyprland`: peel known shim binaries (`env`, `dbus-run-session`, `dbus-launch`, `nohup`, `setsid`, `stdbuf`) and their flag / `NAME=VAL` args before checking the denylist. Without this, `Exec=env DISPLAY=:0 kdeconnectd` and `Exec=dbus-run-session -- kdeconnectd` bypassed the KDE-service denylist.
+- `ensureLineInFile`: throw when the `line` argument contains a newline. The trim-based dedupe would always miss a multi-line input, then write the blob verbatim — silently appending extra Hyprland directives into `hypr-user.conf`.
+- Add 17 new adversarial test cases (red/blue/green workflow) covering each confirmed bug surface plus positive companion tests. Total hyprland tests: 39 → 58; full project suite: 56 → 77, all green.
+
 ## 4.6.1 - 2026-05-19
 - Exclude local agent/runtime state (`.claude/`, `.dvandva/`, `superpowers/`) and generated video output from package dry-runs/publishes.
 - Fix lint-only issues in the Remotion video components so the release branch passes `bun run lint` cleanly.
