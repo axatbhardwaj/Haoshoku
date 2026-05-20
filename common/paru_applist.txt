@@ -13,6 +13,7 @@ flatpak
 bitwarden
 partitionmanager
 inotify-tools
+thunar
 teams-for-linux
 onlyoffice-bin
 kvantum
