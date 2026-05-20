@@ -1,0 +1,56 @@
+{
+  "toggles": {
+    "communication": {
+      "discord": {
+        "enable": false
+      },
+      "vesktop": {
+        "enable": false
+      },
+      "signal": {
+        "enable": true,
+        "match": [{"class": "signal"}],
+        "command": ["signal-desktop"],
+        "move": true
+      },
+      "whatsapp-web": {
+        "enable": true,
+        "match": [{"class": "brave-hnpfjngllnobngcgfapefoaidbinmjnm-Default"}],
+        "command": ["/opt/brave-bin/brave", "--profile-directory=Default", "--app-id=hnpfjngllnobngcgfapefoaidbinmjnm"],
+        "move": true
+      }
+    },
+    "1password": {
+      "1password": {
+        "enable": true,
+        "match": [{"class": "1password"}],
+        "command": ["1password"],
+        "move": true
+      }
+    },
+    "brave-personal": {
+      "brave-personal": {
+        "enable": true,
+        "match": [{"class": "brave-browser", "title": "Flux"}],
+        "command": ["brave", "--profile-directory=Profile 3"],
+        "move": true
+      }
+    },
+    "brave-work": {
+      "brave-work": {
+        "enable": true,
+        "match": [{"class": "brave-browser", "title": "Defi"}],
+        "command": ["brave"],
+        "move": true
+      }
+    },
+    "claude": {
+      "claude": {
+        "enable": true,
+        "match": [{"class": "kitty-claude"}],
+        "command": ["kitty", "--class=kitty-claude", "--directory=/home/xzat", "-e", "claude", "-r", "io"],
+        "move": true
+      }
+    }
+  }
+}

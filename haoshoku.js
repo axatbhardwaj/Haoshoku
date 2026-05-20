@@ -26,6 +26,10 @@ import {
   syncZedTheme,
 } from "./src/helpers/configure_zed.js";
 import {
+  backupCaelestiaPrefs,
+  syncCaelestiaPrefs,
+} from "./src/helpers/configure_caelestia_prefs.js";
+import {
   syncSkills,
   printAvailableSkills,
   CACHE_DIR,
@@ -86,6 +90,14 @@ program
     "Backup Zed config to configs/zed/ (sanitizes sensitive data)",
   )
   .option("--zed-theme", "Sync Zed theme to ~/.config/zed/themes/")
+  .option(
+    "--caelestia-prefs",
+    "Sync Caelestia hypr-user.conf + cli.json from configs/caelestia/ to ~/.config/caelestia/",
+  )
+  .option(
+    "--caelestia-prefs-backup",
+    "Backup Caelestia hypr-user.conf + cli.json from ~/.config/caelestia/ to configs/caelestia/",
+  )
   .option("--kde-theme", "Deploy KDE Ocean theme files (sync only, no activate)")
   .option("--kde-theme-backup", "Backup KDE Ocean theme from system to configs/kde/")
   .option(
@@ -159,6 +171,16 @@ program
 
     if (options.zedTheme) {
       await syncZedTheme();
+      return;
+    }
+
+    if (options.caelestiaPrefsBackup) {
+      await backupCaelestiaPrefs();
+      return;
+    }
+
+    if (options.caelestiaPrefs) {
+      await syncCaelestiaPrefs();
       return;
     }
 
