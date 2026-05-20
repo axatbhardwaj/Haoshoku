@@ -1,5 +1,10 @@
 # Changelog
 
+## 5.0.1 - 2026-05-20
+
+- Make Zed follow the Caelestia desktop theme by default. `configs/zed/settings.json` now selects `Caelestia` for both light and dark modes, and Haoshoku vendors `configs/zed/themes/caelestia.json` so fresh `haoshoku --zed` installs do not depend on a pre-existing local Zed theme.
+- Add regression coverage ensuring the Zed template continues to select Caelestia and the vendored theme remains parseable.
+
 ## 5.0.0 - 2026-05-20
 
 **Breaking change.** Removes the haoshoku-managed "Ocean" Hyprland overlay layer (curated borders/blur/keybinds/window-rules/autostart/hyprlock/hypridle/hyprpaper/mako) on top of upstream Caelestia. `--hyprland` now installs Caelestia + nothing else. Monitor configuration becomes the user's responsibility.
