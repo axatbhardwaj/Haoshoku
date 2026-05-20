@@ -2,25 +2,87 @@ import { describe, expect, it } from "bun:test";
 import fs from "node:fs";
 import path from "node:path";
 
-// We can't easily mock the entire module imports in Bun test yet for integration tests without dependency injection.
-// However, we can create a focused test that verifies file operations if we extract the logic or mock fs methods.
-// Since refactoring everything is out of scope, we will add a test that verifies the critical configuration files EXIST in the project,
-// protecting against accidental deletion, which covers part of what the old tests did (verifying static paths).
-
-const CONFIGS_DIR = path.join(path.resolve(__dirname, ".."), "configs");
+const PROJECT_ROOT = path.resolve(__dirname, "..");
+const CONFIGS_DIR = path.join(PROJECT_ROOT, "configs");
+const CACHYOS_SRC = fs.readFileSync(
+  path.join(PROJECT_ROOT, "src", "os_scripts", "cachyos.js"),
+  "utf8",
+);
 
 describe("KDE Configuration Assets", () => {
-	it("should have kde_shortcuts.kksrc", () => {
-		const _shortcutsPath = path.join(CONFIGS_DIR, "kde_shortcuts.kksrc");
-		// It's okay if this file doesn't exist yet if it wasn't committed, but if the logic depends on it, we need to know.
-		// Based on cachyos.js: const KDE_SHORTCUTS_PATH = path.join(CONFIGS_DIR, "kde_shortcuts.kksrc");
-		// We should check if the directory structure supports it.
-		expect(fs.existsSync(CONFIGS_DIR)).toBe(true);
-	});
+  it("should have a configs directory", () => {
+    expect(fs.existsSync(CONFIGS_DIR)).toBe(true);
+  });
 });
 
-// Test backup and copy logic for KDE config.
-// We would ideally unit test a 'backupAndCopy' utility function.
-// Since the logic is embedded in cachyos.js, we'll recreate the test logic in a new utility test
-// if we were to extract it. For now, ensuring the integrity of the project structure is the best proxy
-// without major refactoring.
+describe("configureUserApps step ordering", () => {
+  // Caelestia's install.fish overwrites ~/.config/fish/config.fish,
+  // ~/.config/fish/functions/fish_greeting.fish, and
+  // ~/.config/fastfetch/config.jsonc during configureHyprland(). If our
+  // fish/fastfetch deploys run earlier, Caelestia clobbers them and the user
+  // loses the onefetch/fastfetch decider, the `z` zoxide command, and the
+  // konqi fastfetch layout. Don't reorder.
+  const callIndex = (needle) => {
+    const matches = [
+      ...CACHYOS_SRC.matchAll(new RegExp(`await ${needle}\\(`, "g")),
+    ];
+    return { count: matches.length, index: matches[0]?.index ?? -1 };
+  };
+
+  it("calls configureHyprland exactly once", () => {
+    expect(callIndex("configureHyprland").count).toBe(1);
+  });
+
+  it("calls configureFishShell exactly once, after configureHyprland", () => {
+    const hyprland = callIndex("configureHyprland");
+    const fish = callIndex("configureFishShell");
+    expect(fish.count).toBe(1);
+    expect(fish.index).toBeGreaterThan(hyprland.index);
+  });
+
+  it("calls configureFastfetch exactly once, after configureHyprland", () => {
+    const hyprland = callIndex("configureHyprland");
+    const fastfetch = callIndex("configureFastfetch");
+    expect(fastfetch.count).toBe(1);
+    expect(fastfetch.index).toBeGreaterThan(hyprland.index);
+  });
+});
+
+describe("custom fish assets shipped by haoshoku", () => {
+  it("ships configs/fish/config.fish", () => {
+    expect(fs.existsSync(path.join(CONFIGS_DIR, "fish", "config.fish"))).toBe(
+      true,
+    );
+  });
+
+  it("ships configs/fish/functions/fish_greeting.fish with the onefetch/fastfetch decider", () => {
+    const greetingPath = path.join(
+      CONFIGS_DIR,
+      "fish",
+      "functions",
+      "fish_greeting.fish",
+    );
+    expect(fs.existsSync(greetingPath)).toBe(true);
+    const content = fs.readFileSync(greetingPath, "utf8");
+    expect(content).toContain("is_git_repo");
+    expect(content).toContain("onefetch");
+    expect(content).toContain("fastfetch");
+  });
+
+  it("ships configs/fish/functions/is_git_repo.fish", () => {
+    expect(
+      fs.existsSync(
+        path.join(CONFIGS_DIR, "fish", "functions", "is_git_repo.fish"),
+      ),
+    ).toBe(true);
+  });
+
+  it("does not embed CONTEXT7_API_KEY or other secrets in configs/fish/config.fish", () => {
+    const content = fs.readFileSync(
+      path.join(CONFIGS_DIR, "fish", "config.fish"),
+      "utf8",
+    );
+    expect(content).not.toMatch(/ctx7sk-/);
+    expect(content).not.toMatch(/api[_-]?key\s*=\s*['"][^'"]+['"]/i);
+  });
+});

@@ -215,6 +215,23 @@ async function configureFishShell() {
     );
     log.info("Copied custom fish config.");
   }
+
+  // Deploy custom fish functions (e.g. fish_greeting with the onefetch/fastfetch
+  // decider, is_git_repo helper). Caelestia ships its own fish_greeting.fish,
+  // so this MUST run after configureHyprland() to win.
+  const fishFunctionsSrc = path.join(CONFIGS_DIR, "fish", "functions");
+  const fishFunctionsDst = path.join(FISH_CONFIG_DIR, "functions");
+  if (fs.existsSync(fishFunctionsSrc)) {
+    fs.mkdirSync(fishFunctionsDst, { recursive: true });
+    for (const file of fs.readdirSync(fishFunctionsSrc)) {
+      if (!file.endsWith(".fish")) continue;
+      safeCopyFile(
+        path.join(fishFunctionsSrc, file),
+        path.join(fishFunctionsDst, file),
+      );
+    }
+    log.info("Deployed custom fish functions.");
+  }
 }
 
 async function configureTerminals() {
@@ -412,8 +429,6 @@ async function installFlatpakApps() {
 }
 
 async function configureUserApps() {
-  await configureFishShell();
-
   if (await promptUser("Configure git?", true)) {
     const { configureGit } = await import("../helpers/configure_git.js");
     await configureGit();
@@ -424,11 +439,17 @@ async function configureUserApps() {
   await configureKde();
   await configureHyprland();
 
+  // Fish + Fastfetch deploy AFTER configureHyprland because Caelestia's
+  // install.fish overwrites ~/.config/fish/config.fish,
+  // ~/.config/fish/functions/fish_greeting.fish, and
+  // ~/.config/fastfetch/config.jsonc. Running our copies last makes ours win.
+  await configureFishShell();
+  await configureFastfetch();
+
   log.info("Installing uosc for MPV...");
   await runCommand(`curl -fsSL ${UOSC_INSTALL_URL} | bash`);
 
   await enableServices();
-  await configureFastfetch();
   await configureClaude();
 }
 
