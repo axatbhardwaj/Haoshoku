@@ -14,6 +14,7 @@ import { configureClaude } from "../helpers/configure_claude.js";
 import { installCaelestia } from "../helpers/configure_hyprland.js";
 import { configureKdeTheme } from "../helpers/configure_kde_theme.js";
 import { configureZed } from "../helpers/configure_zed.js";
+import { installUserScripts } from "../helpers/install_user_scripts.js";
 
 // URLs
 const RUSTUP_URL = "https://sh.rustup.rs";
@@ -359,6 +360,10 @@ async function configureHyprland() {
     // rebinds, special-workspace toggle config) on top of Caelestia's upstream
     // defaults. Mirrors how configureZed() runs after the editor is installed.
     await configureCaelestiaPrefs();
+    // Install ~/.local/bin/ scripts (e.g. game-performance shadow wrapper).
+    // Must run after configureCaelestiaPrefs because the wrapper edits the
+    // hypr-user.conf that prefs deploys.
+    await installUserScripts();
     log.success(
       "Hyprland installed. Select 'Hyprland' at SDDM to use it; 'Plasma' still available as fallback.",
     );

@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Shadow wrapper for /usr/bin/game-performance (cachyos-settings).
+# When a game launches through this:
+#   - DP-1 (primary gaming monitor) flips to vrr=1
+#   - Caelestia gameMode engages (kills animations/blur/gaps, enables tearing)
+#   - Real /usr/bin/game-performance handles the CPU governor via powerprofilesctl
+# All effects revert on exit (game close, Ctrl-C, crash) via trap.
+#
+# Resolves before /usr/bin because ~/.local/bin precedes it in $PATH on
+# systemd-user-session-managed setups.
+#
+# Mechanism note: Hyprland 0.55.x's `hyprctl keyword monitor` accepts VRR
+# changes but doesn't propagate them to live output state — the keyword is
+# registered in-memory but the KMS/Wayland output never re-modesets. The only
+# reliable runtime toggle is file-edit + `hyprctl reload`. So this wrapper
+# sed-edits the user's monitor declaration in place at
+# ~/.config/caelestia/hypr-user.conf and reloads.
+
+set -u
+
+HYPR_USER="$HOME/.config/caelestia/hypr-user.conf"
+
+set_dp1_vrr() {
+    # Replace the trailing "vrr, 0" or "vrr, 1" on the DP-1 monitor line.
+    sed -i -E "s|^(monitor = DP-1,[^v]*vrr,) [01]$|\\1 $1|" "$HYPR_USER"
+    hyprctl reload >/dev/null 2>&1
+}
+
+revert() {
+    set_dp1_vrr 0
+    caelestia shell gameMode disable >/dev/null 2>&1
+}
+trap revert EXIT INT TERM
+
+set_dp1_vrr 1
+caelestia shell gameMode enable >/dev/null 2>&1
+# NOT exec — we need the wrapper bash alive so the trap fires on game exit.
+/usr/bin/game-performance "$@"
