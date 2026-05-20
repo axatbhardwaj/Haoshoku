@@ -141,6 +141,9 @@ dist
 # SvelteKit build / generate output
 .svelte-kit
 
+# Local Superpowers planning/spec artifacts
+/superpowers/
+
 ### Python ###
 # Byte-compiled / optimized / DLL files
 __pycache__/

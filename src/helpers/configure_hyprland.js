@@ -50,6 +50,7 @@ export const HYPRLAND_PACKAGES = [
 	"wl-clipboard",
 	"polkit-gnome",
 	"xdg-desktop-portal-hyprland",
+	"uwsm",
 	"qt5-wayland",
 	"qt6-wayland",
 	"fish",

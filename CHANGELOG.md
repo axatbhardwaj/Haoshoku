@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.2.1 - 2026-05-20
+
+- Add `uwsm` to `haoshoku --hyprland`'s pacman package set so manual Haoshoku Hyprland installs match CachyOS' installer profile and include the runtime needed for the `Hyprland (uwsm-managed)` SDDM session.
+- Keep the `skipHyprlandPackages` path unchanged: users already running Hyprland still skip the full Hyprland package install.
+- Include the existing unreleased follow-ups already on `stable`: kitty/Claude terminal theming via OSC sequences and KDE Connect autostart in both per-device Caelestia `hypr-user` variants.
+
 ## 5.2.0 - 2026-05-20
 
 - Replace v5.1.2's skip-on-laptop stopgap with a **per-device hypr-user variant router**. `configs/caelestia/hypr-user.conf` is renamed to `hypr-user-pc.conf` (existing PC content unchanged) and a new `hypr-user-laptop.conf` ships alongside it (eDP-1 @ 2880x1800@120 scale 1.6, no monitor-pinned workspaces, no NVIDIA exec-once — fits the actual single-screen Intel-iGPU laptop topology). `syncCaelestiaPrefs()` now reads `deviceType` from `~/.haoshoku.json` and routes to the matching variant, deploying it as `~/.config/caelestia/hypr-user.conf`. `backupCaelestiaPrefs()` mirrors this: snapshots from `~/.config/caelestia/hypr-user.conf` back to the variant file matching the local deviceType (so a laptop backup doesn't overwrite the PC variant).

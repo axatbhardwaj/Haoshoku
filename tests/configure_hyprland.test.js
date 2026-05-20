@@ -130,11 +130,11 @@ describe("installCaelestia (slim 5.0.0 — Caelestia only, no Ocean overlay)", (
 
 		const commands = calls.map((c) => c.command);
 		// Must install the Hyprland packages.
-		expect(
-			commands.some((c) =>
-				c.startsWith("sudo pacman -S --needed --noconfirm hyprland"),
-			),
-		).toBe(true);
+		const hyprlandInstallCommand = commands.find((c) =>
+			c.startsWith("sudo pacman -S --needed --noconfirm hyprland"),
+		);
+		expect(hyprlandInstallCommand).toBeDefined();
+		expect(hyprlandInstallCommand.split(" ")).toContain("uwsm");
 		// Must clone Caelestia (no .git existed) — clone uses HTTPS.
 		expect(
 			commands.some((c) => c.startsWith("git clone") && c.includes("caelestia")),
