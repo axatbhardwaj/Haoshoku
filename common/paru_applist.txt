@@ -65,6 +65,8 @@ protonup-rs-bin
 raindrop
 r-quick-share-bin
 spotify
+spicetify-cli
+spicetify-marketplace-bin
 steam-native-runtime
 stremio
 teamspeak
