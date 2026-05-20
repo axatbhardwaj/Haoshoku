@@ -32,7 +32,7 @@
       "brave-personal": {
         "enable": true,
         "match": [{"class": "brave-browser", "title": "Flux"}],
-        "command": ["brave", "--profile-directory=Profile 3"],
+        "command": ["brave", "--profile-directory=Default"],
         "move": true
       }
     },
@@ -40,7 +40,7 @@
       "brave-work": {
         "enable": true,
         "match": [{"class": "brave-browser", "title": "Defi"}],
-        "command": ["brave"],
+        "command": ["brave", "--profile-directory=Profile 3"],
         "move": true
       }
     },
