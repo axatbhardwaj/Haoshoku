@@ -318,6 +318,7 @@ pyrightconfig.json
 .todos/
 .claude/
 .dvandva/
+tasks/
 
 # Superpowers brainstorming + planning artifacts (local-only, never committed)
 /superpowers/
