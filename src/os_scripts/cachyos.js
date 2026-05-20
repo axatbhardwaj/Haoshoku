@@ -62,6 +62,28 @@ async function refreshSudo() {
   return await runCommand("sudo -v");
 }
 
+/**
+ * Snapshot pacman's local DB once so callers can pre-filter "already installed"
+ * packages without paying paru's per-package AUR HTTP roundtrip. AUR packages
+ * installed via paru land in the pacman DB the same way repo packages do.
+ * Returns an empty Set on failure so callers fall back to "try to install
+ * everything", matching pre-optimization behavior.
+ */
+async function getInstalledPackages() {
+  try {
+    const proc = Bun.spawn(["pacman", "-Qq"], {
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    const output = await new Response(proc.stdout).text();
+    await proc.exited;
+    return new Set(output.split("\n").map((s) => s.trim()).filter(Boolean));
+  } catch (_e) {
+    log.warning("pacman -Qq failed; skipping pre-install filter.");
+    return new Set();
+  }
+}
+
 async function installPackagesFromFile(filePath, installerCmd) {
   if (!fs.existsSync(filePath)) {
     log.warning(`Package file not found at ${filePath}`);
@@ -69,17 +91,41 @@ async function installPackagesFromFile(filePath, installerCmd) {
   }
 
   const content = fs.readFileSync(filePath, "utf-8");
-  const packages = content
+  const requested = content
     .split("\n")
     .map((line) => line.trim())
     .filter((line) => line && !line.startsWith("#"));
 
-  if (packages.length === 0) return;
+  if (requested.length === 0) return;
 
-  log.info(`Installing ${packages.length} packages individually...`);
+  // Pre-filter against pacman's local DB so paru isn't invoked for packages
+  // that are already installed — the big saving is skipping AUR HTTP lookups
+  // on re-runs. `--needed` on the install command catches the edge cases this
+  // exact-name match misses (e.g. a package satisfying a `provides` we want).
+  // Only applied when installerCmd routes through pacman/paru.
+  let toInstall = requested;
+  let skipped = 0;
+  if (installerCmd.includes("paru") || installerCmd.includes("pacman")) {
+    const installed = await getInstalledPackages();
+    toInstall = requested.filter((pkg) => !installed.has(pkg));
+    skipped = requested.length - toInstall.length;
+  }
+
+  if (skipped > 0) {
+    log.info(
+      `${skipped} of ${requested.length} packages already installed — skipping.`,
+    );
+  }
+
+  if (toInstall.length === 0) {
+    log.success("All requested packages already installed.");
+    return;
+  }
+
+  log.info(`Installing ${toInstall.length} packages individually...`);
   const failed = [];
 
-  for (const pkg of packages) {
+  for (const pkg of toInstall) {
     const ok = await runCommand(`${installerCmd} ${pkg}`);
     if (ok) {
       log.success(`Installed ${pkg}`);
@@ -411,7 +457,7 @@ async function installSystemPackages() {
   log.info("Installing packages from file lists...");
   await installPackagesFromFile(
     PARU_APPLIST_PATH,
-    "paru -S --noconfirm --sudoloop",
+    "paru -S --needed --noconfirm --sudoloop",
   );
 
   log.info("Installing Nerd Fonts...");
