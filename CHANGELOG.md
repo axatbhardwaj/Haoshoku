@@ -1,5 +1,9 @@
 # Changelog
 
+## 5.2.4 - 2026-05-21
+
+- Fix CachyOS shells crashing after every command with `test: Missing argument at index 3` from `/usr/share/cachyos-fish-config/conf.d/done.fish` line 229. `configureFishShell()` was installing `franciscolourenco/done`, `meaningful-ooo/sponge`, `jorgebucaran/nvm.fish`, and `joseluisq/gitnow` via fisher — but `configs/fish/config.fish` line 1 already sources `/usr/share/cachyos-fish-config/cachyos-config.fish`, which CachyOS ships with the same four plugins pre-installed under `/usr/share/cachyos-fish-config/conf.d/`. Both copies loaded on every shell start, double-registered `__done_ended` for `fish_postexec`, and tripped over each other's state so `__done_min_cmd_duration` was empty by the time the handler fired. `configureFishShell()` now installs only `jorgebucaran/fisher` (the manager itself, so users can still add unrelated plugins later) and skips the four duplicates. Users with the old install can recover by running `fisher remove franciscolourenco/done meaningful-ooo/sponge jorgebucaran/nvm.fish joseluisq/gitnow` then `exec fish`.
+
 ## 5.2.3 - 2026-05-20
 
 - Add Caelestia app-workspace launch behavior to the persisted `hypr-user` variants. App-routed normal workspaces now switch first, then launch any missing mapped app: `Super+0` opens Cohesion, `Super+2` opens Steam on the PC template, `Super+4` opens Vesktop, and `Super+5` opens both Teams and Telegram. The bindings are guarded with `hyprctl clients -j` checks so repeated workspace activations do not spawn duplicate windows.
