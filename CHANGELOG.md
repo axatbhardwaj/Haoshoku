@@ -1,5 +1,13 @@
 # Changelog
 
+## 5.2.3 - 2026-05-20
+
+- Add Caelestia app-workspace launch behavior to the persisted `hypr-user` variants. App-routed normal workspaces now switch first, then launch any missing mapped app: `Super+0` opens Cohesion, `Super+2` opens Steam on the PC template, `Super+4` opens Vesktop, and `Super+5` opens both Teams and Telegram. The bindings are guarded with `hyprctl clients -j` checks so repeated workspace activations do not spawn duplicate windows.
+- Make the special-workspace mapping explicit in both `hypr-user` variants and `cli.json`: Signal + WhatsApp Web live in `special:communication`, 1Password in `special:1password`, Spotify in `special:music` via `Super+M`, Brave personal in `special:brave-personal`, and Brave work in `special:brave-work`.
+- Extend the PC Caelestia monitor policy so VRR is disabled on every output, not just the rotated NVIDIA portrait monitor. The existing PowerMizer pin remains the mechanism that keeps the multi-monitor setup stable.
+- Add a deployed `game-performance` PATH-shadow wrapper for CachyOS game launches. The wrapper enables DP-1 VRR and Caelestia game mode for the lifetime of the game process, then reverts both on exit.
+- Expand `tests/configure_caelestia_prefs.test.js` to lock the normal-workspace launch bindings and special-workspace toggle/routing model.
+
 ## 5.2.2 - 2026-05-20
 
 - Apply the Brave personal/work profile directory swap to `configs/caelestia/cli.json` so fresh `haoshoku --hyprland` installs deploy the same corrected Caelestia CLI toggle commands already used locally: personal opens Brave's `Default` profile and work opens `Profile 3`.
