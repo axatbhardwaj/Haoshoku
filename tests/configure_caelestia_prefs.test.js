@@ -374,8 +374,62 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 				"brave-personal",
 				"brave-work",
 				"claude",
+				"music",
 			]),
 		);
+	});
+
+	it("maps special-workspace toggles to the expected apps", () => {
+		const cliJson = JSON.parse(
+			fs.readFileSync(path.join(CONFIGS_CAELESTIA_DIR, "cli.json"), "utf8"),
+		);
+		const toggles = cliJson.toggles;
+
+		expect(toggles.communication.signal).toMatchObject({
+			enable: true,
+			match: [{ class: "signal" }],
+			command: ["signal-desktop"],
+			move: true,
+		});
+		expect(toggles.communication["whatsapp-web"]).toMatchObject({
+			enable: true,
+			match: [{ class: "brave-hnpfjngllnobngcgfapefoaidbinmjnm-Default" }],
+			command: [
+				"/opt/brave-bin/brave",
+				"--profile-directory=Default",
+				"--app-id=hnpfjngllnobngcgfapefoaidbinmjnm",
+			],
+			move: true,
+		});
+		expect(toggles["1password"]["1password"]).toMatchObject({
+			enable: true,
+			match: [{ class: "1password" }],
+			command: ["1password"],
+			move: true,
+		});
+		expect(toggles.music.spotify).toMatchObject({
+			enable: true,
+			match: [
+				{ class: "spotify" },
+				{ class: "Spotify" },
+				{ initialTitle: "Spotify" },
+				{ initialTitle: "Spotify Free" },
+			],
+			command: ["spotify"],
+			move: true,
+		});
+		expect(toggles["brave-personal"]["brave-personal"]).toMatchObject({
+			enable: true,
+			match: [{ class: "brave-browser", title: "Flux" }],
+			command: ["brave", "--profile-directory=Default"],
+			move: true,
+		});
+		expect(toggles["brave-work"]["brave-work"]).toMatchObject({
+			enable: true,
+			match: [{ class: "brave-browser", title: "Defi" }],
+			command: ["brave", "--profile-directory=Profile 3"],
+			move: true,
+		});
 	});
 
 	it("ships hypr-user-pc.conf with the PC's monitor-pinned workspaces", () => {
@@ -405,5 +459,145 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		expect(conf).toMatch(/workspace\s*=\s*name:0/);
 		expect(conf).not.toMatch(/workspace\s*=\s*\d+\s*,\s*monitor:/);
 		expect(conf).not.toMatch(/workspace\s*=\s*name:0\s*,\s*monitor:/);
+	});
+
+	it("binds app-routed workspaces to launch all missing mapped apps", () => {
+		const expectationsByConfig = {
+			"hypr-user-pc.conf": [
+				{
+					key: "0",
+					workspaceDispatch: "hyprctl dispatch workspace name:0",
+					workspaceSelector: "[workspace name:0 silent]",
+					apps: [
+						{
+							classMatch: 'class == "cohesion"',
+							command: "flatpak run io.github.brunofin.Cohesion",
+						},
+					],
+				},
+				{
+					key: "2",
+					workspaceDispatch: "hyprctl dispatch workspace 2",
+					workspaceSelector: "[workspace 2 silent]",
+					apps: [{ classMatch: "class | test", command: "steam" }],
+				},
+				{
+					key: "4",
+					workspaceDispatch: "hyprctl dispatch workspace 4",
+					workspaceSelector: "[workspace 4 silent]",
+					apps: [{ classMatch: 'class == "vesktop"', command: "vesktop" }],
+				},
+				{
+					key: "5",
+					workspaceDispatch: "hyprctl dispatch workspace 5",
+					workspaceSelector: "[workspace 5 silent]",
+					apps: [
+						{
+							classMatch: 'class == "teams-for-linux"',
+							command: "teams-for-linux --gtk-version=3",
+						},
+						{
+							classMatch: 'class == "TelegramDesktop"',
+							command: "Telegram",
+						},
+						{
+							classMatch: 'class == "org.telegram.desktop"',
+							command: "Telegram",
+						},
+					],
+				},
+			],
+			"hypr-user-laptop.conf": [
+				{
+					key: "0",
+					workspaceDispatch: "hyprctl dispatch workspace name:0",
+					workspaceSelector: "[workspace name:0 silent]",
+					apps: [
+						{
+							classMatch: 'class == "cohesion"',
+							command: "flatpak run io.github.brunofin.Cohesion",
+						},
+					],
+				},
+				{
+					key: "4",
+					workspaceDispatch: "hyprctl dispatch workspace 4",
+					workspaceSelector: "[workspace 4 silent]",
+					apps: [{ classMatch: 'class == "vesktop"', command: "vesktop" }],
+				},
+				{
+					key: "5",
+					workspaceDispatch: "hyprctl dispatch workspace 5",
+					workspaceSelector: "[workspace 5 silent]",
+					apps: [
+						{
+							classMatch: 'class == "teams-for-linux"',
+							command: "teams-for-linux --gtk-version=3",
+						},
+						{
+							classMatch: 'class == "TelegramDesktop"',
+							command: "Telegram",
+						},
+						{
+							classMatch: 'class == "org.telegram.desktop"',
+							command: "Telegram",
+						},
+					],
+				},
+			],
+		};
+
+		for (const [file, expectations] of Object.entries(expectationsByConfig)) {
+			const conf = fs.readFileSync(
+				path.join(CONFIGS_CAELESTIA_DIR, file),
+				"utf8",
+			);
+
+			for (const expectation of expectations) {
+				const bindLine = conf
+					.split("\n")
+					.find((line) =>
+						line.startsWith(`bind = $kbGoToWs, ${expectation.key}, exec,`),
+					);
+
+				expect(bindLine).toContain(expectation.workspaceDispatch);
+				expect(bindLine).toContain("hyprctl clients -j");
+				expect(bindLine).toContain("jq -e");
+				expect(bindLine).toContain(expectation.workspaceSelector);
+				for (const app of expectation.apps) {
+					expect(bindLine).toContain(app.classMatch);
+					expect(bindLine).toContain(app.command);
+				}
+			}
+		}
+	});
+
+	it("routes special-workspace apps in both hypr-user variants", () => {
+		for (const file of ["hypr-user-pc.conf", "hypr-user-laptop.conf"]) {
+			const conf = fs.readFileSync(
+				path.join(CONFIGS_CAELESTIA_DIR, file),
+				"utf8",
+			);
+
+			expect(conf).toContain(
+				"windowrule = workspace special:communication, match:class signal",
+			);
+			expect(conf).toContain(
+				"windowrule = workspace special:communication, match:class brave-hnpfjngllnobngcgfapefoaidbinmjnm-Default",
+			);
+			expect(conf).toContain(
+				"windowrule = workspace special:1password, match:class 1password",
+			);
+			expect(conf).toContain(
+				"windowrule = workspace special:music, match:class spotify|Spotify",
+			);
+			expect(conf).toContain("bind = $kbMusic, exec, caelestia toggle music");
+			expect(conf).toContain(
+				"windowrule = workspace special:brave-personal, match:class brave-browser, match:title Flux",
+			);
+			expect(conf).toContain(
+				"windowrule = workspace special:brave-work, match:class brave-browser, match:title Defi",
+			);
+		}
 	});
 });
