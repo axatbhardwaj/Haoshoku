@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 5.1.0 - 2026-05-20
 
 - Add `--caelestia-prefs` and `--caelestia-prefs-backup` CLI flags for syncing personal Caelestia overrides (`hypr-user.conf`, `cli.json`) between `configs/caelestia/` and `~/.config/caelestia/`. Mirrors the `--zed` / `--zed-backup` pattern, so workspace pins, keybind rebinds, and special-workspace toggle config (the `caelestia toggle <ws>` entries used by Super+M music, Super+D communication, Super+O 1Password, Super+W/B brave-work/personal, Super+A claude, Super+H stash, etc.) are now versioned in-tree and redeployable on fresh installs. `hypr-user.conf` still carries machine-specific `monitor = ...` lines — edit those on different hardware per the new `configs/caelestia/CLAUDE.md`.
 - Add `src/helpers/configure_caelestia_prefs.js` exporting `syncCaelestiaPrefs` / `backupCaelestiaPrefs` / `configureCaelestiaPrefs`. Helpers accept optional `home` / `projectRoot` so tests can inject temp dirs while production callers stay zero-arg.
