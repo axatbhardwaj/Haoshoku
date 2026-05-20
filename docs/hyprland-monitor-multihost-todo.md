@@ -12,13 +12,15 @@ Three connected outputs, vertically centered around y=960. Used as the seed for 
 
 | Output | Native res @ Hz | Position | Scale | Transform | VRR | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| `DP-2` | 1920x1080@179.96 | `0x0` | 1 | 1 (90° CW, portrait) | on | LG UltraGear, EDID `LG Electronics LG ULTRAGEAR 512NTPCER888`. |
+| `DP-2` | 1920x1080@179.96 | `0x0` | 1 | 1 (90° CW, portrait) | off (was on; flipped 2026-05-20 — see `hyprland-vrr-fix.md`) | LG UltraGear, EDID `LG Electronics LG ULTRAGEAR 512NTPCER888`. |
 | `DP-1` | 2560x1440@143.97 | `1080x240` | 1 | 0 | on | LG UltraGear 1440p, EDID `LG Electronics LG ULTRAGEAR 303NTZN9K909`. Primary monitor (workspace 1 lives here). |
 | `HDMI-A-1` | 1920x1080@74.97 | `3640x420` | 1 | 0 | off (panel doesn't support VRR) | LG FHD 75Hz IPS, EDID `LG Electronics LG FHD 0x01010101`. |
 
 Catch-all `monitor = , preferred, auto, 1` at the end for any future unknown output.
 
 Live state on `io` currently sits in `~/.config/caelestia/hypr-user.conf` (port-name keyed). EDID strings are recorded above so a future haoshoku-managed version of this config can swap to `desc:` matching without re-capturing the topology.
+
+`hypr-user.conf` also gained an `exec-once = nvidia-settings -a '[gpu:0]/GPUPowerMizerMode=1'` line on 2026-05-20 to stop NVIDIA P-state-transition flicker on the rotated output — see `hyprland-vrr-fix.md`. The per-device `pc` template haoshoku eventually emits should ship both `vrr, 0` on rotated NVIDIA outputs and that `exec-once` by default.
 
 ## What's already done (no longer open)
 
