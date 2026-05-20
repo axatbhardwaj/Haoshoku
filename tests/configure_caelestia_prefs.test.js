@@ -113,6 +113,123 @@ describe("syncCaelestiaPrefs — configs/caelestia/ → ~/.config/caelestia/", (
 	});
 });
 
+describe("syncCaelestiaPrefs — deviceType gating via ~/.haoshoku.json", () => {
+	// Hypr-user.conf is machine-specific (monitor lines, workspace-to-monitor
+	// pins, NVIDIA exec-once). cli.json is fully portable. On a laptop install
+	// we want the portable bits but not the PC's machine-specific overrides.
+	function seedSourceFiles() {
+		const sourceDir = path.join(tmpProjectRoot, "configs", "caelestia");
+		fs.writeFileSync(
+			path.join(sourceDir, "hypr-user.conf"),
+			"# pc-flavored hypr-user.conf\nmonitor = DP-1, ...\n",
+		);
+		fs.writeFileSync(
+			path.join(sourceDir, "cli.json"),
+			JSON.stringify({ toggles: { fixture: {} } }, null, 2),
+		);
+	}
+
+	it("skips hypr-user.conf but deploys cli.json when deviceType=laptop", async () => {
+		seedSourceFiles();
+		fs.writeFileSync(
+			path.join(tmpHome, ".haoshoku.json"),
+			JSON.stringify({ deviceType: "laptop" }),
+		);
+
+		await prefs.syncCaelestiaPrefs({
+			home: tmpHome,
+			projectRoot: tmpProjectRoot,
+		});
+
+		const destDir = path.join(tmpHome, ".config", "caelestia");
+		expect(fs.existsSync(path.join(destDir, "cli.json"))).toBe(true);
+		expect(fs.existsSync(path.join(destDir, "hypr-user.conf"))).toBe(false);
+	});
+
+	it("deploys both files when deviceType=pc", async () => {
+		seedSourceFiles();
+		fs.writeFileSync(
+			path.join(tmpHome, ".haoshoku.json"),
+			JSON.stringify({ deviceType: "pc" }),
+		);
+
+		await prefs.syncCaelestiaPrefs({
+			home: tmpHome,
+			projectRoot: tmpProjectRoot,
+		});
+
+		const destDir = path.join(tmpHome, ".config", "caelestia");
+		expect(fs.existsSync(path.join(destDir, "cli.json"))).toBe(true);
+		expect(fs.existsSync(path.join(destDir, "hypr-user.conf"))).toBe(true);
+	});
+
+	it("deploys both files when ~/.haoshoku.json is missing entirely (no deviceType info)", async () => {
+		seedSourceFiles();
+		// no ~/.haoshoku.json written — represents a machine where --hyprland
+		// has never been run or the file was deleted
+
+		await prefs.syncCaelestiaPrefs({
+			home: tmpHome,
+			projectRoot: tmpProjectRoot,
+		});
+
+		const destDir = path.join(tmpHome, ".config", "caelestia");
+		expect(fs.existsSync(path.join(destDir, "hypr-user.conf"))).toBe(true);
+		expect(fs.existsSync(path.join(destDir, "cli.json"))).toBe(true);
+	});
+
+	it("deploys both files when ~/.haoshoku.json exists but has no deviceType key", async () => {
+		seedSourceFiles();
+		fs.writeFileSync(
+			path.join(tmpHome, ".haoshoku.json"),
+			JSON.stringify({ skillSources: ["foo"] }),
+		);
+
+		await prefs.syncCaelestiaPrefs({
+			home: tmpHome,
+			projectRoot: tmpProjectRoot,
+		});
+
+		expect(
+			fs.existsSync(path.join(tmpHome, ".config", "caelestia", "hypr-user.conf")),
+		).toBe(true);
+	});
+
+	it("falls back to deploying both files when ~/.haoshoku.json is malformed JSON", async () => {
+		seedSourceFiles();
+		fs.writeFileSync(
+			path.join(tmpHome, ".haoshoku.json"),
+			"{ not valid json",
+		);
+
+		await prefs.syncCaelestiaPrefs({
+			home: tmpHome,
+			projectRoot: tmpProjectRoot,
+		});
+
+		expect(
+			fs.existsSync(path.join(tmpHome, ".config", "caelestia", "hypr-user.conf")),
+		).toBe(true);
+	});
+
+	it("deploys both files when deviceType is some unknown value (e.g. 'other')", async () => {
+		seedSourceFiles();
+		fs.writeFileSync(
+			path.join(tmpHome, ".haoshoku.json"),
+			JSON.stringify({ deviceType: "other" }),
+		);
+
+		await prefs.syncCaelestiaPrefs({
+			home: tmpHome,
+			projectRoot: tmpProjectRoot,
+		});
+
+		expect(
+			fs.existsSync(path.join(tmpHome, ".config", "caelestia", "hypr-user.conf")),
+		).toBe(true);
+	});
+});
+
 describe("backupCaelestiaPrefs — ~/.config/caelestia/ → configs/caelestia/", () => {
 	it("copies hypr-user.conf and cli.json into configs/caelestia/", async () => {
 		const liveDir = path.join(tmpHome, ".config", "caelestia");

@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.1.2 - 2026-05-20
+
+- Fix `syncCaelestiaPrefs()` deploying the PC's `hypr-user.conf` onto laptop installs. The auto-deployed file carries machine-specific monitor lines (`DP-1`/`DP-2`/`HDMI-A-1`), workspace-to-monitor pins, and an NVIDIA `nvidia-settings GPUPowerMizerMode=1` exec-once that all fail or no-op on a single-screen laptop with an iGPU. `syncCaelestiaPrefs` now reads `deviceType` from `~/.haoshoku.json` (populated by `--hyprland`'s `promptDeviceType`) and skips machine-specific files when `deviceType === "laptop"`. `cli.json` (portable special-workspace toggle defs) deploys regardless. Missing / malformed / unset `~/.haoshoku.json` falls back to the existing "deploy everything" behavior — safer default for unknown machines.
+- Add 6 regression tests in `tests/configure_caelestia_prefs.test.js` covering: laptop skips `hypr-user.conf` (the new behavior), pc deploys both files (current behavior preserved), missing `~/.haoshoku.json` deploys both, unset `deviceType` key deploys both, malformed JSON deploys both, unknown `deviceType` value (`"other"`) deploys both.
+- Per-device template work is still tracked in `docs/hyprland-monitor-multihost-todo.md`; v5.1.2 is the safety patch that prevents broken first-run experience on laptops while we figure out the proper laptop template (likely v5.2.0 once the laptop install captures its topology).
+
 ## 5.1.1 - 2026-05-20
 
 - Fix `runCachyOSSetup()` not deploying the user's saved Caelestia preferences. v5.1.0 added `--caelestia-prefs` as a standalone flag but forgot to call `configureCaelestiaPrefs()` from `configureHyprland()` in `src/os_scripts/cachyos.js`, so a fresh `haoshoku` install (no flags) booted Hyprland with upstream Caelestia defaults instead of the user's `configs/caelestia/{hypr-user.conf, cli.json}`. Now `configureHyprland()` calls `configureCaelestiaPrefs()` immediately after `installCaelestia()`, mirroring how `configureZed()` runs after its install step. Manually re-running `haoshoku --caelestia-prefs` is still supported as the explicit path.
