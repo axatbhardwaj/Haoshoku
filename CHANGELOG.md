@@ -4,7 +4,7 @@
 
 - Add `uwsm` to `haoshoku --hyprland`'s pacman package set so manual Haoshoku Hyprland installs match CachyOS' installer profile and include the runtime needed for the `Hyprland (uwsm-managed)` SDDM session.
 - Keep the `skipHyprlandPackages` path unchanged: users already running Hyprland still skip the full Hyprland package install.
-- Include the existing unreleased follow-ups already on `stable`: kitty/Claude terminal theming via OSC sequences and KDE Connect autostart in both per-device Caelestia `hypr-user` variants.
+- Include the existing unreleased follow-ups already on `stable`: kitty/Claude terminal theming via OSC sequences, KDE Connect autostart in both per-device Caelestia `hypr-user` variants, and the Brave personal/work profile directory mapping repair.
 
 ## 5.2.0 - 2026-05-20
 
