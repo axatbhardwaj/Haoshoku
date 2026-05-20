@@ -1,5 +1,12 @@
 # Changelog
 
+## 5.2.0 - 2026-05-20
+
+- Replace v5.1.2's skip-on-laptop stopgap with a **per-device hypr-user variant router**. `configs/caelestia/hypr-user.conf` is renamed to `hypr-user-pc.conf` (existing PC content unchanged) and a new `hypr-user-laptop.conf` ships alongside it (eDP-1 @ 2880x1800@120 scale 1.6, no monitor-pinned workspaces, no NVIDIA exec-once — fits the actual single-screen Intel-iGPU laptop topology). `syncCaelestiaPrefs()` now reads `deviceType` from `~/.haoshoku.json` and routes to the matching variant, deploying it as `~/.config/caelestia/hypr-user.conf`. `backupCaelestiaPrefs()` mirrors this: snapshots from `~/.config/caelestia/hypr-user.conf` back to the variant file matching the local deviceType (so a laptop backup doesn't overwrite the PC variant).
+- Variant resolution: `deviceType === "pc"` or `"laptop"` → that variant. Anything else (unset, `"other"`, malformed `~/.haoshoku.json`, missing key) → falls back to `pc` (safer default for the legacy / mainstream case). If the chosen variant file doesn't exist in the repo (e.g. deleted), `hypr-user.conf` deploy is skipped with a warning; `cli.json` still deploys.
+- Update `tests/configure_caelestia_prefs.test.js` from 16 tests covering v5.1.2's skip behavior to 20 tests covering the router: both deviceType branches deploy their correct variant, four fallback paths land on PC, missing-variant skips gracefully, idempotent re-run, and static-config validation now asserts both `hypr-user-pc.conf` and `hypr-user-laptop.conf` ship with their expected shape (PC has `monitor:` pinned workspaces; laptop has eDP-1 + no monitor pins + no `nvidia-settings`).
+- Update `configs/caelestia/CLAUDE.md` to document the per-device variant model and the deviceType resolution rules.
+
 ## 5.1.2 - 2026-05-20
 
 - Fix `syncCaelestiaPrefs()` deploying the PC's `hypr-user.conf` onto laptop installs. The auto-deployed file carries machine-specific monitor lines (`DP-1`/`DP-2`/`HDMI-A-1`), workspace-to-monitor pins, and an NVIDIA `nvidia-settings GPUPowerMizerMode=1` exec-once that all fail or no-op on a single-screen laptop with an iGPU. `syncCaelestiaPrefs` now reads `deviceType` from `~/.haoshoku.json` (populated by `--hyprland`'s `promptDeviceType`) and skips machine-specific files when `deviceType === "laptop"`. `cli.json` (portable special-workspace toggle defs) deploys regardless. Missing / malformed / unset `~/.haoshoku.json` falls back to the existing "deploy everything" behavior — safer default for unknown machines.
