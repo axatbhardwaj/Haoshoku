@@ -20,3 +20,4 @@ Template configuration files copied to user's `~/.config/` during setup.
 | `claude/`       | Claude Code personal config (copied)    | Modifying settings, backup/restore        |
 | `kde/`          | KDE Ocean theme bundle (5 components)   | Modifying KDE theme deployment            |
 | `zed/`          | Zed editor config (sanitized backup)    | Modifying Zed settings, themes            |
+| `caelestia/`    | Caelestia user prefs (`hypr-user.conf`, `cli.json`) | Modifying workspace pins, keybinds, special-workspace toggles |
