@@ -1,5 +1,9 @@
 # Changelog
 
+## 5.2.2 - 2026-05-20
+
+- Apply the Brave personal/work profile directory swap to `configs/caelestia/cli.json` so fresh `haoshoku --hyprland` installs deploy the same corrected Caelestia CLI toggle commands already used locally: personal opens Brave's `Default` profile and work opens `Profile 3`.
+
 ## 5.2.1 - 2026-05-20
 
 - Add `uwsm` to `haoshoku --hyprland`'s pacman package set so manual Haoshoku Hyprland installs match CachyOS' installer profile and include the runtime needed for the `Hyprland (uwsm-managed)` SDDM session.
