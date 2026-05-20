@@ -127,6 +127,29 @@ export async function recoverCaelestiaPackages({
 	return secondAttempt && (await exists("caelestia"));
 }
 
+/** Merge Haoshoku's Caelestia shell defaults without overwriting user settings. */
+export function configureCaelestiaShell({ home = HOME } = {}) {
+	const caelestiaConfigDir = path.join(home, ".config", "caelestia");
+	const shellConfigPath = path.join(caelestiaConfigDir, "shell.json");
+	let shellConfig = {};
+
+	if (fs.existsSync(shellConfigPath)) {
+		shellConfig = JSON.parse(fs.readFileSync(shellConfigPath, "utf8"));
+	}
+
+	shellConfig.services = {
+		...(shellConfig.services ?? {}),
+		useTwelveHourClock: false,
+	};
+
+	fs.mkdirSync(caelestiaConfigDir, { recursive: true });
+	fs.writeFileSync(
+		shellConfigPath,
+		`${JSON.stringify(shellConfig, null, "\t")}\n`,
+	);
+	log.info("Configured Caelestia shell clock for 24-hour time.");
+}
+
 /**
  * Install Hyprland packages + clone/install upstream Caelestia. Idempotent:
  * a second run pulls the existing clone rather than re-cloning, and skips
@@ -224,6 +247,7 @@ export async function installCaelestia({
 	// boot hasn't happened yet. Pre-create both as empty so Hyprland's first
 	// `source = $cConf/hypr-user.conf` doesn't error before configs.fish runs.
 	fs.mkdirSync(userIncludeDir, { recursive: true });
+	configureCaelestiaShell({ home });
 	for (const f of ["hypr-vars.conf", "hypr-user.conf"]) {
 		const target = path.join(userIncludeDir, f);
 		if (!fs.existsSync(target)) {

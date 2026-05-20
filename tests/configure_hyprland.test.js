@@ -235,6 +235,47 @@ describe("installCaelestia (slim 5.0.0 — Caelestia only, no Ocean overlay)", (
 		const oceanDir = path.join(tmpHome, ".config", "hypr-ocean");
 		expect(fs.existsSync(oceanDir)).toBe(false);
 	});
+
+	it("creates Caelestia shell.json with 24-hour clock enabled", async () => {
+		const { run } = makeRecorder();
+		const exists = async (cmd) => cmd === "fish" || cmd === "caelestia";
+
+		await hyprland.installCaelestia({ home: tmpHome, run, exists });
+
+		const shellConfig = JSON.parse(
+			fs.readFileSync(
+				path.join(tmpHome, ".config", "caelestia", "shell.json"),
+				"utf8",
+			),
+		);
+		expect(shellConfig.services.useTwelveHourClock).toBe(false);
+	});
+
+	it("preserves existing Caelestia shell.json settings while forcing 24-hour clock", async () => {
+		const shellConfigPath = path.join(
+			tmpHome,
+			".config",
+			"caelestia",
+			"shell.json",
+		);
+		fs.mkdirSync(path.dirname(shellConfigPath), { recursive: true });
+		fs.writeFileSync(
+			shellConfigPath,
+			JSON.stringify({
+				bar: { clock: { showDate: true } },
+				services: { weatherLocation: "Bengaluru", useTwelveHourClock: true },
+			}),
+		);
+		const { run } = makeRecorder();
+		const exists = async (cmd) => cmd === "fish" || cmd === "caelestia";
+
+		await hyprland.installCaelestia({ home: tmpHome, run, exists });
+
+		const shellConfig = JSON.parse(fs.readFileSync(shellConfigPath, "utf8"));
+		expect(shellConfig.bar.clock.showDate).toBe(true);
+		expect(shellConfig.services.weatherLocation).toBe("Bengaluru");
+		expect(shellConfig.services.useTwelveHourClock).toBe(false);
+	});
 });
 
 describe("promptDesktopEnvironment", () => {

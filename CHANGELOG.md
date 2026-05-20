@@ -4,6 +4,7 @@
 
 - Make Zed follow the Caelestia desktop theme by default. `configs/zed/settings.json` now selects `Caelestia` for both light and dark modes, and Haoshoku vendors `configs/zed/themes/caelestia.json` so fresh `haoshoku --zed` installs do not depend on a pre-existing local Zed theme.
 - Add regression coverage ensuring the Zed template continues to select Caelestia and the vendored theme remains parseable.
+- Make `haoshoku --hyprland` explicitly set Caelestia to 24-hour time by merging `services.useTwelveHourClock: false` into `~/.config/caelestia/shell.json` while preserving existing shell settings.
 
 ## 5.0.0 - 2026-05-20
 
