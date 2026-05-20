@@ -189,18 +189,16 @@ async function configureFishShell() {
     }
   }
 
-  log.info("Installing Fisher and plugins...");
-  const fisherPlugins = [
-    "jorgebucaran/fisher",
-    "meaningful-ooo/sponge",
-    "jorgebucaran/nvm.fish",
-    "franciscolourenco/done",
-    "joseluisq/gitnow@2.12.0",
-  ];
-
-  for (const plugin of fisherPlugins) {
-    await runCommand(`fish -c "fisher install ${plugin}"`);
-  }
+  // CachyOS's cachyos-fish-config package (sourced from configs/fish/config.fish
+  // line 1) already ships done/sponge/nvm/gitnow in
+  // /usr/share/cachyos-fish-config/conf.d/. Installing the same plugins via
+  // fisher creates user-level duplicates in ~/.config/fish/conf.d/ that load
+  // alongside the system copies — `done` in particular crashes the prompt
+  // with `test ... -gt : Missing argument` when the two versions trip over
+  // each other's state. Install only fisher itself so users can add other
+  // plugins later without re-introducing the conflict.
+  log.info("Installing Fisher (no extra plugins — CachyOS ships the rest)...");
+  await runCommand(`fish -c "fisher install jorgebucaran/fisher"`);
 
   if (await commandExists("starship")) {
     log.info("Configuring Starship prompt...");
