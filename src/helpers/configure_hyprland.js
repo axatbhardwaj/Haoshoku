@@ -152,6 +152,56 @@ export function configureCaelestiaShell({ home = HOME } = {}) {
 }
 
 /**
+ * Caelestia's install.fish symlinks `~/.config/hypr` into its own clone tree
+ * (so `hyprland.conf` and all `conf.d/*.conf` files live in the symlinked
+ * repo). But the installer refuses to clobber an existing `~/.config/hypr`
+ * directory — and CachyOS Hyprland-edition images ship stock Hyprland
+ * configs at `/etc/skel/.config/hypr/` that land in every new user's home.
+ * Result: install.fish silently skips its symlink step, leaving the user
+ * with CachyOS's default `hyprland.conf` (which does NOT source
+ * `hypr-user.conf`) and a deployed-but-orphaned `~/.config/caelestia/
+ * hypr-user.conf` that's never read.
+ *
+ * Detect that case and rename the stock dir to `~/.config/hypr.bak.<ts>`
+ * so install.fish lays down its symlink cleanly. Safe to call repeatedly:
+ * if `~/.config/hypr` is already a symlink to Caelestia's tree, no-op.
+ *
+ * Returns the backup path on rename, or null when nothing was moved.
+ */
+export function moveStockHyprConfigAside({
+	home = HOME,
+	caelestiaCloneDir,
+	fsImpl = fs,
+	now = Date.now,
+} = {}) {
+	const hyprConfigDir = path.join(home, ".config", "hypr");
+	const caelestiaHyprDir = path.join(caelestiaCloneDir, "hypr");
+
+	if (!fsImpl.existsSync(hyprConfigDir)) return null;
+
+	const stats = fsImpl.lstatSync(hyprConfigDir);
+	if (stats.isSymbolicLink()) {
+		const linkTarget = fsImpl.readlinkSync(hyprConfigDir);
+		const resolvedTarget = path.resolve(
+			path.dirname(hyprConfigDir),
+			linkTarget,
+		);
+		if (resolvedTarget === path.resolve(caelestiaHyprDir)) {
+			// Already correctly symlinked into Caelestia — Caelestia's installer
+			// will leave it alone, which is what we want.
+			return null;
+		}
+	}
+
+	const backup = `${hyprConfigDir}.bak.${now()}`;
+	fsImpl.renameSync(hyprConfigDir, backup);
+	log.info(
+		`Moved existing ${hyprConfigDir} → ${backup} so Caelestia's installer can symlink fresh (stock CachyOS hypr/ blocks the symlink otherwise).`,
+	);
+	return backup;
+}
+
+/**
  * Install Hyprland packages + clone/install upstream Caelestia. Idempotent:
  * a second run pulls the existing clone rather than re-cloning, and skips
  * the Hyprland pacman install when `skipHyprlandPackages` is true (caller
@@ -214,6 +264,11 @@ export async function installCaelestia({
 	}
 
 	await checkoutPinnedCaelestia({ cloneDir: caelestiaCloneDir, run });
+
+	// CachyOS Hyprland edition ships /etc/skel/.config/hypr/ which lands as a
+	// real directory in every new user's home and blocks Caelestia's symlink
+	// step. Move the stock dir aside so install.fish can lay down its tree.
+	moveStockHyprConfigAside({ home, caelestiaCloneDir });
 
 	log.info(
 		"Running Caelestia install.fish (may prompt for sudo + package confirmations)...",
