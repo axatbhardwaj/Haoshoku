@@ -11,7 +11,11 @@ import {
 } from "../common/utils.js";
 import { configureCaelestiaPrefs } from "../helpers/configure_caelestia_prefs.js";
 import { configureClaude } from "../helpers/configure_claude.js";
-import { installCaelestia } from "../helpers/configure_hyprland.js";
+import {
+  installCaelestia,
+  promptDesktopEnvironment,
+  promptDeviceType,
+} from "../helpers/configure_hyprland.js";
 import { configureKdeTheme } from "../helpers/configure_kde_theme.js";
 import { configureZed } from "../helpers/configure_zed.js";
 import { installUserScripts } from "../helpers/install_user_scripts.js";
@@ -54,6 +58,8 @@ const CUSTOM_ALACRITTY_CONFIG_PATH = path.join(
   "alacritty",
   "alacritty.toml",
 );
+const WALLPAPERS_SRC = path.join(PROJECT_ROOT, "deskback");
+const WALLPAPERS_DST = path.join(HOME, "Pictures", "Wallpapers");
 
 // --- Helper Functions ---
 
@@ -391,30 +397,91 @@ async function configureKde() {
   }
 }
 
-async function configureHyprland() {
-  if (
-    await promptUser(
-      "Install Hyprland + Caelestia rice (parallel to KDE)?",
-      false,
-    )
-  ) {
-    log.info("Bootstrapping Caelestia + Hyprland...");
-    await installCaelestia();
-    // Deploy the user's saved Caelestia preferences (workspace pins, keybind
-    // rebinds, special-workspace toggle config) on top of Caelestia's upstream
-    // defaults. Mirrors how configureZed() runs after the editor is installed.
-    await configureCaelestiaPrefs();
-    // Install ~/.local/bin/ scripts (e.g. game-performance shadow wrapper).
-    // Must run after configureCaelestiaPrefs because the wrapper edits the
-    // hypr-user.conf that prefs deploys.
-    await installUserScripts();
-    log.success(
-      "Hyprland installed. Select 'Hyprland' at SDDM to use it; 'Plasma' still available as fallback.",
-    );
-    log.info(
-      "Monitor configuration is your responsibility: edit ~/.config/caelestia/hypr-user.conf.",
-    );
+/**
+ * Copy bundled wallpapers from `deskback/` into `~/Pictures/Wallpapers/`.
+ * Idempotent — existing files are kept (so user-added or already-deployed
+ * wallpapers survive re-runs). Source dir is the project's `deskback/`.
+ */
+async function deployWallpapers() {
+  if (!fs.existsSync(WALLPAPERS_SRC)) {
+    log.warning(`Wallpaper source dir not found at ${WALLPAPERS_SRC}`);
+    return;
   }
+  fs.mkdirSync(WALLPAPERS_DST, { recursive: true });
+
+  let copied = 0;
+  let skipped = 0;
+  for (const file of fs.readdirSync(WALLPAPERS_SRC)) {
+    const src = path.join(WALLPAPERS_SRC, file);
+    if (!fs.statSync(src).isFile()) continue;
+    const dst = path.join(WALLPAPERS_DST, file);
+    if (fs.existsSync(dst)) {
+      skipped++;
+      continue;
+    }
+    fs.copyFileSync(src, dst);
+    copied++;
+  }
+  log.success(
+    `Deployed wallpapers to ${WALLPAPERS_DST} (${copied} new, ${skipped} already present).`,
+  );
+}
+
+async function configureHyprland() {
+  // Detect existing DE so we can default the prompt smartly and skip the
+  // Hyprland package install when the user is already on Hyprland. Mirrors
+  // what `haoshoku --hyprland` does in haoshoku.js.
+  const xdg = (process.env.XDG_CURRENT_DESKTOP ?? "").toLowerCase();
+  const detectedHyprland = xdg.includes("hyprland");
+
+  const prompt = detectedHyprland
+    ? "Install/refresh Caelestia rice on this Hyprland session?"
+    : "Install Hyprland + Caelestia rice alongside your current session?";
+
+  if (!(await promptUser(prompt, detectedHyprland))) return;
+
+  // Match the --hyprland flag flow: ask DE (to decide skipHyprlandPackages)
+  // and device type (persisted to ~/.haoshoku.json so syncCaelestiaPrefs
+  // routes to the right hypr-user variant — pc or laptop). Without these the
+  // default flow always deployed the PC variant, which carries NVIDIA +
+  // multi-monitor pins that are wrong on a laptop.
+  const de = await promptDesktopEnvironment();
+  if (de === null) {
+    log.warning("Desktop environment prompt cancelled — skipping Hyprland.");
+    return;
+  }
+  const device = await promptDeviceType();
+  if (device === null) {
+    log.info("Device type skipped (no entry written to ~/.haoshoku.json).");
+  } else {
+    log.info(`Recorded device type as '${device}' in ~/.haoshoku.json.`);
+  }
+
+  log.info("Bootstrapping Caelestia + Hyprland...");
+  await installCaelestia({ skipHyprlandPackages: de === "hyprland" });
+  // Deploy the user's saved Caelestia preferences (workspace pins, keybind
+  // rebinds, special-workspace toggle config) on top of Caelestia's upstream
+  // defaults. Mirrors how configureZed() runs after the editor is installed.
+  await configureCaelestiaPrefs();
+  // Install ~/.local/bin/ scripts (e.g. game-performance shadow wrapper).
+  // Must run after configureCaelestiaPrefs because the wrapper edits the
+  // hypr-user.conf that prefs deploys.
+  await installUserScripts();
+  // Wallpapers ride along with the Hyprland rice — Caelestia's shell picks
+  // them up from ~/Pictures/Wallpapers/ via its wallpaper subcommand.
+  await deployWallpapers();
+
+  // Conditionalize the SDDM hint: Plasma fallback is only real when the
+  // user was on KDE before. On a Hyprland-edition CachyOS or fresh install,
+  // claiming "Plasma still available" misleads.
+  const sddmHint =
+    de === "kde"
+      ? "Log out and select 'Hyprland' at SDDM. 'Plasma' remains available as fallback."
+      : "Log out and select 'Hyprland' at SDDM.";
+  log.success(`Caelestia installed. ${sddmHint}`);
+  log.info(
+    "Monitor configuration is your responsibility: edit ~/.config/caelestia/hypr-user.conf.",
+  );
 }
 
 export async function installKdeGlass() {
