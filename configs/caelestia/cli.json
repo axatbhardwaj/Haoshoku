@@ -48,7 +48,7 @@
       "claude": {
         "enable": true,
         "match": [{"class": "kitty-claude"}],
-        "command": ["kitty", "--class=kitty-claude", "--directory=/home/xzat", "-e", "claude", "-r", "io"],
+        "command": ["kitty", "--class=kitty-claude", "--directory=/home/xzat", "-e", "/etc/xdg/quickshell/caelestia/assets/wrap_term_launch.sh", "claude", "-r", "io"],
         "move": true
       }
     }
