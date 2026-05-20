@@ -65,6 +65,97 @@ describe("configureUserApps step ordering", () => {
   });
 });
 
+describe("configureHyprland default-flow UX", () => {
+  // Regression: pre-5.2.6 the default cachyos flow's Hyprland prompt was
+  // hardcoded "(parallel to KDE)" and never asked DE / device type. Laptops
+  // got the PC variant; Hyprland-edition CachyOS users got a misleading
+  // prompt + a redundant Hyprland package install + a "Plasma fallback"
+  // success line for a Plasma session that doesn't exist.
+  const callIndex = (needle) => {
+    const matches = [
+      ...CACHYOS_SRC.matchAll(new RegExp(`await ${needle}\\(`, "g")),
+    ];
+    return { count: matches.length, index: matches[0]?.index ?? -1 };
+  };
+
+  it("no longer ships the misleading 'parallel to KDE' prompt copy", () => {
+    expect(CACHYOS_SRC).not.toMatch(/parallel to KDE/);
+  });
+
+  it("imports promptDesktopEnvironment and promptDeviceType from configure_hyprland.js", () => {
+    expect(CACHYOS_SRC).toMatch(
+      /import\s*\{[^}]*promptDesktopEnvironment[^}]*\}\s*from\s*["']\.\.\/helpers\/configure_hyprland\.js["']/s,
+    );
+    expect(CACHYOS_SRC).toMatch(
+      /import\s*\{[^}]*promptDeviceType[^}]*\}\s*from\s*["']\.\.\/helpers\/configure_hyprland\.js["']/s,
+    );
+  });
+
+  it("calls promptDesktopEnvironment exactly once, before installCaelestia", () => {
+    const de = callIndex("promptDesktopEnvironment");
+    const install = callIndex("installCaelestia");
+    expect(de.count).toBe(1);
+    expect(install.count).toBe(1);
+    expect(de.index).toBeLessThan(install.index);
+  });
+
+  it("calls promptDeviceType exactly once, before installCaelestia", () => {
+    const dev = callIndex("promptDeviceType");
+    const install = callIndex("installCaelestia");
+    expect(dev.count).toBe(1);
+    expect(dev.index).toBeLessThan(install.index);
+  });
+
+  it("forwards skipHyprlandPackages based on the DE answer to installCaelestia", () => {
+    expect(CACHYOS_SRC).toMatch(
+      /installCaelestia\(\{\s*skipHyprlandPackages:\s*de\s*===\s*["']hyprland["']/,
+    );
+  });
+});
+
+describe("wallpaper deployment", () => {
+  it("ships a deskback/ directory with wallpaper files", () => {
+    const deskback = path.join(PROJECT_ROOT, "deskback");
+    expect(fs.existsSync(deskback)).toBe(true);
+    const entries = fs.readdirSync(deskback).filter((f) => {
+      const stat = fs.statSync(path.join(deskback, f));
+      return stat.isFile();
+    });
+    expect(entries.length).toBeGreaterThan(0);
+  });
+
+  it("calls deployWallpapers exactly once, after installCaelestia", () => {
+    const deploy = [
+      ...CACHYOS_SRC.matchAll(/await deployWallpapers\(/g),
+    ];
+    const install = [
+      ...CACHYOS_SRC.matchAll(/await installCaelestia\(/g),
+    ];
+    expect(deploy.length).toBe(1);
+    expect(deploy[0].index).toBeGreaterThan(install[0].index);
+  });
+
+  it("targets ~/Pictures/Wallpapers as the deploy destination", () => {
+    expect(CACHYOS_SRC).toMatch(
+      /WALLPAPERS_DST\s*=\s*path\.join\(HOME,\s*["']Pictures["'],\s*["']Wallpapers["']\)/,
+    );
+  });
+});
+
+describe("AUR package list", () => {
+  it("includes thunar in common/paru_applist.txt", () => {
+    const list = fs.readFileSync(
+      path.join(PROJECT_ROOT, "common", "paru_applist.txt"),
+      "utf8",
+    );
+    const pkgs = list
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l && !l.startsWith("#"));
+    expect(pkgs).toContain("thunar");
+  });
+});
+
 describe("custom fish assets shipped by haoshoku", () => {
   it("ships configs/fish/config.fish", () => {
     expect(fs.existsSync(path.join(CONFIGS_DIR, "fish", "config.fish"))).toBe(
