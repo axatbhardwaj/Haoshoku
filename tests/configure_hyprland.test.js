@@ -251,6 +251,83 @@ describe("installCaelestia (slim 5.0.0 — Caelestia only, no Ocean overlay)", (
 		expect(shellConfig.services.useTwelveHourClock).toBe(false);
 	});
 
+	it("moves stock ~/.config/hypr aside before running install.fish", async () => {
+		// Pre-seed a stock CachyOS hyprland.conf at ~/.config/hypr/ so the
+		// installer's symlink step would otherwise skip silently.
+		const stockHyprDir = path.join(tmpHome, ".config", "hypr");
+		fs.mkdirSync(stockHyprDir, { recursive: true });
+		fs.writeFileSync(
+			path.join(stockHyprDir, "hyprland.conf"),
+			"# CachyOS stock hyprland.conf — no hypr-user.conf source line\n",
+		);
+
+		const { run } = makeRecorder();
+		const exists = async (cmd) => cmd === "fish" || cmd === "caelestia";
+
+		await hyprland.installCaelestia({ home: tmpHome, run, exists });
+
+		// Stock dir should now be a sibling .bak.<ts> rename, not at the original path.
+		expect(fs.existsSync(stockHyprDir)).toBe(false);
+		const backups = fs
+			.readdirSync(path.join(tmpHome, ".config"))
+			.filter((f) => f.startsWith("hypr.bak."));
+		expect(backups.length).toBe(1);
+		const stockContent = fs.readFileSync(
+			path.join(tmpHome, ".config", backups[0], "hyprland.conf"),
+			"utf8",
+		);
+		expect(stockContent).toContain("CachyOS stock");
+	});
+
+	it("does NOT move ~/.config/hypr aside when it's already a symlink into Caelestia's tree", async () => {
+		const caelestiaCloneDir = path.join(
+			tmpHome,
+			".local",
+			"share",
+			"caelestia",
+		);
+		const caelestiaHyprDir = path.join(caelestiaCloneDir, "hypr");
+		fs.mkdirSync(caelestiaHyprDir, { recursive: true });
+		fs.mkdirSync(path.join(tmpHome, ".config"), { recursive: true });
+		fs.symlinkSync(
+			caelestiaHyprDir,
+			path.join(tmpHome, ".config", "hypr"),
+		);
+
+		const { run } = makeRecorder();
+		const exists = async (cmd) => cmd === "fish" || cmd === "caelestia";
+
+		await hyprland.installCaelestia({ home: tmpHome, run, exists });
+
+		// Symlink should still be there, no .bak siblings.
+		const stats = fs.lstatSync(path.join(tmpHome, ".config", "hypr"));
+		expect(stats.isSymbolicLink()).toBe(true);
+		const backups = fs
+			.readdirSync(path.join(tmpHome, ".config"))
+			.filter((f) => f.startsWith("hypr.bak."));
+		expect(backups.length).toBe(0);
+	});
+
+	it("moves a wrong-target symlink aside (defends against leftover state)", async () => {
+		// Symlink pointing somewhere that isn't Caelestia's tree — should be
+		// moved aside the same as a regular directory.
+		const elsewhere = path.join(tmpHome, "elsewhere");
+		fs.mkdirSync(elsewhere, { recursive: true });
+		fs.mkdirSync(path.join(tmpHome, ".config"), { recursive: true });
+		fs.symlinkSync(elsewhere, path.join(tmpHome, ".config", "hypr"));
+
+		const { run } = makeRecorder();
+		const exists = async (cmd) => cmd === "fish" || cmd === "caelestia";
+
+		await hyprland.installCaelestia({ home: tmpHome, run, exists });
+
+		expect(fs.existsSync(path.join(tmpHome, ".config", "hypr"))).toBe(false);
+		const backups = fs
+			.readdirSync(path.join(tmpHome, ".config"))
+			.filter((f) => f.startsWith("hypr.bak."));
+		expect(backups.length).toBe(1);
+	});
+
 	it("preserves existing Caelestia shell.json settings while forcing 24-hour clock", async () => {
 		const shellConfigPath = path.join(
 			tmpHome,
