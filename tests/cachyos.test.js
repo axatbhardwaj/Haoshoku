@@ -46,6 +46,23 @@ describe("configureUserApps step ordering", () => {
     expect(fastfetch.count).toBe(1);
     expect(fastfetch.index).toBeGreaterThan(hyprland.index);
   });
+
+  it("calls configureCaelestiaPrefs exactly once, after installCaelestia", () => {
+    // Regression: v5.1.0 added --caelestia-prefs but forgot to wire it into the
+    // default cachyos flow, so a fresh `haoshoku` install booted Hyprland with
+    // upstream Caelestia defaults instead of the user's saved overrides.
+    const installCaelestia = callIndex("installCaelestia");
+    const prefs = callIndex("configureCaelestiaPrefs");
+    expect(prefs.count).toBe(1);
+    expect(installCaelestia.count).toBe(1);
+    expect(prefs.index).toBeGreaterThan(installCaelestia.index);
+  });
+
+  it("imports configureCaelestiaPrefs from src/helpers/configure_caelestia_prefs.js", () => {
+    expect(CACHYOS_SRC).toMatch(
+      /import\s*\{[^}]*configureCaelestiaPrefs[^}]*\}\s*from\s*["']\.\.\/helpers\/configure_caelestia_prefs\.js["']/,
+    );
+  });
 });
 
 describe("custom fish assets shipped by haoshoku", () => {

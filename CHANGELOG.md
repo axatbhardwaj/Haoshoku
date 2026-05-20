@@ -1,5 +1,10 @@
 # Changelog
 
+## 5.1.1 - 2026-05-20
+
+- Fix `runCachyOSSetup()` not deploying the user's saved Caelestia preferences. v5.1.0 added `--caelestia-prefs` as a standalone flag but forgot to call `configureCaelestiaPrefs()` from `configureHyprland()` in `src/os_scripts/cachyos.js`, so a fresh `haoshoku` install (no flags) booted Hyprland with upstream Caelestia defaults instead of the user's `configs/caelestia/{hypr-user.conf, cli.json}`. Now `configureHyprland()` calls `configureCaelestiaPrefs()` immediately after `installCaelestia()`, mirroring how `configureZed()` runs after its install step. Manually re-running `haoshoku --caelestia-prefs` is still supported as the explicit path.
+- Add 2 regression tests in `tests/cachyos.test.js`: one asserts `configureCaelestiaPrefs` is called exactly once after `installCaelestia`, the other asserts the import line resolves to `../helpers/configure_caelestia_prefs.js`. Both follow the existing static-source-analysis pattern used for the fish/fastfetch ordering tests.
+
 ## 5.1.0 - 2026-05-20
 
 - Add `--caelestia-prefs` and `--caelestia-prefs-backup` CLI flags for syncing personal Caelestia overrides (`hypr-user.conf`, `cli.json`) between `configs/caelestia/` and `~/.config/caelestia/`. Mirrors the `--zed` / `--zed-backup` pattern, so workspace pins, keybind rebinds, and special-workspace toggle config (the `caelestia toggle <ws>` entries used by Super+M music, Super+D communication, Super+O 1Password, Super+W/B brave-work/personal, Super+A claude, Super+H stash, etc.) are now versioned in-tree and redeployable on fresh installs. `hypr-user.conf` still carries machine-specific `monitor = ...` lines — edit those on different hardware per the new `configs/caelestia/CLAUDE.md`.

@@ -9,6 +9,7 @@ import {
   runCommand,
   safeCopyFile,
 } from "../common/utils.js";
+import { configureCaelestiaPrefs } from "../helpers/configure_caelestia_prefs.js";
 import { configureClaude } from "../helpers/configure_claude.js";
 import { installCaelestia } from "../helpers/configure_hyprland.js";
 import { configureKdeTheme } from "../helpers/configure_kde_theme.js";
@@ -354,6 +355,10 @@ async function configureHyprland() {
   ) {
     log.info("Bootstrapping Caelestia + Hyprland...");
     await installCaelestia();
+    // Deploy the user's saved Caelestia preferences (workspace pins, keybind
+    // rebinds, special-workspace toggle config) on top of Caelestia's upstream
+    // defaults. Mirrors how configureZed() runs after the editor is installed.
+    await configureCaelestiaPrefs();
     log.success(
       "Hyprland installed. Select 'Hyprland' at SDDM to use it; 'Plasma' still available as fallback.",
     );
