@@ -1,0 +1,71 @@
+import fs from "node:fs";
+import { homedir } from "node:os";
+import path from "node:path";
+
+import { log } from "../common/utils.js";
+
+const HOME_DEFAULT = homedir();
+const PROJECT_ROOT_DEFAULT = path.resolve(__dirname, "..", "..");
+
+/**
+ * Resolve the live and in-repo mimeapps.list paths from injected home +
+ * projectRoot (defaults to real $HOME and the haoshoku project root).
+ * Pulled out so tests can swap in temp dirs.
+ *
+ * @param {{ home?: string, projectRoot?: string }} opts
+ */
+function resolvePaths({ home = HOME_DEFAULT, projectRoot = PROJECT_ROOT_DEFAULT } = {}) {
+  return {
+    liveFile: path.join(home, ".config", "mimeapps.list"),
+    liveDir: path.join(home, ".config"),
+    repoFile: path.join(projectRoot, "configs", "mimeapps", "mimeapps.list"),
+    repoDir: path.join(projectRoot, "configs", "mimeapps"),
+  };
+}
+
+/**
+ * Deploy configs/mimeapps/mimeapps.list → ~/.config/mimeapps.list.
+ *
+ * Creates ~/.config/ if missing. If the repo source file is absent, logs a
+ * warning and skips (partial-sync is intentional — no error thrown).
+ *
+ * @param {{ home?: string, projectRoot?: string }} opts
+ */
+export async function syncMimeappsConfig(opts = {}) {
+  const { liveFile, liveDir, repoFile } = resolvePaths(opts);
+
+  if (!fs.existsSync(repoFile)) {
+    log.warning(`No mimeapps.list source found at ${repoFile} — skipping`);
+    return;
+  }
+
+  fs.mkdirSync(liveDir, { recursive: true });
+  fs.copyFileSync(repoFile, liveFile);
+  log.success("mimeapps.list synced to ~/.config/");
+}
+
+/**
+ * Snapshot ~/.config/mimeapps.list → configs/mimeapps/mimeapps.list.
+ *
+ * Creates the repo dir if missing. If the live file is absent, logs a
+ * warning and skips.
+ *
+ * @param {{ home?: string, projectRoot?: string }} opts
+ */
+export async function backupMimeappsConfig(opts = {}) {
+  const { liveFile, repoFile, repoDir } = resolvePaths(opts);
+
+  if (!fs.existsSync(liveFile)) {
+    log.warning(`No live mimeapps.list found at ${liveFile} — skipping`);
+    return;
+  }
+
+  fs.mkdirSync(repoDir, { recursive: true });
+  fs.copyFileSync(liveFile, repoFile);
+  log.success("mimeapps.list backed up to configs/mimeapps/");
+}
+
+/** Alias used by OS setup flows; mirrors configureAudio(). */
+export async function configureMimeapps(opts = {}) {
+  await syncMimeappsConfig(opts);
+}
