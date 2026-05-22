@@ -149,4 +149,18 @@ describe("readConfiguredDeviceType", () => {
 		);
 		expect(readConfiguredDeviceType(tmpHome)).toBeNull();
 	});
+
+	it("warns when ~/.haoshoku.json contains malformed JSON", () => {
+		fs.writeFileSync(path.join(tmpHome, ".haoshoku.json"), "{ not valid json");
+		const messages = [];
+		const originalLog = console.log;
+		console.log = (...args) => messages.push(args.join(" "));
+		try {
+			expect(readConfiguredDeviceType(tmpHome)).toBeNull();
+		} finally {
+			console.log = originalLog;
+		}
+
+		expect(messages.join("\n")).toMatch(/Malformed .*\.haoshoku\.json/i);
+	});
 });

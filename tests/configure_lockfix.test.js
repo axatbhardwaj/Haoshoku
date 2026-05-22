@@ -390,13 +390,36 @@ describe("seeded configs/caelestia-lockfix/ (in-tree static files)", () => {
 		).toBe(true);
 	});
 
-	it("exits non-zero after auto-reverting when Caelestia shell does not restart", () => {
+	it("keeps patch-apply failures on exit code 1", () => {
 		const applySh = fs.readFileSync(
 			path.join(CONFIGS_LOCKFIX_DIR, "apply.sh"),
 			"utf8",
 		);
 		expect(applySh).toMatch(
-			/shell did NOT come back[\s\S]*auto-reverting[\s\S]*exit 1/,
+			/A patch failed[\s\S]*Shell not restarted[\s\S]*exit 1/,
+		);
+	});
+
+	it("uses exit code 2 after auto-reverting when Caelestia shell does not restart", () => {
+		const applySh = fs.readFileSync(
+			path.join(CONFIGS_LOCKFIX_DIR, "apply.sh"),
+			"utf8",
+		);
+		expect(applySh).toMatch(
+			/shell did NOT come back[\s\S]*auto-reverting[\s\S]*exit 2/,
+		);
+	});
+
+	it("verifies the reverted Caelestia shell restart before claiming success", () => {
+		const applySh = fs.readFileSync(
+			path.join(CONFIGS_LOCKFIX_DIR, "apply.sh"),
+			"utf8",
+		);
+		expect([...applySh.matchAll(/pgrep -af 'qs -c caelestia'/g)]).toHaveLength(
+			2,
+		);
+		expect(applySh).toMatch(
+			/reverted; shell restarted with the originals[\s\S]*reverted; shell restart failed/i,
 		);
 	});
 });

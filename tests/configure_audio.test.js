@@ -298,6 +298,81 @@ describe("syncAudioConfig — device-routed WirePlumber drop-ins", () => {
 		]);
 	});
 
+	it("does not remove user-authored wireplumber files with managed-name collisions", async () => {
+		seedRepoFixtures({ pc: true, laptop: true });
+		const liveWireplumberDir = path.join(
+			tmpHome,
+			".config",
+			"wireplumber",
+			"wireplumber.conf.d",
+		);
+		fs.mkdirSync(liveWireplumberDir, { recursive: true });
+		const userFile = path.join(
+			liveWireplumberDir,
+			"51-logitech-prox-44100.conf",
+		);
+		const userContent = "# user-authored rule with a colliding filename\n";
+		fs.writeFileSync(userFile, userContent);
+
+		writeDeviceType("laptop");
+		await audio.syncAudioConfig({ home: tmpHome, projectRoot: tmpProjectRoot });
+
+		expect(fs.readFileSync(userFile, "utf8")).toBe(userContent);
+		expect(
+			fs.existsSync(path.join(liveWireplumberDir, "51-laptop-audio.conf")),
+		).toBe(true);
+	});
+
+	it("stamps deployed wireplumber drop-ins as Haoshoku-managed", async () => {
+		seedRepoFixtures({ pc: true });
+		writeDeviceType("pc");
+		await audio.syncAudioConfig({ home: tmpHome, projectRoot: tmpProjectRoot });
+
+		const destFile = path.join(
+			tmpHome,
+			".config",
+			"wireplumber",
+			"wireplumber.conf.d",
+			"51-logitech-prox-44100.conf",
+		);
+		expect(fs.readFileSync(destFile, "utf8")).toStartWith(
+			"# Managed by Haoshoku",
+		);
+	});
+
+	it("removes stale managed wireplumber files when deviceType becomes unset", async () => {
+		seedRepoFixtures({ pc: true });
+		writeDeviceType("pc");
+		await audio.syncAudioConfig({ home: tmpHome, projectRoot: tmpProjectRoot });
+
+		fs.rmSync(path.join(tmpHome, ".haoshoku.json"), { force: true });
+		await audio.syncAudioConfig({ home: tmpHome, projectRoot: tmpProjectRoot });
+
+		expect(
+			fs.existsSync(
+				path.join(
+					tmpHome,
+					".config",
+					"wireplumber",
+					"wireplumber.conf.d",
+					"51-logitech-prox-44100.conf",
+				),
+			),
+		).toBe(false);
+	});
+
+	it("skips stale prune gracefully when repo wireplumber dir is missing", async () => {
+		seedRepoFixtures({ pc: true });
+		fs.rmSync(path.join(tmpProjectRoot, "configs", "audio", "wireplumber"), {
+			recursive: true,
+			force: true,
+		});
+
+		await expect(
+			audio.syncAudioConfig({ home: tmpHome, projectRoot: tmpProjectRoot }),
+		).resolves.toBeUndefined();
+	});
+
 	it("creates ~/.config/wireplumber/wireplumber.conf.d/ if missing", async () => {
 		seedRepoFixtures({ pc: true });
 		writeDeviceType("pc");
@@ -307,12 +382,7 @@ describe("syncAudioConfig — device-routed WirePlumber drop-ins", () => {
 		await audio.syncAudioConfig({ home: tmpHome, projectRoot: tmpProjectRoot });
 		expect(
 			fs.existsSync(
-				path.join(
-					tmpHome,
-					".config",
-					"wireplumber",
-					"wireplumber.conf.d",
-				),
+				path.join(tmpHome, ".config", "wireplumber", "wireplumber.conf.d"),
 			),
 		).toBe(true);
 	});
@@ -468,6 +538,27 @@ describe("backupAudioConfig — snapshots live drop-ins into repo tree", () => {
 		);
 		expect(fs.existsSync(destFile)).toBe(true);
 		expect(fs.readFileSync(destFile, "utf8")).toMatch(/live wireplumber rule for pc/);
+	});
+
+	it("strips the live Haoshoku-managed marker when backing up wireplumber files", async () => {
+		seedRepoFixtures({ pc: true });
+		writeDeviceType("pc");
+		await audio.syncAudioConfig({ home: tmpHome, projectRoot: tmpProjectRoot });
+		await audio.backupAudioConfig({ home: tmpHome, projectRoot: tmpProjectRoot });
+
+		const backedUp = fs.readFileSync(
+			path.join(
+				tmpProjectRoot,
+				"configs",
+				"audio",
+				"wireplumber",
+				"pc",
+				"51-logitech-prox-44100.conf",
+			),
+			"utf8",
+		);
+		expect(backedUp).not.toStartWith("# Managed by Haoshoku");
+		expect(backedUp).toMatch(/pc wireplumber rule/);
 	});
 
 	it("backs up wireplumber.conf.d/ to wireplumber/laptop/ when deviceType=laptop", async () => {

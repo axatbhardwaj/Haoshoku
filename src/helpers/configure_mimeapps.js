@@ -40,7 +40,8 @@ function syncDesktopHandlers(repoApplicationsDir, liveApplicationsDir) {
 }
 
 /**
- * Deploy configs/mimeapps/mimeapps.list → ~/.config/mimeapps.list.
+ * Deploy configs/mimeapps/mimeapps.list → ~/.config/mimeapps.list and any
+ * repo-authored .desktop handlers → ~/.local/share/applications/.
  *
  * Creates ~/.config/ if missing. If the repo source file is absent, logs a
  * warning and skips (partial-sync is intentional — no error thrown).
@@ -69,6 +70,8 @@ export async function syncMimeappsConfig(opts = {}) {
 
 /**
  * Snapshot ~/.config/mimeapps.list → configs/mimeapps/mimeapps.list.
+ * Repo-authored .desktop handlers are intentionally not backed up from the
+ * live system; they are managed assets, not user-edited runtime state.
  *
  * Creates the repo dir if missing. If the live file is absent, logs a
  * warning and skips.
@@ -88,7 +91,7 @@ export async function backupMimeappsConfig(opts = {}) {
   log.success("mimeapps.list backed up to configs/mimeapps/");
 }
 
-/** Alias used by OS setup flows; mirrors configureAudio(). */
+/** Alias used by OS setup flows; deploys the portable MIME/app handler defaults. */
 export async function configureMimeapps(opts = {}) {
   await syncMimeappsConfig(opts);
 }

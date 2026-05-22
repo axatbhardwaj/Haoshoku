@@ -54,6 +54,15 @@ describe("configureUserApps step ordering", () => {
     expect(audio.index).toBeGreaterThan(hyprland.index);
   });
 
+  it("guards configureAudio so audio sync errors do not abort later app setup", () => {
+    expect(CACHYOS_SRC).toMatch(
+      /try\s*\{\s*await configureAudio\(\);\s*\}\s*catch\s*\(err\)\s*\{\s*log\.warning/s,
+    );
+    expect(callIndex("configureFishShell").index).toBeGreaterThan(
+      callIndex("configureAudio").index,
+    );
+  });
+
   it("calls configureCaelestiaPrefs exactly once, after installCaelestia", () => {
     // Regression: v5.1.0 added --caelestia-prefs but forgot to wire it into the
     // default cachyos flow, so a fresh `haoshoku` install booted Hyprland with
@@ -116,6 +125,12 @@ describe("configureHyprland default-flow UX", () => {
   it("forwards skipHyprlandPackages based on the DE answer to installCaelestia", () => {
     expect(CACHYOS_SRC).toMatch(
       /installCaelestia\(\{\s*skipHyprlandPackages:\s*de\s*===\s*["']hyprland["']/,
+    );
+  });
+
+  it("tells skipped device-type users that device-specific audio tuning will be skipped", () => {
+    expect(CACHYOS_SRC).toMatch(
+      /Device type skipped[\s\S]{0,180}(audio|WirePlumber)/i,
     );
   });
 });

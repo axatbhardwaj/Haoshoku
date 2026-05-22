@@ -31,6 +31,8 @@ export async function runCommand(command, options = { check: true }) {
 
 		const exitCode = await proc.exited;
 
+		if (options.returnExitCode) return exitCode;
+
 		if (options.check && exitCode !== 0) {
 			log.error(`Command '${command}' failed with exit code ${exitCode}`);
 			return false;
@@ -39,6 +41,7 @@ export async function runCommand(command, options = { check: true }) {
 	} catch (error) {
 		log.error(`Failed to execute command: ${command}`);
 		console.error(error);
+		if (options.returnExitCode) return 127;
 		return false;
 	}
 }
@@ -120,8 +123,10 @@ export function readConfiguredDeviceType(home) {
 		) {
 			return parsed.deviceType;
 		}
-	} catch {
-		// Malformed JSON: fall through to unset.
+	} catch (err) {
+		log.warning(
+			`Malformed ~/.haoshoku.json at ${stateFile}; treating deviceType as unset (${err?.message ?? err})`,
+		);
 	}
 	return null;
 }
@@ -130,8 +135,9 @@ export function readConfiguredDeviceType(home) {
  * Read deviceType from ~/.haoshoku.json (populated by `haoshoku --hyprland`'s
  * promptDeviceType). Returns the literal string if it's a known variant
  * (`"pc"` or `"laptop"`); otherwise returns `DEFAULT_DEVICE_TYPE` (`"pc"`).
- * This means missing file / malformed JSON / absent key / unknown value
- * (e.g. `"other"`) all collapse to the safest mainstream default.
+ * This fallback is for config families where the PC variant is the safest
+ * mainstream default. Hardware-specific flows that must not guess (for example
+ * WirePlumber audio routing) should call readConfiguredDeviceType() instead.
  */
 export function readDeviceType(home) {
 	return readConfiguredDeviceType(home) ?? DEFAULT_DEVICE_TYPE;
