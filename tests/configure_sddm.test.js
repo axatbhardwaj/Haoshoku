@@ -221,3 +221,30 @@ describe("caelestia-sddm package wiring (gated by Caelestia install path)", () =
     expect(entries).not.toContain(SDDM_PKG);
   });
 });
+
+describe("cachyos.js wiring (configureSddm)", () => {
+  const readSrc = () =>
+    fs.readFileSync(
+      path.join(PROJECT_ROOT, "src", "os_scripts", "cachyos.js"),
+      "utf8",
+    );
+
+  it("imports configureSddm from ../helpers/configure_sddm.js", () => {
+    expect(readSrc()).toMatch(
+      /import\s+\{[^}]*\bconfigureSddm\b[^}]*\}\s+from\s+["']\.\.\/helpers\/configure_sddm\.js["']/,
+    );
+  });
+
+  it("calls configureSddm AFTER configureCaelestiaPrefs", () => {
+    const text = readSrc();
+    const prefsIdx = text.indexOf("await configureCaelestiaPrefs(");
+    const sddmIdx = text.indexOf("await configureSddm(");
+    expect(prefsIdx).toBeGreaterThan(-1);
+    expect(sddmIdx).toBeGreaterThan(prefsIdx);
+  });
+
+  it("calls configureSddm exactly once", () => {
+    const count = (readSrc().match(/configureSddm\s*\(/g) ?? []).length;
+    expect(count).toBe(1);
+  });
+});

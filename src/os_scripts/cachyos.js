@@ -10,6 +10,7 @@ import {
   safeCopyFile,
 } from "../common/utils.js";
 import { configureCaelestiaPrefs } from "../helpers/configure_caelestia_prefs.js";
+import { configureSddm } from "../helpers/configure_sddm.js";
 import { configureAudio } from "../helpers/configure_audio.js";
 import { configureMimeapps } from "../helpers/configure_mimeapps.js";
 import { configureClaude } from "../helpers/configure_claude.js";
@@ -467,6 +468,7 @@ async function configureHyprland() {
   // rebinds, special-workspace toggle config) on top of Caelestia's upstream
   // defaults. Mirrors how configureZed() runs after the editor is installed.
   await configureCaelestiaPrefs();
+  await configureSddm();
   // Install ~/.local/bin/ scripts (e.g. game-performance shadow wrapper).
   // Must run after configureCaelestiaPrefs because the wrapper edits the
   // hypr-user.conf that prefs deploys.
