@@ -2,13 +2,10 @@ import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 
-import { log } from "../common/utils.js";
+import { log, readDeviceType } from "../common/utils.js";
 
 const HOME_DEFAULT = homedir();
 const PROJECT_ROOT_DEFAULT = path.resolve(__dirname, "..", "..");
-
-const KNOWN_DEVICE_TYPES = new Set(["pc", "laptop"]);
-const DEFAULT_DEVICE_TYPE = "pc";
 
 /**
  * Resolve the live ~/.config/caelestia/ dir and the configs/caelestia/ backup
@@ -21,27 +18,6 @@ function resolvePaths({ home = HOME_DEFAULT, projectRoot = PROJECT_ROOT_DEFAULT 
     caelestiaConfigDir: path.join(home, ".config", "caelestia"),
     caelestiaBackupDir: path.join(projectRoot, "configs", "caelestia"),
   };
-}
-
-/**
- * Read deviceType from ~/.haoshoku.json (populated by `haoshoku --hyprland`'s
- * promptDeviceType). Returns the literal string if it's a known variant
- * (`"pc"` or `"laptop"`); otherwise returns `DEFAULT_DEVICE_TYPE` (`"pc"`).
- * This means missing file / malformed JSON / absent key / unknown value
- * (e.g. `"other"`) all collapse to the safest mainstream default.
- */
-function readDeviceType(home) {
-  const stateFile = path.join(home, ".haoshoku.json");
-  if (!fs.existsSync(stateFile)) return DEFAULT_DEVICE_TYPE;
-  try {
-    const parsed = JSON.parse(fs.readFileSync(stateFile, "utf-8"));
-    if (typeof parsed.deviceType === "string" && KNOWN_DEVICE_TYPES.has(parsed.deviceType)) {
-      return parsed.deviceType;
-    }
-  } catch {
-    // Malformed JSON: fall through to default.
-  }
-  return DEFAULT_DEVICE_TYPE;
 }
 
 /** Source filename of the hypr-user variant for a given deviceType. */

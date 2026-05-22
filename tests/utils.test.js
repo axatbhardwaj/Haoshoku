@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import {
 	commandExists,
+	readDeviceType,
 	runCommand,
 	safeCopyFile,
 } from "../src/common/utils.js";
@@ -74,5 +75,42 @@ describe("safeCopyFile", () => {
 
 		expect(fs.readFileSync(dest, "utf-8")).toBe("v3");
 		expect(fs.readFileSync(`${dest}.bak`, "utf-8")).toBe("v2");
+	});
+});
+
+describe("readDeviceType", () => {
+	let tmpHome;
+
+	beforeEach(() => {
+		tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-utils-test-"));
+	});
+
+	afterEach(() => {
+		fs.rmSync(tmpHome, { recursive: true, force: true });
+	});
+
+	it("returns 'pc' when ~/.haoshoku.json is missing", () => {
+		expect(readDeviceType(tmpHome)).toBe("pc");
+	});
+
+	it("returns 'laptop' when deviceType is 'laptop'", () => {
+		fs.writeFileSync(
+			path.join(tmpHome, ".haoshoku.json"),
+			JSON.stringify({ deviceType: "laptop" }),
+		);
+		expect(readDeviceType(tmpHome)).toBe("laptop");
+	});
+
+	it("returns 'pc' when ~/.haoshoku.json contains malformed JSON", () => {
+		fs.writeFileSync(path.join(tmpHome, ".haoshoku.json"), "{ not valid json");
+		expect(readDeviceType(tmpHome)).toBe("pc");
+	});
+
+	it("returns 'pc' when deviceType is an unknown value", () => {
+		fs.writeFileSync(
+			path.join(tmpHome, ".haoshoku.json"),
+			JSON.stringify({ deviceType: "server" }),
+		);
+		expect(readDeviceType(tmpHome)).toBe("pc");
 	});
 });

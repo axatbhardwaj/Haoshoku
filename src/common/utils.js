@@ -104,3 +104,27 @@ export function copyDirRecursive(src, dest) {
 		}
 	}
 }
+
+const KNOWN_DEVICE_TYPES = new Set(["pc", "laptop"]);
+const DEFAULT_DEVICE_TYPE = "pc";
+
+/**
+ * Read deviceType from ~/.haoshoku.json (populated by `haoshoku --hyprland`'s
+ * promptDeviceType). Returns the literal string if it's a known variant
+ * (`"pc"` or `"laptop"`); otherwise returns `DEFAULT_DEVICE_TYPE` (`"pc"`).
+ * This means missing file / malformed JSON / absent key / unknown value
+ * (e.g. `"other"`) all collapse to the safest mainstream default.
+ */
+export function readDeviceType(home) {
+	const stateFile = path.join(home, ".haoshoku.json");
+	if (!fs.existsSync(stateFile)) return DEFAULT_DEVICE_TYPE;
+	try {
+		const parsed = JSON.parse(fs.readFileSync(stateFile, "utf-8"));
+		if (typeof parsed.deviceType === "string" && KNOWN_DEVICE_TYPES.has(parsed.deviceType)) {
+			return parsed.deviceType;
+		}
+	} catch {
+		// Malformed JSON: fall through to default.
+	}
+	return DEFAULT_DEVICE_TYPE;
+}
