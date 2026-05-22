@@ -658,4 +658,20 @@ describe("seeded configs/audio/ (in-tree static configs)", () => {
 			),
 		).toBe(true);
 	});
+
+	it("does not ship a laptop lossless WirePlumber rule", () => {
+		const laptopDir = path.join(CONFIGS_AUDIO_DIR, "wireplumber", "laptop");
+		const laptopRules = fs.existsSync(laptopDir)
+			? fs.readdirSync(laptopDir).filter((file) => file.endsWith(".conf"))
+			: [];
+		expect(laptopRules).toEqual([]);
+	});
+
+	it("documents that unset, other, and laptop do not fall back to the PC lossless rule", () => {
+		const docs = fs.readFileSync(path.join(CONFIGS_AUDIO_DIR, "CLAUDE.md"), "utf8");
+		expect(docs).not.toMatch(/falls back to the PC variant/i);
+		expect(docs).toMatch(/laptop[^.\n]*no WirePlumber rule/i);
+		expect(docs).toMatch(/unset[^.\n]*skip/i);
+		expect(docs).toMatch(/other[^.\n]*skip/i);
+	});
 });
