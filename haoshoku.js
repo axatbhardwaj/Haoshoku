@@ -30,6 +30,10 @@ import {
   syncCaelestiaPrefs,
 } from "./src/helpers/configure_caelestia_prefs.js";
 import {
+  backupAudioConfig,
+  syncAudioConfig,
+} from "./src/helpers/configure_audio.js";
+import {
   syncSkills,
   printAvailableSkills,
   CACHE_DIR,
@@ -97,6 +101,11 @@ program
   .option(
     "--caelestia-prefs-backup",
     "Backup Caelestia hypr-user.conf + cli.json from ~/.config/caelestia/ to configs/caelestia/",
+  )
+  .option("--audio", "Sync audio config from configs/audio/ to ~/.config/")
+  .option(
+    "--audio-backup",
+    "Backup audio config from ~/.config/ to configs/audio/",
   )
   .option("--kde-theme", "Deploy KDE Ocean theme files (sync only, no activate)")
   .option("--kde-theme-backup", "Backup KDE Ocean theme from system to configs/kde/")
@@ -181,6 +190,16 @@ program
 
     if (options.caelestiaPrefs) {
       await syncCaelestiaPrefs();
+      return;
+    }
+
+    if (options.audioBackup) {
+      await backupAudioConfig();
+      return;
+    }
+
+    if (options.audio) {
+      await syncAudioConfig();
       return;
     }
 
