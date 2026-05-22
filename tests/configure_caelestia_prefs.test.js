@@ -488,113 +488,30 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		expect(conf).not.toMatch(/workspace\s*=\s*name:0\s*,\s*monitor:/);
 	});
 
-	it("binds app-routed workspaces to launch all missing mapped apps", () => {
-		const expectationsByConfig = {
-			"hypr-user-pc.conf": [
-				{
-					key: "0",
-					workspaceDispatch: "hyprctl dispatch workspace name:0",
-					workspaceSelector: "[workspace name:0 silent]",
-					apps: [
-						{
-							classMatch: 'class == "cohesion"',
-							command: "flatpak run io.github.brunofin.Cohesion",
-						},
-					],
-				},
-				{
-					key: "2",
-					workspaceDispatch: "hyprctl dispatch workspace 2",
-					workspaceSelector: "[workspace 2 silent]",
-					apps: [{ classMatch: "class | test", command: "steam" }],
-				},
-				{
-					key: "4",
-					workspaceDispatch: "hyprctl dispatch workspace 4",
-					workspaceSelector: "[workspace 4 silent]",
-					apps: [{ classMatch: 'class == "vesktop"', command: "vesktop" }],
-				},
-				{
-					key: "5",
-					workspaceDispatch: "hyprctl dispatch workspace 5",
-					workspaceSelector: "[workspace 5 silent]",
-					apps: [
-						{
-							classMatch: 'class == "teams-for-linux"',
-							command: "teams-for-linux --gtk-version=3",
-						},
-						{
-							classMatch: 'class == "TelegramDesktop"',
-							command: "Telegram",
-						},
-						{
-							classMatch: 'class == "org.telegram.desktop"',
-							command: "Telegram",
-						},
-					],
-				},
-			],
-			"hypr-user-laptop.conf": [
-				{
-					key: "0",
-					workspaceDispatch: "hyprctl dispatch workspace name:0",
-					workspaceSelector: "[workspace name:0 silent]",
-					apps: [
-						{
-							classMatch: 'class == "cohesion"',
-							command: "flatpak run io.github.brunofin.Cohesion",
-						},
-					],
-				},
-				{
-					key: "4",
-					workspaceDispatch: "hyprctl dispatch workspace 4",
-					workspaceSelector: "[workspace 4 silent]",
-					apps: [{ classMatch: 'class == "vesktop"', command: "vesktop" }],
-				},
-				{
-					key: "5",
-					workspaceDispatch: "hyprctl dispatch workspace 5",
-					workspaceSelector: "[workspace 5 silent]",
-					apps: [
-						{
-							classMatch: 'class == "teams-for-linux"',
-							command: "teams-for-linux --gtk-version=3",
-						},
-						{
-							classMatch: 'class == "TelegramDesktop"',
-							command: "Telegram",
-						},
-						{
-							classMatch: 'class == "org.telegram.desktop"',
-							command: "Telegram",
-						},
-					],
-				},
-			],
-		};
-
-		for (const [file, expectations] of Object.entries(expectationsByConfig)) {
+	it("app-routed workspace binds use the launch-if-missing pattern", () => {
+		// Which apps/workspaces are routed is personal and drifts via
+		// --caelestia-prefs-backup. Assert the *shape* of every launch-if-missing
+		// $kbGoToWs bind, not the specific apps it launches.
+		for (const file of ["hypr-user-pc.conf", "hypr-user-laptop.conf"]) {
 			const conf = fs.readFileSync(
 				path.join(CONFIGS_CAELESTIA_DIR, file),
 				"utf8",
 			);
 
-			for (const expectation of expectations) {
-				const bindLine = conf
-					.split("\n")
-					.find((line) =>
-						line.startsWith(`bind = $kbGoToWs, ${expectation.key}, exec,`),
-					);
+			const launchBinds = conf
+				.split("\n")
+				.filter(
+					(line) =>
+						/^bind = \$kbGoToWs, \S+, exec,/.test(line) &&
+						line.includes("hyprctl clients -j"),
+				);
 
-				expect(bindLine).toContain(expectation.workspaceDispatch);
-				expect(bindLine).toContain("hyprctl clients -j");
+			expect(launchBinds.length).toBeGreaterThan(0);
+			for (const bindLine of launchBinds) {
+				expect(bindLine).toContain("hyprctl dispatch workspace");
 				expect(bindLine).toContain("jq -e");
-				expect(bindLine).toContain(expectation.workspaceSelector);
-				for (const app of expectation.apps) {
-					expect(bindLine).toContain(app.classMatch);
-					expect(bindLine).toContain(app.command);
-				}
+				expect(bindLine).toMatch(/\[workspace [^\]]*silent\]/);
+				expect(bindLine).toMatch(/app2unit|hyprctl dispatch exec/);
 			}
 		}
 	});
