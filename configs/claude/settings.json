@@ -1,4 +1,7 @@
 {
+  "env": {
+    "CLAUDE_CODE_EFFORT_LEVEL": "max"
+  },
   "attribution": {
     "commit": "",
     "pr": ""
@@ -135,7 +138,8 @@
     "telegram@claude-plugins-official": false,
     "superpowers@claude-plugins-official": true,
     "cloudflare@cloudflare": true,
-    "ralph-loop@claude-plugins-official": true
+    "ralph-loop@claude-plugins-official": true,
+    "dvandva@dvandva": true
   },
   "extraKnownMarketplaces": {
     "azure-skills": {
@@ -149,10 +153,13 @@
         "source": "github",
         "repo": "cloudflare/skills"
       }
+    },
+    "dvandva": {
+      "source": {
+        "source": "directory",
+        "path": "/home/xzat/personal/Dvandva"
+      }
     }
-  },
-  "env": {
-    "CLAUDE_CODE_EFFORT_LEVEL": "max"
   },
   "skipDangerousModePermissionPrompt": true,
   "editorMode": "normal",

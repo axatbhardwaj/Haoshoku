@@ -7,7 +7,7 @@
       "name": "Caelestia",
       "appearance": "dark",
       "style": {
-        "background": "#1E1E24",
+        "background": "#050505",
         "border": "#1E1E2540",
         "border.variant": "#1E1E2560",
         "border.focused": "#24BD5C",
@@ -15,8 +15,8 @@
         "border.transparent": "#00000000",
         "border.disabled": "#1E1E2530",
 
-        "elevated_surface.background": "#1b1d22",
-        "surface.background": "#1E1E24",
+        "elevated_surface.background": "#050505",
+        "surface.background": "#050505",
 
         "element.background": "#1E1E2540",
         "element.hover": "#1E1E2560",
@@ -34,8 +34,8 @@
 
         "text": "#F5F5F6",
         "text.muted": "#c9c9c9",
-        "text.placeholder": "#979797",
-        "text.disabled": "#97979780",
+        "text.placeholder": "#838383",
+        "text.disabled": "#83838380",
         "text.accent": "#24BD5C",
 
         "icon": "#F5F5F6",
@@ -44,17 +44,17 @@
         "icon.placeholder": "#c9c9c9",
         "icon.accent": "#24BD5C",
 
-        "status_bar.background": "#1E1E24",
-        "title_bar.background": "#1E1E24",
-        "title_bar.inactive_background": "#1E1E24",
-        "toolbar.background": "#1E1E24",
-        "tab_bar.background": "#1E1E24",
-        "tab.inactive_background": "#1E1E24",
-        "tab.active_background": "#1b1d22",
+        "status_bar.background": "#050505",
+        "title_bar.background": "#050505",
+        "title_bar.inactive_background": "#050505",
+        "toolbar.background": "#050505",
+        "tab_bar.background": "#050505",
+        "tab.inactive_background": "#050505",
+        "tab.active_background": "#050505",
 
         "search.match_background": "#d0f9f440",
 
-        "panel.background": "#1E1E24",
+        "panel.background": "#050505",
         "panel.focused_border": "#24BD5C",
 
         "pane.focused_border": "#24BD5C",
@@ -66,10 +66,10 @@
         "scrollbar.track.border": "#00000000",
 
         "editor.foreground": "#F5F5F6",
-        "editor.background": "#1E1E24",
-        "editor.gutter.background": "#1E1E24",
-        "editor.subheader.background": "#23262C",
-        "editor.active_line.background": "#1b1d2260",
+        "editor.background": "#050505",
+        "editor.gutter.background": "#050505",
+        "editor.subheader.background": "#0a0a0b",
+        "editor.active_line.background": "#05050560",
         "editor.highlighted_line.background": "#24BD5C15",
         "editor.line_number": "#c9c9c9",
         "editor.active_line_number": "#F5F5F6",
@@ -79,13 +79,13 @@
         "editor.document_highlight.read_background": "#24BD5C20",
         "editor.document_highlight.write_background": "#24BD5C30",
 
-        "terminal.background": "#1E1E24",
+        "terminal.background": "#050505",
         "terminal.foreground": "#F5F5F6",
         "terminal.bright_foreground": "#F5F5F6",
         "terminal.dim_foreground": "#c9c9c9",
-        "terminal.ansi.black": "#1E1E24",
+        "terminal.ansi.black": "#050505",
         "terminal.ansi.bright_black": "#c9c9c9",
-        "terminal.ansi.dim_black": "#1E1E2480",
+        "terminal.ansi.dim_black": "#05050580",
         "terminal.ansi.red": "#8affab",
         "terminal.ansi.bright_red": "#abf0c5",
         "terminal.ansi.dim_red": "#8affab80",
@@ -126,17 +126,17 @@
         "error.background": "#c66e7315",
         "error.border": "#c66e73",
 
-        "hidden": "#979797",
-        "hidden.background": "#97979715",
-        "hidden.border": "#979797",
+        "hidden": "#838383",
+        "hidden.background": "#83838315",
+        "hidden.border": "#838383",
 
         "hint": "#B5CCBA",
         "hint.background": "#B5CCBA15",
         "hint.border": "#B5CCBA",
 
-        "ignored": "#979797",
-        "ignored.background": "#97979715",
-        "ignored.border": "#979797",
+        "ignored": "#838383",
+        "ignored.background": "#83838315",
+        "ignored.border": "#838383",
 
         "info": "#65eea0",
         "info.background": "#65eea015",
@@ -158,9 +158,9 @@
         "success.background": "#B5CCBA15",
         "success.border": "#B5CCBA",
 
-        "unreachable": "#979797",
-        "unreachable.background": "#97979715",
-        "unreachable.border": "#979797",
+        "unreachable": "#838383",
+        "unreachable.background": "#83838315",
+        "unreachable.border": "#838383",
 
         "warning": "#d0f9f4",
         "warning.background": "#d0f9f415",

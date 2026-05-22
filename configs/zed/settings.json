@@ -31,6 +31,12 @@
   },
   "autosave": "on_focus_change",
   "agent_servers": {
+    "claude-acp": {
+      "type": "registry"
+    },
+    "codex-acp": {
+      "type": "registry"
+    },
     "opencode": {
       "default_model": "google/antigravity-claude-opus-4-5-thinking",
       "default_mode": "OpenAgent",
