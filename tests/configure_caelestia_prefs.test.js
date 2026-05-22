@@ -427,7 +427,7 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		expect(toggles["brave-work"]["brave-work"]).toMatchObject({
 			enable: true,
 			match: [{ class: "brave-browser", title: "Defi" }],
-			command: ["brave", "--profile-directory=Profile 3"],
+			command: ["brave", "--profile-directory=Profile 1"],
 			move: true,
 		});
 	});
@@ -586,6 +586,22 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 			);
 			expect(conf).toContain(
 				"windowrule = workspace special:brave-work, match:class brave-browser, match:title Defi",
+			);
+		}
+	});
+
+	it("keeps named Brave special windows translucent even when fullscreen", () => {
+		for (const file of ["hypr-user-pc.conf", "hypr-user-laptop.conf"]) {
+			const conf = fs.readFileSync(
+				path.join(CONFIGS_CAELESTIA_DIR, file),
+				"utf8",
+			);
+
+			expect(conf).toContain(
+				"windowrule = opacity $windowOpacity override $windowOpacity override $windowOpacity override, match:class brave-browser, match:title Flux",
+			);
+			expect(conf).toContain(
+				"windowrule = opacity $windowOpacity override $windowOpacity override $windowOpacity override, match:class brave-browser, match:title Defi",
 			);
 		}
 	});

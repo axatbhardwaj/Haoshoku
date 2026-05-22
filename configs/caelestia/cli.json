@@ -55,7 +55,7 @@
       "brave-work": {
         "enable": true,
         "match": [{"class": "brave-browser", "title": "Defi"}],
-        "command": ["brave", "--profile-directory=Profile 3"],
+        "command": ["brave", "--profile-directory=Profile 1"],
         "move": true
       }
     },
