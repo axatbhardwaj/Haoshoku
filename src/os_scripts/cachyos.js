@@ -11,6 +11,7 @@ import {
 } from "../common/utils.js";
 import { configureCaelestiaPrefs } from "../helpers/configure_caelestia_prefs.js";
 import { configureAudio } from "../helpers/configure_audio.js";
+import { configureMimeapps } from "../helpers/configure_mimeapps.js";
 import { configureClaude } from "../helpers/configure_claude.js";
 import {
   installCaelestia,
@@ -559,6 +560,7 @@ async function configureUserApps() {
   await configureTerminals();
   await configureZed();
   await configureAudio();
+  await configureMimeapps();
   await configureKde();
   await configureHyprland();
 

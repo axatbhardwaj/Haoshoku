@@ -34,6 +34,10 @@ import {
   syncAudioConfig,
 } from "./src/helpers/configure_audio.js";
 import {
+  backupMimeappsConfig,
+  syncMimeappsConfig,
+} from "./src/helpers/configure_mimeapps.js";
+import {
   syncSkills,
   printAvailableSkills,
   CACHE_DIR,
@@ -106,6 +110,14 @@ program
   .option(
     "--audio-backup",
     "Backup audio config from ~/.config/ to configs/audio/",
+  )
+  .option(
+    "--mimeapps",
+    "Sync mimeapps.list from configs/mimeapps/ to ~/.config/",
+  )
+  .option(
+    "--mimeapps-backup",
+    "Backup mimeapps.list from ~/.config/ to configs/mimeapps/",
   )
   .option("--kde-theme", "Deploy KDE Ocean theme files (sync only, no activate)")
   .option("--kde-theme-backup", "Backup KDE Ocean theme from system to configs/kde/")
@@ -200,6 +212,16 @@ program
 
     if (options.audio) {
       await syncAudioConfig();
+      return;
+    }
+
+    if (options.mimeappsBackup) {
+      await backupMimeappsConfig();
+      return;
+    }
+
+    if (options.mimeapps) {
+      await syncMimeappsConfig();
       return;
     }
 

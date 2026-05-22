@@ -12,6 +12,7 @@ Standalone setup scripts for specific tools.
 | `configure_zed.js`    | Zed config backup/sync (sanitized)     | Adding Zed config features, debugging sync    |
 | `configure_caelestia_prefs.js` | Caelestia user prefs sync/backup (`hypr-user.conf`, `cli.json`) | Adding Caelestia override features, debugging sync |
 | `configure_audio.js` | PipeWire/WirePlumber config sync/backup (portable pipewire drop-ins + device-routed wireplumber variant) | Adding audio config features, debugging sync |
+| `configure_mimeapps.js` | XDG mimeapps.list sync/backup — single portable file, no device routing | Adding mimeapps config features, debugging sync |
 | `install_user_scripts.js` | Copy `configs/scripts/*` → `~/.local/bin/` + chmod 755 | Adding user-level shell wrappers (PATH shadows, helper commands) |
 | `skill_manager.js`    | Runtime git clone for Claude skills    | Adding skill sources, debugging skill sync    |
 | `README.md`           | Architecture and design decisions      | Understanding symlink vs copy pattern         |
