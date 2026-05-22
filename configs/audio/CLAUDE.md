@@ -22,7 +22,7 @@ The **WirePlumber** drop-in is **device-specific**: it hardcodes the Logitech G 
 
 This mirrors the pattern already used in `configs/caelestia/` where `hypr-user-pc.conf` vs `hypr-user-laptop.conf` are routed by the `deviceType` field in `~/.haoshoku.json`.
 
-A forthcoming `src/helpers/configure_audio.js` helper will read `deviceType`, sync the portable PipeWire drop-ins, and deploy the matching WirePlumber variant.
+The `src/helpers/configure_audio.js` helper reads `deviceType`, syncs the portable PipeWire drop-ins, and deploys the matching WirePlumber variant. Run `haoshoku --audio` to deploy `configs/audio/` into `~/.config/`, and `haoshoku --audio-backup` to snapshot the live configs back.
 
 ## Notes
 
