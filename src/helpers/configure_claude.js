@@ -16,8 +16,11 @@ const CLAUDE_INSTALL_URL = "https://claude.ai/install.sh";
 
 // Exported so tests can assert the manifest is complete (e.g. regression
 // guard that statusline-command.sh is never silently dropped).
+//
+// ~/.claude.json is deliberately NOT tracked: it is Claude Code runtime
+// state (caches, usage stats, per-project session metadata, oauthAccount),
+// not reproducible config — backing it up would leak account metadata.
 export const PERSONAL_FILES = [
-  { src: "claude.json" },
   { src: "settings.json" },
   { src: "CLAUDE.md" },
   { src: "statusline-command.sh" },
@@ -26,14 +29,8 @@ export const PERSONAL_FILES = [
 // Directories fully owned by haoshoku (replaced on sync)
 export const MANAGED_DIRS = ["conventions", "output-styles"];
 
-/**
- * Resolve where a PERSONAL_FILES entry lives on a given $HOME.
- * `claude.json` sits next to ~/.claude/, the rest live inside it.
- */
+/** Resolve where a PERSONAL_FILES entry lives on a given $HOME (inside ~/.claude/). */
 function claudeFilePath(src, home = HOME) {
-  if (src === "claude.json") {
-    return path.join(home, ".claude.json");
-  }
   return path.join(home, ".claude", src);
 }
 

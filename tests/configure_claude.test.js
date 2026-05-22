@@ -14,10 +14,9 @@ describe("PERSONAL_FILES manifest", () => {
 		expect(srcs).toContain("statusline-command.sh");
 	});
 
-	it("includes the four expected personal files in stable order", () => {
+	it("includes the three expected personal files in stable order", () => {
 		const srcs = PERSONAL_FILES.map((f) => f.src);
 		expect(srcs).toEqual([
-			"claude.json",
 			"settings.json",
 			"CLAUDE.md",
 			"statusline-command.sh",
@@ -51,8 +50,7 @@ describe("syncClaudeConfig() warns on missing sources", () => {
 	});
 
 	it("emits a warning when statusline-command.sh is missing from the source bundle", async () => {
-		// Bundle only three of the four PERSONAL_FILES (statusline absent).
-		fs.writeFileSync(path.join(configsDir, "claude.json"), "{}");
+		// Bundle two of the three PERSONAL_FILES (statusline absent).
 		fs.writeFileSync(path.join(configsDir, "settings.json"), "{}");
 		fs.writeFileSync(path.join(configsDir, "CLAUDE.md"), "# test\n");
 
@@ -64,7 +62,6 @@ describe("syncClaudeConfig() warns on missing sources", () => {
 
 	it("copies statusline-command.sh to ~/.claude/ when present in bundle", async () => {
 		const STATUSLINE_BODY = "#!/usr/bin/env bash\necho 'haoshoku statusline'\n";
-		fs.writeFileSync(path.join(configsDir, "claude.json"), "{}");
 		fs.writeFileSync(path.join(configsDir, "settings.json"), "{}");
 		fs.writeFileSync(path.join(configsDir, "CLAUDE.md"), "# test\n");
 		fs.writeFileSync(
