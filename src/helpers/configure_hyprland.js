@@ -351,6 +351,22 @@ export async function installCaelestia({
 				"Run `~/.local/share/caelestia-lockfix/apply.sh` manually after setup.",
 		);
 	}
+
+	// Install the Caelestia SDDM theme so the login screen matches the desktop.
+	// Runs unconditionally on every Caelestia install path — skipHyprlandPackages
+	// only gates the compositor packages above, not the SDDM theme.
+	//
+	// Non-critical: a missing or transiently-unavailable AUR package must not
+	// abort the rest of installCaelestia(). Mirrors the lockfix try/catch above.
+	log.info("Installing caelestia-sddm theme (minimalistV2)…");
+	try {
+		await run("paru -S --needed --noconfirm caelestia-sddm-minimalistv2-git");
+	} catch (err) {
+		log.warning(
+			`caelestia-sddm install failed (${err?.message ?? err}) — SDDM login theme not applied. ` +
+				"Install `caelestia-sddm-minimalistv2-git` manually, then re-run `haoshoku --sddm-posthook`.",
+		);
+	}
 }
 
 /**

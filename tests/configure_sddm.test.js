@@ -192,3 +192,32 @@ describe("configureSddm", () => {
     }
   });
 });
+
+const SDDM_PKG = "caelestia-sddm-minimalistv2-git";
+
+describe("caelestia-sddm package wiring (gated by Caelestia install path)", () => {
+  it("installCaelestia installs caelestia-sddm-minimalistv2-git via paru", () => {
+    const src = fs.readFileSync(
+      path.join(PROJECT_ROOT, "src", "helpers", "configure_hyprland.js"),
+      "utf8",
+    );
+    // The package name must appear in the file
+    expect(src).toContain(SDDM_PKG);
+    // And it must be invoked through paru somewhere in the file
+    expect(src).toMatch(
+      new RegExp(`paru[^\\n]*\\b${SDDM_PKG.replace(/-/g, "\\-")}\\b`),
+    );
+  });
+
+  it("caelestia-sddm-minimalistv2-git is NOT in common/paru_applist.txt (must stay gated)", () => {
+    const list = fs.readFileSync(
+      path.join(PROJECT_ROOT, "common", "paru_applist.txt"),
+      "utf8",
+    );
+    const entries = list
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l && !l.startsWith("#"));
+    expect(entries).not.toContain(SDDM_PKG);
+  });
+});
