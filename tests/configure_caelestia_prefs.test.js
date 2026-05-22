@@ -432,6 +432,33 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		});
 	});
 
+	it("launches sysmon btop with a UTF-8 locale override", () => {
+		const cliJson = JSON.parse(
+			fs.readFileSync(path.join(CONFIGS_CAELESTIA_DIR, "cli.json"), "utf8"),
+		);
+		const btop = cliJson.toggles.sysmon.btop;
+
+		expect(btop).toMatchObject({
+			enable: true,
+			match: [
+				{
+					class: "btop",
+					title: "btop",
+					workspace: { name: "special:sysmon" },
+				},
+			],
+		});
+		expect(btop.command.slice(0, 5)).toEqual([
+			"foot",
+			"-a",
+			"btop",
+			"-T",
+			"btop",
+		]);
+		expect(btop.command).toContain("LC_ALL=C.UTF-8");
+		expect(btop.command.slice(-3)).toEqual(["fish", "-C", "exec btop"]);
+	});
+
 	it("ships hypr-user-pc.conf with the PC's monitor-pinned workspaces", () => {
 		const conf = fs.readFileSync(
 			path.join(CONFIGS_CAELESTIA_DIR, "hypr-user-pc.conf"),

@@ -36,6 +36,13 @@
         "move": true
       }
     },
+    "sysmon": {
+      "btop": {
+        "enable": true,
+        "match": [{"class": "btop", "title": "btop", "workspace": {"name": "special:sysmon"}}],
+        "command": ["foot", "-a", "btop", "-T", "btop", "env", "LC_ALL=C.UTF-8", "fish", "-C", "exec btop"]
+      }
+    },
     "brave-personal": {
       "brave-personal": {
         "enable": true,
