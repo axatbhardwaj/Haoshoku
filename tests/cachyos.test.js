@@ -188,6 +188,18 @@ describe("AUR package list", () => {
       .filter((l) => l && !l.startsWith("#"));
     expect(pkgs).toContain("swayimg");
   });
+
+  it("includes cohesion-git for the Notion desktop client", () => {
+    const list = fs.readFileSync(
+      path.join(PROJECT_ROOT, "common", "paru_applist.txt"),
+      "utf8",
+    );
+    const pkgs = list
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l && !l.startsWith("#"));
+    expect(pkgs).toContain("cohesion-git");
+  });
 });
 
 describe("custom fish assets shipped by haoshoku", () => {

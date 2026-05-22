@@ -1,6 +1,7 @@
 fish
 visual-studio-code-bin
 brave-bin
+cohesion-git
 floorp-bin
 zip
 kitty

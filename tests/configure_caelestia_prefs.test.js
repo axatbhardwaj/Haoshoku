@@ -371,8 +371,7 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 			expect.arrayContaining([
 				"communication",
 				"1password",
-				"brave-personal",
-				"brave-work",
+				"vivaldi",
 				"claude",
 				"music",
 			]),
@@ -391,16 +390,13 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 			command: ["signal-desktop"],
 			move: true,
 		});
-		expect(toggles.communication["whatsapp-web"]).toMatchObject({
+		expect(toggles.communication.zapzap).toMatchObject({
 			enable: true,
-			match: [{ class: "brave-hnpfjngllnobngcgfapefoaidbinmjnm-Default" }],
-			command: [
-				"/opt/brave-bin/brave",
-				"--profile-directory=Default",
-				"--app-id=hnpfjngllnobngcgfapefoaidbinmjnm",
-			],
+			match: [{ class: "zapzap" }],
+			command: ["flatpak", "run", "com.rtosta.zapzap"],
 			move: true,
 		});
+		expect(toggles.communication).not.toHaveProperty("whatsapp-web");
 		expect(toggles["1password"]["1password"]).toMatchObject({
 			enable: true,
 			match: [{ class: "1password" }],
@@ -418,18 +414,14 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 			command: ["spotify"],
 			move: true,
 		});
-		expect(toggles["brave-personal"]["brave-personal"]).toMatchObject({
+		expect(toggles.vivaldi.vivaldi).toMatchObject({
 			enable: true,
-			match: [{ class: "brave-browser", title: "Flux" }],
-			command: ["brave", "--profile-directory=Default"],
+			match: [{ class: "vivaldi-stable" }],
+			command: ["vivaldi"],
 			move: true,
 		});
-		expect(toggles["brave-work"]["brave-work"]).toMatchObject({
-			enable: true,
-			match: [{ class: "brave-browser", title: "Defi" }],
-			command: ["brave", "--profile-directory=Profile 3"],
-			move: true,
-		});
+		expect(toggles).not.toHaveProperty("brave-personal");
+		expect(toggles).not.toHaveProperty("brave-work");
 	});
 
 	it("launches sysmon btop with a UTF-8 locale override", () => {
@@ -464,7 +456,7 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 			path.join(CONFIGS_CAELESTIA_DIR, "hypr-user-pc.conf"),
 			"utf8",
 		);
-		expect(conf).toMatch(/workspace\s*=\s*name:0\s*,\s*monitor:DP-2/);
+		expect(conf).toMatch(/workspace\s*=\s*10\s*,\s*monitor:DP-2/);
 		expect(conf).toMatch(/workspace\s*=\s*5\s*,\s*monitor:HDMI-A-1/);
 		expect(conf).toMatch(/workspace\s*=\s*4\s*,\s*monitor:HDMI-A-1/);
 		expect(conf).toMatch(/workspace\s*=\s*1\s*,\s*monitor:DP-1/);
@@ -484,26 +476,59 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		expect(conf).not.toMatch(/nvidia-settings/);
 		expect(conf).not.toMatch(/\bvrr\b/);
 		// Workspaces should be persistent but NOT monitor-pinned
-		expect(conf).toMatch(/workspace\s*=\s*name:0/);
+		expect(conf).toMatch(/workspace\s*=\s*10/);
 		expect(conf).not.toMatch(/workspace\s*=\s*\d+\s*,\s*monitor:/);
-		expect(conf).not.toMatch(/workspace\s*=\s*name:0\s*,\s*monitor:/);
+		expect(conf).not.toMatch(/workspace\s*=\s*10\s*,\s*monitor:/);
 	});
 
-	it("uses the Notion Brave PWA on laptop instead of the retired Cohesion app", () => {
-		const conf = fs.readFileSync(
+	it("routes Notion through Cohesion on workspace 10", () => {
+		const pc = fs.readFileSync(
+			path.join(CONFIGS_CAELESTIA_DIR, "hypr-user-pc.conf"),
+			"utf8",
+		);
+		const laptop = fs.readFileSync(
 			path.join(CONFIGS_CAELESTIA_DIR, "hypr-user-laptop.conf"),
 			"utf8",
 		);
 
-		expect(conf).not.toMatch(/cohesion/i);
-		expect(conf).not.toContain("io.github.brunofin.Cohesion");
-		expect(conf).toContain(
-			"windowrule = workspace name:0 silent, match:class brave-adaalabfemebkikihnkbonlockjjpbml-Default",
+		expect(pc).toContain(
+			"workspace = 10, monitor:DP-2, default:true, persistent:true",
 		);
-		expect(conf).toContain(
-			"--app-id=adaalabfemebkikihnkbonlockjjpbml",
-		);
-		expect(conf).toContain("bind = $kbGoToWs, 0, exec, sh -lc");
+		expect(laptop).toContain("workspace = 10, default:true, persistent:true");
+
+		for (const conf of [pc, laptop]) {
+			expect(conf).toContain(
+				"windowrule = workspace 10 silent, match:class cohesion",
+			);
+			expect(conf).toContain("bind = $kbGoToWs, 0, exec, sh -lc");
+			expect(conf).toContain("hyprctl dispatch workspace 10");
+			expect(conf).toContain('any(.[]; .class == "cohesion")');
+			expect(conf).toContain(
+				'hyprctl dispatch exec "[workspace 10 silent] app2unit -- cohesion"',
+			);
+			expect(conf).toContain(
+				"bind = $kbMoveWinToWs, 0, exec, hyprctl dispatch movetoworkspace 10",
+			);
+			expect(conf).not.toContain("workspace = name:0");
+			expect(conf).not.toContain("brave-adaalabfemebkikihnkbonlockjjpbml-Default");
+			expect(conf).not.toContain("--app-id=adaalabfemebkikihnkbonlockjjpbml");
+		}
+	});
+
+	it("keeps the retired Cohesion Flatpak out of app routing", () => {
+		for (const file of ["hypr-user-pc.conf", "hypr-user-laptop.conf"]) {
+			const conf = fs.readFileSync(
+				path.join(CONFIGS_CAELESTIA_DIR, file),
+				"utf8",
+			);
+
+			expect(conf).not.toContain(
+				"windowrule = workspace 10 silent, match:class io.github.brunofin.Cohesion",
+			);
+			expect(conf).not.toContain(
+				"app2unit -- flatpak run io.github.brunofin.Cohesion",
+			);
+		}
 	});
 
 	it("keeps laptop app workspaces and keybindings aligned with the PC variant", () => {
@@ -513,8 +538,8 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		);
 		const sharedMarkers = [
 			"bind = $kbEditor, exec, app2unit -- $editor",
-			"bind = $kbBrowser, exec, caelestia toggle brave-work",
-			"workspace = name:0, default:true, persistent:true",
+			"bind = $kbBrowser, exec, caelestia toggle vivaldi",
+			"workspace = 10, default:true, persistent:true",
 			"workspace = 1, default:true, persistent:true",
 			"workspace = 2, persistent:true",
 			"workspace = 3, persistent:true",
@@ -572,8 +597,10 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 				"windowrule = workspace special:communication, match:class signal",
 			);
 			expect(conf).toContain(
-				"windowrule = workspace special:communication, match:class brave-hnpfjngllnobngcgfapefoaidbinmjnm-Default",
+				"windowrule = workspace special:communication, match:class zapzap",
 			);
+			expect(conf).not.toContain("brave-hnpfjngllnobngcgfapefoaidbinmjnm-Default");
+			expect(conf).not.toContain("--app-id=hnpfjngllnobngcgfapefoaidbinmjnm");
 			expect(conf).toContain(
 				"windowrule = workspace special:1password, match:class 1password",
 			);
@@ -582,10 +609,26 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 			);
 			expect(conf).toContain("bind = $kbMusic, exec, caelestia toggle music");
 			expect(conf).toContain(
-				"windowrule = workspace special:brave-personal, match:class brave-browser, match:title Flux",
+				"windowrule = workspace special:vivaldi, match:class vivaldi-stable",
 			);
 			expect(conf).toContain(
-				"windowrule = workspace special:brave-work, match:class brave-browser, match:title Defi",
+				"bind = $kbBrowser, exec, caelestia toggle vivaldi",
+			);
+			expect(conf).not.toContain("bind = Super, B, exec, caelestia toggle brave-personal");
+			expect(conf).not.toContain("windowrule = workspace special:brave-personal");
+			expect(conf).not.toContain("windowrule = workspace special:brave-work");
+		}
+	});
+
+	it("keeps the Vivaldi special window translucent even when fullscreen", () => {
+		for (const file of ["hypr-user-pc.conf", "hypr-user-laptop.conf"]) {
+			const conf = fs.readFileSync(
+				path.join(CONFIGS_CAELESTIA_DIR, file),
+				"utf8",
+			);
+
+			expect(conf).toContain(
+				"windowrule = opacity $windowOpacity override $windowOpacity override $windowOpacity override, match:class vivaldi-stable",
 			);
 		}
 	});
