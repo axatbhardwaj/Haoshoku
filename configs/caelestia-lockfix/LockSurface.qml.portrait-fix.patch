@@ -1,0 +1,41 @@
+--- /etc/xdg/quickshell/caelestia/modules/lock/LockSurface.qml.orig	2026-05-21 02:36:25.000000000 +0530
++++ /tmp/LockSurface.qml	2026-05-22 09:25:00.140096261 +0530
+@@ -15,6 +15,11 @@
+ 
+     readonly property alias unlocking: unlockAnim.running
+ 
++    // Portrait fit: clamp the height-derived panel basis so the lock panel never
++    // exceeds the screen WIDTH. Landscape: min() keeps screen.height (unchanged);
++    // portrait: shrinks to 95% of screen width. Shared by LockSurface + Center.qml.
++    readonly property real fitBase: Math.min(root.screen?.height ?? 0, (root.screen?.width ?? 0) / (contentItem.Tokens.sizes.lock.heightMult * contentItem.Tokens.sizes.lock.ratio) * 0.95)
++
+     contentItem.Config.screen: screen.name
+     contentItem.Tokens.screen: screen.name
+ 
+@@ -143,13 +148,13 @@
+                 Anim {
+                     target: lockContent
+                     property: "implicitWidth"
+-                    to: (root.screen?.height ?? 0) * lockContent.Tokens.sizes.lock.heightMult * lockContent.Tokens.sizes.lock.ratio
++                    to: root.fitBase * lockContent.Tokens.sizes.lock.heightMult * lockContent.Tokens.sizes.lock.ratio
+                     type: Anim.DefaultSpatial
+                 }
+                 Anim {
+                     target: lockContent
+                     property: "implicitHeight"
+-                    to: (root.screen?.height ?? 0) * lockContent.Tokens.sizes.lock.heightMult
++                    to: root.fitBase * lockContent.Tokens.sizes.lock.heightMult
+                     type: Anim.DefaultSpatial
+                 }
+             }
+@@ -216,8 +221,8 @@
+             id: content
+ 
+             anchors.centerIn: parent
+-            width: (root.screen?.height ?? 0) * Tokens.sizes.lock.heightMult * Tokens.sizes.lock.ratio - Tokens.padding.large * 2
+-            height: (root.screen?.height ?? 0) * Tokens.sizes.lock.heightMult - Tokens.padding.large * 2
++            width: root.fitBase * Tokens.sizes.lock.heightMult * Tokens.sizes.lock.ratio - Tokens.padding.large * 2
++            height: root.fitBase * Tokens.sizes.lock.heightMult - Tokens.padding.large * 2
+ 
+             lock: root
+             opacity: 0

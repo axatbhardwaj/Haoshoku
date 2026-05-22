@@ -1,0 +1,11 @@
+--- /etc/xdg/quickshell/caelestia/modules/lock/Center.qml	2026-05-21 02:36:25.000000000 +0530
++++ /tmp/Center.qml	2026-05-22 09:25:01.242148451 +0530
+@@ -13,7 +13,7 @@
+     id: root
+ 
+     required property var lock
+-    readonly property real centerScale: Math.min(1, (lock.screen?.height ?? 1440) / 1440)
++    readonly property real centerScale: Math.min(1, (lock.fitBase ?? 1440) / 1440)
+     readonly property int centerWidth: Tokens.sizes.lock.centerWidth * centerScale
+ 
+     Layout.preferredWidth: centerWidth
