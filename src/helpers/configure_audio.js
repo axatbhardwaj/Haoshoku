@@ -2,7 +2,7 @@ import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 
-import { log, readDeviceType } from "../common/utils.js";
+import { log, readConfiguredDeviceType } from "../common/utils.js";
 
 const HOME_DEFAULT = homedir();
 const PROJECT_ROOT_DEFAULT = path.resolve(__dirname, "..", "..");
@@ -67,6 +67,34 @@ function copyDropInDir(srcDir, destDir, label) {
   }
 }
 
+function managedWireplumberFiles(audioBackupDir) {
+  const wireplumberRoot = path.join(audioBackupDir, "wireplumber");
+  const managed = new Set();
+  if (!fs.existsSync(wireplumberRoot)) return managed;
+
+  for (const deviceDir of fs.readdirSync(wireplumberRoot, { withFileTypes: true })) {
+    if (!deviceDir.isDirectory()) continue;
+    const variantDir = path.join(wireplumberRoot, deviceDir.name);
+    for (const file of fs.readdirSync(variantDir, { withFileTypes: true })) {
+      if (file.isFile()) managed.add(file.name);
+    }
+  }
+
+  return managed;
+}
+
+function pruneManagedDropIns(destDir, managedFiles) {
+  if (!fs.existsSync(destDir)) return;
+
+  for (const file of managedFiles) {
+    const dest = path.join(destDir, file);
+    if (fs.existsSync(dest) && fs.statSync(dest).isFile()) {
+      fs.unlinkSync(dest);
+      log.info(`Removed stale wireplumber/${file}`);
+    }
+  }
+}
+
 /**
  * Deploy repo audio drop-ins → live ~/.config/.
  *
@@ -90,8 +118,8 @@ export async function syncAudioConfig(opts = {}) {
     repoPipewirePulseConfD,
   } = resolvePaths(opts);
 
-  const deviceType = readDeviceType(home);
-  log.info(`Syncing audio config (deviceType=${deviceType})...`);
+  const deviceType = readConfiguredDeviceType(home);
+  log.info(`Syncing audio config (deviceType=${deviceType ?? "unset"})...`);
 
   // Portable PipeWire drop-ins
   copyDropInDir(repoPipewireConfD, livePipewireConfD, "pipewire.conf.d");
@@ -100,6 +128,19 @@ export async function syncAudioConfig(opts = {}) {
     livePipewirePulseConfD,
     "pipewire-pulse.conf.d",
   );
+
+  pruneManagedDropIns(
+    liveWireplumberConfD,
+    managedWireplumberFiles(audioBackupDir),
+  );
+
+  if (!deviceType) {
+    log.warning(
+      "No explicit deviceType in ~/.haoshoku.json — skipping device-specific WirePlumber drop-ins",
+    );
+    log.success("Audio config synced to ~/.config/");
+    return;
+  }
 
   // Device-routed WirePlumber drop-ins
   const repoWireplumberDevice = path.join(
@@ -136,8 +177,8 @@ export async function backupAudioConfig(opts = {}) {
     repoPipewirePulseConfD,
   } = resolvePaths(opts);
 
-  const deviceType = readDeviceType(home);
-  log.info(`Backing up audio config (deviceType=${deviceType})...`);
+  const deviceType = readConfiguredDeviceType(home);
+  log.info(`Backing up audio config (deviceType=${deviceType ?? "unset"})...`);
 
   // Portable PipeWire drop-ins
   copyDropInDir(livePipewireConfD, repoPipewireConfD, "pipewire.conf.d");
@@ -146,6 +187,14 @@ export async function backupAudioConfig(opts = {}) {
     repoPipewirePulseConfD,
     "pipewire-pulse.conf.d",
   );
+
+  if (!deviceType) {
+    log.warning(
+      "No explicit deviceType in ~/.haoshoku.json — skipping device-specific WirePlumber backup",
+    );
+    log.success("Audio config backed up to configs/audio/");
+    return;
+  }
 
   // Device-routed WirePlumber drop-ins (live → repo/<deviceType>/)
   const repoWireplumberDevice = path.join(

@@ -389,4 +389,14 @@ describe("seeded configs/caelestia-lockfix/ (in-tree static files)", () => {
 			),
 		).toBe(true);
 	});
+
+	it("exits non-zero after auto-reverting when Caelestia shell does not restart", () => {
+		const applySh = fs.readFileSync(
+			path.join(CONFIGS_LOCKFIX_DIR, "apply.sh"),
+			"utf8",
+		);
+		expect(applySh).toMatch(
+			/shell did NOT come back[\s\S]*auto-reverting[\s\S]*exit 1/,
+		);
+	});
 });

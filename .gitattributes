@@ -1,0 +1,2 @@
+# Stored unified diffs need leading spaces on blank context lines.
+*.patch -whitespace

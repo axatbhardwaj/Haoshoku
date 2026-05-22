@@ -18,9 +18,25 @@ function resolvePaths({ home = HOME_DEFAULT, projectRoot = PROJECT_ROOT_DEFAULT 
   return {
     liveFile: path.join(home, ".config", "mimeapps.list"),
     liveDir: path.join(home, ".config"),
+    liveApplicationsDir: path.join(home, ".local", "share", "applications"),
     repoFile: path.join(projectRoot, "configs", "mimeapps", "mimeapps.list"),
     repoDir: path.join(projectRoot, "configs", "mimeapps"),
+    repoApplicationsDir: path.join(projectRoot, "configs", "mimeapps", "applications"),
   };
+}
+
+function syncDesktopHandlers(repoApplicationsDir, liveApplicationsDir) {
+  if (!fs.existsSync(repoApplicationsDir)) return;
+
+  fs.mkdirSync(liveApplicationsDir, { recursive: true });
+  for (const entry of fs.readdirSync(repoApplicationsDir, { withFileTypes: true })) {
+    if (!entry.isFile() || !entry.name.endsWith(".desktop")) continue;
+    fs.copyFileSync(
+      path.join(repoApplicationsDir, entry.name),
+      path.join(liveApplicationsDir, entry.name),
+    );
+    log.info(`Synced applications/${entry.name}`);
+  }
 }
 
 /**
@@ -32,7 +48,13 @@ function resolvePaths({ home = HOME_DEFAULT, projectRoot = PROJECT_ROOT_DEFAULT 
  * @param {{ home?: string, projectRoot?: string }} opts
  */
 export async function syncMimeappsConfig(opts = {}) {
-  const { liveFile, liveDir, repoFile } = resolvePaths(opts);
+  const {
+    liveFile,
+    liveDir,
+    liveApplicationsDir,
+    repoFile,
+    repoApplicationsDir,
+  } = resolvePaths(opts);
 
   if (!fs.existsSync(repoFile)) {
     log.warning(`No mimeapps.list source found at ${repoFile} — skipping`);
@@ -41,6 +63,7 @@ export async function syncMimeappsConfig(opts = {}) {
 
   fs.mkdirSync(liveDir, { recursive: true });
   fs.copyFileSync(repoFile, liveFile);
+  syncDesktopHandlers(repoApplicationsDir, liveApplicationsDir);
   log.success("mimeapps.list synced to ~/.config/");
 }
 

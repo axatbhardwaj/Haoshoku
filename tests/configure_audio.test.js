@@ -261,7 +261,7 @@ describe("syncAudioConfig — device-routed WirePlumber drop-ins", () => {
 		expect(fs.existsSync(pcFile)).toBe(false);
 	});
 
-	it("falls back to pc variant when ~/.haoshoku.json is missing", async () => {
+	it("skips wireplumber files when ~/.haoshoku.json is missing", async () => {
 		seedRepoFixtures({ pc: true });
 		// No writeDeviceType call — no ~/.haoshoku.json
 		await audio.syncAudioConfig({ home: tmpHome, projectRoot: tmpProjectRoot });
@@ -276,7 +276,26 @@ describe("syncAudioConfig — device-routed WirePlumber drop-ins", () => {
 					"51-logitech-prox-44100.conf",
 				),
 			),
-		).toBe(true);
+		).toBe(false);
+	});
+
+	it("removes stale managed wireplumber files when deviceType changes", async () => {
+		seedRepoFixtures({ pc: true, laptop: true });
+		writeDeviceType("pc");
+		await audio.syncAudioConfig({ home: tmpHome, projectRoot: tmpProjectRoot });
+
+		writeDeviceType("laptop");
+		await audio.syncAudioConfig({ home: tmpHome, projectRoot: tmpProjectRoot });
+
+		const liveWireplumberDir = path.join(
+			tmpHome,
+			".config",
+			"wireplumber",
+			"wireplumber.conf.d",
+		);
+		expect(fs.readdirSync(liveWireplumberDir).sort()).toEqual([
+			"51-laptop-audio.conf",
+		]);
 	});
 
 	it("creates ~/.config/wireplumber/wireplumber.conf.d/ if missing", async () => {
@@ -530,6 +549,27 @@ describe("backupAudioConfig — snapshots live drop-ins into repo tree", () => {
 				path.join(tmpProjectRoot, "configs", "audio", "wireplumber", "pc"),
 			),
 		).toBe(true);
+	});
+
+	it("does not back up wireplumber files without an explicit deviceType", async () => {
+		seedLiveAudio({ deviceType: "pc" });
+		await audio.backupAudioConfig({
+			home: tmpHome,
+			projectRoot: tmpProjectRoot,
+		});
+
+		expect(
+			fs.existsSync(
+				path.join(
+					tmpProjectRoot,
+					"configs",
+					"audio",
+					"wireplumber",
+					"pc",
+					"51-logitech-prox-44100.conf",
+				),
+			),
+		).toBe(false);
 	});
 });
 

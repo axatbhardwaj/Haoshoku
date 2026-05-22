@@ -108,6 +108,24 @@ export function copyDirRecursive(src, dest) {
 const KNOWN_DEVICE_TYPES = new Set(["pc", "laptop"]);
 const DEFAULT_DEVICE_TYPE = "pc";
 
+/** Return the explicitly configured known deviceType, or null when unset. */
+export function readConfiguredDeviceType(home) {
+	const stateFile = path.join(home, ".haoshoku.json");
+	if (!fs.existsSync(stateFile)) return null;
+	try {
+		const parsed = JSON.parse(fs.readFileSync(stateFile, "utf-8"));
+		if (
+			typeof parsed.deviceType === "string" &&
+			KNOWN_DEVICE_TYPES.has(parsed.deviceType)
+		) {
+			return parsed.deviceType;
+		}
+	} catch {
+		// Malformed JSON: fall through to unset.
+	}
+	return null;
+}
+
 /**
  * Read deviceType from ~/.haoshoku.json (populated by `haoshoku --hyprland`'s
  * promptDeviceType). Returns the literal string if it's a known variant
@@ -116,15 +134,5 @@ const DEFAULT_DEVICE_TYPE = "pc";
  * (e.g. `"other"`) all collapse to the safest mainstream default.
  */
 export function readDeviceType(home) {
-	const stateFile = path.join(home, ".haoshoku.json");
-	if (!fs.existsSync(stateFile)) return DEFAULT_DEVICE_TYPE;
-	try {
-		const parsed = JSON.parse(fs.readFileSync(stateFile, "utf-8"));
-		if (typeof parsed.deviceType === "string" && KNOWN_DEVICE_TYPES.has(parsed.deviceType)) {
-			return parsed.deviceType;
-		}
-	} catch {
-		// Malformed JSON: fall through to default.
-	}
-	return DEFAULT_DEVICE_TYPE;
+	return readConfiguredDeviceType(home) ?? DEFAULT_DEVICE_TYPE;
 }

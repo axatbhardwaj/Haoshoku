@@ -85,4 +85,5 @@ else
     [ -f "$DIR/Center.qml.orig" ] && sudo cp -a "$DIR/Center.qml.orig" "$DIR/Center.qml"
     caelestia shell -k 2>/dev/null; sleep 1.5; caelestia shell -d 2>/dev/null
     echo "  ↩ reverted; shell restarted with the originals."
+    exit 1
 fi

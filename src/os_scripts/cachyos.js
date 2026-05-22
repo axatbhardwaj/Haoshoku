@@ -559,10 +559,10 @@ async function configureUserApps() {
 
   await configureTerminals();
   await configureZed();
-  await configureAudio();
   await configureMimeapps();
   await configureKde();
   await configureHyprland();
+  await configureAudio();
 
   // Fish + Fastfetch deploy AFTER configureHyprland because Caelestia's
   // install.fish overwrites ~/.config/fish/config.fish,

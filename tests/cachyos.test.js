@@ -47,6 +47,13 @@ describe("configureUserApps step ordering", () => {
     expect(fastfetch.index).toBeGreaterThan(hyprland.index);
   });
 
+  it("calls configureAudio exactly once, after configureHyprland captures device type", () => {
+    const hyprland = callIndex("configureHyprland");
+    const audio = callIndex("configureAudio");
+    expect(audio.count).toBe(1);
+    expect(audio.index).toBeGreaterThan(hyprland.index);
+  });
+
   it("calls configureCaelestiaPrefs exactly once, after installCaelestia", () => {
     // Regression: v5.1.0 added --caelestia-prefs but forgot to wire it into the
     // default cachyos flow, so a fresh `haoshoku` install booted Hyprland with
@@ -153,6 +160,18 @@ describe("AUR package list", () => {
       .map((l) => l.trim())
       .filter((l) => l && !l.startsWith("#"));
     expect(pkgs).toContain("thunar");
+  });
+
+  it("includes swayimg for the managed image MIME defaults", () => {
+    const list = fs.readFileSync(
+      path.join(PROJECT_ROOT, "common", "paru_applist.txt"),
+      "utf8",
+    );
+    const pkgs = list
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l && !l.startsWith("#"));
+    expect(pkgs).toContain("swayimg");
   });
 });
 
