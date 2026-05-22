@@ -371,8 +371,7 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 			expect.arrayContaining([
 				"communication",
 				"1password",
-				"brave-personal",
-				"brave-work",
+				"vivaldi",
 				"claude",
 				"music",
 			]),
@@ -418,18 +417,14 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 			command: ["spotify"],
 			move: true,
 		});
-		expect(toggles["brave-personal"]["brave-personal"]).toMatchObject({
+		expect(toggles.vivaldi.vivaldi).toMatchObject({
 			enable: true,
-			match: [{ class: "brave-browser", title: "Flux" }],
-			command: ["brave", "--profile-directory=Default"],
+			match: [{ class: "vivaldi-stable" }],
+			command: ["vivaldi"],
 			move: true,
 		});
-		expect(toggles["brave-work"]["brave-work"]).toMatchObject({
-			enable: true,
-			match: [{ class: "brave-browser", title: "Defi" }],
-			command: ["brave", "--profile-directory=Profile 1"],
-			move: true,
-		});
+		expect(toggles).not.toHaveProperty("brave-personal");
+		expect(toggles).not.toHaveProperty("brave-work");
 	});
 
 	it("launches sysmon btop with a UTF-8 locale override", () => {
@@ -513,7 +508,7 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		);
 		const sharedMarkers = [
 			"bind = $kbEditor, exec, app2unit -- $editor",
-			"bind = $kbBrowser, exec, caelestia toggle brave-work",
+			"bind = $kbBrowser, exec, caelestia toggle vivaldi",
 			"workspace = name:0, default:true, persistent:true",
 			"workspace = 1, default:true, persistent:true",
 			"workspace = 2, persistent:true",
@@ -582,15 +577,18 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 			);
 			expect(conf).toContain("bind = $kbMusic, exec, caelestia toggle music");
 			expect(conf).toContain(
-				"windowrule = workspace special:brave-personal, match:class brave-browser, match:title Flux",
+				"windowrule = workspace special:vivaldi, match:class vivaldi-stable",
 			);
 			expect(conf).toContain(
-				"windowrule = workspace special:brave-work, match:class brave-browser, match:title Defi",
+				"bind = $kbBrowser, exec, caelestia toggle vivaldi",
 			);
+			expect(conf).not.toContain("bind = Super, B, exec, caelestia toggle brave-personal");
+			expect(conf).not.toContain("windowrule = workspace special:brave-personal");
+			expect(conf).not.toContain("windowrule = workspace special:brave-work");
 		}
 	});
 
-	it("keeps named Brave special windows translucent even when fullscreen", () => {
+	it("keeps the Vivaldi special window translucent even when fullscreen", () => {
 		for (const file of ["hypr-user-pc.conf", "hypr-user-laptop.conf"]) {
 			const conf = fs.readFileSync(
 				path.join(CONFIGS_CAELESTIA_DIR, file),
@@ -598,10 +596,7 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 			);
 
 			expect(conf).toContain(
-				"windowrule = opacity $windowOpacity override $windowOpacity override $windowOpacity override, match:class brave-browser, match:title Flux",
-			);
-			expect(conf).toContain(
-				"windowrule = opacity $windowOpacity override $windowOpacity override $windowOpacity override, match:class brave-browser, match:title Defi",
+				"windowrule = opacity $windowOpacity override $windowOpacity override $windowOpacity override, match:class vivaldi-stable",
 			);
 		}
 	});

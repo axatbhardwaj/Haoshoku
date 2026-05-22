@@ -43,19 +43,11 @@
         "command": ["foot", "-a", "btop", "-T", "btop", "env", "LC_ALL=C.UTF-8", "fish", "-C", "exec btop"]
       }
     },
-    "brave-personal": {
-      "brave-personal": {
+    "vivaldi": {
+      "vivaldi": {
         "enable": true,
-        "match": [{"class": "brave-browser", "title": "Flux"}],
-        "command": ["brave", "--profile-directory=Default"],
-        "move": true
-      }
-    },
-    "brave-work": {
-      "brave-work": {
-        "enable": true,
-        "match": [{"class": "brave-browser", "title": "Defi"}],
-        "command": ["brave", "--profile-directory=Profile 1"],
+        "match": [{"class": "vivaldi-stable"}],
+        "command": ["vivaldi"],
         "move": true
       }
     },
