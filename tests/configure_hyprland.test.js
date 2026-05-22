@@ -328,6 +328,31 @@ describe("installCaelestia (slim 5.0.0 — Caelestia only, no Ocean overlay)", (
 		expect(backups.length).toBe(1);
 	});
 
+	it("runs apply.sh via bash after caelestia-shell install (lockfix wiring)", async () => {
+		const { calls, run } = makeRecorder();
+		const exists = async (cmd) => cmd === "fish" || cmd === "caelestia";
+
+		await hyprland.installCaelestia({ home: tmpHome, run, exists });
+
+		const expectedScript = path.join(
+			tmpHome,
+			".local",
+			"share",
+			"caelestia-lockfix",
+			"apply.sh",
+		);
+		// apply.sh must be invoked via `bash <absolute-path>` (no ~ expansion).
+		const applyCall = calls.find((c) => c.command === `bash ${expectedScript}`);
+		expect(applyCall).toBeDefined();
+
+		// apply.sh must run AFTER install.fish (caelestia-shell is a prerequisite).
+		const installFishIndex = calls.findIndex((c) =>
+			c.command.startsWith("fish "),
+		);
+		const applyIndex = calls.indexOf(applyCall);
+		expect(applyIndex).toBeGreaterThan(installFishIndex);
+	});
+
 	it("preserves existing Caelestia shell.json settings while forcing 24-hour clock", async () => {
 		const shellConfigPath = path.join(
 			tmpHome,

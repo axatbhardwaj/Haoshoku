@@ -5,6 +5,7 @@ import path from "node:path";
 import promptsLib from "prompts";
 
 import { commandExists, log, runCommand } from "../common/utils.js";
+import { configureLockfix } from "./configure_lockfix.js";
 
 const HOME = homedir();
 
@@ -312,6 +313,35 @@ export async function installCaelestia({
 				`Pre-created empty ${target} (Caelestia would create lazily on first boot)`,
 			);
 		}
+	}
+
+	// Deploy the portrait lock-screen fix kit and apply it so the fix is live
+	// immediately on a fresh install. Non-critical: failure logs a warning and
+	// does NOT abort the overall setup.
+	log.info("Deploying caelestia-lockfix portrait fix...");
+	try {
+		await configureLockfix({ home });
+		const applyScript = path.join(
+			home,
+			".local",
+			"share",
+			"caelestia-lockfix",
+			"apply.sh",
+		);
+		const applied = await run(`bash ${applyScript}`);
+		if (applied) {
+			log.success("caelestia-lockfix portrait fix applied.");
+		} else {
+			log.warning(
+				"caelestia-lockfix apply.sh exited non-zero — portrait fix not applied. " +
+					"Run `~/.local/share/caelestia-lockfix/apply.sh` manually after setup.",
+			);
+		}
+	} catch (err) {
+		log.warning(
+			`caelestia-lockfix deploy failed (${err?.message ?? err}) — portrait fix not applied. ` +
+				"Run `~/.local/share/caelestia-lockfix/apply.sh` manually after setup.",
+		);
 	}
 }
 
