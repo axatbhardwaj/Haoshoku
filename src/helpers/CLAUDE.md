@@ -14,6 +14,7 @@ Standalone setup scripts for specific tools.
 | `configure_audio.js` | PipeWire/WirePlumber config sync/backup (portable pipewire drop-ins + device-routed wireplumber variant) | Adding audio config features, debugging sync |
 | `configure_mimeapps.js` | XDG mimeapps.list sync/backup — single portable file, no device routing | Adding mimeapps config features, debugging sync |
 | `configure_lockfix.js` | Caelestia lock-screen portrait-fix kit sync/backup (`apply.sh` + `*.patch` files, `chmod 755` on `apply.sh`) | Adding lockfix features, debugging kit deploy |
+| `configure_sddm.js` | caelestia-sddm posthook sudoers rule (single validated root transaction; non-fatal; refuses root) | Adding SDDM posthook features, debugging sudoers writes |
 | `install_user_scripts.js` | Copy `configs/scripts/*` → `~/.local/bin/` + chmod 755 | Adding user-level shell wrappers (PATH shadows, helper commands) |
 | `skill_manager.js`    | Runtime git clone for Claude skills    | Adding skill sources, debugging skill sync    |
 | `README.md`           | Architecture and design decisions      | Understanding symlink vs copy pattern         |

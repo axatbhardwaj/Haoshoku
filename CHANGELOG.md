@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Track the `caelestia-sddm` SDDM login theme + its auto-sync posthook inside Haoshoku's CachyOS setup. `installCaelestia()` now installs `caelestia-sddm-minimalistv2-git` via `paru` (outside the `skipHyprlandPackages` branch — the SDDM theme is not a Hyprland compositor package; non-fatal — a failed install warns and continues). `configs/caelestia/cli.json` ships `wallpaper.postHook` + `theme.postHook` entries so Caelestia re-runs the SDDM sync on every wallpaper/colour change. A new `configureSddm()` helper writes `/etc/sudoers.d/caelestia-sddm-sync` (scoped to exactly `sync.sh --posthook` — least privilege) so the posthook runs without a password. The sudoers write is a single validated root transaction (`visudo -c -f <tmpfile>` before `install`, same-shell `rm` on failure) so a syntax error can never lock the user out of sudo. All three pieces — package, postHooks, sudoers — are gated together by the Caelestia install decision; a CachyOS user who declines Hyprland gets none of them. New `--sddm-posthook` CLI flag re-writes just the sudoers rule.
+
 ## 5.3.1 - 2026-05-22
 
 - Make the Zed editor background transparent and blurred. A new `experimental.theme_overrides` block in `configs/zed/settings.json` sets `background.appearance` to `"blurred"` and drops the editor/panel/tab/terminal backgrounds to 60%-opacity alpha, so the editor background is frosted-translucent (the compositor blurs through it) while text stays fully opaque. Done at the app layer rather than via a Hyprland window-opacity rule — that route dimmed the text itself and hurt readability.
