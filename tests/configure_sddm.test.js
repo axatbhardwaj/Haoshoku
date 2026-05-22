@@ -4,6 +4,7 @@ import path from "node:path";
 import {
   sddmSudoersLine,
   sddmSudoersInstallScript,
+  configureSddm,
 } from "../src/helpers/configure_sddm.js";
 
 const PROJECT_ROOT = path.resolve(__dirname, "..");
@@ -109,5 +110,85 @@ describe("sddmSudoersInstallScript", () => {
     });
     expect(alt).toContain("'/etc/sudoers.d/foo'");
     expect(alt).not.toContain("caelestia-sddm-sync");
+  });
+});
+
+function makeFakeRunner({ exitCode = 0 } = {}) {
+  const calls = [];
+  const runner = async (argv) => {
+    calls.push(argv);
+    return { exitCode };
+  };
+  return { runner, calls };
+}
+
+describe("configureSddm", () => {
+  const sudoersPath = "/tmp/test-sudoers-caelestia-sddm";
+
+  it("invokes the runner once with sudo sh -c <built-script>", async () => {
+    const { runner, calls } = makeFakeRunner();
+    await configureSddm({ username: "xzat", sudoersPath, runner });
+    expect(calls.length).toBe(1);
+    expect(calls[0][0]).toBe("sudo");
+    expect(calls[0][1]).toBe("sh");
+    expect(calls[0][2]).toBe("-c");
+    expect(typeof calls[0][3]).toBe("string");
+  });
+
+  it("passes exactly the script produced by sddmSudoersInstallScript", async () => {
+    const { runner, calls } = makeFakeRunner();
+    await configureSddm({ username: "xzat", sudoersPath, runner });
+    const expectedScript = sddmSudoersInstallScript({
+      line: sddmSudoersLine("xzat"),
+      sudoersPath,
+    });
+    expect(calls[0][3]).toBe(expectedScript);
+  });
+
+  it("refuses to invoke the runner when username resolves to root", async () => {
+    const { runner, calls } = makeFakeRunner();
+    await configureSddm({ username: "root", sudoersPath, runner });
+    expect(calls.length).toBe(0);
+  });
+
+  it("refuses to invoke the runner when username is empty", async () => {
+    const { runner, calls } = makeFakeRunner();
+    await configureSddm({ username: "", sudoersPath, runner });
+    expect(calls.length).toBe(0);
+  });
+
+  it("refuses to invoke the runner when username is invalid", async () => {
+    const { runner, calls } = makeFakeRunner();
+    await configureSddm({ username: "a b", sudoersPath, runner });
+    expect(calls.length).toBe(0);
+  });
+
+  it("is idempotent — two runs produce identical runner invocations", async () => {
+    const { runner: runner1, calls: calls1 } = makeFakeRunner();
+    const { runner: runner2, calls: calls2 } = makeFakeRunner();
+    await configureSddm({ username: "xzat", sudoersPath, runner: runner1 });
+    await configureSddm({ username: "xzat", sudoersPath, runner: runner2 });
+    expect(calls1).toEqual(calls2);
+  });
+
+  it("does not throw when the runner reports a non-zero exit (non-fatal)", async () => {
+    const { runner } = makeFakeRunner({ exitCode: 1 });
+    await expect(
+      configureSddm({ username: "xzat", sudoersPath, runner }),
+    ).resolves.toBeUndefined();
+  });
+
+  it("resolves SUDO_USER from the environment when no username override is given", async () => {
+    const prev = process.env.SUDO_USER;
+    process.env.SUDO_USER = "alice";
+    try {
+      const { runner, calls } = makeFakeRunner();
+      await configureSddm({ sudoersPath, runner });
+      expect(calls.length).toBe(1);
+      expect(calls[0][3]).toContain("alice ALL=(root) NOPASSWD:");
+    } finally {
+      if (prev === undefined) delete process.env.SUDO_USER;
+      else process.env.SUDO_USER = prev;
+    }
   });
 });

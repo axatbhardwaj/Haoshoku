@@ -1,5 +1,9 @@
+import { userInfo } from "node:os";
+import { log } from "../common/utils.js";
+
 const SCRIPT_PATH = "/usr/share/sddm/themes/caelestia/scripts/sync.sh";
 const USERNAME_RE = /^[A-Za-z0-9_.-]+$/;
+const DEFAULT_SUDOERS_PATH = "/etc/sudoers.d/caelestia-sddm-sync";
 
 /**
  * Generate the sudoers rule line for a username.
@@ -64,4 +68,86 @@ export function sddmSudoersInstallScript({ line, sudoersPath }) {
 		"  exit 1",
 		"fi",
 	].join("\n");
+}
+
+/**
+ * Default runner: executes argv via Bun.spawn and returns the exit code.
+ * Uses argv (not a shell string) so the script body in argv[3] is passed
+ * literally to `sh -c` — no double-shell quoting concerns.
+ *
+ * @param {string[]} argv
+ * @returns {Promise<{ exitCode: number }>}
+ */
+async function defaultRunner(argv) {
+	const proc = Bun.spawn(argv, { stdout: "inherit", stderr: "inherit" });
+	const exitCode = await proc.exited;
+	return { exitCode };
+}
+
+/**
+ * Write the caelestia-sddm posthook sudoers drop-in for the current user.
+ *
+ * Resolves the invoking user from `opts.username` ?? SUDO_USER ??
+ * os.userInfo().username — the SUDO_USER fallback ensures the real user is
+ * used when Haoshoku itself was invoked via sudo (otherwise os.userInfo()
+ * would return root).
+ *
+ * Refuses to write a rule for `root`, an empty username, or one that fails
+ * the sudoers username regex — a passwordless rule for root is pointless
+ * and a malformed sudoers line would make sudo refuse to run.
+ *
+ * The privileged work happens in ONE sudo invocation:
+ *   sudo sh -c '<sddmSudoersInstallScript output>'
+ *
+ * Non-fatal: any failure logs a warning and returns. A login-screen feature
+ * must not abort an OS setup. Mirrors `configureLockfix`.
+ *
+ * @param {{
+ *   username?: string,
+ *   sudoersPath?: string,
+ *   runner?: (argv: string[]) => Promise<{ exitCode: number }>,
+ * }} opts
+ */
+export async function configureSddm(opts = {}) {
+	const {
+		username: usernameOverride,
+		sudoersPath = DEFAULT_SUDOERS_PATH,
+		runner = defaultRunner,
+	} = opts;
+
+	const username =
+		usernameOverride ?? process.env.SUDO_USER ?? userInfo().username;
+
+	if (!username || username === "root") {
+		log.warning(
+			`caelestia-sddm posthook: refusing to write sudoers rule for "${username || ""}" — skipping.`,
+		);
+		return;
+	}
+
+	let line;
+	try {
+		line = sddmSudoersLine(username);
+	} catch (err) {
+		log.warning(`caelestia-sddm posthook: ${err.message} — skipping.`);
+		return;
+	}
+
+	const script = sddmSudoersInstallScript({ line, sudoersPath });
+
+	log.info(`Configuring caelestia-sddm posthook (sudoers for ${username})…`);
+	try {
+		const { exitCode } = await runner(["sudo", "sh", "-c", script]);
+		if (exitCode === 0) {
+			log.success("caelestia-sddm posthook sudoers rule installed.");
+		} else {
+			log.warning(
+				`caelestia-sddm posthook setup exited ${exitCode} — login screen will not auto-sync. Re-run \`haoshoku --sddm-posthook\` to retry.`,
+			);
+		}
+	} catch (err) {
+		log.warning(
+			`caelestia-sddm posthook setup failed (${err?.message ?? err}) — login screen will not auto-sync.`,
+		);
+	}
 }
