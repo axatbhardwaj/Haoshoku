@@ -390,16 +390,13 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 			command: ["signal-desktop"],
 			move: true,
 		});
-		expect(toggles.communication["whatsapp-web"]).toMatchObject({
+		expect(toggles.communication.zapzap).toMatchObject({
 			enable: true,
-			match: [{ class: "brave-hnpfjngllnobngcgfapefoaidbinmjnm-Default" }],
-			command: [
-				"/opt/brave-bin/brave",
-				"--profile-directory=Default",
-				"--app-id=hnpfjngllnobngcgfapefoaidbinmjnm",
-			],
+			match: [{ class: "zapzap" }],
+			command: ["flatpak", "run", "com.rtosta.zapzap"],
 			move: true,
 		});
+		expect(toggles.communication).not.toHaveProperty("whatsapp-web");
 		expect(toggles["1password"]["1password"]).toMatchObject({
 			enable: true,
 			match: [{ class: "1password" }],
@@ -567,8 +564,10 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 				"windowrule = workspace special:communication, match:class signal",
 			);
 			expect(conf).toContain(
-				"windowrule = workspace special:communication, match:class brave-hnpfjngllnobngcgfapefoaidbinmjnm-Default",
+				"windowrule = workspace special:communication, match:class zapzap",
 			);
+			expect(conf).not.toContain("brave-hnpfjngllnobngcgfapefoaidbinmjnm-Default");
+			expect(conf).not.toContain("--app-id=hnpfjngllnobngcgfapefoaidbinmjnm");
 			expect(conf).toContain(
 				"windowrule = workspace special:1password, match:class 1password",
 			);
