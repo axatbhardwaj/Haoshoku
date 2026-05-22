@@ -41,6 +41,7 @@ import {
   backupLockfix,
   syncLockfix,
 } from "./src/helpers/configure_lockfix.js";
+import { configureSddm } from "./src/helpers/configure_sddm.js";
 import {
   syncSkills,
   printAvailableSkills,
@@ -109,6 +110,10 @@ program
   .option(
     "--caelestia-prefs-backup",
     "Backup Caelestia hypr-user.conf + cli.json from ~/.config/caelestia/ to configs/caelestia/",
+  )
+  .option(
+    "--sddm-posthook",
+    "Write the caelestia-sddm posthook sudoers rule (passwordless auto-sync of the SDDM login screen when Caelestia wallpaper/colours change)",
   )
   .option("--audio", "Sync audio config from configs/audio/ to ~/.config/")
   .option(
@@ -214,6 +219,11 @@ program
 
     if (options.caelestiaPrefs) {
       await syncCaelestiaPrefs();
+      return;
+    }
+
+    if (options.sddmPosthook) {
+      await configureSddm();
       return;
     }
 
