@@ -454,7 +454,9 @@ async function configureHyprland() {
   }
   const device = await promptDeviceType();
   if (device === null) {
-    log.info("Device type skipped (no entry written to ~/.haoshoku.json).");
+    log.info(
+      "Device type skipped (no entry written to ~/.haoshoku.json); device-specific audio/WirePlumber tuning will be skipped.",
+    );
   } else {
     log.info(`Recorded device type as '${device}' in ~/.haoshoku.json.`);
   }
@@ -559,10 +561,16 @@ async function configureUserApps() {
 
   await configureTerminals();
   await configureZed();
-  await configureAudio();
   await configureMimeapps();
   await configureKde();
   await configureHyprland();
+  try {
+    await configureAudio();
+  } catch (err) {
+    log.warning(
+      `Audio config sync failed (${err?.message ?? err}) — continuing with remaining app setup.`,
+    );
+  }
 
   // Fish + Fastfetch deploy AFTER configureHyprland because Caelestia's
   // install.fish overwrites ~/.config/fish/config.fish,

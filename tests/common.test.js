@@ -29,4 +29,12 @@ describe("Common Files", () => {
 			});
 		});
 	});
+
+	it("does not install the retired Cohesion Flatpak", () => {
+		const content = fs.readFileSync(
+			path.join(COMMON_DIR, "flatpacks_arch.txt"),
+			"utf-8",
+		);
+		expect(content).not.toContain("io.github.brunofin.Cohesion");
+	});
 });

@@ -84,5 +84,12 @@ else
     sudo cp -a "$DIR/LockSurface.qml.orig" "$DIR/LockSurface.qml"
     [ -f "$DIR/Center.qml.orig" ] && sudo cp -a "$DIR/Center.qml.orig" "$DIR/Center.qml"
     caelestia shell -k 2>/dev/null; sleep 1.5; caelestia shell -d 2>/dev/null
-    echo "  ↩ reverted; shell restarted with the originals."
+    echo "  waiting for the reverted shell to come back..."
+    sleep 4
+    if pgrep -af 'qs -c caelestia' >/dev/null; then
+        echo "  ↩ reverted; shell restarted with the originals."
+    else
+        echo "  ✗ reverted; shell restart failed. Check Caelestia manually."
+    fi
+    exit 2
 fi

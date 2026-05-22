@@ -328,12 +328,20 @@ export async function installCaelestia({
 			"caelestia-lockfix",
 			"apply.sh",
 		);
-		const applied = await run(`bash ${applyScript}`);
-		if (applied) {
+		const applied = await run(`bash ${applyScript}`, {
+			check: false,
+			returnExitCode: true,
+		});
+		if (applied === 0 || applied === true) {
 			log.success("caelestia-lockfix portrait fix applied.");
+		} else if (applied === 2) {
+			log.warning(
+				"caelestia-lockfix apply.sh auto-reverted because Caelestia shell did not restart. " +
+					"Check whether the shell is running, then run `~/.local/share/caelestia-lockfix/apply.sh` manually after setup.",
+			);
 		} else {
 			log.warning(
-				"caelestia-lockfix apply.sh exited non-zero — portrait fix not applied. " +
+				"caelestia-lockfix apply.sh could not apply the patch — portrait fix not applied. " +
 					"Run `~/.local/share/caelestia-lockfix/apply.sh` manually after setup.",
 			);
 		}
@@ -390,8 +398,8 @@ export async function promptDesktopEnvironment({
  * ~/.haoshoku.json (merged with any existing keys — e.g. skillSources).
  * On skip or cancel, returns null and does NOT touch the file.
  *
- * 5.0.0 captures this answer but doesn't yet consume it — future per-host
- * monitor configuration will read `deviceType` from the same file.
+ * The answer routes Caelestia monitor/workspace prefs and device-specific
+ * audio tuning; skip/cancel leaves those device-routed paths unset.
  */
 export async function promptDeviceType({
 	configPath = path.join(HOME, ".haoshoku.json"),
@@ -417,9 +425,10 @@ export async function promptDeviceType({
 	if (fs.existsSync(configPath)) {
 		try {
 			config = JSON.parse(fs.readFileSync(configPath, "utf8"));
-		} catch {
-			// Corrupt config — overwrite rather than crash. Other keys are lost
-			// in this edge case, but a corrupt JSON file was already lost.
+		} catch (err) {
+			log.warning(
+				`Malformed ~/.haoshoku.json at ${configPath}; replacing it while saving deviceType (${err?.message ?? err})`,
+			);
 			config = {};
 		}
 	}

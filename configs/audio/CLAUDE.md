@@ -1,6 +1,6 @@
 # configs/audio/
 
-PipeWire and WirePlumber drop-in config files for bit-perfect lossless audio playback.
+PipeWire and WirePlumber drop-in config files for audio-rate handling.
 
 ## Files
 
@@ -17,15 +17,15 @@ The two **PipeWire** drop-ins (`pipewire.conf.d/` and `pipewire-pulse.conf.d/`) 
 The **WirePlumber** drop-in is **device-specific**: it hardcodes the Logitech G PRO X headset by its `node.name`, which is unique to this PC. It therefore lives under a per-device subdirectory:
 
 - `deviceType === "pc"`     → deploys from `wireplumber/pc/`     → `~/.config/wireplumber/wireplumber.conf.d/`
-- `deviceType === "laptop"` → deploys from `wireplumber/laptop/` → `~/.config/wireplumber/wireplumber.conf.d/`
-- Anything else (unset, malformed, `"other"`) → falls back to the PC variant.
+- `deviceType === "laptop"` → no WirePlumber rule currently ships; laptop does not need the lossless hard-pin setup
+- Anything else (unset, malformed, `"other"`) → skip device-specific WirePlumber rules
 
 This mirrors the pattern already used in `configs/caelestia/` where `hypr-user-pc.conf` vs `hypr-user-laptop.conf` are routed by the `deviceType` field in `~/.haoshoku.json`.
 
-The `src/helpers/configure_audio.js` helper reads `deviceType`, syncs the portable PipeWire drop-ins, and deploys the matching WirePlumber variant. Run `haoshoku --audio` to deploy `configs/audio/` into `~/.config/`, and `haoshoku --audio-backup` to snapshot the live configs back.
+The `src/helpers/configure_audio.js` helper reads `deviceType`, syncs the portable PipeWire drop-ins, and deploys a matching WirePlumber variant only when a known variant exists. Run `haoshoku --audio` to deploy `configs/audio/` into `~/.config/`, and `haoshoku --audio-backup` to snapshot the live configs back.
 
 ## Notes
 
 - `51-logitech-prox-44100.conf` matches the node by the exact string `alsa_output.usb-Logitech_PRO_X_000000000000-00.analog-stereo`. If the USB serial changes or a different headset is used on the PC, update this `node.name` to match.
-- When adding a laptop variant, create `wireplumber/laptop/<name>.conf` with the equivalent rule for the laptop's audio output node.
+- Laptop currently has no WirePlumber rule. If that changes, create `wireplumber/laptop/<name>.conf` with a laptop-specific output node rather than reusing the PC headset rule.
 - These files were originally created following the `linux-lossless-setup` Notion runbook (2026-05-21).

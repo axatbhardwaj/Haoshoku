@@ -482,10 +482,55 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		expect(conf).toMatch(/monitor\s*=\s*,\s*preferred/);
 		// NO NVIDIA exec-once on Intel iGPU laptop
 		expect(conf).not.toMatch(/nvidia-settings/);
+		expect(conf).not.toMatch(/\bvrr\b/);
 		// Workspaces should be persistent but NOT monitor-pinned
 		expect(conf).toMatch(/workspace\s*=\s*name:0/);
 		expect(conf).not.toMatch(/workspace\s*=\s*\d+\s*,\s*monitor:/);
 		expect(conf).not.toMatch(/workspace\s*=\s*name:0\s*,\s*monitor:/);
+	});
+
+	it("uses the Notion Brave PWA on laptop instead of the retired Cohesion app", () => {
+		const conf = fs.readFileSync(
+			path.join(CONFIGS_CAELESTIA_DIR, "hypr-user-laptop.conf"),
+			"utf8",
+		);
+
+		expect(conf).not.toMatch(/cohesion/i);
+		expect(conf).not.toContain("io.github.brunofin.Cohesion");
+		expect(conf).toContain(
+			"windowrule = workspace name:0 silent, match:class brave-adaalabfemebkikihnkbonlockjjpbml-Default",
+		);
+		expect(conf).toContain(
+			"--app-id=adaalabfemebkikihnkbonlockjjpbml",
+		);
+		expect(conf).toContain("bind = $kbGoToWs, 0, exec, sh -lc");
+	});
+
+	it("keeps laptop app workspaces and keybindings aligned with the PC variant", () => {
+		const laptop = fs.readFileSync(
+			path.join(CONFIGS_CAELESTIA_DIR, "hypr-user-laptop.conf"),
+			"utf8",
+		);
+		const sharedMarkers = [
+			"bind = $kbEditor, exec, app2unit -- $editor",
+			"bind = $kbBrowser, exec, caelestia toggle brave-work",
+			"workspace = name:0, default:true, persistent:true",
+			"workspace = 1, default:true, persistent:true",
+			"workspace = 2, persistent:true",
+			"workspace = 3, persistent:true",
+			"workspace = 4, persistent:true",
+			"workspace = 5, default:true, persistent:true",
+			"windowrule = workspace 2 silent, match:class ^[Ss]team$",
+			"windowrule = workspace 4 silent, match:class vesktop",
+			"windowrule = workspace 5 silent, match:class (teams-for-linux|TelegramDesktop|org\\.telegram\\.desktop)",
+			"hyprctl dispatch exec \"[workspace 2 silent] app2unit -- steam\"",
+			"hyprctl dispatch exec \"[workspace 4 silent] app2unit -- vesktop\"",
+			"hyprshot -m output -m active",
+		];
+
+		for (const marker of sharedMarkers) {
+			expect(laptop).toContain(marker);
+		}
 	});
 
 	it("app-routed workspace binds use the launch-if-missing pattern", () => {

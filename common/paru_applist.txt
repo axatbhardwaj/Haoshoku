@@ -14,6 +14,7 @@ bitwarden
 partitionmanager
 inotify-tools
 thunar
+swayimg
 teams-for-linux
 onlyoffice-bin
 kvantum

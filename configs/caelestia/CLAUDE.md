@@ -7,7 +7,7 @@ Caelestia personal preferences (user-side overrides sourced last by Caelestia).
 | File                    | What                                                           | When to read                                                    |
 | ----------------------- | -------------------------------------------------------------- | --------------------------------------------------------------- |
 | `hypr-user-pc.conf`     | PC variant: 3 monitors (DP-1/DP-2/HDMI-A-1), NVIDIA exec-once, workspace-to-monitor pins | Modifying PC monitor layout, workspace pins, NVIDIA defaults  |
-| `hypr-user-laptop.conf` | Laptop variant: single eDP-1 HiDPI panel, Intel iGPU, no monitor pins | Modifying laptop monitor layout or laptop-specific overrides  |
+| `hypr-user-laptop.conf` | Laptop variant: same keybindings/workspaces/app routing as PC, single eDP-1 HiDPI panel, Intel iGPU, no monitor pins or VRR adjustment | Modifying laptop monitor layout or laptop-specific overrides  |
 | `cli.json`              | Caelestia CLI overrides for `caelestia toggle <ws>` (portable across devices) | Adding/removing special-workspace toggle apps                 |
 
 ## How deviceType selection works

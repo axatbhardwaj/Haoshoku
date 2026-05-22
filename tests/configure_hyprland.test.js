@@ -10,7 +10,8 @@ function makeRecorder(scriptedReturns = {}) {
 	const calls = [];
 	const run = async (command, options = {}) => {
 		calls.push({ command, options });
-		if (Object.hasOwn(scriptedReturns, command)) return scriptedReturns[command];
+		if (Object.hasOwn(scriptedReturns, command))
+			return scriptedReturns[command];
 		// Default: succeed unless the test patched a specific command to fail.
 		return true;
 	};
@@ -118,7 +119,10 @@ describe("installCaelestia (slim 5.0.0 — Caelestia only, no Ocean overlay)", (
 		const cloneDir = path.join(tmpHome, ".local", "share", "caelestia");
 		fs.mkdirSync(path.join(cloneDir, ".git"), { recursive: true });
 		// install.fish is invoked unconditionally, so leave a placeholder file.
-		fs.writeFileSync(path.join(cloneDir, "install.fish"), "#!/usr/bin/env fish\n");
+		fs.writeFileSync(
+			path.join(cloneDir, "install.fish"),
+			"#!/usr/bin/env fish\n",
+		);
 		return cloneDir;
 	}
 
@@ -137,7 +141,9 @@ describe("installCaelestia (slim 5.0.0 — Caelestia only, no Ocean overlay)", (
 		expect(hyprlandInstallCommand.split(" ")).toContain("uwsm");
 		// Must clone Caelestia (no .git existed) — clone uses HTTPS.
 		expect(
-			commands.some((c) => c.startsWith("git clone") && c.includes("caelestia")),
+			commands.some(
+				(c) => c.startsWith("git clone") && c.includes("caelestia"),
+			),
 		).toBe(true);
 		// Must run install.fish via `fish ...`.
 		expect(commands.some((c) => c.startsWith("fish "))).toBe(true);
@@ -200,7 +206,8 @@ describe("installCaelestia (slim 5.0.0 — Caelestia only, no Ocean overlay)", (
 		// Recovery's leaf install command should have fired.
 		expect(
 			commands.some(
-				(c) => c === "paru -S --needed --noconfirm caelestia-cli caelestia-shell",
+				(c) =>
+					c === "paru -S --needed --noconfirm caelestia-cli caelestia-shell",
 			),
 		).toBe(true);
 	});
@@ -289,10 +296,7 @@ describe("installCaelestia (slim 5.0.0 — Caelestia only, no Ocean overlay)", (
 		const caelestiaHyprDir = path.join(caelestiaCloneDir, "hypr");
 		fs.mkdirSync(caelestiaHyprDir, { recursive: true });
 		fs.mkdirSync(path.join(tmpHome, ".config"), { recursive: true });
-		fs.symlinkSync(
-			caelestiaHyprDir,
-			path.join(tmpHome, ".config", "hypr"),
-		);
+		fs.symlinkSync(caelestiaHyprDir, path.join(tmpHome, ".config", "hypr"));
 
 		const { run } = makeRecorder();
 		const exists = async (cmd) => cmd === "fish" || cmd === "caelestia";
@@ -351,6 +355,46 @@ describe("installCaelestia (slim 5.0.0 — Caelestia only, no Ocean overlay)", (
 		);
 		const applyIndex = calls.indexOf(applyCall);
 		expect(applyIndex).toBeGreaterThan(installFishIndex);
+	});
+
+	it("requests the lockfix apply.sh exit code so failure modes stay distinct", async () => {
+		const { calls, run } = makeRecorder();
+		const exists = async (cmd) => cmd === "fish" || cmd === "caelestia";
+
+		await hyprland.installCaelestia({ home: tmpHome, run, exists });
+
+		const expectedScript = path.join(
+			tmpHome,
+			".local",
+			"share",
+			"caelestia-lockfix",
+			"apply.sh",
+		);
+		const applyCall = calls.find((c) => c.command === `bash ${expectedScript}`);
+		expect(applyCall?.options).toEqual({ check: false, returnExitCode: true });
+	});
+
+	it("warns specifically when lockfix auto-reverted because Caelestia shell did not restart", async () => {
+		const expectedScript = path.join(
+			tmpHome,
+			".local",
+			"share",
+			"caelestia-lockfix",
+			"apply.sh",
+		);
+		const { run } = makeRecorder({ [`bash ${expectedScript}`]: 2 });
+		const exists = async (cmd) => cmd === "fish" || cmd === "caelestia";
+		const messages = [];
+		const originalLog = console.log;
+		console.log = (...args) => messages.push(args.join(" "));
+		try {
+			await hyprland.installCaelestia({ home: tmpHome, run, exists });
+		} finally {
+			console.log = originalLog;
+		}
+
+		expect(messages.join("\n")).toMatch(/Caelestia shell did not restart/i);
+		expect(messages.join("\n")).toMatch(/check whether the shell is running/i);
 	});
 
 	it("preserves existing Caelestia shell.json settings while forcing 24-hour clock", async () => {
@@ -501,5 +545,25 @@ describe("promptDeviceType", () => {
 		expect(persisted.deviceType).toBe("pc");
 		expect(persisted.skillSources).toEqual(["https://example.com/foo.git"]);
 		expect(persisted.extra).toBe(42);
+	});
+
+	it("warns when replacing a malformed ~/.haoshoku.json while persisting deviceType", async () => {
+		fs.writeFileSync(configPath, "{ not valid json");
+		const messages = [];
+		const originalLog = console.log;
+		console.log = (...args) => messages.push(args.join(" "));
+		try {
+			await hyprland.promptDeviceType({
+				configPath,
+				promptFn: buildPromptFn({ device: "laptop" }),
+			});
+		} finally {
+			console.log = originalLog;
+		}
+
+		expect(JSON.parse(fs.readFileSync(configPath, "utf8")).deviceType).toBe(
+			"laptop",
+		);
+		expect(messages.join("\n")).toMatch(/Malformed .*\.haoshoku\.json/i);
 	});
 });

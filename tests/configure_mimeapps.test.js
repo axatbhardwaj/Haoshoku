@@ -28,12 +28,34 @@ afterEach(() => {
 });
 
 const FIXTURE_CONTENT = "[Default Applications]\ntext/plain=zed.desktop\n";
+const CLAUDE_HANDLER_DESKTOP = `[Desktop Entry]
+Name=Claude Code URL Handler
+Comment=Handle claude-cli:// deep links for Claude Code
+Exec=claude --handle-uri %u
+Type=Application
+NoDisplay=true
+MimeType=x-scheme-handler/claude-cli;
+`;
 
 /** Seed a mimeapps.list in the repo configs dir. */
 function seedRepoMimeapps() {
 	fs.writeFileSync(
 		path.join(tmpProjectRoot, "configs", "mimeapps", "mimeapps.list"),
 		FIXTURE_CONTENT,
+	);
+}
+
+function seedRepoDesktopHandlers() {
+	const applicationsDir = path.join(
+		tmpProjectRoot,
+		"configs",
+		"mimeapps",
+		"applications",
+	);
+	fs.mkdirSync(applicationsDir, { recursive: true });
+	fs.writeFileSync(
+		path.join(applicationsDir, "claude-code-url-handler.desktop"),
+		CLAUDE_HANDLER_DESKTOP,
 	);
 }
 
@@ -119,6 +141,27 @@ describe("syncMimeappsConfig — deploys mimeapps.list to ~/.config/", () => {
 				"utf8",
 			),
 		).toBe(FIXTURE_CONTENT);
+	});
+
+	it("deploys managed .desktop handlers to ~/.local/share/applications/", async () => {
+		seedRepoMimeapps();
+		seedRepoDesktopHandlers();
+		await mimeapps.syncMimeappsConfig({
+			home: tmpHome,
+			projectRoot: tmpProjectRoot,
+		});
+
+		const handler = path.join(
+			tmpHome,
+			".local",
+			"share",
+			"applications",
+			"claude-code-url-handler.desktop",
+		);
+		expect(fs.existsSync(handler)).toBe(true);
+		expect(fs.readFileSync(handler, "utf8")).toContain(
+			"MimeType=x-scheme-handler/claude-cli;",
+		);
 	});
 });
 
@@ -269,5 +312,61 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 			"utf8",
 		);
 		expect(content.length).toBeGreaterThan(0);
+	});
+
+	it("ships the Claude URL handler referenced by mimeapps.list", () => {
+		const content = fs.readFileSync(
+			path.join(CONFIGS_MIMEAPPS_DIR, "mimeapps.list"),
+			"utf8",
+		);
+		expect(content).toContain(
+			"x-scheme-handler/claude-cli=claude-code-url-handler.desktop",
+		);
+		expect(
+			fs.existsSync(
+				path.join(
+					CONFIGS_MIMEAPPS_DIR,
+					"applications",
+					"claude-code-url-handler.desktop",
+				),
+			),
+		).toBe(true);
+	});
+
+	it("covers every managed desktop entry with either a deployed handler or installed package", () => {
+		const mimeapps = fs.readFileSync(
+			path.join(CONFIGS_MIMEAPPS_DIR, "mimeapps.list"),
+			"utf8",
+		);
+		const packageLists = [
+			fs.readFileSync(
+				path.join(PROJECT_ROOT, "common", "paru_applist.txt"),
+				"utf8",
+			),
+			fs.readFileSync(
+				path.join(PROJECT_ROOT, "common", "flatpacks_arch.txt"),
+				"utf8",
+			),
+		].join("\n");
+		const deployedHandlersDir = path.join(CONFIGS_MIMEAPPS_DIR, "applications");
+		const deployedHandlers = fs.existsSync(deployedHandlersDir)
+			? new Set(fs.readdirSync(deployedHandlersDir))
+			: new Set();
+		const referenced = [
+			...new Set(
+				[...mimeapps.matchAll(/=([^\n;]+\.desktop)/g)].map((match) => match[1]),
+			),
+		];
+
+		const uncovered = referenced.filter((desktopFile) => {
+			if (deployedHandlers.has(desktopFile)) return false;
+			const packageName = desktopFile.replace(/\.desktop$/, "");
+			return !packageLists
+				.split("\n")
+				.map((line) => line.trim())
+				.includes(packageName);
+		});
+
+		expect(uncovered).toEqual([]);
 	});
 });
