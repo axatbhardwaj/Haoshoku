@@ -1,5 +1,9 @@
 # Changelog
 
+## 5.3.1 - 2026-05-22
+
+- Make the Zed editor background transparent and blurred. A new `experimental.theme_overrides` block in `configs/zed/settings.json` sets `background.appearance` to `"blurred"` and drops the editor/panel/tab/terminal backgrounds to 60%-opacity alpha, so the editor background is frosted-translucent (the compositor blurs through it) while text stays fully opaque. Done at the app layer rather than via a Hyprland window-opacity rule — that route dimmed the text itself and hurt readability.
+
 ## 5.3.0 - 2026-05-22
 
 - Add audio config tracking. New `configs/audio/` holds the PipeWire/WirePlumber drop-ins for bit-perfect lossless playback; `src/helpers/configure_audio.js` provides `syncAudioConfig`/`backupAudioConfig`/`configureAudio`, exposed as `--audio` / `--audio-backup` and run as part of the CachyOS setup. The portable PipeWire drop-ins (`pipewire.conf.d/`, `pipewire-pulse.conf.d/`) deploy on any machine; the WirePlumber drop-in is device-routed under `wireplumber/<deviceType>/` because it hard-pins a specific output device. `readDeviceType` was extracted from `configure_caelestia_prefs.js` into `src/common/utils.js` so both helpers share it.
