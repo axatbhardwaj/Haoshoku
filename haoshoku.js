@@ -38,6 +38,10 @@ import {
   syncMimeappsConfig,
 } from "./src/helpers/configure_mimeapps.js";
 import {
+  backupLockfix,
+  syncLockfix,
+} from "./src/helpers/configure_lockfix.js";
+import {
   syncSkills,
   printAvailableSkills,
   CACHE_DIR,
@@ -118,6 +122,14 @@ program
   .option(
     "--mimeapps-backup",
     "Backup mimeapps.list from ~/.config/ to configs/mimeapps/",
+  )
+  .option(
+    "--lockfix",
+    "Sync caelestia-lockfix kit from configs/caelestia-lockfix/ to ~/.local/share/caelestia-lockfix/",
+  )
+  .option(
+    "--lockfix-backup",
+    "Backup caelestia-lockfix kit from ~/.local/share/caelestia-lockfix/ to configs/caelestia-lockfix/",
   )
   .option("--kde-theme", "Deploy KDE Ocean theme files (sync only, no activate)")
   .option("--kde-theme-backup", "Backup KDE Ocean theme from system to configs/kde/")
@@ -222,6 +234,16 @@ program
 
     if (options.mimeapps) {
       await syncMimeappsConfig();
+      return;
+    }
+
+    if (options.lockfixBackup) {
+      await backupLockfix();
+      return;
+    }
+
+    if (options.lockfix) {
+      await syncLockfix();
       return;
     }
 

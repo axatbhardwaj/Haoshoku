@@ -24,3 +24,4 @@ Template configuration files copied to user's `~/.config/` during setup.
 | `audio/`        | PipeWire/WirePlumber drop-in configs for bit-perfect audio (portable pipewire + device-routed wireplumber variants) | Modifying audio config, adding device-specific WirePlumber rules |
 | `mimeapps/`     | XDG default-application associations (`mimeapps.list`) — fully portable, no device routing | Changing default apps for MIME types or URI scheme handlers |
 | `scripts/`      | Executable shell wrappers deployed to `~/.local/bin/` | Adding PATH-shadow wrappers, game-launch hooks |
+| `caelestia-lockfix/` | Caelestia lock-screen portrait-fix kit (`apply.sh` + two QML patches) — workaround for upstream Caelestia bug | Updating the portrait-fix patch or re-seeding after a caelestia-shell update |
