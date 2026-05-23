@@ -1,5 +1,9 @@
 # Changelog
 
+## 5.5.0 - 2026-05-23
+
+- Back up the current Zed Caelestia theme transparency model. The vendored `configs/zed/themes/caelestia.json` now carries `background.appearance: "blurred"` plus alpha/transparent backgrounds for the editor, gutter, terminal, panel, toolbar, and tab surfaces. The older `experimental.theme_overrides` block is removed from `configs/zed/settings.json`, keeping the Zed settings file focused on selecting the Caelestia theme while the theme file owns its own visual styling.
+
 ## 5.4.0 - 2026-05-22
 
 - Trial Vivaldi, ZapZap, and Cohesion as Brave-PWA replacements (PR #7). The Super+W browser toggle is rebound from `caelestia toggle brave-work` to `caelestia toggle vivaldi` (matching class `vivaldi-stable`), and the Super+B personal Brave toggle plus the Brave personal/work special workspaces are removed. WhatsApp Web (previously a Brave PWA at `brave-hnpfjngllnobngcgfapefoaidbinmjnm-Default`) is replaced by the ZapZap Flatpak in the Caelestia communication toggle and the hypr-user special-workspace rules. The Notion workspace (previously the Brave PWA `brave-adaalabfemebkikihnkbonlockjjpbml-Default` on named workspace `0`) is replaced by `cohesion-git`, routed by class `cohesion` on workspace 10 with Super+0 launch/switch behaviour. Brave stays installed as a fallback while the new stack is trialed. Regression coverage in `tests/cachyos.test.js` and `tests/configure_caelestia_prefs.test.js` for the new toggles, removed Brave routing, the ZapZap/Cohesion migrations, and the fullscreen opacity rule.

@@ -7,7 +7,8 @@
       "name": "Caelestia",
       "appearance": "dark",
       "style": {
-        "background": "#050505",
+        "background.appearance": "blurred",
+        "background": "#050505D9",
         "border": "#1E1E2540",
         "border.variant": "#1E1E2560",
         "border.focused": "#24BD5C",
@@ -44,17 +45,17 @@
         "icon.placeholder": "#c9c9c9",
         "icon.accent": "#24BD5C",
 
-        "status_bar.background": "#050505",
-        "title_bar.background": "#050505",
-        "title_bar.inactive_background": "#050505",
-        "toolbar.background": "#050505",
-        "tab_bar.background": "#050505",
-        "tab.inactive_background": "#050505",
-        "tab.active_background": "#050505",
+        "status_bar.background": "#050505D9",
+        "title_bar.background": "#050505D9",
+        "title_bar.inactive_background": "#050505D9",
+        "toolbar.background": "#00000000",
+        "tab_bar.background": "#00000000",
+        "tab.inactive_background": "#00000000",
+        "tab.active_background": "#05050566",
 
         "search.match_background": "#d0f9f440",
 
-        "panel.background": "#050505",
+        "panel.background": "#00000000",
         "panel.focused_border": "#24BD5C",
 
         "pane.focused_border": "#24BD5C",
@@ -66,9 +67,9 @@
         "scrollbar.track.border": "#00000000",
 
         "editor.foreground": "#F5F5F6",
-        "editor.background": "#050505",
-        "editor.gutter.background": "#050505",
-        "editor.subheader.background": "#0a0a0b",
+        "editor.background": "#00000000",
+        "editor.gutter.background": "#00000000",
+        "editor.subheader.background": "#0a0a0bD9",
         "editor.active_line.background": "#05050560",
         "editor.highlighted_line.background": "#24BD5C15",
         "editor.line_number": "#c9c9c9",
@@ -79,7 +80,7 @@
         "editor.document_highlight.read_background": "#24BD5C20",
         "editor.document_highlight.write_background": "#24BD5C30",
 
-        "terminal.background": "#050505",
+        "terminal.background": "#00000000",
         "terminal.foreground": "#F5F5F6",
         "terminal.bright_foreground": "#F5F5F6",
         "terminal.dim_foreground": "#c9c9c9",

@@ -75,23 +75,5 @@
     "mode": "system",
     "light": "Caelestia",
     "dark": "Caelestia"
-  },
-  "experimental.theme_overrides": {
-    "background.appearance": "blurred",
-    "background": "#05050599",
-    "elevated_surface.background": "#05050599",
-    "surface.background": "#05050599",
-    "editor.background": "#05050599",
-    "editor.gutter.background": "#05050599",
-    "editor.subheader.background": "#0a0a0b99",
-    "terminal.background": "#05050599",
-    "panel.background": "#05050599",
-    "status_bar.background": "#05050599",
-    "title_bar.background": "#05050599",
-    "title_bar.inactive_background": "#05050599",
-    "toolbar.background": "#05050599",
-    "tab_bar.background": "#05050599",
-    "tab.active_background": "#05050599",
-    "tab.inactive_background": "#05050599"
   }
 }
