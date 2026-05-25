@@ -619,6 +619,7 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 			expect(conf).toContain(
 				"windowrule = workspace special:brave-work, match:class brave-browser, match:title Defi",
 			);
+			expect(conf).toContain("bind = Super, B, exec, caelestia toggle brave-personal");
 		}
 	});
 
