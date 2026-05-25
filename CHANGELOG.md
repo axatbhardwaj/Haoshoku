@@ -1,5 +1,9 @@
 # Changelog
 
+## 5.5.1 - 2026-05-25
+
+- Revert the Vivaldi browser trial introduced in PR #7. `Super+W` is rebound from `caelestia toggle vivaldi` back to `caelestia toggle brave-work` (matching Brave's `Profile 1` "Defi" titled window), and `Super+B` is restored for `caelestia toggle brave-personal` (Brave's `Default` "Flux" titled window). The `brave-personal` and `brave-work` cli.json toggle entries and the matching `special:brave-personal` / `special:brave-work` windowrules (with fullscreen-override opacity) are re-added. `vivaldi` is removed from `common/paru_applist.txt` and uninstalled from the machine. ZapZap (WhatsApp Flatpak in `special:communication`) and Cohesion (Notion app on workspace 10) — also from PR #7 — remain untouched; they're stable in daily use.
+
 ## 5.5.0 - 2026-05-23
 
 - Back up the current Zed Caelestia theme transparency model. The vendored `configs/zed/themes/caelestia.json` now carries `background.appearance: "blurred"` plus alpha/transparent backgrounds for the editor, gutter, terminal, panel, toolbar, and tab surfaces. The older `experimental.theme_overrides` block is removed from `configs/zed/settings.json`, keeping the Zed settings file focused on selecting the Caelestia theme while the theme file owns its own visual styling.
