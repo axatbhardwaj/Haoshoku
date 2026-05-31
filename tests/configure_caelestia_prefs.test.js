@@ -373,10 +373,21 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 				"1password",
 				"brave-personal",
 				"brave-work",
-				"claude",
+				"agents",
 				"music",
 			]),
 		);
+		expect(toggles).not.toContain("vivaldi");
+	});
+
+	it("ships configs/kitty/agents.session with the claude + codex horizontal split", () => {
+		const session = fs.readFileSync(
+			path.join(PROJECT_ROOT, "configs", "kitty", "agents.session"),
+			"utf8",
+		);
+		expect(session).toContain("layout splits");
+		expect(session).toContain("exec claude -r io");
+		expect(session).toMatch(/--location=hsplit[\s\S]*exec codex resume/);
 	});
 
 	it("maps special-workspace toggles to the expected apps", () => {
@@ -427,6 +438,19 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 			command: ["brave", "--profile-directory=Profile 1"],
 			move: true,
 		});
+		expect(toggles.agents.agents).toMatchObject({
+			enable: true,
+			match: [{ class: "kitty-agents" }],
+			command: [
+				"kitty",
+				"--class=kitty-agents",
+				"--directory=/home/xzat",
+				"--session=/home/xzat/.config/kitty/agents.session",
+			],
+			move: true,
+		});
+		expect(toggles).not.toHaveProperty("claude");
+		expect(toggles).not.toHaveProperty("vivaldi");
 	});
 
 	it("launches sysmon btop with a UTF-8 locale override", () => {
@@ -467,6 +491,23 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		expect(conf).toMatch(/workspace\s*=\s*1\s*,\s*monitor:DP-1/);
 	});
 
+	it("routes Super+A to DP-2 (agents split) and Super+D to HDMI-A-1 on PC", () => {
+		const conf = fs.readFileSync(
+			path.join(CONFIGS_CAELESTIA_DIR, "hypr-user-pc.conf"),
+			"utf8",
+		);
+		expect(conf).toContain(
+			"bind = Super, A, exec, hyprctl dispatch focusmonitor DP-2 && caelestia toggle agents",
+		);
+		expect(conf).toContain(
+			"windowrule = workspace special:agents, match:class kitty-agents",
+		);
+		expect(conf).toContain(
+			"bind = $kbCommunication, exec, hyprctl dispatch focusmonitor HDMI-A-1 && caelestia toggle communication",
+		);
+		expect(conf).not.toContain("caelestia toggle claude");
+	});
+
 	it("ships hypr-user-laptop.conf with eDP-1 + no monitor: pins + no NVIDIA exec-once", () => {
 		const conf = fs.readFileSync(
 			path.join(CONFIGS_CAELESTIA_DIR, "hypr-user-laptop.conf"),
@@ -484,6 +525,20 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		expect(conf).toMatch(/workspace\s*=\s*10/);
 		expect(conf).not.toMatch(/workspace\s*=\s*\d+\s*,\s*monitor:/);
 		expect(conf).not.toMatch(/workspace\s*=\s*10\s*,\s*monitor:/);
+	});
+
+	it("routes Super+A to the agents split without monitor forcing on laptop", () => {
+		const conf = fs.readFileSync(
+			path.join(CONFIGS_CAELESTIA_DIR, "hypr-user-laptop.conf"),
+			"utf8",
+		);
+		expect(conf).toContain("bind = Super, A, exec, caelestia toggle agents");
+		expect(conf).toContain(
+			"windowrule = workspace special:agents, match:class kitty-agents",
+		);
+		// Laptop has eDP-1, not DP-2/HDMI-A-1 — no focusmonitor forcing on Super+A
+		expect(conf).not.toMatch(/focusmonitor\s+DP-2/);
+		expect(conf).not.toContain("caelestia toggle claude");
 	});
 
 	it("routes Notion through Cohesion on workspace 10", () => {
@@ -560,6 +615,27 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 
 		for (const marker of sharedMarkers) {
 			expect(laptop).toContain(marker);
+		}
+	});
+
+	it("routes the browser shortcuts through named Brave special workspaces", () => {
+		for (const file of ["hypr-user-pc.conf", "hypr-user-laptop.conf"]) {
+			const conf = fs.readFileSync(
+				path.join(CONFIGS_CAELESTIA_DIR, file),
+				"utf8",
+			);
+
+			expect(conf).toContain("unbind = $kbBrowser");
+			expect(conf).toContain("bind = $kbBrowser, exec, caelestia toggle brave-work");
+			expect(conf).toContain("bind = Super, B, exec, caelestia toggle brave-personal");
+			expect(conf).toContain(
+				"windowrule = workspace special:brave-personal, match:class brave-browser, match:title Flux",
+			);
+			expect(conf).toContain(
+				"windowrule = workspace special:brave-work, match:class brave-browser, match:title Defi",
+			);
+			expect(conf).not.toContain("caelestia toggle vivaldi");
+			expect(conf).not.toContain("special:vivaldi");
 		}
 	});
 
