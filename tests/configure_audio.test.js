@@ -750,6 +750,21 @@ describe("seeded configs/audio/ (in-tree static configs)", () => {
 		).toBe(true);
 	});
 
+	it("ships 52-fifine-default-source.conf pinning the FIFINE as default capture source", () => {
+		const file = path.join(
+			CONFIGS_AUDIO_DIR,
+			"wireplumber",
+			"pc",
+			"52-fifine-default-source.conf",
+		);
+		expect(fs.existsSync(file)).toBe(true);
+		const conf = fs.readFileSync(file, "utf8");
+		expect(conf).toContain(
+			"alsa_input.usb-MV-SILICON_fifine_Microphone_20190808-00.mono-fallback",
+		);
+		expect(conf).toMatch(/priority\.session\s*=\s*3000/);
+	});
+
 	it("does not ship a laptop lossless WirePlumber rule", () => {
 		const laptopDir = path.join(CONFIGS_AUDIO_DIR, "wireplumber", "laptop");
 		const laptopRules = fs.existsSync(laptopDir)
