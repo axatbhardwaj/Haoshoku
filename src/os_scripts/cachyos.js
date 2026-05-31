@@ -56,6 +56,11 @@ const CUSTOM_FASTFETCH_CONFIG_PATH = path.join(
   "config.jsonc",
 );
 const CUSTOM_KITTY_CONFIG_PATH = path.join(CONFIGS_DIR, "kitty", "kitty.conf");
+const CUSTOM_KITTY_SESSION_PATH = path.join(
+  CONFIGS_DIR,
+  "kitty",
+  "agents.session",
+);
 const CUSTOM_ALACRITTY_CONFIG_PATH = path.join(
   CONFIGS_DIR,
   "alacritty",
@@ -300,6 +305,16 @@ async function configureTerminals() {
     log.info("Copied custom Kitty config.");
   } else {
     log.warning(`Custom Kitty config not found at ${CUSTOM_KITTY_CONFIG_PATH}`);
+  }
+
+  // Super+A agents workspace: kitty --session=agents.session (claude + codex hsplit).
+  // cli.json's agents toggle points at ~/.config/kitty/agents.session, so it must ship.
+  if (fs.existsSync(CUSTOM_KITTY_SESSION_PATH)) {
+    safeCopyFile(
+      CUSTOM_KITTY_SESSION_PATH,
+      path.join(KITTY_CONFIG_DIR, "agents.session"),
+    );
+    log.info("Copied kitty agents.session (Super+A split workspace).");
   }
 
   log.info("Configuring Alacritty terminal...");
