@@ -2,7 +2,7 @@ import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 
-import { log } from "../common/utils.js";
+import { log, safeCopyFile } from "../common/utils.js";
 
 const HOME_DEFAULT = homedir();
 const PROJECT_ROOT_DEFAULT = path.resolve(__dirname, "..", "..");
@@ -63,7 +63,7 @@ export async function syncMimeappsConfig(opts = {}) {
   }
 
   fs.mkdirSync(liveDir, { recursive: true });
-  fs.copyFileSync(repoFile, liveFile);
+  safeCopyFile(repoFile, liveFile);
   syncDesktopHandlers(repoApplicationsDir, liveApplicationsDir);
   log.success("mimeapps.list synced to ~/.config/");
 }

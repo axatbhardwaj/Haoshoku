@@ -2,7 +2,7 @@ import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 
-import { log } from "../common/utils.js";
+import { log, safeCopyFile } from "../common/utils.js";
 
 const HOME_DEFAULT = homedir();
 const PROJECT_ROOT_DEFAULT = path.resolve(__dirname, "..", "..");
@@ -54,7 +54,7 @@ export async function installUserScripts(opts = {}) {
   for (const entry of entries) {
     const src = path.join(scriptsSrc, entry.name);
     const dest = path.join(localBin, entry.name);
-    fs.copyFileSync(src, dest);
+    safeCopyFile(src, dest);
     fs.chmodSync(dest, 0o755);
     log.info(`  ${entry.name}`);
   }
