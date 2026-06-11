@@ -240,3 +240,108 @@ describe("custom fish assets shipped by haoshoku", () => {
     expect(content).not.toMatch(/api[_-]?key\s*=\s*['"][^'"]+['"]/i);
   });
 });
+
+describe("installAurHelper robustness", () => {
+  it("calls fs.rmSync on PARU_BUILD_DIR before the runCommand that git-clones paru", () => {
+    // Ensures a leftover /tmp/paru from a prior failed run doesn't block cloning.
+    // The rmSync call must appear before the git clone runCommand inside installAurHelper.
+    const fnStart = CACHYOS_SRC.indexOf("async function installAurHelper");
+    const fnEnd = CACHYOS_SRC.indexOf("\nasync function ", fnStart + 1);
+    const fnBody = CACHYOS_SRC.slice(fnStart, fnEnd === -1 ? undefined : fnEnd);
+    const rmSyncIdx = fnBody.indexOf("fs.rmSync(PARU_BUILD_DIR");
+    const cloneRunCmdIdx = fnBody.indexOf("PARU_AUR_URL");
+    expect(rmSyncIdx).toBeGreaterThan(-1);
+    expect(cloneRunCmdIdx).toBeGreaterThan(-1);
+    expect(rmSyncIdx).toBeLessThan(cloneRunCmdIdx);
+  });
+
+  it("passes { recursive: true, force: true } to rmSync for PARU_BUILD_DIR", () => {
+    expect(CACHYOS_SRC).toMatch(
+      /fs\.rmSync\(PARU_BUILD_DIR,\s*\{\s*recursive:\s*true,\s*force:\s*true\s*\}\)/,
+    );
+  });
+
+  it("captures the runCommand result in installAurHelper and warns on failure", () => {
+    // The paru build command result must be captured (assigned to a variable or
+    // otherwise tested), and a log.warning must follow it in installAurHelper.
+    // We verify by checking that both an assignment to the paru spinner call and
+    // a log.warning appear inside the installAurHelper function body.
+    const fnStart = CACHYOS_SRC.indexOf("async function installAurHelper");
+    const fnEnd = CACHYOS_SRC.indexOf("\nasync function ", fnStart + 1);
+    const fnBody = CACHYOS_SRC.slice(fnStart, fnEnd === -1 ? undefined : fnEnd);
+    expect(fnBody).toMatch(/const\s+\w+\s*=\s*await\s+withSpinner/);
+    expect(fnBody).toMatch(/log\.warning/);
+  });
+});
+
+describe("installBaseDependencies base-devel requirement", () => {
+  it("installs base-devel and git via pacman (required for makepkg / paru build)", () => {
+    // Must be an uncommented (active) call — check the string is present in the source.
+    // Allow for an optional trailing comma before the closing paren (biome style).
+    expect(CACHYOS_SRC).toMatch(
+      /runCommand\(\s*["']sudo pacman -S --needed --noconfirm base-devel git["'],?\s*\)/,
+    );
+  });
+
+  it("checks the result of the base-devel install and warns on failure", () => {
+    const fnStart = CACHYOS_SRC.indexOf("async function installBaseDependencies");
+    const fnEnd = CACHYOS_SRC.indexOf("\nasync function ", fnStart + 1);
+    const fnBody = CACHYOS_SRC.slice(fnStart, fnEnd === -1 ? undefined : fnEnd);
+    // Result captured into a variable (trailing comma allowed by biome style)
+    expect(fnBody).toMatch(
+      /const\s+\w+\s*=\s*await\s+runCommand\(\s*["']sudo pacman -S --needed --noconfirm base-devel git["']/,
+    );
+    expect(fnBody).toMatch(/log\.warning/);
+  });
+});
+
+describe("installKdeGlass result gating", () => {
+  it("captures the result of the kwin-effects-glass build runCommand", () => {
+    const fnStart = CACHYOS_SRC.indexOf("export async function installKdeGlass");
+    const fnEnd = CACHYOS_SRC.indexOf("\nasync function ", fnStart + 1);
+    // installKdeGlass is the last function — slice to end if no next function found
+    const fnBody = CACHYOS_SRC.slice(fnStart, fnEnd === -1 ? undefined : fnEnd);
+    // The big build chain must be assigned
+    expect(fnBody).toMatch(/const\s+\w+\s*=\s*await\s+runCommand\(/);
+  });
+
+  it("only prints success message when the build runCommand returned true", () => {
+    const fnStart = CACHYOS_SRC.indexOf("export async function installKdeGlass");
+    const fnBody = CACHYOS_SRC.slice(fnStart);
+    // success call gated on the result variable
+    expect(fnBody).toMatch(/if\s*\(\w+\)\s*\{[\s\S]*?log\.success/);
+  });
+
+  it("logs an error with manual-install URL when the build fails", () => {
+    // log.error call may have whitespace/newline between '(' and the string.
+    expect(CACHYOS_SRC).toMatch(
+      /log\.error\(\s*["'`]KDE Glass build failed/,
+    );
+    expect(CACHYOS_SRC).toMatch(
+      /https:\/\/github\.com\/4v3ngR\/kwin-effects-glass/,
+    );
+  });
+
+  it("uses fs.rmSync instead of runCommand('rm -rf …') for buildDir cleanup", () => {
+    const fnStart = CACHYOS_SRC.indexOf("export async function installKdeGlass");
+    const fnBody = CACHYOS_SRC.slice(fnStart);
+    // Must NOT use a shell rm -rf for buildDir
+    expect(fnBody).not.toMatch(/runCommand\(`rm -rf \$\{buildDir\}`\)/);
+    // Must use fs.rmSync
+    expect(fnBody).toMatch(
+      /fs\.rmSync\(buildDir,\s*\{\s*recursive:\s*true,\s*force:\s*true\s*\}\)/,
+    );
+  });
+});
+
+describe("configureFastfetch safeCopyFile", () => {
+  it("uses safeCopyFile instead of fs.copyFileSync for the fastfetch config", () => {
+    const fnStart = CACHYOS_SRC.indexOf("async function configureFastfetch");
+    const fnEnd = CACHYOS_SRC.indexOf("\nasync function ", fnStart + 1);
+    const fnBody = CACHYOS_SRC.slice(fnStart, fnEnd === -1 ? undefined : fnEnd);
+    // Must NOT use bare fs.copyFileSync for the fastfetch config copy
+    expect(fnBody).not.toMatch(/fs\.copyFileSync\(/);
+    // Must use safeCopyFile
+    expect(fnBody).toMatch(/safeCopyFile\(/);
+  });
+});

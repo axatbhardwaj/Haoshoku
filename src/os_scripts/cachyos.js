@@ -166,8 +166,15 @@ async function installBaseDependencies() {
   // // Then update the keyring packages
   // await runCommand("sudo pacman -Sy --noconfirm archlinux-keyring cachyos-keyring");
 
-  log.info("Updating system and installing base-devel...");
-  //   await runCommand("sudo pacman -Syu base-devel --noconfirm");
+  log.info("Installing base-devel and git (required for makepkg / paru build)...");
+  const baseDevelOk = await runCommand(
+    "sudo pacman -S --needed --noconfirm base-devel git",
+  );
+  if (!baseDevelOk) {
+    log.warning(
+      "base-devel/git install failed — paru build and AUR installs may fail.",
+    );
+  }
 
   log.info("Installing Rust via rustup...");
   await withSpinner("Installing Rust", () =>
@@ -190,11 +197,18 @@ async function installAurHelper() {
     return;
   }
   log.info("Installing paru...");
-  await withSpinner("Installing paru", () =>
+  // Remove any leftover build dir from a prior failed run so git clone succeeds.
+  fs.rmSync(PARU_BUILD_DIR, { recursive: true, force: true });
+  const paruOk = await withSpinner("Installing paru", () =>
     runCommand(
       `git clone ${PARU_AUR_URL} ${PARU_BUILD_DIR} && cd ${PARU_BUILD_DIR} && makepkg -si --noconfirm`,
     ),
   );
+  if (!paruOk) {
+    log.warning(
+      "paru installation failed — AUR package installs will be unavailable.",
+    );
+  }
 }
 
 async function installDevTools() {
@@ -363,7 +377,7 @@ async function configureFastfetch() {
   log.info("Configuring Fastfetch...");
   fs.mkdirSync(FASTFETCH_CONFIG_DIR, { recursive: true });
   if (fs.existsSync(CUSTOM_FASTFETCH_CONFIG_PATH)) {
-    fs.copyFileSync(
+    safeCopyFile(
       CUSTOM_FASTFETCH_CONFIG_PATH,
       path.join(FASTFETCH_CONFIG_DIR, "config.jsonc"),
     );
@@ -384,11 +398,7 @@ async function configureKde() {
         ".config",
         "kglobalshortcutsrc",
       );
-      if (fs.existsSync(kglobalshortcutsrc)) {
-        fs.copyFileSync(kglobalshortcutsrc, `${kglobalshortcutsrc}.bak`);
-        log.info(`Backed up existing shortcuts to ${kglobalshortcutsrc}.bak`);
-      }
-      fs.copyFileSync(KDE_SHORTCUTS_PATH, kglobalshortcutsrc);
+      safeCopyFile(KDE_SHORTCUTS_PATH, kglobalshortcutsrc);
       log.info("KDE shortcuts applied. Please log out and log back in.");
     } else {
       log.warning(`KDE shortcuts file not found at ${KDE_SHORTCUTS_PATH}`);
@@ -514,10 +524,10 @@ export async function installKdeGlass() {
   log.info("Cloning and building KDE Glass blur effect...");
   const buildDir = "/tmp/kwin-effects-glass";
 
-  // Remove old build directory if it exists
-  await runCommand(`rm -rf ${buildDir}`);
+  // Remove old build directory if it exists so git clone always starts clean.
+  fs.rmSync(buildDir, { recursive: true, force: true });
 
-  await runCommand(
+  const kdeGlassOk = await runCommand(
     `cd /tmp && ` +
       `git clone https://github.com/4v3ngR/kwin-effects-glass && ` +
       `cd kwin-effects-glass && ` +
@@ -527,10 +537,16 @@ export async function installKdeGlass() {
       `sudo make install`,
   );
 
-  log.success(
-    "KDE Glass blur effect installed successfully!\n" +
-      "Open System Settings > Desktop Effects, disable other blur effects, and enable Glass.",
-  );
+  if (kdeGlassOk) {
+    log.success(
+      "KDE Glass blur effect installed successfully!\n" +
+        "Open System Settings > Desktop Effects, disable other blur effects, and enable Glass.",
+    );
+  } else {
+    log.error(
+      "KDE Glass build failed — see output above; install manually from https://github.com/4v3ngR/kwin-effects-glass",
+    );
+  }
 }
 
 async function installSystemPackages() {
