@@ -324,3 +324,6 @@ tasks/
 /superpowers/
 
 # End of https://www.toptal.com/developers/gitignore/api/python,node
+
+# Branch/session working notes (local-only)
+BRANCH-NOTES.md
