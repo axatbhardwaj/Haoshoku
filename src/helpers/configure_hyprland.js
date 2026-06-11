@@ -136,7 +136,19 @@ export function configureCaelestiaShell({ home = HOME } = {}) {
 	let shellConfig = {};
 
 	if (fs.existsSync(shellConfigPath)) {
-		shellConfig = JSON.parse(fs.readFileSync(shellConfigPath, "utf8"));
+		try {
+			shellConfig = JSON.parse(fs.readFileSync(shellConfigPath, "utf8"));
+		} catch (err) {
+			// A malformed user-owned shell.json would crash the whole
+			// installCaelestia run. Preserve it as .bak (so the user can recover
+			// hand edits) and continue from {} so we still write valid config.
+			const backupPath = `${shellConfigPath}.bak`;
+			fs.renameSync(shellConfigPath, backupPath);
+			log.warning(
+				`Malformed Caelestia shell.json at ${shellConfigPath} (${err?.message ?? err}) — moved to ${backupPath}; rewriting with defaults.`,
+			);
+			shellConfig = {};
+		}
 	}
 
 	shellConfig.services = {

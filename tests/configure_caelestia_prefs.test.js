@@ -222,6 +222,51 @@ describe("syncCaelestiaPrefs — deploys device-specific hypr-user variant", () 
 			),
 		).toMatch(/pc variant/);
 	});
+
+	it("backs up a user-owned live hypr-user.conf to .bak before overwriting", async () => {
+		seedPcAndLaptop();
+		writeDeviceType("pc");
+		// User had their own monitor config living at the deploy target.
+		const liveDir = path.join(tmpHome, ".config", "caelestia");
+		fs.mkdirSync(liveDir, { recursive: true });
+		const userMonitorConf =
+			"# user's own monitor config\nmonitor = HDMI-A-2, 1920x1080, 0x0, 1\n";
+		fs.writeFileSync(path.join(liveDir, "hypr-user.conf"), userMonitorConf);
+
+		await prefs.syncCaelestiaPrefs({
+			home: tmpHome,
+			projectRoot: tmpProjectRoot,
+		});
+
+		// User's original lands in .bak, not vanished; repo variant is now live.
+		expect(
+			fs.readFileSync(path.join(liveDir, "hypr-user.conf.bak"), "utf8"),
+		).toBe(userMonitorConf);
+		expect(
+			fs.readFileSync(path.join(liveDir, "hypr-user.conf"), "utf8"),
+		).toMatch(/pc variant/);
+	});
+
+	it("backs up a user-owned live cli.json to .bak before overwriting", async () => {
+		seedPcAndLaptop();
+		writeDeviceType("pc");
+		const liveDir = path.join(tmpHome, ".config", "caelestia");
+		fs.mkdirSync(liveDir, { recursive: true });
+		const userCli = JSON.stringify({ toggles: { userOwned: {} } }, null, 2);
+		fs.writeFileSync(path.join(liveDir, "cli.json"), userCli);
+
+		await prefs.syncCaelestiaPrefs({
+			home: tmpHome,
+			projectRoot: tmpProjectRoot,
+		});
+
+		expect(fs.readFileSync(path.join(liveDir, "cli.json.bak"), "utf8")).toBe(
+			userCli,
+		);
+		expect(
+			JSON.parse(fs.readFileSync(path.join(liveDir, "cli.json"), "utf8")),
+		).toEqual({ toggles: { fixture: {} } });
+	});
 });
 
 describe("backupCaelestiaPrefs — ~/.config/caelestia/ → configs/caelestia/<variant>", () => {
@@ -358,6 +403,99 @@ describe("backupCaelestiaPrefs — ~/.config/caelestia/ → configs/caelestia/<v
 				projectRoot: tmpProjectRoot,
 			}),
 		).resolves.toBeUndefined();
+	});
+
+	it("does NOT clobber a non-empty repo variant with an empty live placeholder", async () => {
+		writeDeviceType("pc");
+		// Repo already holds a curated PC variant (the source of truth).
+		const repoDir = path.join(tmpProjectRoot, "configs", "caelestia");
+		const curated = "# curated pc variant\nmonitor = DP-1, 2560x1440, 0x0, 1\n";
+		fs.writeFileSync(path.join(repoDir, "hypr-user-pc.conf"), curated);
+
+		// Live file is the empty placeholder installCaelestia pre-creates.
+		const liveDir = path.join(tmpHome, ".config", "caelestia");
+		fs.mkdirSync(liveDir, { recursive: true });
+		fs.writeFileSync(path.join(liveDir, "hypr-user.conf"), "");
+
+		const messages = [];
+		const originalLog = console.log;
+		console.log = (...args) => messages.push(args.join(" "));
+		try {
+			await prefs.backupCaelestiaPrefs({
+				home: tmpHome,
+				projectRoot: tmpProjectRoot,
+			});
+		} finally {
+			console.log = originalLog;
+		}
+
+		// Curated repo variant must survive untouched.
+		expect(fs.readFileSync(path.join(repoDir, "hypr-user-pc.conf"), "utf8")).toBe(
+			curated,
+		);
+		expect(messages.join("\n")).toMatch(/hypr-user/i);
+	});
+
+	it("also skips when the live placeholder is whitespace-only", async () => {
+		writeDeviceType("laptop");
+		const repoDir = path.join(tmpProjectRoot, "configs", "caelestia");
+		const curated = "# curated laptop variant\nmonitor = eDP-1\n";
+		fs.writeFileSync(path.join(repoDir, "hypr-user-laptop.conf"), curated);
+
+		const liveDir = path.join(tmpHome, ".config", "caelestia");
+		fs.mkdirSync(liveDir, { recursive: true });
+		fs.writeFileSync(path.join(liveDir, "hypr-user.conf"), "  \n\t\n");
+
+		await prefs.backupCaelestiaPrefs({
+			home: tmpHome,
+			projectRoot: tmpProjectRoot,
+		});
+
+		expect(
+			fs.readFileSync(path.join(repoDir, "hypr-user-laptop.conf"), "utf8"),
+		).toBe(curated);
+	});
+
+	it("still backs up an empty live file when the repo target is also empty/absent", async () => {
+		writeDeviceType("pc");
+		// No curated repo variant exists yet — an empty live file is fine to land.
+		const liveDir = path.join(tmpHome, ".config", "caelestia");
+		fs.mkdirSync(liveDir, { recursive: true });
+		fs.writeFileSync(path.join(liveDir, "hypr-user.conf"), "");
+
+		await prefs.backupCaelestiaPrefs({
+			home: tmpHome,
+			projectRoot: tmpProjectRoot,
+		});
+
+		const repoVariant = path.join(
+			tmpProjectRoot,
+			"configs",
+			"caelestia",
+			"hypr-user-pc.conf",
+		);
+		expect(fs.existsSync(repoVariant)).toBe(true);
+		expect(fs.readFileSync(repoVariant, "utf8")).toBe("");
+	});
+
+	it("backs up a non-empty live file normally even when repo target is non-empty", async () => {
+		writeDeviceType("pc");
+		const repoDir = path.join(tmpProjectRoot, "configs", "caelestia");
+		fs.writeFileSync(path.join(repoDir, "hypr-user-pc.conf"), "# old curated\n");
+
+		const liveDir = path.join(tmpHome, ".config", "caelestia");
+		fs.mkdirSync(liveDir, { recursive: true });
+		const newLive = "# user edited monitor config\nmonitor = DP-3\n";
+		fs.writeFileSync(path.join(liveDir, "hypr-user.conf"), newLive);
+
+		await prefs.backupCaelestiaPrefs({
+			home: tmpHome,
+			projectRoot: tmpProjectRoot,
+		});
+
+		expect(
+			fs.readFileSync(path.join(repoDir, "hypr-user-pc.conf"), "utf8"),
+		).toBe(newLive);
 	});
 });
 

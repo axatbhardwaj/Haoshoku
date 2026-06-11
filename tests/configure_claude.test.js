@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 
 import {
+	MANAGED_DIRS,
 	PERSONAL_FILES,
 	syncClaudeConfig,
 } from "../src/helpers/configure_claude.js";
@@ -77,5 +78,108 @@ describe("syncClaudeConfig() warns on missing sources", () => {
 		expect(warnings.some((w) => w.includes("statusline-command.sh"))).toBe(
 			false,
 		);
+	});
+});
+
+describe("syncClaudeConfig() preserves the user's live settings.json via .bak", () => {
+	let tmpDir;
+	let configsDir;
+	let claudeHome;
+	let claudeDir;
+
+	beforeEach(() => {
+		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-claudebak-"));
+		configsDir = path.join(tmpDir, "configs", "claude");
+		claudeHome = path.join(tmpDir, "claude-home");
+		claudeDir = path.join(claudeHome, ".claude");
+		fs.mkdirSync(configsDir, { recursive: true });
+		fs.mkdirSync(claudeDir, { recursive: true });
+	});
+
+	afterEach(() => {
+		fs.rmSync(tmpDir, { recursive: true, force: true });
+	});
+
+	it("backs up a differing live settings.json to settings.json.bak before overwriting", async () => {
+		// User's live settings.json carries runtime-mutated state (e.g. enabled
+		// plugins) that differs from the bundled template.
+		const liveSettings = `${JSON.stringify({ enabledPlugins: { "x@y": true } }, null, 2)}\n`;
+		fs.writeFileSync(path.join(claudeDir, "settings.json"), liveSettings);
+
+		const bundledSettings = `${JSON.stringify({ permissions: { allow: [] } }, null, 2)}\n`;
+		fs.writeFileSync(path.join(configsDir, "settings.json"), bundledSettings);
+		fs.writeFileSync(path.join(configsDir, "CLAUDE.md"), "# test\n");
+		fs.writeFileSync(path.join(configsDir, "statusline-command.sh"), "#!/bin/sh\n");
+
+		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
+
+		// Original live config preserved in .bak; bundled config now live.
+		expect(
+			fs.readFileSync(path.join(claudeDir, "settings.json.bak"), "utf-8"),
+		).toBe(liveSettings);
+		expect(fs.readFileSync(path.join(claudeDir, "settings.json"), "utf-8")).toBe(
+			bundledSettings,
+		);
+	});
+
+	it("does not clobber the original .bak when settings.json is synced a second time", async () => {
+		const originalLive = `${JSON.stringify({ original: true }, null, 2)}\n`;
+		fs.writeFileSync(path.join(claudeDir, "settings.json"), originalLive);
+
+		const bundledSettings = `${JSON.stringify({ bundled: true }, null, 2)}\n`;
+		fs.writeFileSync(path.join(configsDir, "settings.json"), bundledSettings);
+		fs.writeFileSync(path.join(configsDir, "CLAUDE.md"), "# test\n");
+		fs.writeFileSync(path.join(configsDir, "statusline-command.sh"), "#!/bin/sh\n");
+
+		// First sync: original → .bak, bundled → live.
+		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
+		// Second sync: live already equals bundled → no-op, .bak must stay pristine.
+		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
+
+		expect(
+			fs.readFileSync(path.join(claudeDir, "settings.json.bak"), "utf-8"),
+		).toBe(originalLive);
+	});
+});
+
+describe("syncClaudeConfig() replaces MANAGED_DIRS (stale entries do not linger)", () => {
+	let tmpDir;
+	let configsDir;
+	let claudeHome;
+	let claudeDir;
+
+	beforeEach(() => {
+		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-claudedir-"));
+		configsDir = path.join(tmpDir, "configs", "claude");
+		claudeHome = path.join(tmpDir, "claude-home");
+		claudeDir = path.join(claudeHome, ".claude");
+		fs.mkdirSync(configsDir, { recursive: true });
+		fs.mkdirSync(claudeDir, { recursive: true });
+		// PERSONAL_FILES are required so the loop doesn't warn; content is irrelevant here.
+		for (const f of PERSONAL_FILES) {
+			fs.writeFileSync(path.join(configsDir, f.src), "x");
+		}
+	});
+
+	afterEach(() => {
+		fs.rmSync(tmpDir, { recursive: true, force: true });
+	});
+
+	it("removes a stale file inside a MANAGED_DIR that the new bundle no longer ships", async () => {
+		const managed = MANAGED_DIRS[0];
+
+		// Bundle ships only keep.md.
+		fs.mkdirSync(path.join(configsDir, managed), { recursive: true });
+		fs.writeFileSync(path.join(configsDir, managed, "keep.md"), "keep\n");
+
+		// Live dir has a leftover from a previous bundle that was since deleted.
+		fs.mkdirSync(path.join(claudeDir, managed), { recursive: true });
+		fs.writeFileSync(path.join(claudeDir, managed, "stale.md"), "stale\n");
+
+		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
+
+		const liveManaged = path.join(claudeDir, managed);
+		expect(fs.existsSync(path.join(liveManaged, "stale.md"))).toBe(false);
+		expect(fs.existsSync(path.join(liveManaged, "keep.md"))).toBe(true);
 	});
 });

@@ -2,7 +2,7 @@ import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 
-import { log, readDeviceType } from "../common/utils.js";
+import { log, readDeviceType, safeCopyFile } from "../common/utils.js";
 
 const HOME_DEFAULT = homedir();
 const PROJECT_ROOT_DEFAULT = path.resolve(__dirname, "..", "..");
@@ -50,7 +50,9 @@ export async function syncCaelestiaPrefs(opts = {}) {
   const variantSrc = path.join(caelestiaBackupDir, variantFilename(deviceType));
   const hyprUserDest = path.join(caelestiaConfigDir, "hypr-user.conf");
   if (fs.existsSync(variantSrc)) {
-    fs.copyFileSync(variantSrc, hyprUserDest);
+    // safeCopyFile preserves the user-owned live hypr-user.conf (their monitor
+    // config) as .bak instead of letting it vanish under the repo variant.
+    safeCopyFile(variantSrc, hyprUserDest);
     log.info(`Synced ${variantFilename(deviceType)} → hypr-user.conf`);
   } else {
     log.warning(
@@ -62,7 +64,7 @@ export async function syncCaelestiaPrefs(opts = {}) {
   const cliSrc = path.join(caelestiaBackupDir, "cli.json");
   const cliDest = path.join(caelestiaConfigDir, "cli.json");
   if (fs.existsSync(cliSrc)) {
-    fs.copyFileSync(cliSrc, cliDest);
+    safeCopyFile(cliSrc, cliDest);
     log.info("Synced cli.json");
   }
 
@@ -93,8 +95,24 @@ export async function backupCaelestiaPrefs(opts = {}) {
   const hyprUserSrc = path.join(caelestiaConfigDir, "hypr-user.conf");
   const variantDest = path.join(caelestiaBackupDir, variantFilename(deviceType));
   if (fs.existsSync(hyprUserSrc)) {
-    fs.copyFileSync(hyprUserSrc, variantDest);
-    log.info(`Backed up hypr-user.conf → ${variantFilename(deviceType)}`);
+    // installCaelestia pre-creates an EMPTY hypr-user.conf placeholder before
+    // first boot. Backing that empty file up over a curated repo variant would
+    // silently wipe the host's real monitor config. Guard: when the live file
+    // is empty/whitespace-only but the repo already holds a non-empty variant,
+    // skip it — the repo copy is the source of truth.
+    const liveIsBlank =
+      fs.readFileSync(hyprUserSrc, "utf8").trim().length === 0;
+    const repoHasContent =
+      fs.existsSync(variantDest) &&
+      fs.readFileSync(variantDest, "utf8").length > 0;
+    if (liveIsBlank && repoHasContent) {
+      log.warning(
+        `Live hypr-user.conf at ${hyprUserSrc} is empty (pre-boot placeholder) — keeping curated ${variantFilename(deviceType)} instead of clobbering it.`,
+      );
+    } else {
+      fs.copyFileSync(hyprUserSrc, variantDest);
+      log.info(`Backed up hypr-user.conf → ${variantFilename(deviceType)}`);
+    }
   }
 
   // Portable: cli.json

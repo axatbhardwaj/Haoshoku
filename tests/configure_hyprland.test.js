@@ -422,6 +422,102 @@ describe("installCaelestia (slim 5.0.0 — Caelestia only, no Ocean overlay)", (
 		expect(shellConfig.services.weatherLocation).toBe("Bengaluru");
 		expect(shellConfig.services.useTwelveHourClock).toBe(false);
 	});
+
+	it("renames a malformed shell.json to .bak and still writes valid config", async () => {
+		const shellConfigPath = path.join(
+			tmpHome,
+			".config",
+			"caelestia",
+			"shell.json",
+		);
+		fs.mkdirSync(path.dirname(shellConfigPath), { recursive: true });
+		const malformed = "{ services: not valid json,,,";
+		fs.writeFileSync(shellConfigPath, malformed);
+
+		const { run } = makeRecorder();
+		const exists = async (cmd) => cmd === "fish" || cmd === "caelestia";
+
+		const messages = [];
+		const originalLog = console.log;
+		console.log = (...args) => messages.push(args.join(" "));
+		try {
+			await hyprland.installCaelestia({ home: tmpHome, run, exists });
+		} finally {
+			console.log = originalLog;
+		}
+
+		// Malformed original preserved verbatim in the .bak sibling.
+		expect(fs.readFileSync(`${shellConfigPath}.bak`, "utf8")).toBe(malformed);
+		// New shell.json is valid JSON with the 24-hour clock forced.
+		const shellConfig = JSON.parse(fs.readFileSync(shellConfigPath, "utf8"));
+		expect(shellConfig.services.useTwelveHourClock).toBe(false);
+		// A warning referenced both the malformed file and its backup.
+		expect(messages.join("\n")).toMatch(/shell\.json/i);
+		expect(messages.join("\n")).toMatch(/\.bak/);
+	});
+});
+
+describe("configureCaelestiaShell — malformed shell.json handling", () => {
+	let tmpHome;
+
+	beforeEach(() => {
+		tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-shelljson-"));
+	});
+
+	afterEach(() => {
+		fs.rmSync(tmpHome, { recursive: true, force: true });
+	});
+
+	it("renames the malformed file to shell.json.bak and continues with {}", () => {
+		const shellConfigPath = path.join(
+			tmpHome,
+			".config",
+			"caelestia",
+			"shell.json",
+		);
+		fs.mkdirSync(path.dirname(shellConfigPath), { recursive: true });
+		const malformed = "}}} not json {{{";
+		fs.writeFileSync(shellConfigPath, malformed);
+
+		const messages = [];
+		const originalLog = console.log;
+		console.log = (...args) => messages.push(args.join(" "));
+		try {
+			expect(() =>
+				hyprland.configureCaelestiaShell({ home: tmpHome }),
+			).not.toThrow();
+		} finally {
+			console.log = originalLog;
+		}
+
+		expect(fs.readFileSync(`${shellConfigPath}.bak`, "utf8")).toBe(malformed);
+		const shellConfig = JSON.parse(fs.readFileSync(shellConfigPath, "utf8"));
+		// Starting from {} means only the forced default lands.
+		expect(shellConfig.services.useTwelveHourClock).toBe(false);
+		expect(messages.join("\n")).toMatch(/shell\.json/i);
+		expect(messages.join("\n")).toMatch(/\.bak/);
+	});
+
+	it("preserves a valid existing shell.json (no .bak rename)", () => {
+		const shellConfigPath = path.join(
+			tmpHome,
+			".config",
+			"caelestia",
+			"shell.json",
+		);
+		fs.mkdirSync(path.dirname(shellConfigPath), { recursive: true });
+		fs.writeFileSync(
+			shellConfigPath,
+			JSON.stringify({ services: { weatherLocation: "Pune" } }),
+		);
+
+		hyprland.configureCaelestiaShell({ home: tmpHome });
+
+		expect(fs.existsSync(`${shellConfigPath}.bak`)).toBe(false);
+		const shellConfig = JSON.parse(fs.readFileSync(shellConfigPath, "utf8"));
+		expect(shellConfig.services.weatherLocation).toBe("Pune");
+		expect(shellConfig.services.useTwelveHourClock).toBe(false);
+	});
 });
 
 describe("promptDesktopEnvironment", () => {
