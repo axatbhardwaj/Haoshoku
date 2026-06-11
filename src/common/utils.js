@@ -22,12 +22,21 @@ export async function runCommand(command, options = { check: true }) {
 		);
 
 	try {
-		const proc = spawn(useShell ? ["sh", "-c", command] : command.split(" "), {
-			cwd: options.cwd,
-			stdin: "inherit",
-			stdout: "inherit",
-			stderr: "inherit",
-		});
+		// Shell-routed commands run under bash with pipefail so a failing early
+		// pipeline stage (e.g. `curl bad-url | sh`) surfaces as a non-zero exit
+		// instead of POSIX sh's last-stage-only status, which masks broken
+		// installs as success. Plain commands keep argv-splitting.
+		const proc = spawn(
+			useShell
+				? ["bash", "-c", `set -o pipefail; ${command}`]
+				: command.split(" "),
+			{
+				cwd: options.cwd,
+				stdin: "inherit",
+				stdout: "inherit",
+				stderr: "inherit",
+			},
+		);
 
 		const exitCode = await proc.exited;
 
@@ -47,12 +56,10 @@ export async function runCommand(command, options = { check: true }) {
 }
 
 export async function commandExists(command) {
-	const proc = spawn(["which", command], {
-		stdout: "ignore",
-		stderr: "ignore",
-	});
-	const exitCode = await proc.exited;
-	return exitCode === 0;
+	// Bun.which resolves PATH in-process — no external `which` binary (absent
+	// from Arch's base set) and no spawn that could throw. Kept async because
+	// callers await it.
+	return Bun.which(command) !== null;
 }
 
 /** Drain stale stdin data (e.g. terminal escape sequences from subprocesses). */
@@ -69,38 +76,84 @@ async function drainStdin() {
 	});
 }
 
-/** Prompt user for yes/no confirmation. */
-export async function promptUser(message, initial = false) {
-	await drainStdin();
-	const { default: prompts } = await import("prompts");
-	const response = await prompts({
-		type: "confirm",
-		name: "value",
-		message: message,
-		initial: initial,
-	});
+/**
+ * Prompt user for yes/no confirmation.
+ *
+ * On Ctrl+C the underlying `prompts` lib resolves `{}` (value `undefined`),
+ * which a naive caller reads as "No" and barrels on with a destructive setup.
+ * Instead we pass an `onCancel` handler that warns and aborts the process with
+ * exit code 130 (SIGINT convention).
+ *
+ * `opts.promptFn` / `opts.exit` are injectable for tests; when `promptFn` is
+ * injected we skip drainStdin so tests don't wait the 300ms drain.
+ */
+export async function promptUser(message, initial = false, opts = {}) {
+	const exit = opts.exit ?? process.exit;
+	const onCancel = () => {
+		log.warning("Cancelled — aborting.");
+		exit(130);
+	};
+
+	let promptFn = opts.promptFn;
+	if (!promptFn) {
+		await drainStdin();
+		promptFn = (await import("prompts")).default;
+	}
+
+	const response = await promptFn(
+		{
+			type: "confirm",
+			name: "value",
+			message: message,
+			initial: initial,
+		},
+		{ onCancel },
+	);
 	return response.value;
 }
 
 /**
  * Copy `src` to `dest`, preserving any existing `dest` as `${dest}.bak` first.
- * Single rolling backup — re-running overwrites the previous .bak.
+ *
+ * Content-aware: if `dest` already exists with bytes identical to `src` it's a
+ * no-op — no copy, no .bak touched, returns false. This protects the user's
+ * ORIGINAL backup: without the check, a second run would copy the
+ * already-synced file over `.bak`, destroying the pristine original captured on
+ * the first run. Otherwise back up an existing `dest` to `${dest}.bak`, copy
+ * `src` over `dest`, and return true.
+ *
+ * @returns {boolean} true if `dest` was written, false if it was already in sync
  */
 export function safeCopyFile(src, dest) {
 	if (fs.existsSync(dest)) {
+		if (fs.readFileSync(dest).equals(fs.readFileSync(src))) {
+			log.dim(`${path.basename(dest)} unchanged — skipping`);
+			return false;
+		}
 		fs.copyFileSync(dest, `${dest}.bak`);
 		log.info(`Backed up existing ${path.basename(dest)} to ${dest}.bak`);
 	}
 	fs.copyFileSync(src, dest);
+	return true;
 }
 
-/** Recursively copy a directory tree (files and nested dirs). */
+/** Recursively copy a directory tree (files, nested dirs, and symlinks). */
 export function copyDirRecursive(src, dest) {
 	fs.mkdirSync(dest, { recursive: true });
 	for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
 		const srcPath = path.join(src, entry.name);
 		const destPath = path.join(dest, entry.name);
-		if (entry.isDirectory()) {
+		if (entry.isSymbolicLink()) {
+			// Recreate the link verbatim instead of dereferencing it: a symlink
+			// to a directory would crash copyFileSync with EISDIR, and a file
+			// symlink would be silently dereferenced. lstat (not existsSync,
+			// which follows links and misses dangling ones) clears any existing
+			// dest first so re-runs don't throw EEXIST.
+			if (fs.lstatSync(destPath, { throwIfNoEntry: false })) {
+				fs.unlinkSync(destPath);
+			}
+			fs.symlinkSync(fs.readlinkSync(srcPath), destPath);
+		} else if (entry.isDirectory()) {
 			copyDirRecursive(srcPath, destPath);
 		} else {
 			fs.copyFileSync(srcPath, destPath);
