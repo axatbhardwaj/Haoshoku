@@ -5,7 +5,7 @@ Superpowers is the default execution framework. Skills auto-trigger from their d
 **Skip Superpowers only for:** throwaway one-liners, edits to `~/.claude/` itself, pure factual questions, sub-30-second config tweaks.
 
 ### Every conversation
-- Open with `superpowers:using-superpowers` — invoke before any other response, including clarifying questions
+- `superpowers:using-superpowers` is auto-injected at session start — follow it from the first response (including before clarifying questions); don't re-invoke it via the Skill tool
 
 ### Before writing code
 - New feature, component, or behavior change → `superpowers:brainstorming` (mandatory before any creative work)
@@ -30,41 +30,45 @@ Superpowers is the default execution framework. Skills auto-trigger from their d
 ### Creating or editing skills
 - `superpowers:writing-skills`
 
-### Token discipline
-Superpowers replaces the heavier GSD framework specifically because it skips persisted artifact files. Don't reintroduce that pattern: keep state in conversation context and skill invocations, not in scattered `.md` files in the repo.
+### Artifact policy
 
-### Branch-scoped continuity (narrow exception to the no-artifacts rule)
+Superpowers replaces the heavier GSD framework specifically because it skips persisted artifact files. Plans live in conversation context and skill invocations — do **not** create `plan.md`, `spec.md`, `tasks.md`, `notes.md`, `research.md`, or per-feature `.planning/` directories in the repo. Three sanctioned exceptions:
 
-The unit of work that actually crosses session boundaries is the **branch**, not the conversation and not the repo. Two — and only two — persistent files are allowed:
+1. **`BRANCH-NOTES.md`** at the worktree root, gitignored — branch-scoped status (the branch, not the conversation or repo, is what crosses session boundaries). Each session appends a dated line at session end: what shipped, what's blocked, what the next session needs to skip re-discovery (deployed envs, open PRs, current test state). Read it first thing on session start; if it grows past one screen, prune older entries.
 
-- **`BRANCH-NOTES.md`** at the worktree root, gitignored. One screen, append-only-ish: each session writes a dated line covering what shipped, what's blocked, and what the next session needs to know to skip re-discovery (deployed envs, open PRs, current test state). Read it first thing on session start; append at session end. If it grows past one screen, prune older entries.
-- **`~/ACTIVE-WORK.md`** as a single global index across all worktrees. 2–3 lines per active branch: worktree path, branch name, one-line status. Update whenever you context-switch between worktrees.
+2. **`~/ACTIVE-WORK.md`** — the single global index across all worktrees. One line per active branch: worktree path | branch | status of **~25 words max**; deep detail belongs in that worktree's BRANCH-NOTES.md, not here. Update on every context-switch between worktrees, and **remove an entry once its branch merges or its PR closes** — finished work doesn't belong in the index.
 
-This is **not** GSD. Do **not** create `plan.md`, `spec.md`, `tasks.md`, `notes.md`, `research.md`, or per-feature `.planning/` directories — those still belong in conversation context and skill invocations. Plans live in conversation; *status* lives in these two files.
+3. **`./superpowers/`** at the repo root (sibling of `app/`, `src/`, `lib/` — not under `docs/` or `.claude/`), gitignored — output of the brainstorming/writing-plans skills and similar working docs:
+   - `./superpowers/specs/YYYY-MM-DD-<topic>-design.html`
+   - `./superpowers/plans/YYYY-MM-DD-<feature>.html`
+   - further subdirectories as needed (`research/`, etc.)
 
-### Superpowers spec/plan artifacts — local-only, never committed
+   Those skills default to a tracked `docs/superpowers/...` path and markdown format — **override both: write under gitignored `./superpowers/` as self-contained dark HTML** (see Deliverables below), pushing back if a skill redirects to a tracked path. First setup step in any repo: add `/superpowers/` to `.gitignore`. If prior specs/plans were committed anywhere, `git rm` them and re-create them here.
 
-Specs and plans from the brainstorming and writing-plans skills go to a **gitignored, root-level `./superpowers/` directory** in every repo. Specifically:
+   Why local-only: specs and plans are how we reach alignment, not what ships — the PR description, commit messages, and code carry the rationale future readers need. They also accumulate 4+ rounds of adversarial-review noise that would bloat diffs and bury "what shipped" under "what we proposed at every step."
 
-- `./superpowers/specs/YYYY-MM-DD-<topic>-design.md`
-- `./superpowers/plans/YYYY-MM-DD-<feature>.md`
+## Deliverables — HTML over Markdown
 
-`superpowers/` lives at the **repo root** as a sibling of `app/`, `src/`, `lib/`, etc. It is **not** under `docs/`, **not** under `.claude/`, **not** anywhere else. The directory and everything inside it must be in `.gitignore` so nothing under it ever enters version control.
+Markdown files are not the primary way to communicate work product ([Thariq's "the unreasonable effectiveness of HTML"](https://claude.com/blog/using-claude-code-the-unreasonable-effectiveness-of-html)). Any document produced for a human to read — specs, plans for approval, research/ADRs, reports, audits, PR reviews, todo/status views — is a **single self-contained dark-mode HTML file**. Conversation replies stay plain text; this rule is about files.
 
-The brainstorming and writing-plans skills default to writing under a tracked `docs/superpowers/...` path — **override that default and write to `./superpowers/...` instead.** If a skill or tool tries to redirect you to a tracked path, push back and use the gitignored root-level location.
+Quality bar, every file:
+- **Dark mode, always** — near-black background, comfortable contrast, one accent color, no flash-of-white.
+- **Beautiful** — real typography, generous whitespace, syntax-highlighted code, polished tables; it should look designed, not generated.
+- **Intuitive** — sticky nav/TOC past one screen, clear hierarchy, status/severity badges; the reader never scroll-hunts.
+- **Interactive where it earns its keep** — collapsible sections, filterable tables, tabs for side-by-side comparisons, checkboxes on todo views.
+- **Self-contained** — inline all CSS/JS, no CDNs, no build step; must render offline via `file://`.
 
-Why local-only:
+State rule: browser-side interaction (checked boxes, filters, sliders) does not persist into the file. Interactive state worth keeping gets an **export button** ("copy as prompt" / "copy as JSON") so it can be pasted back to Claude; the file's content stays the single source of truth, updated by Claude at checkpoints. Live todo tracking stays in the harness task system — an HTML todo/plan view is a rendered snapshot of it.
 
-- Specs and plans are working artifacts of the brainstorming + planning loop — they're how we reach alignment, not what ships. The PR description, commit messages, and the code itself carry the design rationale that future readers need.
-- These docs accumulate adversarial-review iterations (4+ rounds is normal). Committing them bloats the diff with noise and mixes "what we proposed at every step" with "what we shipped." Reviewers don't need the negotiation history.
-
-When starting work in a repo: first add `/superpowers/` to `.gitignore` as a setup step. When inheriting a repo where prior specs/plans were committed (anywhere), `git rm` them and re-create under the gitignored `./superpowers/` so they remain locally for reference without polluting the repo.
+Stays plain text (machine-read every session or platform-native — HTML is pure token tax there): `BRANCH-NOTES.md`, `~/ACTIVE-WORK.md`, memory files, CLAUDE.md itself, commit messages, and anything posted to GitHub or Linear.
 
 ## Skill discipline
 
 The rules above are gates. Run the `using-superpowers` checklist before implementation work, not as theater. If the rule says "Implementation work → TDD" and you find yourself rationalizing ("simple change, types pass, manually verified"), stop — that thought is the rationalization the rule exists to override. Same shape: if a plan exists in conversation (not just in a spec doc) and you're about to drive every edit yourself, dispatch subagents instead.
 
 **Re-check the gates before any Edit/Write tool call that modifies code.** Brainstorming approval is not a license to skip TDD. Each implementation increment is its own gate-check — a multi-step task does not collapse into one continuous "work" period after the plan is approved.
+
+**Every task gets todos — no matter how small.** Any request involving actual work (tool calls, file changes, lookups, anything beyond a purely conversational answer) starts with TaskCreate entries before the work begins — a one-step task gets exactly one todo, and statuses update live (`in_progress` → `completed`). Ending a turn with stale pending todos is a defect. A UserPromptSubmit hook re-injects this gate (plus the skill gate) on every prompt, so long sessions cannot drift from it.
 
 **Always create tasks for every Superpowers skill step.** When invoking any Superpowers skill that has a checklist (brainstorming, writing-plans, executing-plans, TDD, debugging, etc.), immediately create one TaskCreate entry per checklist item before doing the work. Update statuses (`in_progress` → `completed`) as you go. Two reasons: (1) the user can see the workflow you're executing instead of guessing whether the skill is actually being followed; (2) writing the steps down is what stops you from collapsing them, skipping a gate, or losing your place mid-skill. This applies even for "small" tasks — if a skill is invoked, its checklist gets tasks. No exceptions for perceived simplicity.
 
@@ -92,7 +96,7 @@ When told "do not try to fix it just yet" — comply. Investigate only.
 `superpowers:verification-before-completion` enforces this for code completion. The principle generalizes:
 
 - Run the test that motivated the change, not just the full suite
-- UI changes: verify visually with Playwright MCP when available
+- UI changes: verify visually in a real browser via whatever browser-automation MCP is available (claude-in-chrome, Playwright, …)
 - Infra changes: verify the deployment took effect — exit code 0 is not proof
 - "Would a staff engineer approve this?" — if no, iterate before presenting
 
@@ -103,10 +107,6 @@ Training data is stale. Before quoting a package version, library API, framework
 - For library/SDK docs specifically, prefer context7 MCP — it pulls live versions
 - Never say "latest X" from memory; look it up
 
-## Context Retention
-
-If the user references a prior decision, check the conversation history before asking them to repeat themselves.
-
 ## Subagent model selection
 
 When dispatching subagents via the `Agent` tool, **never use `haiku`**. Default to `sonnet` whenever a "fast and cheap" tier is needed, and `opus` only for tasks that genuinely require the strongest reasoning (architectural design, complex review, hairy debugging).
@@ -115,6 +115,8 @@ When dispatching subagents via the `Agent` tool, **never use `haiku`**. Default 
 
 **How to apply:** When a skill or guide says "use a fast cheap model" or "use the cheapest model that can do the job", read that as `sonnet`. Reserve `opus` for the few tasks where extra capability noticeably reduces failure rate (multi-file integration, novel architecture, code review of subtle logic).
 
+**Fable:** never auto-dispatch `fable` subagents — sonnet/opus is the whole ladder for self-directed dispatch. Use fable in a subagent only when the user explicitly names that tier for a specific dispatch.
+
 ## Git Commits
 
 - Semantic prefix (feat, fix, refactor, docs, test, chore), 50-char subject max
@@ -122,15 +124,15 @@ When dispatching subagents via the `Agent` tool, **never use `haiku`**. Default 
 
 ## PR Reviews
 
-Applies to **any PR review, any repo**. The local markdown file is the canonical deliverable; the GitHub review is a notification surface.
+Applies to **any PR review, any repo**. The local review file is the canonical deliverable; the GitHub review is a notification surface. New reviews are authored as dark self-contained HTML per the Deliverables section (collapsible findings, filterable severity table); pre-June-2026 `.md` reviews stay as they are — don't convert them.
 
 - **Never auto-post.** Posting to a PR (review body, top-level comment, inline comment, sub-agent posts) requires **explicit per-session user approval** — and even then, confirm the *form* (full / medium / specific finding) before posting. If a post happens without approval, delete it rather than edit it.
-- **Local file is the deliverable.** Write the review to a local markdown file with the full structure (verdict, severity table, strengths, issues with file:line refs + suggested fixes, ground-truth verification appendix). This is what gets re-read, refined for round 2, and cited.
-- **When approved to post, use the medium shape on GitHub:** Verdict + Severity table + Strengths (3–5 condensed bullets) + Issues (one short paragraph per finding — `file:line` + 2–3 sentences + suggested fix as prose, not a multi-line code block) + Recommendation + footer linking to the local file. Skip the ground-truth/verification appendix, file-read inventory, "couldn't verify" section, and multi-line suggested-fix code blocks. Never paste the whole local `review.md` into the GitHub body.
+- **Local file is the deliverable.** Write the review to a local HTML file with the full structure (verdict, severity table, strengths, issues with file:line refs + suggested fixes, ground-truth verification appendix). This is what gets re-read, refined for round 2 (append a dated round section, same as before), and cited. The GitHub medium shape is rendered to markdown from it at post time.
+- **When approved to post, use the medium shape on GitHub:** Verdict + Severity table + Strengths (3–5 condensed bullets) + Issues (one short paragraph per finding — `file:line` + 2–3 sentences + suggested fix as prose, not a multi-line code block) + Recommendation + footer linking to the local file. Skip the ground-truth/verification appendix, file-read inventory, "couldn't verify" section, and multi-line suggested-fix code blocks. Never paste the whole local review file into the GitHub body.
 - **Single-finding code-block detail → inline comment.** If one finding genuinely needs a verbatim code-block suggested fix on GitHub (the author needs to apply the patch directly), post that one finding as a targeted inline review comment on the file/line, not by expanding the top-level body.
 - **Editing after the fact:** if the posted body needs trimming, use `gh api -X PUT repos/{owner}/{repo}/pulls/{n}/reviews/{review_id}` with a `{body: …}` payload — review state (APPROVED/COMMENT/CHANGES_REQUESTED) is preserved across edits.
 - **Local file location:**
-  - **defi-com repos** (`monorepo`, `contracts`, `azure-next-hybrid`): `~/defi/misc/reviews/review-PR-<num>.md`. See `~/.claude/projects/-home-xzat-defi-monorepo/memory/reference_pr_review_convention.md` for the mandatory header structure, `Reviewed:` SHA pin, and round-2 severity-row vocabulary.
+  - **defi-com repos** → `~/defi/misc/reviews/`, named per-repo: plain `review-PR-<num>.html` means `monorepo` *by definition*; the other repos are always prefixed — `review-azure-next-hybrid-PR-<num>.html`, `review-contracts-PR-<num>.html` (PR numbers collide across repos; never drop the prefix, never prefix monorepo). Legacy reviews are `.md`; leave them. See `~/.claude/projects/-home-xzat-defi-monorepo/memory/reference_pr_review_convention.md` for the mandatory header structure, `Reviewed:` SHA pin, and round-2 severity-row vocabulary.
   - **Other repos:** confirm a location with the user the first time, then stay consistent.
 
 ## Git Identity (GitHub attribution)

@@ -1,7 +1,4 @@
 {
-  "env": {
-    "CLAUDE_CODE_EFFORT_LEVEL": "max"
-  },
   "attribution": {
     "commit": "",
     "pr": ""
@@ -123,6 +120,19 @@
     "type": "command",
     "command": "bash /home/xzat/.claude/statusline-command.sh"
   },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '[gate-check] 1) SKILLS: if any skill might apply to this message (even 1%), invoke it via the Skill tool before responding. 2) TODOS: unless this is pure conversation with zero tool work, TaskCreate the steps before starting - even a single-step task gets one todo, statuses updated live. 3) CODE: about to Edit/Write code? Re-check brainstorm/TDD gates first.'",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  },
   "enabledPlugins": {
     "context7@claude-plugins-official": true,
     "code-review@claude-plugins-official": true,
@@ -137,7 +147,7 @@
     "azure@azure-skills": true,
     "telegram@claude-plugins-official": false,
     "superpowers@claude-plugins-official": true,
-    "cloudflare@cloudflare": true,
+    "cloudflare@cloudflare": false,
     "ralph-loop@claude-plugins-official": true,
     "dvandva@dvandva": true
   },
@@ -161,10 +171,12 @@
       }
     }
   },
+  "effortLevel": "xhigh",
   "skipDangerousModePermissionPrompt": true,
   "editorMode": "normal",
   "verbose": true,
   "remoteControlAtStartup": true,
   "agentPushNotifEnabled": true,
-  "voiceEnabled": true
+  "voiceEnabled": true,
+  "model": "fable"
 }
