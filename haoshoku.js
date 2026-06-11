@@ -4,7 +4,8 @@ import fs from "node:fs";
 import { Command } from "commander";
 import prompts from "prompts";
 import { getBanner, showBanner } from "./src/common/ui.js";
-import { log } from "./src/common/utils.js";
+import { detectOS, findActiveModeFlags } from "./src/common/cli_utils.js";
+import { log, promptUser } from "./src/common/utils.js";
 import {
   backupClaudeConfig,
   installSuperpowers,
@@ -57,33 +58,6 @@ program
   .description("Haoshoku: Color of the Supreme King. Dominate your setup.")
   .version("5.5.3")
   .addHelpText("before", getBanner());
-
-function detectOS() {
-  try {
-    const osRelease = fs.readFileSync("/etc/os-release", "utf-8");
-    const lines = osRelease.split("\n");
-    const info = {};
-    for (const line of lines) {
-      const [key, value] = line.split("=");
-      if (key && value) {
-        info[key] = value.replace(/"/g, "");
-      }
-    }
-
-    const id = info.ID ? info.ID.toLowerCase() : "";
-    const idLike = info.ID_LIKE ? info.ID_LIKE.toLowerCase() : "";
-
-    if (id.includes("cachyos") || idLike.includes("arch")) {
-      return "cachyos";
-    }
-    if (id.includes("debian") || idLike.includes("debian")) {
-      return "debian-server";
-    }
-  } catch (_e) {
-    // Ignore error if file doesn't exist
-  }
-  return null;
-}
 
 program
   .option("--os <type>", "Specify the target OS (cachyos, debian-server)")
@@ -147,7 +121,27 @@ program
     "Install Hyprland + upstream Caelestia rice (CachyOS/Arch only). Asks about your current DE and which device this is; persists the device answer to ~/.haoshoku.json for future per-host configs.",
   )
   .action(async (options) => {
+    try {
+      await runAction(options);
+    } catch (err) {
+      log.error(err.message);
+      log.dim(err.stack);
+      process.exit(1);
+    }
+  });
+
+async function runAction(options) {
     showBanner();
+
+    // Mutually-exclusive mode flags: pass exactly one. Previously the if/return
+    // chain silently ran only the first matching flag and ignored the rest.
+    const activeFlags = findActiveModeFlags(options);
+    if (activeFlags.length >= 2) {
+      log.error(
+        `--${activeFlags[0]} and --${activeFlags[1]} are mutually exclusive — pass exactly one mode flag`,
+      );
+      process.exit(2);
+    }
 
     if (options.claudeUpdate) {
       await updateClaudeConfig();
@@ -302,12 +296,17 @@ program
     }
 
     let osType = options.os;
+    // Track whether osType came from silent auto-detection (vs the --os flag or
+    // the interactive select prompt): a bare `haoshoku` must confirm before
+    // mutating the system.
+    let osAutoDetected = false;
 
     if (!osType) {
       const detected = detectOS();
       if (detected) {
         log.info(`Detected OS: ${detected}`);
         osType = detected;
+        osAutoDetected = true;
       } else {
         const response = await prompts({
           type: "select",
@@ -325,6 +324,19 @@ program
     if (!osType) {
       log.error("No OS selected. Exiting.");
       process.exit(1);
+    }
+
+    if (osAutoDetected) {
+      // Bare `haoshoku` would otherwise launch a system-mutating setup with
+      // zero confirmation. promptUser aborts the process on Ctrl+C.
+      const proceed = await promptUser(
+        `Detected ${osType} — run the full ${osType} setup now?`,
+        true,
+      );
+      if (!proceed) {
+        log.info("Setup cancelled. Exiting.");
+        return;
+      }
     }
 
     log.info(`Starting setup for: ${osType}`);
@@ -351,6 +363,6 @@ program
     if (syncResponse.syncSkills) {
       syncSkills({ update: false });
     }
-  });
+}
 
 program.parse(process.argv);
