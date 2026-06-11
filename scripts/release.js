@@ -28,6 +28,64 @@ Examples:
 Non-interactive mode is intended for agent / CI use. The git-clean check
 is enforced in all modes — there is no --force flag by design.`;
 
+const SEMVER_RE = /^\d+\.\d+\.\d+$/;
+
+/**
+ * Compute the next version string from the current version and a bump type.
+ * Pure function — throws on a malformed current/custom version instead of
+ * silently producing NaN.NaN.1 tags.
+ *
+ * @param {string} currentVersion - current semver, e.g. "5.5.3"
+ * @param {"patch"|"minor"|"major"|"custom"} bump - bump type
+ * @param {string} [explicitVersion] - required when bump === "custom"
+ * @returns {string} the next version
+ */
+export function computeNextVersion(currentVersion, bump, explicitVersion) {
+	if (bump === "custom") {
+		if (!SEMVER_RE.test(explicitVersion || "")) {
+			throw new Error(
+				`Invalid custom version: ${explicitVersion} (expected x.y.z)`,
+			);
+		}
+		return explicitVersion;
+	}
+
+	if (!SEMVER_RE.test(currentVersion || "")) {
+		throw new Error(
+			`Invalid current version: ${currentVersion} (expected x.y.z)`,
+		);
+	}
+
+	const [major, minor, patch] = currentVersion.split(".").map(Number);
+	switch (bump) {
+		case "patch":
+			return `${major}.${minor}.${patch + 1}`;
+		case "minor":
+			return `${major}.${minor + 1}.0`;
+		case "major":
+			return `${major + 1}.0.0`;
+		default:
+			throw new Error(`Invalid bump type: ${bump}`);
+	}
+}
+
+/**
+ * Replace the single `.version("...")` site in haoshoku.js content with the
+ * new version. Throws if no match is found so a silent no-op cannot ship a
+ * release with a stale --version.
+ *
+ * @param {string} content - haoshoku.js source
+ * @param {string} newVersion - version to write
+ * @returns {string} updated content
+ */
+export function applyVersionBump(content, newVersion) {
+	const updated = content.replace(/\.version\(".*"\)/, `.version("${newVersion}")`);
+	if (updated === content) {
+		throw new Error("version pattern not found in haoshoku.js");
+	}
+	return updated;
+}
+
 /** Parse argv into { bump, version, yes, help } — no external dep. */
 function parseArgs(argv) {
 	const args = { bump: null, version: null, yes: false, help: false };
@@ -65,8 +123,15 @@ async function runCommand(command, args, options = {}) {
 async function isGitClean() {
 	const proc = spawn(["git", "status", "--porcelain"], {
 		stdout: "pipe",
+		stderr: "pipe",
 	});
 	const output = await new Response(proc.stdout).text();
+	const exitCode = await proc.exited;
+	if (exitCode !== 0) {
+		throw new Error(
+			`git status failed (exit ${exitCode}) — cannot verify clean tree`,
+		);
+	}
 	return output.trim() === "";
 }
 
@@ -111,69 +176,71 @@ async function main() {
 
 	log.info(`Current version: ${chalk.bold(currentVersion)}`);
 
+	// Ctrl+C / Esc at any prompt cancels the release cleanly (exit 0).
+	const onCancel = () => {
+		log.info("Release cancelled.");
+		process.exit(0);
+	};
+
 	// 3. Determine bump (flag or prompt)
 	let bump = args.bump;
 	if (!bump) {
-		const response = await prompts({
-			type: "select",
-			name: "bump",
-			message: "Select version bump",
-			choices: [
-				{ title: "Patch", value: "patch" },
-				{ title: "Minor", value: "minor" },
-				{ title: "Major", value: "major" },
-				{ title: "Custom", value: "custom" },
-			],
-		});
+		const response = await prompts(
+			{
+				type: "select",
+				name: "bump",
+				message: "Select version bump",
+				choices: [
+					{ title: "Patch", value: "patch" },
+					{ title: "Minor", value: "minor" },
+					{ title: "Major", value: "major" },
+					{ title: "Custom", value: "custom" },
+				],
+			},
+			{ onCancel },
+		);
 		if (!response.bump) process.exit(0);
 		bump = response.bump;
 	} else {
 		log.info(`Bump: ${chalk.bold(bump)}${args.version ? ` (${args.version})` : ""}`);
 	}
 
-	let newVersion;
-	if (bump === "custom") {
-		if (args.version) {
-			newVersion = args.version;
-		} else {
-			const custom = await prompts({
+	let customVersion = args.version;
+	if (bump === "custom" && !customVersion) {
+		const custom = await prompts(
+			{
 				type: "text",
 				name: "version",
 				message: "Enter version number",
 				validate: (value) =>
-					/^\d+\.\d+\.\d+/.test(value) ? true : "Invalid version format (x.y.z)",
-			});
-			newVersion = custom.version;
-		}
-		if (!/^\d+\.\d+\.\d+$/.test(newVersion || "")) {
-			log.error(`Invalid --version value: ${newVersion} (expected x.y.z)`);
-			process.exit(2);
-		}
-	} else {
-		const [major, minor, patch] = currentVersion.split(".").map(Number);
-		switch (bump) {
-			case "patch":
-				newVersion = `${major}.${minor}.${patch + 1}`;
-				break;
-			case "minor":
-				newVersion = `${major}.${minor + 1}.0`;
-				break;
-			case "major":
-				newVersion = `${major + 1}.0.0`;
-				break;
-		}
+					/^\d+\.\d+\.\d+$/.test(value) ? true : "Invalid version format (x.y.z)",
+			},
+			{ onCancel },
+		);
+		customVersion = custom.version;
+	}
+
+	let newVersion;
+	try {
+		newVersion = computeNextVersion(currentVersion, bump, customVersion);
+	} catch (error) {
+		log.error(error.message);
+		process.exit(2);
 	}
 
 	if (!newVersion) process.exit(0);
 
 	// 4. Confirm (skip with --yes)
 	if (!args.yes) {
-		const confirm = await prompts({
-			type: "confirm",
-			name: "value",
-			message: `Ready to release v${newVersion}?`,
-			initial: true,
-		});
+		const confirm = await prompts(
+			{
+				type: "confirm",
+				name: "value",
+				message: `Ready to release v${newVersion}?`,
+				initial: true,
+			},
+			{ onCancel },
+		);
 		if (!confirm.value) process.exit(0);
 	} else {
 		log.info(`Releasing v${newVersion} (--yes)`);
@@ -185,14 +252,11 @@ async function main() {
 		writeFileSync(packagePath, `${JSON.stringify(pkg, null, 2)}\n`);
 		log.success(`Updated package.json to v${newVersion}`);
 
-		// Update haoshoku.js
+		// Update haoshoku.js — applyVersionBump throws if no .version() site
+		// matches, so a silent no-op cannot ship a stale --version.
 		const cliPath = resolve(process.cwd(), "haoshoku.js");
-		let cliContent = readFileSync(cliPath, "utf-8");
-		cliContent = cliContent.replace(
-			/\.version\(".*"\)/,
-			`.version("${newVersion}")`,
-		);
-		writeFileSync(cliPath, cliContent);
+		const cliContent = readFileSync(cliPath, "utf-8");
+		writeFileSync(cliPath, applyVersionBump(cliContent, newVersion));
 		log.success(`Updated haoshoku.js to v${newVersion}`);
 
 		// 5. Git operations
@@ -226,4 +290,10 @@ async function main() {
 	}
 }
 
-main().catch(console.error);
+// Guard so importing this module (e.g. for unit tests) doesn't run a release.
+if (import.meta.main) {
+	main().catch((err) => {
+		log.error(err?.message ?? String(err));
+		process.exit(1);
+	});
+}
