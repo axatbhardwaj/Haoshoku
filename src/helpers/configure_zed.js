@@ -15,9 +15,41 @@ const SENSITIVE_KEYS = ["ssh_connections"];
 // Any object key whose name matches this is a credential and must never land
 // in the public repo backup. Kept deliberately broad — a false positive (a
 // stripped non-secret) is a cosmetic loss in a backup; a false negative is a
-// leaked secret.
+// leaked secret. `authorization` also covers Proxy-Authorization /
+// X-Authorization via substring match.
 const SENSITIVE_KEY_RE =
-  /token|secret|passw|api[-_]?key|apikey|access[-_]?key|bearer|credential|private[-_]?key/i;
+  /token|secret|passw|api[-_]?key|apikey|access[-_]?key|bearer|credential|private[-_]?key|authorization/i;
+
+// Inside a `headers` object the bar is lower: header names routinely carry
+// credentials under names the global regex misses (Cookie, X-Auth, …).
+const SENSITIVE_HEADER_RE =
+  /auth|token|cookie|session|secret|signature|credential|key/i;
+
+// A header VALUE that starts with an HTTP auth scheme is a credential no
+// matter what the header is called (e.g. `X-Custom: "Bearer <token>"`).
+const AUTH_SCHEME_VALUE_RE =
+  /^\s*(bearer|basic|digest|negotiate|oauth|token|dpop|hawk)\s+\S/i;
+
+/**
+ * Sanitize a `headers` object: drop any entry whose NAME looks credential-ish
+ * (SENSITIVE_HEADER_RE) or whose string VALUE starts with an HTTP auth scheme
+ * (AUTH_SCHEME_VALUE_RE). Benign headers (Content-Type, Accept, …) survive.
+ */
+function sanitizeHeaders(headers, pathPrefix, stripped) {
+  const result = {};
+  for (const [name, value] of Object.entries(headers)) {
+    const headerPath = `${pathPrefix}.${name}`;
+    if (
+      SENSITIVE_HEADER_RE.test(name) ||
+      (typeof value === "string" && AUTH_SCHEME_VALUE_RE.test(value))
+    ) {
+      stripped.push(headerPath);
+      continue;
+    }
+    result[name] = value;
+  }
+  return result;
+}
 
 /**
  * Tolerant JSONC → JSON strip. Zed writes `//` line comments, `/* *​/` block
@@ -152,6 +184,8 @@ function stripJsonComments(jsonc) {
  *   - Any object entry whose key matches SENSITIVE_KEY_RE is deleted.
  *   - Any object entry keyed `env` whose value is a plain object is deleted
  *     (MCP `context_servers` carry tokens in env blocks).
+ *   - `headers` objects get per-entry scrutiny via sanitizeHeaders (credential
+ *     header names and auth-scheme values are dropped, benign headers kept).
  *   - Arrays and nested objects are walked; non-stripped values recurse.
  *
  * @param {*} value
@@ -181,6 +215,15 @@ function sanitizeValue(value, pathPrefix, stripped) {
         !Array.isArray(child)
       ) {
         stripped.push(childPath);
+        continue;
+      }
+      if (
+        key.toLowerCase() === "headers" &&
+        child &&
+        typeof child === "object" &&
+        !Array.isArray(child)
+      ) {
+        result[key] = sanitizeHeaders(child, childPath, stripped);
         continue;
       }
 

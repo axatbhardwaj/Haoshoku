@@ -195,6 +195,72 @@ describe("backupZedConfig — deep sanitization", () => {
 		expect(out.apikey).toBeUndefined();
 		expect(out.keep_me).toBe("ok");
 	});
+
+	it("strips headers.Authorization bearer tokens (PR #8 review C1)", async () => {
+		seedLiveSettings({
+			context_servers: {
+				my_api: {
+					url: "https://example.com/mcp",
+					headers: { Authorization: "Bearer SUPERSECRET123" },
+				},
+			},
+		});
+
+		await backupZedConfig({
+			zedConfigDir: tmpZedConfigDir,
+			backupDir: tmpBackupDir,
+		});
+
+		const out = readBackupSettings();
+		const server = out.context_servers.my_api;
+		expect(server.headers?.Authorization).toBeUndefined();
+		expect(server.url).toBe("https://example.com/mcp");
+		// The raw backup file must not contain the token anywhere.
+		expect(JSON.stringify(out)).not.toContain("SUPERSECRET123");
+	});
+
+	it("strips Proxy-Authorization and an 'authorization' key outside headers", async () => {
+		seedLiveSettings({
+			headers: { "Proxy-Authorization": "Basic dXNlcjpwYXNz" },
+			authorization: "Bearer top-level-leak",
+			keep_me: "ok",
+		});
+
+		await backupZedConfig({
+			zedConfigDir: tmpZedConfigDir,
+			backupDir: tmpBackupDir,
+		});
+
+		const out = readBackupSettings();
+		expect(out.headers?.["Proxy-Authorization"]).toBeUndefined();
+		expect(out.authorization).toBeUndefined();
+		expect(out.keep_me).toBe("ok");
+	});
+
+	it("strips auth-scheme values under headers even with benign key names", async () => {
+		seedLiveSettings({
+			headers: {
+				"X-Custom": "Bearer sneaky-token",
+				"X-Other": "Basic dXNlcjpwYXNz",
+				Cookie: "session=abc123",
+				"Content-Type": "application/json",
+				Accept: "application/json",
+			},
+		});
+
+		await backupZedConfig({
+			zedConfigDir: tmpZedConfigDir,
+			backupDir: tmpBackupDir,
+		});
+
+		const out = readBackupSettings();
+		expect(out.headers["X-Custom"]).toBeUndefined();
+		expect(out.headers["X-Other"]).toBeUndefined();
+		expect(out.headers.Cookie).toBeUndefined();
+		// Benign headers survive.
+		expect(out.headers["Content-Type"]).toBe("application/json");
+		expect(out.headers.Accept).toBe("application/json");
+	});
 });
 
 describe("backupZedConfig — tolerant JSONC parsing", () => {
