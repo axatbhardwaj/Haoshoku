@@ -1,7 +1,12 @@
 import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
-import { log, runCommand, copyDirRecursive } from "../common/utils.js";
+import {
+  copyDirRecursive,
+  log,
+  runCommand,
+  safeCopyFile,
+} from "../common/utils.js";
 
 const HOME = homedir();
 const CLAUDE_CONFIG_DIR = path.join(HOME, ".claude");
@@ -34,14 +39,9 @@ function claudeFilePath(src, home = HOME) {
   return path.join(home, ".claude", src);
 }
 
-/** Check if a command exists in PATH. */
+/** Check if a command exists in PATH (Bun.which — no external `which` binary). */
 function commandExists(cmd) {
-  try {
-    const result = Bun.spawnSync(["which", cmd]);
-    return result.exitCode === 0;
-  } catch {
-    return false;
-  }
+  return Bun.which(cmd) !== null;
 }
 
 /** Install Claude Code CLI if not already present. */
@@ -89,7 +89,10 @@ export async function syncClaudeConfig(options = {}) {
     const srcPath = path.join(srcDir, file.src);
     const destPath = claudeFilePath(file.src, claudeHome);
     if (fs.existsSync(srcPath)) {
-      fs.copyFileSync(srcPath, destPath);
+      // safeCopyFile preserves a differing live file (e.g. settings.json, which
+      // Claude Code and --superpowers mutate at runtime) as ${dest}.bak before
+      // overwriting. Identical content is a no-op so re-runs don't churn .bak.
+      safeCopyFile(srcPath, destPath);
       log.info(`Copied ${file.src}`);
     } else {
       log.warning(`Missing ${file.src} in source bundle (${srcPath}) — skipped`);
@@ -100,6 +103,11 @@ export async function syncClaudeConfig(options = {}) {
     const src = path.join(srcDir, dir);
     const dest = path.join(claudeDir, dir);
     if (fs.existsSync(src)) {
+      // MANAGED_DIRS are fully owned by haoshoku ("replaced on sync"), but
+      // copyDirRecursive only merges — so a convention deleted from the bundle
+      // would linger in ~/.claude/ forever. Wipe the dest first so the live
+      // tree exactly mirrors the bundle.
+      fs.rmSync(dest, { recursive: true, force: true });
       copyDirRecursive(src, dest);
       log.info(`Synced ${dir}/`);
     } else {
@@ -152,7 +160,15 @@ export async function installSuperpowers(settingsPath = SETTINGS_PATH) {
   }
 
   log.info("Enabling Superpowers plugin in ~/.claude/settings.json...");
-  const settings = JSON.parse(fs.readFileSync(settingsPath, "utf-8"));
+  let settings;
+  try {
+    settings = JSON.parse(fs.readFileSync(settingsPath, "utf-8"));
+  } catch (err) {
+    log.error(
+      `settings.json is not valid JSON (${err?.message ?? err}) — fix it or re-run haoshoku --claude`,
+    );
+    return;
+  }
   settings.enabledPlugins ??= {};
 
   if (settings.enabledPlugins[SUPERPOWERS_PLUGIN_ID] === true) {

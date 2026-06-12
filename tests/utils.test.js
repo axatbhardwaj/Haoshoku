@@ -4,6 +4,8 @@ import os from "node:os";
 import path from "node:path";
 import {
 	commandExists,
+	copyDirRecursive,
+	promptUser,
 	readConfiguredDeviceType,
 	readDeviceType,
 	runCommand,
@@ -27,6 +29,23 @@ describe("Utils", () => {
 	// However, we can test that it runs a simple echo command.
 	it("runCommand executes successfully", async () => {
 		const result = await runCommand("echo 'test'", { check: false });
+		expect(result).toBe(true);
+	});
+
+	it("runCommand runs a plain (non-shell) command", async () => {
+		const result = await runCommand("true", { check: false });
+		expect(result).toBe(true);
+	});
+
+	it("runCommand fails when an EARLY pipeline stage fails (pipefail)", async () => {
+		// POSIX sh would report only `cat`'s exit (0); pipefail must surface
+		// the failing `false`.
+		const result = await runCommand("false | cat", { check: false });
+		expect(result).toBe(false);
+	});
+
+	it("runCommand succeeds when every pipeline stage succeeds", async () => {
+		const result = await runCommand("echo ok | cat", { check: false });
 		expect(result).toBe(true);
 	});
 });
@@ -65,17 +84,153 @@ describe("safeCopyFile", () => {
 		expect(fs.existsSync(`${dest}.bak`)).toBe(false);
 	});
 
-	it("rolls the backup — overwrites a prior .bak with the latest dest", () => {
+	it("returns true and the new content lands when overwriting differing dest", () => {
 		const src = path.join(tmpDir, "new.conf");
 		const dest = path.join(tmpDir, "live.conf");
-		fs.writeFileSync(src, "v3");
-		fs.writeFileSync(dest, "v2");
-		fs.writeFileSync(`${dest}.bak`, "v1-old-stale-backup");
+		fs.writeFileSync(src, "new content");
+		fs.writeFileSync(dest, "previous content");
 
-		safeCopyFile(src, dest);
+		const result = safeCopyFile(src, dest);
 
-		expect(fs.readFileSync(dest, "utf-8")).toBe("v3");
-		expect(fs.readFileSync(`${dest}.bak`, "utf-8")).toBe("v2");
+		expect(result).toBe(true);
+		expect(fs.readFileSync(dest, "utf-8")).toBe("new content");
+	});
+
+	it("returns true when dest does not pre-exist", () => {
+		const src = path.join(tmpDir, "new.conf");
+		const dest = path.join(tmpDir, "fresh.conf");
+		fs.writeFileSync(src, "new content");
+
+		expect(safeCopyFile(src, dest)).toBe(true);
+	});
+
+	it("no-ops (no .bak, returns false) when dest already matches src", () => {
+		const src = path.join(tmpDir, "new.conf");
+		const dest = path.join(tmpDir, "live.conf");
+		fs.writeFileSync(src, "identical content");
+		fs.writeFileSync(dest, "identical content");
+
+		const result = safeCopyFile(src, dest);
+
+		expect(result).toBe(false);
+		expect(fs.readFileSync(dest, "utf-8")).toBe("identical content");
+		expect(fs.existsSync(`${dest}.bak`)).toBe(false);
+	});
+
+	it("a second run preserves the user's ORIGINAL content in .bak", () => {
+		const src = path.join(tmpDir, "new.conf");
+		const dest = path.join(tmpDir, "live.conf");
+		fs.writeFileSync(src, "managed content");
+		fs.writeFileSync(dest, "user original content");
+
+		// First run: backs up the user's original, installs managed content.
+		expect(safeCopyFile(src, dest)).toBe(true);
+		expect(fs.readFileSync(`${dest}.bak`, "utf-8")).toBe(
+			"user original content",
+		);
+
+		// Second run: dest now equals src → must be a no-op and must NOT
+		// clobber the .bak with the previously-synced managed content.
+		expect(safeCopyFile(src, dest)).toBe(false);
+		expect(fs.readFileSync(`${dest}.bak`, "utf-8")).toBe(
+			"user original content",
+		);
+	});
+});
+
+describe("copyDirRecursive symlink handling", () => {
+	let tmpDir;
+
+	beforeEach(() => {
+		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-copydir-test-"));
+	});
+
+	afterEach(() => {
+		fs.rmSync(tmpDir, { recursive: true, force: true });
+	});
+
+	it("recreates file and dir symlinks instead of dereferencing/crashing", () => {
+		const src = path.join(tmpDir, "src");
+		const dest = path.join(tmpDir, "dest");
+
+		// Real file + real dir.
+		fs.mkdirSync(path.join(src, "realdir"), { recursive: true });
+		fs.writeFileSync(path.join(src, "realfile.txt"), "hello");
+		fs.writeFileSync(path.join(src, "realdir", "nested.txt"), "nested");
+
+		// A symlink to the file and a symlink to the dir.
+		fs.symlinkSync("realfile.txt", path.join(src, "filelink"));
+		fs.symlinkSync("realdir", path.join(src, "dirlink"));
+
+		copyDirRecursive(src, dest);
+
+		// Real entries copied as files/dirs.
+		expect(fs.readFileSync(path.join(dest, "realfile.txt"), "utf-8")).toBe(
+			"hello",
+		);
+		expect(
+			fs.readFileSync(path.join(dest, "realdir", "nested.txt"), "utf-8"),
+		).toBe("nested");
+
+		// File symlink recreated as a symlink (not dereferenced).
+		expect(fs.lstatSync(path.join(dest, "filelink")).isSymbolicLink()).toBe(
+			true,
+		);
+		expect(fs.readlinkSync(path.join(dest, "filelink"))).toBe("realfile.txt");
+
+		// Dir symlink recreated as a symlink (would have crashed with EISDIR
+		// under copyFileSync before).
+		expect(fs.lstatSync(path.join(dest, "dirlink")).isSymbolicLink()).toBe(
+			true,
+		);
+		expect(fs.readlinkSync(path.join(dest, "dirlink"))).toBe("realdir");
+	});
+
+	it("replaces an existing destination symlink on a re-run", () => {
+		const src = path.join(tmpDir, "src");
+		const dest = path.join(tmpDir, "dest");
+		fs.mkdirSync(src, { recursive: true });
+		fs.writeFileSync(path.join(src, "target.txt"), "x");
+		fs.symlinkSync("target.txt", path.join(src, "link"));
+
+		copyDirRecursive(src, dest);
+		// Re-run over an already-populated dest must not throw (EEXIST).
+		copyDirRecursive(src, dest);
+
+		expect(fs.readlinkSync(path.join(dest, "link"))).toBe("target.txt");
+	});
+});
+
+describe("promptUser cancellation", () => {
+	it("returns the resolved value for a normal yes answer", async () => {
+		const value = await promptUser("Proceed?", false, {
+			promptFn: async () => ({ value: true }),
+		});
+		expect(value).toBe(true);
+	});
+
+	it("returns the resolved value for a normal no answer", async () => {
+		const value = await promptUser("Proceed?", true, {
+			promptFn: async () => ({ value: false }),
+		});
+		expect(value).toBe(false);
+	});
+
+	it("aborts with exit(130) when the prompt is cancelled (Ctrl+C)", async () => {
+		const exitCalls = [];
+		// Simulate prompts' cancel path: the injected promptFn invokes the
+		// onCancel handler it was given, exactly like the real lib on Ctrl+C.
+		const promptFn = async (_question, opts) => {
+			await opts.onCancel();
+			return {};
+		};
+		await promptUser("Destructive?", false, {
+			promptFn,
+			exit: (code) => {
+				exitCalls.push(code);
+			},
+		});
+		expect(exitCalls).toEqual([130]);
 	});
 });
 

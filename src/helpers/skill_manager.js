@@ -187,14 +187,55 @@ function cloneRepo(url, repoPath) {
 }
 
 /**
+ * Resolve the default branch name of origin for a cloned repo.
+ * Strategy:
+ *   1. git rev-parse --abbrev-ref origin/HEAD  (fast, works if already fetched)
+ *   2. git remote set-head origin --auto        (network call, sets it)
+ *   3. retry rev-parse
+ *   4. fallback "main"
+ * Strips the leading "origin/" prefix from the ref name.
+ * Never throws — callers rely on a usable fallback.
+ */
+export function resolveDefaultBranch(repoPath) {
+	const parseHead = () => {
+		const result = Bun.spawnSync(
+			["git", "rev-parse", "--abbrev-ref", "origin/HEAD"],
+			{ cwd: repoPath },
+		);
+		if (result.exitCode !== 0) return null;
+		const raw = new TextDecoder().decode(result.stdout).trim();
+		if (!raw || raw === "origin/HEAD") return null;
+		return raw.replace(/^origin\//, "");
+	};
+
+	try {
+		const branch = parseHead();
+		if (branch) return branch;
+
+		// origin/HEAD not set yet — auto-detect it
+		Bun.spawnSync(["git", "remote", "set-head", "origin", "--auto"], {
+			cwd: repoPath,
+		});
+
+		const retried = parseHead();
+		return retried ?? "main";
+	} catch {
+		return "main";
+	}
+}
+
+/**
  * Update existing repo in cache.
  * fetch+reset handles shallow clones and force-push scenarios (pull fails for
  * shallow repos). If update fails, keeps stale cache to preserve offline operation.
+ * Dynamically resolves the default branch instead of hardcoding "main".
  */
 function updateRepo(repoPath, url, repoName) {
 	log.info(`Updating ${repoName}...`);
 
-	const fetchResult = Bun.spawnSync(["git", "fetch", "origin", "main"], {
+	const branch = resolveDefaultBranch(repoPath);
+
+	const fetchResult = Bun.spawnSync(["git", "fetch", "origin", branch], {
 		cwd: repoPath,
 	});
 
@@ -204,8 +245,8 @@ function updateRepo(repoPath, url, repoName) {
 	}
 
 	const resetResult = Bun.spawnSync(
-		["git", "reset", "--hard", "origin/main"],
-		{ cwd: repoPath }
+		["git", "reset", "--hard", `origin/${branch}`],
+		{ cwd: repoPath },
 	);
 
 	if (resetResult.exitCode !== 0) {
@@ -306,14 +347,14 @@ export function listSkills(cacheDir) {
  * Ensure skills directory exists.
  * Exits on fatal errors (skills dir is prerequisite for symlink operations).
  */
-function ensureSkillsDir() {
-	if (!fs.existsSync(CLAUDE_SKILLS_DIR)) {
+function ensureSkillsDir(skillsDir = CLAUDE_SKILLS_DIR) {
+	if (!fs.existsSync(skillsDir)) {
 		try {
-			fs.mkdirSync(CLAUDE_SKILLS_DIR, { recursive: true });
+			fs.mkdirSync(skillsDir, { recursive: true });
 		} catch (error) {
 			if (error.code === "EACCES" || error.code === "ENOTDIR") {
 				log.error(
-					`Cannot create ${CLAUDE_SKILLS_DIR}: ${error.message}. Check permissions.`
+					`Cannot create ${skillsDir}: ${error.message}. Check permissions.`,
 				);
 				process.exit(1);
 			}
@@ -376,12 +417,12 @@ function createSymlinkForSkill(skill, source, destPath) {
  * Enforces priority: first occurrence of skill name wins (seenSkills Set).
  * Sources are processed in priority order (user first, then community).
  */
-function processSkill(skill, source, seenSkills) {
+function processSkill(skill, source, seenSkills, skillsDir = CLAUDE_SKILLS_DIR) {
 	if (seenSkills.has(skill.name)) {
 		return false;
 	}
 
-	const destPath = path.join(CLAUDE_SKILLS_DIR, skill.name);
+	const destPath = path.join(skillsDir, skill.name);
 
 	if (pathExists(destPath) && updateSymlinkIfNeeded(destPath, skill.path)) {
 		seenSkills.add(skill.name);
@@ -398,6 +439,11 @@ function processSkill(skill, source, seenSkills) {
 
 /**
  * Symlink a shared resource (directory or file) if not already linked.
+ * Safe-backup policy:
+ *   - If destPath is a symlink → unlink and relink (idempotent, no backup needed).
+ *   - If destPath is a real file or directory → rename to destPath.bak (removing
+ *     any stale destPath.bak first) then symlink. Logs a warning so the user knows
+ *     their data was moved rather than deleted.
  * Returns true if symlink was created, false if source doesn't exist.
  */
 function symlinkSharedResource(srcPath, destPath, isDir, sourceName) {
@@ -406,7 +452,29 @@ function symlinkSharedResource(srcPath, destPath, isDir, sourceName) {
 	}
 
 	if (pathExists(destPath)) {
-		fs.rmSync(destPath, { recursive: isDir, force: true });
+		let stat;
+		try {
+			stat = fs.lstatSync(destPath);
+		} catch {
+			stat = null;
+		}
+
+		if (stat?.isSymbolicLink()) {
+			// Already a symlink — just unlink and re-create below.
+			fs.unlinkSync(destPath);
+		} else {
+			// Real file or directory — back it up rather than destroying it.
+			const bakPath = `${destPath}.bak`;
+			// Remove any stale .bak first so renameSync doesn't fail on
+			// non-empty directory or existing file.
+			if (pathExists(bakPath)) {
+				fs.rmSync(bakPath, { recursive: true, force: true });
+			}
+			fs.renameSync(destPath, bakPath);
+			log.warning(
+				`moved existing ${path.basename(destPath)} to ${path.basename(bakPath)} — replaced by symlink from ${sourceName}`,
+			);
+		}
 	}
 
 	fs.symlinkSync(srcPath, destPath);
@@ -421,9 +489,13 @@ function symlinkSharedResource(srcPath, destPath, isDir, sourceName) {
  *
  * Symlinks-only invariant: Never copy skills. Symlinks maintain single source of
  * truth - cache updates immediately visible to Claude Code without re-sync.
+ *
+ * opts.skillsDir — override the destination directory (default: CLAUDE_SKILLS_DIR).
+ * Injected by tests to avoid touching the real ~/.claude/skills/.
  */
-export function mergeSkills(sources) {
-	ensureSkillsDir();
+export function mergeSkills(sources, opts = {}) {
+	const skillsDir = opts.skillsDir ?? CLAUDE_SKILLS_DIR;
+	ensureSkillsDir(skillsDir);
 	const seenSkills = new Set();
 	const linked = { scripts: false, claudeMd: false, readmeMd: false };
 
@@ -432,29 +504,29 @@ export function mergeSkills(sources) {
 
 		if (!linked.scripts) {
 			const src = path.join(skillsRoot, "scripts");
-			const dest = path.join(CLAUDE_SKILLS_DIR, "scripts");
+			const dest = path.join(skillsDir, "scripts");
 			linked.scripts = symlinkSharedResource(src, dest, true, source.name);
 		}
 
 		if (!linked.claudeMd) {
 			const src = path.join(skillsRoot, "CLAUDE.md");
-			const dest = path.join(CLAUDE_SKILLS_DIR, "CLAUDE.md");
+			const dest = path.join(skillsDir, "CLAUDE.md");
 			linked.claudeMd = symlinkSharedResource(src, dest, false, source.name);
 		}
 
 		if (!linked.readmeMd) {
 			const src = path.join(skillsRoot, "README.md");
-			const dest = path.join(CLAUDE_SKILLS_DIR, "README.md");
+			const dest = path.join(skillsDir, "README.md");
 			linked.readmeMd = symlinkSharedResource(src, dest, false, source.name);
 		}
 
 		const skills = listSkills(source.cachePath);
 		for (const skill of skills) {
-			processSkill(skill, source, seenSkills);
+			processSkill(skill, source, seenSkills, skillsDir);
 		}
 	}
 
-	log.success(`Merged ${seenSkills.size} skills to ${CLAUDE_SKILLS_DIR}`);
+	log.success(`Merged ${seenSkills.size} skills to ${skillsDir}`);
 }
 
 /**

@@ -51,4 +51,26 @@ describe("installSuperpowers()", () => {
 		await expect(installSuperpowers(settingsPath)).resolves.toBeUndefined();
 		expect(fs.existsSync(settingsPath)).toBe(false);
 	});
+
+	it("returns without throwing when settings.json is not valid JSON", async () => {
+		const malformed = "{ enabledPlugins: not valid json";
+		fs.writeFileSync(settingsPath, malformed);
+
+		const messages = [];
+		const originalError = console.error;
+		console.error = (...args) => messages.push(args.join(" "));
+		try {
+			await expect(
+				installSuperpowers(settingsPath),
+			).resolves.toBeUndefined();
+		} finally {
+			console.error = originalError;
+		}
+
+		// File is left untouched (no partial write / stub).
+		expect(fs.readFileSync(settingsPath, "utf-8")).toBe(malformed);
+		// A clear, actionable error was logged.
+		expect(messages.join("\n")).toMatch(/settings\.json is not valid JSON/i);
+		expect(messages.join("\n")).toMatch(/haoshoku --claude/);
+	});
 });

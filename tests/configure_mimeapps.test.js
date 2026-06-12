@@ -270,6 +270,63 @@ describe("sync / backup round-trip", () => {
 });
 
 // ---------------------------------------------------------------------------
+// safeCopyFile integration — .bak preservation across runs
+// ---------------------------------------------------------------------------
+
+describe("syncMimeappsConfig — .bak backup behavior", () => {
+	it("creates a .bak of the live file on first sync (file had different content)", async () => {
+		// Seed a pre-existing live file with different content than repo
+		const ORIGINAL_LIVE = "[Default Applications]\ntext/html=firefox.desktop\n";
+		fs.mkdirSync(path.join(tmpHome, ".config"), { recursive: true });
+		fs.writeFileSync(
+			path.join(tmpHome, ".config", "mimeapps.list"),
+			ORIGINAL_LIVE,
+		);
+		seedRepoMimeapps();
+
+		await mimeapps.syncMimeappsConfig({
+			home: tmpHome,
+			projectRoot: tmpProjectRoot,
+		});
+
+		const bakPath = path.join(tmpHome, ".config", "mimeapps.list.bak");
+		expect(fs.existsSync(bakPath)).toBe(true);
+		expect(fs.readFileSync(bakPath, "utf8")).toBe(ORIGINAL_LIVE);
+		// live file is now the repo version
+		expect(
+			fs.readFileSync(path.join(tmpHome, ".config", "mimeapps.list"), "utf8"),
+		).toBe(FIXTURE_CONTENT);
+	});
+
+	it("preserves original .bak across two syncs (second run is no-op when content unchanged)", async () => {
+		const ORIGINAL_LIVE = "[Default Applications]\ntext/html=firefox.desktop\n";
+		fs.mkdirSync(path.join(tmpHome, ".config"), { recursive: true });
+		fs.writeFileSync(
+			path.join(tmpHome, ".config", "mimeapps.list"),
+			ORIGINAL_LIVE,
+		);
+		seedRepoMimeapps();
+
+		// First sync: writes FIXTURE_CONTENT, backs up ORIGINAL_LIVE → .bak
+		await mimeapps.syncMimeappsConfig({
+			home: tmpHome,
+			projectRoot: tmpProjectRoot,
+		});
+
+		// Second sync: live already matches repo → no-op; .bak still holds the original
+		await mimeapps.syncMimeappsConfig({
+			home: tmpHome,
+			projectRoot: tmpProjectRoot,
+		});
+
+		const bakPath = path.join(tmpHome, ".config", "mimeapps.list.bak");
+		expect(fs.existsSync(bakPath)).toBe(true);
+		// .bak must still be the ORIGINAL — not overwritten with FIXTURE_CONTENT
+		expect(fs.readFileSync(bakPath, "utf8")).toBe(ORIGINAL_LIVE);
+	});
+});
+
+// ---------------------------------------------------------------------------
 // configureMimeapps — alias for syncMimeappsConfig
 // ---------------------------------------------------------------------------
 

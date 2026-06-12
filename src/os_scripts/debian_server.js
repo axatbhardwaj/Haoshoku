@@ -1,9 +1,15 @@
 import fs from "node:fs";
-import { homedir } from "node:os";
+import { homedir, userInfo } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { withSpinner } from "../common/ui.js";
-import { commandExists, log, promptUser, runCommand } from "../common/utils.js";
+import {
+	commandExists,
+	log,
+	promptUser,
+	runCommand,
+	safeCopyFile,
+} from "../common/utils.js";
 import { configureClaude } from "../helpers/configure_claude.js";
 
 // --- Constants ---
@@ -19,6 +25,44 @@ const CONFIGS_DIR = path.join(PROJECT_ROOT, "configs");
 const CUSTOM_FISH_CONFIG_PATH = path.join(CONFIGS_DIR, "fish", "config.fish");
 
 // --- Helper Functions ---
+
+/**
+ * Return true when the host is Ubuntu (or an Ubuntu derivative). Reads
+ * /etc/os-release and checks `ID=ubuntu` or `ID_LIKE` containing `ubuntu`.
+ *
+ * The fish-shell PPA (`ppa:fish-shell/release-3`) is an Ubuntu Launchpad PPA;
+ * on actual Debian it 404s and `apt update` then fails, which can leave apt in
+ * a broken state. So we only add it on Ubuntu-family hosts.
+ *
+ * `osReleasePath` is injectable for tests.
+ */
+function isUbuntuFamily(osReleasePath = "/etc/os-release") {
+	let content;
+	try {
+		content = fs.readFileSync(osReleasePath, "utf-8");
+	} catch {
+		return false;
+	}
+
+	const fields = {};
+	for (const line of content.split("\n")) {
+		const eq = line.indexOf("=");
+		if (eq === -1) continue;
+		const key = line.slice(0, eq).trim();
+		// Strip surrounding quotes from the value (os-release allows them).
+		const value = line
+			.slice(eq + 1)
+			.trim()
+			.replace(/^["']|["']$/g, "");
+		fields[key] = value;
+	}
+
+	if (fields.ID === "ubuntu") return true;
+	if (fields.ID_LIKE) {
+		return fields.ID_LIKE.split(/\s+/).includes("ubuntu");
+	}
+	return false;
+}
 
 async function installEssentials() {
 	log.info("Updating system and installing essentials...");
@@ -64,13 +108,15 @@ async function setupSsh() {
 async function configureFishShell() {
 	if (!(await commandExists("fish"))) {
 		log.info("Installing Fish shell...");
-		// Only try adding PPA if add-apt-repository is available
-		if (await commandExists("add-apt-repository")) {
+		// The fish-shell PPA is an Ubuntu Launchpad PPA — only add it on the
+		// Ubuntu family. On real Debian it 404s and can break apt, so we fall
+		// back to the default repos there (might be an older fish).
+		if ((await commandExists("add-apt-repository")) && isUbuntuFamily()) {
 			await runCommand("sudo apt-add-repository -y ppa:fish-shell/release-3");
 			await runCommand("sudo apt update");
 		} else {
-			log.warning(
-				"add-apt-repository not found. Installing fish from default repositories (might be older version).",
+			log.info(
+				"Not an Ubuntu host (or add-apt-repository missing). Installing fish from default repositories (might be older version).",
 			);
 		}
 		await withSpinner("Installing fish", () =>
@@ -79,14 +125,21 @@ async function configureFishShell() {
 	}
 
 	if (await promptUser("Set Fish as the default shell?", true)) {
-		const fishPathProc = Bun.spawn(["which", "fish"]);
-		const fishPath = (await new Response(fishPathProc.stdout).text()).trim();
+		const fishPath = Bun.which("fish") ?? "";
 
-		if (fishPath) {
-			log.info("Setting Fish as the default shell...");
-			await runCommand(`sudo chsh -s ${fishPath} ${process.env.USER}`);
-		} else {
+		// Resolve the real login user from os.userInfo() rather than $USER:
+		// an unset $USER yields the literal string "undefined" as the chsh
+		// target (and risks falling through to root). Skip when falsy.
+		const username = userInfo().username;
+		if (!fishPath) {
 			log.warning("Could not find fish executable.");
+		} else if (!username) {
+			log.warning(
+				"Could not determine the current user — skipping default-shell change.",
+			);
+		} else {
+			log.info("Setting Fish as the default shell...");
+			await runCommand(`sudo chsh -s ${fishPath} ${username}`);
 		}
 	}
 
@@ -122,7 +175,9 @@ async function configureFishShell() {
 	);
 
 	if (fs.existsSync(CUSTOM_FISH_CONFIG_PATH)) {
-		fs.copyFileSync(
+		// safeCopyFile backs up any existing live config.fish to .bak before
+		// overwriting (and no-ops when already in sync).
+		safeCopyFile(
 			CUSTOM_FISH_CONFIG_PATH,
 			path.join(FISH_CONFIG_DIR, "config.fish"),
 		);
@@ -148,16 +203,31 @@ async function installDocker() {
 	}
 }
 
-async function setupFirewall() {
+export async function setupFirewall({
+	run = runCommand,
+	prompt = promptUser,
+} = {}) {
 	log.info("Setting up UFW...");
-	await runCommand("sudo ufw default deny incoming");
-	await runCommand("sudo ufw default allow outgoing");
-	await runCommand("sudo ufw allow ssh");
-	await runCommand("sudo ufw allow http");
-	await runCommand("sudo ufw allow https");
+	await run("sudo ufw default deny incoming");
+	await run("sudo ufw default allow outgoing");
 
-	if (await promptUser("Enable UFW now?", true)) {
-		await runCommand("sudo ufw enable");
+	// LOCKOUT GATE: on a remote/headless server, enabling UFW with a
+	// default-deny policy but no working SSH allow rule locks us out for good.
+	// Capture the allow-ssh result and refuse to enable (or even prompt) if it
+	// failed — better to leave UFW disabled than to brick remote access.
+	const sshAllowed = await run("sudo ufw allow ssh");
+	if (!sshAllowed) {
+		log.error(
+			"SSH allow rule failed — NOT enabling UFW (remote lockout risk). Fix and re-run.",
+		);
+		return;
+	}
+
+	await run("sudo ufw allow http");
+	await run("sudo ufw allow https");
+
+	if (await prompt("Enable UFW now?", true)) {
+		await run("sudo ufw enable");
 	}
 }
 
@@ -176,27 +246,64 @@ async function installNodejs() {
 	});
 }
 
-async function configureFail2ban() {
-	log.info("Configuring Fail2ban for SSH protection...");
-
-	const jailLocal = `[sshd]
+/**
+ * Build the fail2ban `jail.local` content for the [sshd] jail.
+ *
+ * `backend = systemd` is required on Debian 12+ / minimal images: there's no
+ * rsyslog by default, so `/var/log/auth.log` never gets written and the
+ * file-tailing backend makes fail2ban fail to start. The systemd backend reads
+ * the journal directly and ignores `logpath` (kept for readability and for
+ * hosts that do populate auth.log).
+ *
+ * Pure function (no I/O) so it's testable.
+ *
+ * @returns {string}
+ */
+export function buildFail2banJail() {
+	return `[sshd]
 enabled = true
 port = ssh
 filter = sshd
+backend = systemd
 logpath = /var/log/auth.log
 maxretry = 5
 bantime = 3600
 findtime = 600
 `;
+}
 
-	fs.writeFileSync("/tmp/jail.local", jailLocal);
-	await runCommand("sudo mv /tmp/jail.local /etc/fail2ban/jail.local");
+async function configureFail2ban() {
+	log.info("Configuring Fail2ban for SSH protection...");
+
+	fs.writeFileSync("/tmp/jail.local", buildFail2banJail());
+
+	const moved = await runCommand(
+		"sudo mv /tmp/jail.local /etc/fail2ban/jail.local",
+	);
+	if (!moved) {
+		log.warning(
+			"Could not install /etc/fail2ban/jail.local — skipping fail2ban enable/restart.",
+		);
+		return;
+	}
+
 	await runCommand("sudo systemctl enable fail2ban");
 	await runCommand("sudo systemctl restart fail2ban");
 	log.success("Fail2ban configured for SSH protection.");
 }
 
 export async function runDebianServerSetup() {
+	// SUDO PREFLIGHT: nearly every step shells out via `sudo`. Without a valid
+	// sudo session each one fails individually yet the run still reports
+	// "setup finished". Validate (and cache) credentials up front and bail
+	// early with a clear error instead.
+	if (!(await runCommand("sudo -v"))) {
+		log.error(
+			"Could not obtain sudo privileges — aborting Debian server setup.",
+		);
+		return;
+	}
+
 	await installEssentials();
 	await setupSsh();
 	await configureFishShell();

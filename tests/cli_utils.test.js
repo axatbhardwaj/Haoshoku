@@ -1,0 +1,122 @@
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { detectOS, findActiveModeFlags } from "../src/common/cli_utils.js";
+
+describe("detectOS", () => {
+	let tmpDir;
+
+	beforeEach(() => {
+		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-os-test-"));
+	});
+
+	afterEach(() => {
+		fs.rmSync(tmpDir, { recursive: true, force: true });
+	});
+
+	const writeOsRelease = (content) => {
+		const p = path.join(tmpDir, "os-release");
+		fs.writeFileSync(p, content);
+		return p;
+	};
+
+	it("detects CachyOS (ID=cachyos) as cachyos", () => {
+		const p = writeOsRelease('NAME="CachyOS"\nID=cachyos\nID_LIKE=arch\n');
+		expect(detectOS(p)).toBe("cachyos");
+	});
+
+	it("detects vanilla Arch (ID=arch only, no ID_LIKE) as cachyos-family", () => {
+		const p = writeOsRelease('NAME="Arch Linux"\nID=arch\n');
+		expect(detectOS(p)).toBe("cachyos");
+	});
+
+	it("detects an Arch derivative (ID_LIKE=arch) as cachyos-family", () => {
+		const p = writeOsRelease('NAME="EndeavourOS"\nID=endeavouros\nID_LIKE=arch\n');
+		expect(detectOS(p)).toBe("cachyos");
+	});
+
+	it("detects Debian (ID=debian) as debian-server", () => {
+		const p = writeOsRelease('NAME="Debian GNU/Linux"\nID=debian\n');
+		expect(detectOS(p)).toBe("debian-server");
+	});
+
+	it("detects Ubuntu (ID=ubuntu ID_LIKE=debian) as debian-server", () => {
+		const p = writeOsRelease('NAME="Ubuntu"\nID=ubuntu\nID_LIKE=debian\n');
+		expect(detectOS(p)).toBe("debian-server");
+	});
+
+	it("returns null when the os-release file is missing", () => {
+		const p = path.join(tmpDir, "does-not-exist");
+		expect(detectOS(p)).toBeNull();
+	});
+
+	it("returns null for garbage / unrecognized content", () => {
+		const p = writeOsRelease("this is not a valid os-release file\n!!!\n");
+		expect(detectOS(p)).toBeNull();
+	});
+
+	it("defaults to /etc/os-release when called with no argument", () => {
+		// Smoke check: a no-arg call must not throw and returns a known shape.
+		const result = detectOS();
+		expect(result === null || typeof result === "string").toBe(true);
+	});
+});
+
+describe("findActiveModeFlags", () => {
+	it("returns an empty array when no mode flags are set", () => {
+		expect(findActiveModeFlags({})).toEqual([]);
+	});
+
+	it("ignores the --os option (not a mode flag)", () => {
+		expect(findActiveModeFlags({ os: "cachyos" })).toEqual([]);
+	});
+
+	it("returns the single set flag when exactly one is set", () => {
+		expect(findActiveModeFlags({ claude: true })).toEqual(["claude"]);
+	});
+
+	it("ignores falsy flag values", () => {
+		expect(findActiveModeFlags({ claude: false, skills: undefined })).toEqual(
+			[],
+		);
+	});
+
+	it("returns both names when two mode flags are set", () => {
+		const result = findActiveModeFlags({ claude: true, zed: true });
+		expect(result.length).toBe(2);
+		expect(result).toContain("claude");
+		expect(result).toContain("zed");
+	});
+
+	it("recognizes every mutually-exclusive mode flag", () => {
+		const allFlags = [
+			"claude",
+			"claudeBackup",
+			"claudeUpdate",
+			"skills",
+			"skillsUpdate",
+			"skillsList",
+			"superpowers",
+			"zed",
+			"zedBackup",
+			"zedTheme",
+			"caelestiaPrefs",
+			"caelestiaPrefsBackup",
+			"sddmPosthook",
+			"audio",
+			"audioBackup",
+			"mimeapps",
+			"mimeappsBackup",
+			"lockfix",
+			"lockfixBackup",
+			"kdeTheme",
+			"kdeThemeBackup",
+			"kdeGlass",
+			"hyprland",
+		];
+		for (const flag of allFlags) {
+			expect(findActiveModeFlags({ [flag]: true })).toEqual([flag]);
+		}
+	});
+});
