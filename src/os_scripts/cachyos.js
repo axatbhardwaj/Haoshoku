@@ -15,6 +15,7 @@ import { configureAudio } from "../helpers/configure_audio.js";
 import { configureMimeapps } from "../helpers/configure_mimeapps.js";
 import { configureClaude } from "../helpers/configure_claude.js";
 import { configureCodex } from "../helpers/configure_codex.js";
+import { configureAgentOs } from "../helpers/configure_agent_os.js";
 import {
   installCaelestia,
   promptDesktopEnvironment,
@@ -593,6 +594,7 @@ async function configureUserApps() {
   await enableServices();
   await configureClaude();
   await configureCodex();
+  await configureAgentOs();
 }
 
 export async function runCachyOSSetup() {

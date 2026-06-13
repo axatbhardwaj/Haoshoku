@@ -16,6 +16,7 @@ import {
   backupCodexConfig,
   syncCodexConfig,
 } from "./src/helpers/configure_codex.js";
+import { configureAgentOs } from "./src/helpers/configure_agent_os.js";
 import {
   backupKdeTheme,
   syncKdeTheme,
@@ -73,6 +74,10 @@ program
   .option("--claude-update", "Update cached config and sync Claude config")
   .option("--codex", "Deploy Codex config (AGENTS.md) to ~/.codex/")
   .option("--codex-backup", "Backup ~/.codex/AGENTS.md to configs/codex/")
+  .option(
+    "--agent-os",
+    "Provision Agent OS (~/agent-os) at the pinned SHA + customization",
+  )
   .option("--skills", "Sync skills from configured sources")
   .option("--skills-update", "Update cached skill sources")
   .option("--skills-list", "List available skills")
@@ -167,6 +172,11 @@ async function runAction(options) {
 
     if (options.codex) {
       await syncCodexConfig();
+      return;
+    }
+
+    if (options.agentOs) {
+      await configureAgentOs();
       return;
     }
 

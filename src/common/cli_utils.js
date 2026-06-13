@@ -14,6 +14,7 @@ export const MODE_FLAGS = [
 	"claudeUpdate",
 	"codex",
 	"codexBackup",
+	"agentOs",
 	"skills",
 	"skillsUpdate",
 	"skillsList",

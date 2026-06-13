@@ -12,6 +12,7 @@ import {
 } from "../common/utils.js";
 import { configureClaude } from "../helpers/configure_claude.js";
 import { configureCodex } from "../helpers/configure_codex.js";
+import { configureAgentOs } from "../helpers/configure_agent_os.js";
 
 // --- Constants ---
 const HOME = homedir();
@@ -314,6 +315,7 @@ export async function runDebianServerSetup() {
 	await configureFail2ban();
 	await configureClaude();
 	await configureCodex();
+	await configureAgentOs();
 
 	log.success("Debian Server setup finished.");
 }
