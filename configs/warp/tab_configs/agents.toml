@@ -1,0 +1,21 @@
+name = "Agents"
+title = "agents"
+color = "green"
+
+[[panes]]
+id = "root"
+split = "vertical"
+children = ["claude", "codex"]
+
+[[panes]]
+id = "claude"
+type = "terminal"
+directory = "/home/xzat"
+commands = ["claude -r io"]
+is_focused = true
+
+[[panes]]
+id = "codex"
+type = "terminal"
+directory = "/home/xzat"
+commands = ["codex resume 019e5020-3b8e-7871-aa56-a22277dae669"]

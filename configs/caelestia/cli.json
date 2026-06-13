@@ -58,14 +58,6 @@
         "command": ["brave", "--profile-directory=Profile 1"],
         "move": true
       }
-    },
-    "agents": {
-      "agents": {
-        "enable": true,
-        "match": [{"class": "kitty-agents"}],
-        "command": ["kitty", "--class=kitty-agents", "--directory=/home/xzat", "--session=/home/xzat/.config/kitty/agents.session"],
-        "move": true
-      }
     }
   },
   "wallpaper": {

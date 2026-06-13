@@ -10,6 +10,7 @@ binary acts as a PATH-shadow wrapper for that binary.
 | File              | What                                                    | When to read                                         |
 | ----------------- | ------------------------------------------------------- | ---------------------------------------------------- |
 | `game-performance` | PATH shadow of `/usr/bin/game-performance` (cachyos-settings). Toggles DP-1 VRR on + Caelestia gameMode on for the game's lifetime; reverts on exit/crash via trap. Calls the real cachyos-settings script after setup. | Adding more game-launch hooks (FPS overlays, env vars, etc.) or porting to a different monitor layout |
+| `agents-toggle`   | Super+A handler for the Warp claude + codex agents split. Toggles the `special:agents` workspace if it already holds a window, else spawns `warp-terminal warp://tab_config/agents?new_window=true` pinned to `special:agents`. Keyed off workspace occupancy because Warp has no stable per-window class/title. | Changing the agents launch/placement or Super+A behavior |
 
 ## Conventions
 
