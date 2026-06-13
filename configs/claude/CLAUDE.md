@@ -9,7 +9,7 @@ Superpowers is the default execution framework. Skills auto-trigger from their d
 
 ### Before writing code
 - New feature, component, or behavior change → `superpowers:brainstorming` (mandatory before any creative work)
-- Multi-step task with a spec → `superpowers:writing-plans`
+- Multi-step task with a spec → `/shape-spec` (standards-aware; supersedes `superpowers:writing-plans` — see Agent OS section)
 - Implementation work → `superpowers:test-driven-development` (red/green TDD, before writing implementation)
 
 ### Doing the work
@@ -43,9 +43,24 @@ Superpowers replaces the heavier GSD framework specifically because it skips per
    - `./superpowers/plans/YYYY-MM-DD-<feature>.html`
    - further subdirectories as needed (`research/`, etc.)
 
-   Those skills default to a tracked `docs/superpowers/...` path and markdown format — **override both: write under gitignored `./superpowers/` as self-contained dark HTML** (see Deliverables below), pushing back if a skill redirects to a tracked path. First setup step in any repo: add `/superpowers/` to `.gitignore`. If prior specs/plans were committed anywhere, `git rm` them and re-create them here.
+   Those skills default to a tracked `docs/superpowers/...` path and markdown format — **override both: write under gitignored `./superpowers/` as self-contained dark HTML** (see Deliverables below), pushing back if a skill redirects to a tracked path. First setup step in any repo: add `/superpowers/` and `agent-os/` to `.gitignore` (Agent OS output — standards, product, specs — is gitignored wholesale; nothing Agent-OS-generated is committed). If prior specs/plans were committed anywhere, `git rm` them and re-create them here.
 
    Why local-only: specs and plans are how we reach alignment, not what ships — the PR description, commit messages, and code carry the rationale future readers need. They also accumulate 4+ rounds of adversarial-review noise that would bloat diffs and bury "what shipped" under "what we proposed at every step."
+
+## Agent OS — Standards & Planning Layer
+
+Agent OS v3 supplies durable convention memory. It layers UNDER Superpowers' execution discipline — it never replaces the gates (TDD, debugging, verification, review). All `agent-os/` output is gitignored; nothing Agent-OS-generated is committed.
+
+Layers:
+- **Standards** — `agent-os/standards/` + `index.yml`. The payload. `/discover-standards` mines a repo's conventions; `/inject-standards` pulls matching ones into context before planning AND before implementation. Cross-repo standards live in `~/agent-os/profiles/default/standards/<category>/`; `~/agent-os/scripts/project-install.sh` propagates them into a repo's `agent-os/standards/`.
+- **Product** (optional) — `/plan-product` → mission/roadmap/tech-stack.
+- **Spec** — `/shape-spec` REPLACES `superpowers:writing-plans`: it is `writing-plans` made standards-aware, customized to emit a single dark HTML plan to `./superpowers/plans/`, never `agent-os/specs/*.md`.
+
+Flow: `superpowers:brainstorming` → `/shape-spec` (standards-injected) → `superpowers:test-driven-development` → verification → review.
+
+First setup in any repo: add `agent-os/` and `/superpowers/` to `.gitignore`.
+
+Engine note: Claude Code uses the slash commands (installed to `.claude/commands/agent-os/`). Codex has no slash commands — see AGENTS.md, which routes it to read and follow the same `~/agent-os/commands/agent-os/*.md` files directly.
 
 ## Deliverables — HTML over Markdown
 
