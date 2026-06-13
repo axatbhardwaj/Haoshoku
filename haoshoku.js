@@ -13,6 +13,10 @@ import {
   updateClaudeConfig,
 } from "./src/helpers/configure_claude.js";
 import {
+  backupCodexConfig,
+  syncCodexConfig,
+} from "./src/helpers/configure_codex.js";
+import {
   backupKdeTheme,
   syncKdeTheme,
 } from "./src/helpers/configure_kde_theme.js";
@@ -67,6 +71,8 @@ program
   )
   .option("--claude-backup", "Backup personal Claude config to configs/claude/")
   .option("--claude-update", "Update cached config and sync Claude config")
+  .option("--codex", "Deploy Codex config (AGENTS.md) to ~/.codex/")
+  .option("--codex-backup", "Backup ~/.codex/AGENTS.md to configs/codex/")
   .option("--skills", "Sync skills from configured sources")
   .option("--skills-update", "Update cached skill sources")
   .option("--skills-list", "List available skills")
@@ -151,6 +157,16 @@ async function runAction(options) {
 
     if (options.claudeBackup) {
       await backupClaudeConfig();
+      return;
+    }
+
+    if (options.codexBackup) {
+      await backupCodexConfig();
+      return;
+    }
+
+    if (options.codex) {
+      await syncCodexConfig();
       return;
     }
 

@@ -12,6 +12,8 @@ export const MODE_FLAGS = [
 	"claude",
 	"claudeBackup",
 	"claudeUpdate",
+	"codex",
+	"codexBackup",
 	"skills",
 	"skillsUpdate",
 	"skillsList",

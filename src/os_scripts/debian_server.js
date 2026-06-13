@@ -11,6 +11,7 @@ import {
 	safeCopyFile,
 } from "../common/utils.js";
 import { configureClaude } from "../helpers/configure_claude.js";
+import { configureCodex } from "../helpers/configure_codex.js";
 
 // --- Constants ---
 const HOME = homedir();
@@ -312,6 +313,7 @@ export async function runDebianServerSetup() {
 	await setupFirewall();
 	await configureFail2ban();
 	await configureClaude();
+	await configureCodex();
 
 	log.success("Debian Server setup finished.");
 }

@@ -14,6 +14,7 @@ import { configureSddm } from "../helpers/configure_sddm.js";
 import { configureAudio } from "../helpers/configure_audio.js";
 import { configureMimeapps } from "../helpers/configure_mimeapps.js";
 import { configureClaude } from "../helpers/configure_claude.js";
+import { configureCodex } from "../helpers/configure_codex.js";
 import {
   installCaelestia,
   promptDesktopEnvironment,
@@ -591,6 +592,7 @@ async function configureUserApps() {
 
   await enableServices();
   await configureClaude();
+  await configureCodex();
 }
 
 export async function runCachyOSSetup() {
