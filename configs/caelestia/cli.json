@@ -62,8 +62,8 @@
     "agents": {
       "agents": {
         "enable": true,
-        "match": [{"class": "kitty-agents"}],
-        "command": ["kitty", "--class=kitty-agents", "--directory=/home/xzat", "--session=/home/xzat/.config/kitty/agents.session"],
+        "match": [{"class": "dev.warp.Warp", "title": "agents"}],
+        "command": ["sh", "-c", "xdg-open 'warp://tab_config/agents?new_window=true'"],
         "move": true
       }
     }

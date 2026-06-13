@@ -21,6 +21,7 @@ import {
 } from "../helpers/configure_hyprland.js";
 import { configureKdeTheme } from "../helpers/configure_kde_theme.js";
 import { configureZed } from "../helpers/configure_zed.js";
+import { configureWarp } from "../helpers/configure_warp.js";
 import { installUserScripts } from "../helpers/install_user_scripts.js";
 
 // URLs
@@ -39,7 +40,6 @@ const STARSHIP_CONFIG_PATH = path.join(HOME, ".config", "starship.toml");
 const FISH_CONFIG_DIR = path.join(HOME, ".config", "fish");
 const PYENV_ROOT = path.join(HOME, ".pyenv");
 const FASTFETCH_CONFIG_DIR = path.join(HOME, ".config", "fastfetch");
-const KITTY_CONFIG_DIR = path.join(HOME, ".config", "kitty");
 const ALACRITTY_CONFIG_DIR = path.join(HOME, ".config", "alacritty");
 // Project paths (resolved from script location, works from any cwd)
 const PROJECT_ROOT = path.resolve(__dirname, "..", "..");
@@ -54,12 +54,6 @@ const CUSTOM_FASTFETCH_CONFIG_PATH = path.join(
   CONFIGS_DIR,
   "fastfetch",
   "config.jsonc",
-);
-const CUSTOM_KITTY_CONFIG_PATH = path.join(CONFIGS_DIR, "kitty", "kitty.conf");
-const CUSTOM_KITTY_SESSION_PATH = path.join(
-  CONFIGS_DIR,
-  "kitty",
-  "agents.session",
 );
 const CUSTOM_ALACRITTY_CONFIG_PATH = path.join(
   CONFIGS_DIR,
@@ -309,28 +303,6 @@ async function configureFishShell() {
 }
 
 async function configureTerminals() {
-  log.info("Configuring Kitty terminal...");
-  fs.mkdirSync(KITTY_CONFIG_DIR, { recursive: true });
-  if (fs.existsSync(CUSTOM_KITTY_CONFIG_PATH)) {
-    safeCopyFile(
-      CUSTOM_KITTY_CONFIG_PATH,
-      path.join(KITTY_CONFIG_DIR, "kitty.conf"),
-    );
-    log.info("Copied custom Kitty config.");
-  } else {
-    log.warning(`Custom Kitty config not found at ${CUSTOM_KITTY_CONFIG_PATH}`);
-  }
-
-  // Super+A agents workspace: kitty --session=agents.session (claude + codex hsplit).
-  // cli.json's agents toggle points at ~/.config/kitty/agents.session, so it must ship.
-  if (fs.existsSync(CUSTOM_KITTY_SESSION_PATH)) {
-    safeCopyFile(
-      CUSTOM_KITTY_SESSION_PATH,
-      path.join(KITTY_CONFIG_DIR, "agents.session"),
-    );
-    log.info("Copied kitty agents.session (Super+A split workspace).");
-  }
-
   log.info("Configuring Alacritty terminal...");
   fs.mkdirSync(ALACRITTY_CONFIG_DIR, { recursive: true });
   if (fs.existsSync(CUSTOM_ALACRITTY_CONFIG_PATH)) {
@@ -593,6 +565,8 @@ async function configureUserApps() {
   }
 
   await configureTerminals();
+  // Activate the Caelestia-generated Warp theme (fixes Warp's dull whites).
+  await configureWarp();
   await configureZed();
   await configureMimeapps();
   await configureKde();

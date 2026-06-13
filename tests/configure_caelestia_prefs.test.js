@@ -518,14 +518,17 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		expect(toggles).not.toContain("vivaldi");
 	});
 
-	it("ships configs/kitty/agents.session with the claude + codex horizontal split", () => {
-		const session = fs.readFileSync(
-			path.join(PROJECT_ROOT, "configs", "kitty", "agents.session"),
+	it("ships configs/warp/tab_configs/agents.toml and retires the kitty config", () => {
+		const t = fs.readFileSync(
+			path.join(PROJECT_ROOT, "configs", "warp", "tab_configs", "agents.toml"),
 			"utf8",
 		);
-		expect(session).toContain("layout splits");
-		expect(session).toContain("exec claude -r io");
-		expect(session).toMatch(/--location=hsplit[\s\S]*exec codex resume/);
+		expect(t).toContain('split = "horizontal"');
+		expect(t).toContain("claude -r io");
+		expect(t).toContain("codex resume 019e5020-3b8e-7871-aa56-a22277dae669");
+		expect(fs.existsSync(path.join(PROJECT_ROOT, "configs", "kitty"))).toBe(
+			false,
+		);
 	});
 
 	it("maps special-workspace toggles to the expected apps", () => {
@@ -578,12 +581,11 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		});
 		expect(toggles.agents.agents).toMatchObject({
 			enable: true,
-			match: [{ class: "kitty-agents" }],
+			match: [{ class: "dev.warp.Warp", title: "agents" }],
 			command: [
-				"kitty",
-				"--class=kitty-agents",
-				"--directory=/home/xzat",
-				"--session=/home/xzat/.config/kitty/agents.session",
+				"sh",
+				"-c",
+				"xdg-open 'warp://tab_config/agents?new_window=true'",
 			],
 			move: true,
 		});
@@ -638,7 +640,7 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 			"bind = Super, A, exec, hyprctl dispatch focusmonitor DP-2 && caelestia toggle agents",
 		);
 		expect(conf).toContain(
-			"windowrule = workspace special:agents, match:class kitty-agents",
+			"windowrule = workspace special:agents, match:class dev\\.warp\\.Warp, match:title agents",
 		);
 		expect(conf).toContain(
 			"bind = $kbCommunication, exec, hyprctl dispatch focusmonitor HDMI-A-1 && caelestia toggle communication",
@@ -672,7 +674,7 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		);
 		expect(conf).toContain("bind = Super, A, exec, caelestia toggle agents");
 		expect(conf).toContain(
-			"windowrule = workspace special:agents, match:class kitty-agents",
+			"windowrule = workspace special:agents, match:class dev\\.warp\\.Warp, match:title agents",
 		);
 		// Laptop has eDP-1, not DP-2/HDMI-A-1 — no focusmonitor forcing on Super+A
 		expect(conf).not.toMatch(/focusmonitor\s+DP-2/);
@@ -849,6 +851,20 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 			);
 			expect(conf).toContain(
 				"windowrule = opacity $windowOpacity override $windowOpacity override $windowOpacity override, match:class brave-browser, match:title Defi",
+			);
+		}
+	});
+
+	it("rebinds Super+T (default terminal) to warp-terminal in both hypr-user variants", () => {
+		for (const file of ["hypr-user-pc.conf", "hypr-user-laptop.conf"]) {
+			const conf = fs.readFileSync(
+				path.join(CONFIGS_CAELESTIA_DIR, file),
+				"utf8",
+			);
+
+			expect(conf).toContain("unbind = $kbTerminal");
+			expect(conf).toContain(
+				"bind = $kbTerminal, exec, app2unit -- warp-terminal",
 			);
 		}
 	});
