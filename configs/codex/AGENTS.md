@@ -2,14 +2,37 @@
 
 Superpowers is the default execution framework. Skills auto-trigger from their descriptions, but engage them deliberately — they exist to stop you from jumping straight to code.
 
-**Skip Superpowers only for:** throwaway one-liners, edits to `~/.claude/` itself, pure factual questions, sub-30-second config tweaks.
+**Skip Superpowers only for:** throwaway one-liners, edits to agent config directories themselves (`~/.codex/`, `~/.claude/`), pure factual questions, sub-30-second config tweaks.
+
+### Codex compatibility layer
+
+This file is the Codex version of the Claude guidance. Keep the intent identical, but translate Claude-specific mechanics into Codex-native ones:
+
+- **AGENTS.md role:** Codex reads `AGENTS.md` guidance before work and layers project-specific files by directory scope. Treat this file as global/default behavior, overridden by closer repo `AGENTS.md` files and direct user instructions.
+- **Skills:** When a rule names a skill such as `superpowers:systematic-debugging`, use Codex Skills semantics: select the skill by name/description, read the relevant `SKILL.md` completely before acting, and follow any referenced instructions needed for the task. If the current harness exposes a direct skill invocation UI, use it; otherwise reading `SKILL.md` from the installed skill path is the invocation.
+- **Tasks/todos:** When this file says `TaskCreate`, `TodoWrite`, or "todos", use Codex `update_plan` with one entry per required checklist item. Keep statuses current (`pending` -> `in_progress` -> `completed`). Do not leave stale pending plan items at turn end.
+- **Subagents:** When this file says `Agent tool`, use available Codex subagent or multi-agent tools only if they exist and the work is genuinely independent. If no subagent tool is available, continue directly and state that limitation only when it affects the outcome.
+- **Slash commands/plugins:** Claude slash commands such as `/plugin` are workflow names unless the Codex harness exposes an equivalent. Prefer installed Codex plugins, MCP tools, or local skill files over literal Claude commands.
+- **Browser/UI verification:** Use whatever browser automation is available in Codex, especially Playwright MCP/tools when present. `claude-in-chrome` references mean "browser automation", not that exact tool.
+- **Docs and handoff text:** Any sentence saying "paste back to Claude" or "updated by Claude" means "paste back to the current agent/Codex" in this environment.
+- **Model tiers:** Claude model names (`haiku`, `sonnet`, `opus`, `fable`) apply only when a tool actually exposes those tiers. If Codex-native subagents do not expose a model selector, ignore the tier names while preserving the quality bar.
+
+### Agent OS (single-agent mode)
+
+Agent OS's installer wires slash commands for Claude Code only (`.claude/commands/agent-os/`). Codex has no such commands — consume Agent OS by reading and following the same instruction files directly:
+
+- Standards inject (manual `/inject-standards`): read `agent-os/standards/index.yml` (or, if absent, `~/agent-os/profiles/default/standards/<category>/`), select standards whose descriptions match the task, read those `.md` into context. Do this before planning AND before implementation.
+- Planning ("shape-spec"): after `superpowers:brainstorming`, follow `~/agent-os/commands/agent-os/shape-spec.md`, inject the matched standards, and write the plan as ONE dark self-contained HTML file to `./superpowers/plans/`. This REPLACES `superpowers:writing-plans`. Never emit `agent-os/specs/*.md`.
+- Discover standards: follow `~/agent-os/commands/agent-os/discover-standards.md`; output to the repo's gitignored `agent-os/standards/`.
+
+All `agent-os/` output is gitignored. Execution stays Superpowers (TDD → verification → review).
 
 ### Every conversation
-- `superpowers:using-superpowers` is auto-injected at session start — follow it from the first response (including before clarifying questions); don't re-invoke it via the Skill tool
+- `superpowers:using-superpowers` is available as a Codex skill — follow it from the first response (including before clarifying questions). In Codex, this means loading/reading the skill instructions rather than looking for Claude's `Skill` tool.
 
 ### Before writing code
 - New feature, component, or behavior change → `superpowers:brainstorming` (mandatory before any creative work)
-- Multi-step task with a spec → `/shape-spec` (standards-aware; supersedes `superpowers:writing-plans` — see Agent OS section)
+- Multi-step task with a spec → `/shape-spec` procedure (standards-aware; supersedes `superpowers:writing-plans` — see "Agent OS (single-agent mode)" above)
 - Implementation work → `superpowers:test-driven-development` (red/green TDD, before writing implementation)
 
 ### Doing the work
@@ -38,7 +61,7 @@ Superpowers replaces the heavier GSD framework specifically because it skips per
 
 2. **`~/ACTIVE-WORK.md`** — the single global index across all worktrees. One line per active branch: worktree path | branch | status of **~25 words max**; deep detail belongs in that worktree's BRANCH-NOTES.md, not here. Update on every context-switch between worktrees, and **remove an entry once its branch merges or its PR closes** — finished work doesn't belong in the index.
 
-3. **`./superpowers/`** at the repo root (sibling of `app/`, `src/`, `lib/` — not under `docs/` or `.claude/`), gitignored — output of the brainstorming/writing-plans skills and similar working docs:
+3. **`./superpowers/`** at the repo root (sibling of `app/`, `src/`, `lib/` — not under `docs/`, `.claude/`, or `.codex/`), gitignored — output of the brainstorming/writing-plans skills and similar working docs:
    - `./superpowers/specs/YYYY-MM-DD-<topic>-design.html`
    - `./superpowers/plans/YYYY-MM-DD-<feature>.html`
    - further subdirectories as needed (`research/`, etc.)
@@ -46,21 +69,6 @@ Superpowers replaces the heavier GSD framework specifically because it skips per
    Those skills default to a tracked `docs/superpowers/...` path and markdown format — **override both: write under gitignored `./superpowers/` as self-contained dark HTML** (see Deliverables below), pushing back if a skill redirects to a tracked path. First setup step in any repo: add `/superpowers/` and `agent-os/` to `.gitignore` (Agent OS output — standards, product, specs — is gitignored wholesale; nothing Agent-OS-generated is committed). If prior specs/plans were committed anywhere, `git rm` them and re-create them here.
 
    Why local-only: specs and plans are how we reach alignment, not what ships — the PR description, commit messages, and code carry the rationale future readers need. They also accumulate 4+ rounds of adversarial-review noise that would bloat diffs and bury "what shipped" under "what we proposed at every step."
-
-## Agent OS — Standards & Planning Layer
-
-Agent OS v3 supplies durable convention memory. It layers UNDER Superpowers' execution discipline — it never replaces the gates (TDD, debugging, verification, review). All `agent-os/` output is gitignored; nothing Agent-OS-generated is committed.
-
-Layers:
-- **Standards** — `agent-os/standards/` + `index.yml`. The payload. `/discover-standards` mines a repo's conventions; `/inject-standards` pulls matching ones into context before planning AND before implementation. Cross-repo standards live in `~/agent-os/profiles/default/standards/<category>/`; `~/agent-os/scripts/project-install.sh` propagates them into a repo's `agent-os/standards/`.
-- **Product** (optional) — `/plan-product` → mission/roadmap/tech-stack.
-- **Spec** — `/shape-spec` REPLACES `superpowers:writing-plans`: it is `writing-plans` made standards-aware, customized to emit a single dark HTML plan to `./superpowers/plans/`, never `agent-os/specs/*.md`.
-
-Flow: `superpowers:brainstorming` → `/shape-spec` (standards-injected) → `superpowers:test-driven-development` → verification → review.
-
-First setup in any repo: add `agent-os/` and `/superpowers/` to `.gitignore`.
-
-Engine note: Claude Code uses the slash commands (installed to `.claude/commands/agent-os/`). Codex has no slash commands — see AGENTS.md, which routes it to read and follow the same `~/agent-os/commands/agent-os/*.md` files directly.
 
 ## Deliverables — HTML over Markdown
 
@@ -73,9 +81,9 @@ Quality bar, every file:
 - **Interactive where it earns its keep** — collapsible sections, filterable tables, tabs for side-by-side comparisons, checkboxes on todo views.
 - **Self-contained** — inline all CSS/JS, no CDNs, no build step; must render offline via `file://`.
 
-State rule: browser-side interaction (checked boxes, filters, sliders) does not persist into the file. Interactive state worth keeping gets an **export button** ("copy as prompt" / "copy as JSON") so it can be pasted back to Claude; the file's content stays the single source of truth, updated by Claude at checkpoints. Live todo tracking stays in the harness task system — an HTML todo/plan view is a rendered snapshot of it.
+State rule: browser-side interaction (checked boxes, filters, sliders) does not persist into the file. Interactive state worth keeping gets an **export button** ("copy as prompt" / "copy as JSON") so it can be pasted back to the current agent; the file's content stays the single source of truth, updated by the agent at checkpoints. Live todo tracking stays in the harness task system — an HTML todo/plan view is a rendered snapshot of it.
 
-Stays plain text (machine-read every session or platform-native — HTML is pure token tax there): `BRANCH-NOTES.md`, `~/ACTIVE-WORK.md`, memory files, CLAUDE.md itself, commit messages, and anything posted to GitHub or Linear.
+Stays plain text (machine-read every session or platform-native — HTML is pure token tax there): `BRANCH-NOTES.md`, `~/ACTIVE-WORK.md`, memory files, `AGENTS.md`/`CLAUDE.md` themselves, commit messages, and anything posted to GitHub or Linear.
 
 ## Skill discipline
 
@@ -83,9 +91,9 @@ The rules above are gates. Run the `using-superpowers` checklist before implemen
 
 **Re-check the gates before any Edit/Write tool call that modifies code.** Brainstorming approval is not a license to skip TDD. Each implementation increment is its own gate-check — a multi-step task does not collapse into one continuous "work" period after the plan is approved.
 
-**Every task gets todos — no matter how small.** Any request involving actual work (tool calls, file changes, lookups, anything beyond a purely conversational answer) starts with TaskCreate entries before the work begins — a one-step task gets exactly one todo, and statuses update live (`in_progress` → `completed`). Ending a turn with stale pending todos is a defect. A UserPromptSubmit hook re-injects this gate (plus the skill gate) on every prompt, so long sessions cannot drift from it.
+**Every task gets todos — no matter how small.** Any request involving actual work (tool calls, file changes, lookups, anything beyond a purely conversational answer) starts with `update_plan` entries before the work begins — a one-step task gets exactly one plan item, and statuses update live (`in_progress` → `completed`). Ending a turn with stale pending plan items is a defect. Treat this as a prompt-level gate on every turn so long sessions cannot drift from it.
 
-**Always create tasks for every Superpowers skill step.** When invoking any Superpowers skill that has a checklist (brainstorming, writing-plans, executing-plans, TDD, debugging, etc.), immediately create one TaskCreate entry per checklist item before doing the work. Update statuses (`in_progress` → `completed`) as you go. Two reasons: (1) the user can see the workflow you're executing instead of guessing whether the skill is actually being followed; (2) writing the steps down is what stops you from collapsing them, skipping a gate, or losing your place mid-skill. This applies even for "small" tasks — if a skill is invoked, its checklist gets tasks. No exceptions for perceived simplicity.
+**Always create tasks for every Superpowers skill step.** When invoking any Superpowers skill that has a checklist (brainstorming, writing-plans, executing-plans, TDD, debugging, etc.), immediately create one `update_plan` item per checklist item before doing the work. Update statuses (`in_progress` → `completed`) as you go. Two reasons: (1) the user can see the workflow you're executing instead of guessing whether the skill is actually being followed; (2) writing the steps down is what stops you from collapsing them, skipping a gate, or losing your place mid-skill. This applies even for "small" tasks — if a skill is invoked, its checklist gets plan items. No exceptions for perceived simplicity.
 
 ## Worktree Awareness
 
@@ -111,7 +119,7 @@ When told "do not try to fix it just yet" — comply. Investigate only.
 `superpowers:verification-before-completion` enforces this for code completion. The principle generalizes:
 
 - Run the test that motivated the change, not just the full suite
-- UI changes: verify visually in a real browser via whatever browser-automation MCP is available (claude-in-chrome, Playwright, …)
+- UI changes: verify visually in a real browser via whatever browser-automation MCP/tool is available (Playwright, screenshot tools, browser MCP, etc.)
 - Infra changes: verify the deployment took effect — exit code 0 is not proof
 - "Would a staff engineer approve this?" — if no, iterate before presenting
 
@@ -124,7 +132,7 @@ Training data is stale. Before quoting a package version, library API, framework
 
 ## Subagent model selection
 
-When dispatching subagents via the `Agent` tool, **never use `haiku`**. Default to `sonnet` whenever a "fast and cheap" tier is needed, and `opus` only for tasks that genuinely require the strongest reasoning (architectural design, complex review, hairy debugging).
+When dispatching subagents through tools that expose Claude-style model tiers, **never use `haiku`**. Default to `sonnet` whenever a "fast and cheap" tier is needed, and `opus` only for tasks that genuinely require the strongest reasoning (architectural design, complex review, hairy debugging). If the Codex subagent tool has no model selector, ignore the tier names and keep the dispatch quality bar.
 
 **Why:** Haiku produces work that needs more review iterations to reach acceptable quality, even on tasks that look mechanical on paper. The total round-trip time and review-loop overhead end up costing more than just running sonnet once. Sonnet is the floor for any code-touching subagent in this workspace.
 
@@ -147,12 +155,12 @@ Applies to **any PR review, any repo**. The local review file is the canonical d
 - **Single-finding code-block detail → inline comment.** If one finding genuinely needs a verbatim code-block suggested fix on GitHub (the author needs to apply the patch directly), post that one finding as a targeted inline review comment on the file/line, not by expanding the top-level body.
 - **Editing after the fact:** if the posted body needs trimming, use `gh api -X PUT repos/{owner}/{repo}/pulls/{n}/reviews/{review_id}` with a `{body: …}` payload — review state (APPROVED/COMMENT/CHANGES_REQUESTED) is preserved across edits.
 - **Local file location:**
-  - **defi-com repos** → `~/defi/misc/reviews/`, named per-repo: plain `review-PR-<num>.html` means `monorepo` *by definition*; the other repos are always prefixed — `review-azure-next-hybrid-PR-<num>.html`, `review-contracts-PR-<num>.html` (PR numbers collide across repos; never drop the prefix, never prefix monorepo). Legacy reviews are `.md`; leave them. See `~/.claude/projects/-home-xzat-defi-monorepo/memory/reference_pr_review_convention.md` for the mandatory header structure, `Reviewed:` SHA pin, and round-2 severity-row vocabulary.
+  - **defi-com repos** → `~/defi/misc/reviews/`, named per-repo: plain `review-PR-<num>.html` means `monorepo` *by definition*; the other repos are always prefixed — `review-azure-next-hybrid-PR-<num>.html`, `review-contracts-PR-<num>.html` (PR numbers collide across repos; never drop the prefix, never prefix monorepo). Legacy reviews are `.md`; leave them. If readable, use `~/.claude/projects/-home-xzat-defi-monorepo/memory/reference_pr_review_convention.md` for the mandatory header structure, `Reviewed:` SHA pin, and round-2 severity-row vocabulary; otherwise infer from the latest existing local review.
   - **Other repos:** confirm a location with the user the first time, then stay consistent.
 
 ## Git Identity (GitHub attribution)
 
-The `# userEmail` line auto-injected by Claude Code (`axatbhardwaj99@gmail.com`) is the **Anthropic account** email — it is NOT the GitHub commit-author identity and should never be used as `git config user.email`.
+If a `# userEmail` line is auto-injected by Claude Code (`axatbhardwaj99@gmail.com`) or copied from Claude context, it is the **Anthropic account** email — it is NOT the GitHub commit-author identity and should never be used as `git config user.email`. In Codex, do not infer git identity from account metadata either.
 
 **Verified emails on the GitHub account `axatbhardwaj`** (either is valid for commit attribution):
 - `axatbhardwaj@outlook.com`
