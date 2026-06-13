@@ -1,4 +1,7 @@
 {
+  "env": {
+    "CLAUDE_CODE_EFFORT_LEVEL": "max"
+  },
   "attribution": {
     "commit": "",
     "pr": ""
@@ -116,10 +119,7 @@
     ],
     "defaultMode": "bypassPermissions"
   },
-  "statusLine": {
-    "type": "command",
-    "command": "bash /home/xzat/.claude/statusline-command.sh"
-  },
+  "model": "opus",
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -132,6 +132,10 @@
         ]
       }
     ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bash /home/xzat/.claude/statusline-command.sh"
   },
   "enabledPlugins": {
     "context7@claude-plugins-official": true,
@@ -149,7 +153,8 @@
     "superpowers@claude-plugins-official": true,
     "cloudflare@cloudflare": false,
     "ralph-loop@claude-plugins-official": true,
-    "dvandva@dvandva": true
+    "dvandva@dvandva": true,
+    "warp@claude-code-warp": true
   },
   "extraKnownMarketplaces": {
     "azure-skills": {
@@ -169,6 +174,12 @@
         "source": "directory",
         "path": "/home/xzat/personal/Dvandva"
       }
+    },
+    "claude-code-warp": {
+      "source": {
+        "source": "github",
+        "repo": "warpdotdev/claude-code-warp"
+      }
     }
   },
   "effortLevel": "xhigh",
@@ -176,7 +187,7 @@
   "editorMode": "normal",
   "verbose": true,
   "remoteControlAtStartup": true,
+  "inputNeededNotifEnabled": true,
   "agentPushNotifEnabled": true,
-  "voiceEnabled": true,
-  "model": "fable"
+  "voiceEnabled": true
 }
