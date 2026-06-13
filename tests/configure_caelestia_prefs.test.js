@@ -746,6 +746,34 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		}
 	});
 
+	it("re-adds the Super tap-to-launch fix in both variants (interrupt before launcher)", () => {
+		// Hyprland >=0.55.3 (PR #14743) executes ALL binds matching a key event in
+		// definition order. Stock Caelestia defines launcher (Super_L) before the
+		// catchall interrupt, so a bare Super tap fires launcher then interrupt and
+		// self-cancels on release. The fix re-adds both REVERSED — interrupt first,
+		// launcher last — inside the global submap. Guard both variants against a
+		// future --caelestia-prefs sync silently dropping or reordering it.
+		const interruptBind =
+			"bindin = Super, catchall, global, caelestia:launcherInterrupt";
+		const launcherBind = "bindi = Super, Super_L, global, caelestia:launcher";
+
+		for (const file of ["hypr-user-pc.conf", "hypr-user-laptop.conf"]) {
+			const conf = fs.readFileSync(
+				path.join(CONFIGS_CAELESTIA_DIR, file),
+				"utf8",
+			);
+
+			expect(conf).toContain("unbind = Super, catchall");
+			expect(conf).toContain("unbind = Super, Super_L");
+			expect(conf).toContain(interruptBind);
+			expect(conf).toContain(launcherBind);
+			// Order is the actual fix: interrupt must be defined before launcher.
+			expect(conf.indexOf(interruptBind)).toBeLessThan(
+				conf.indexOf(launcherBind),
+			);
+		}
+	});
+
 	it("routes the browser shortcuts through named Brave special workspaces", () => {
 		for (const file of ["hypr-user-pc.conf", "hypr-user-laptop.conf"]) {
 			const conf = fs.readFileSync(
