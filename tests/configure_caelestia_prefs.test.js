@@ -582,11 +582,7 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		expect(toggles.agents.agents).toMatchObject({
 			enable: true,
 			match: [{ class: "dev.warp.Warp", title: "agents" }],
-			command: [
-				"sh",
-				"-c",
-				"xdg-open 'warp://tab_config/agents?new_window=true'",
-			],
+			command: ["warp-terminal", "warp://tab_config/agents?new_window=true"],
 			move: true,
 		});
 		expect(toggles).not.toHaveProperty("claude");

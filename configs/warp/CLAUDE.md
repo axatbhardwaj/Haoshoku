@@ -21,6 +21,10 @@ string selects a built-in). Warp ignores Caelestia's OSC palette injection
 ## Agents tab config
 
 `tab_configs/agents.toml` deploys to `${XDG_DATA_HOME:-~/.local/share}/warp-terminal/tab_configs/`.
-The Super+A toggle (`configs/caelestia/cli.json`) launches it via
-`warp://tab_config/agents?new_window=true`; Hyprland routes the window to `special:agents`
-by class `dev.warp.Warp` + title `agents` (Warp has no per-window WM class).
+The Super+A toggle (`configs/caelestia/cli.json`) launches it with
+`warp-terminal warp://tab_config/agents?new_window=true` — invoked **directly**, *not* via
+`xdg-open`: the GNOME "Warp" file-transfer app (`app.drey.Warp`) also registers the `warp://`
+scheme and is frequently the system default handler, so `xdg-open` would open the wrong app.
+Hyprland routes the window to `special:agents` by class `dev.warp.Warp` + title `agents`. All
+warp-terminal windows share the `dev.warp.Warp` class (there is no custom per-window class), so
+the tab config's `title` is the distinguishing match.
