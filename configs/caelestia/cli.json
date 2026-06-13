@@ -58,14 +58,6 @@
         "command": ["brave", "--profile-directory=Profile 1"],
         "move": true
       }
-    },
-    "agents": {
-      "agents": {
-        "enable": true,
-        "match": [{"class": "dev.warp.Warp", "title": "agents"}],
-        "command": ["warp-terminal", "warp://tab_config/agents?new_window=true"],
-        "move": true
-      }
     }
   },
   "wallpaper": {

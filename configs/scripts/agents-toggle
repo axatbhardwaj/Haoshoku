@@ -1,0 +1,15 @@
+#!/usr/bin/env sh
+# Super+A: toggle the Warp agents split on its dedicated special:agents workspace.
+#
+# Warp has no stable per-window identity — every window is class dev.warp.Warp, and
+# the window title drifts off "agents" once an agent pane exits (claude/codex -> fish).
+# So Caelestia's title-match toggle can't reliably find the existing window and spawns
+# duplicates. Key off the workspace instead: if special:agents already holds a window,
+# just toggle its visibility; only spawn (pinned to special:agents via a Hyprland exec
+# rule, independent of title) when the workspace is empty. Launch warp-terminal directly
+# so the warp:// scheme handler (the GNOME "Warp" app, app.drey.Warp) cannot intercept it.
+if hyprctl clients -j | jq -e 'any(.[]; .workspace.name == "special:agents")' >/dev/null 2>&1; then
+	hyprctl dispatch togglespecialworkspace agents
+else
+	hyprctl dispatch exec "[workspace special:agents] warp-terminal warp://tab_config/agents?new_window=true"
+fi

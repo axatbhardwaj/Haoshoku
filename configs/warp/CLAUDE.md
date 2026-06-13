@@ -20,11 +20,14 @@ string selects a built-in). Warp ignores Caelestia's OSC palette injection
 
 ## Agents tab config
 
-`tab_configs/agents.toml` deploys to `${XDG_DATA_HOME:-~/.local/share}/warp-terminal/tab_configs/`.
-The Super+A toggle (`configs/caelestia/cli.json`) launches it with
-`warp-terminal warp://tab_config/agents?new_window=true` — invoked **directly**, *not* via
-`xdg-open`: the GNOME "Warp" file-transfer app (`app.drey.Warp`) also registers the `warp://`
-scheme and is frequently the system default handler, so `xdg-open` would open the wrong app.
-Hyprland routes the window to `special:agents` by class `dev.warp.Warp` + title `agents`. All
-warp-terminal windows share the `dev.warp.Warp` class (there is no custom per-window class), so
-the tab config's `title` is the distinguishing match.
+`tab_configs/agents.toml` deploys to `${XDG_DATA_HOME:-~/.local/share}/warp-terminal/tab_configs/`
+(claude | codex, top/bottom split via `split = "vertical"`). Super+A runs the
+`agents-toggle` guard script (`configs/scripts/` → `~/.local/bin/`): if `special:agents`
+already holds a window it just toggles that workspace's visibility; otherwise it spawns
+`warp-terminal warp://tab_config/agents?new_window=true` pinned to `special:agents` via a
+Hyprland `[workspace special:agents]` exec rule. Launched **directly** — never `xdg-open`,
+which routes `warp://` to the unrelated GNOME "Warp" app (`app.drey.Warp`).
+
+This replaced a Caelestia title-match toggle + windowrule: Warp has no stable per-window
+identity (every window is class `dev.warp.Warp`; the title drifts off "agents" once a pane
+exits), so title matching spawned duplicate windows. Keying off workspace occupancy is robust.
