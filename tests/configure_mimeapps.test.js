@@ -415,13 +415,22 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 			),
 		];
 
+		// Some AUR packages ship a .desktop whose basename differs from the
+		// package name (brave-bin → brave-browser.desktop, cohesion-git →
+		// cohesion.desktop), so a naive basename match would false-flag them.
+		const providerAliases = {
+			"brave-browser.desktop": "brave-bin",
+			"cohesion.desktop": "cohesion-git",
+		};
+		const installed = new Set(
+			packageLists.split("\n").map((line) => line.trim()),
+		);
 		const uncovered = referenced.filter((desktopFile) => {
 			if (deployedHandlers.has(desktopFile)) return false;
 			const packageName = desktopFile.replace(/\.desktop$/, "");
-			return !packageLists
-				.split("\n")
-				.map((line) => line.trim())
-				.includes(packageName);
+			if (installed.has(packageName)) return false;
+			const alias = providerAliases[desktopFile];
+			return !(alias && installed.has(alias));
 		});
 
 		expect(uncovered).toEqual([]);
