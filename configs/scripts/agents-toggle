@@ -1,15 +1,47 @@
 #!/usr/bin/env sh
-# Super+A: toggle the Warp agents split on its dedicated special:agents workspace.
+# Super+A: toggle the Warp "agents" split on its dedicated special:agents workspace.
 #
-# Warp has no stable per-window identity — every window is class dev.warp.Warp, and
-# the window title drifts off "agents" once an agent pane exits (claude/codex -> fish).
-# So Caelestia's title-match toggle can't reliably find the existing window and spawns
-# duplicates. Key off the workspace instead: if special:agents already holds a window,
-# just toggle its visibility; only spawn (pinned to special:agents via a Hyprland exec
-# rule, independent of title) when the workspace is empty. Launch warp-terminal directly
-# so the warp:// scheme handler (the GNOME "Warp" app, app.drey.Warp) cannot intercept it.
-if hyprctl clients -j | jq -e 'any(.[]; .workspace.name == "special:agents")' >/dev/null 2>&1; then
+# Warp is a single multi-window process with no stable per-window identity (every
+# window is class dev.warp.Warp; the title drifts off "agents" once a pane exits).
+# Hyprland's [workspace special:agents] execrule only places the window when Warp is
+# COLD — it matches the PID it launched. When Warp is already running, the new window
+# is created by the existing process under a different PID, so the execrule misses and
+# the window lands on the active workspace; the occupancy guard then never finds it on
+# special:agents and respawns on every press. So we place the window ourselves.
+# Launch warp-terminal directly so the warp:// scheme handler (the GNOME "Warp" app,
+# app.drey.Warp) cannot intercept it.
+WS=special:agents
+
+# 1. Already on special:agents -> just toggle its visibility.
+if hyprctl clients -j | jq -e --arg ws "$WS" 'any(.[]; .workspace.name == $ws)' >/dev/null 2>&1; then
 	hyprctl dispatch togglespecialworkspace agents
-else
-	hyprctl dispatch exec "[workspace special:agents] warp-terminal warp://tab_config/agents?new_window=true"
+	exit 0
 fi
+
+# 2. An "agents" window stranded on another workspace (e.g. from a prior warm-spawn) ->
+#    reclaim it instead of spawning a duplicate.
+stray=$(hyprctl clients -j | jq -r 'first(.[] | select(.class == "dev.warp.Warp" and (.title | ascii_downcase | contains("agents"))) | .address) // empty')
+if [ -n "$stray" ]; then
+	hyprctl dispatch movetoworkspacesilent "$WS,address:$stray"
+	hyprctl dispatch togglespecialworkspace agents
+	exit 0
+fi
+
+# 3. Nothing to reuse -> spawn, then move the newly-created Warp window onto
+#    special:agents ourselves (works whether Warp was cold or warm) and reveal it.
+#    The execrule still helps in the cold case; the explicit move covers the warm one.
+before=$(hyprctl clients -j | jq -c '[.[] | select(.class == "dev.warp.Warp") | .address]')
+hyprctl dispatch exec "[workspace $WS silent] warp-terminal warp://tab_config/agents?new_window=true"
+
+i=0
+while [ "$i" -lt 60 ]; do
+	new=$(hyprctl clients -j | jq -r --argjson before "$before" 'first(.[] | select(.class == "dev.warp.Warp" and ((.address) as $a | ($before | index($a)) | not)) | .address) // empty')
+	if [ -n "$new" ]; then
+		hyprctl dispatch movetoworkspacesilent "$WS,address:$new"
+		hyprctl dispatch togglespecialworkspace agents
+		exit 0
+	fi
+	i=$((i + 1))
+	sleep 0.1
+done
+exit 0

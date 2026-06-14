@@ -898,6 +898,20 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		expect(s).not.toContain("xdg-open");
 	});
 
+	it("agents-toggle explicitly places the new window on special:agents (warm-Warp safe)", () => {
+		const s = fs.readFileSync(
+			path.join(PROJECT_ROOT, "configs", "scripts", "agents-toggle"),
+			"utf8",
+		);
+		// Warp is a single multi-window process: when it is already running, the
+		// [workspace special:agents] execrule misses (the window is created by the
+		// existing PID, not the one the rule tracked), so it lands on the active
+		// workspace and the occupancy guard respawns forever. The script must move
+		// the window onto special:agents itself rather than trust the execrule.
+		expect(s).toContain("movetoworkspacesilent");
+		expect(s).toContain("dev.warp.Warp");
+	});
+
 	it("binds Super+A to the agents-toggle script in both hypr-user variants", () => {
 		for (const file of ["hypr-user-pc.conf", "hypr-user-laptop.conf"]) {
 			const conf = fs.readFileSync(
