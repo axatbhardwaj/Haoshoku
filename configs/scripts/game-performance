@@ -4,7 +4,8 @@
 #   - DP-1 (primary gaming monitor) flips to vrr=1
 #   - Caelestia gameMode engages (kills animations/blur/gaps, enables tearing)
 #   - Real /usr/bin/game-performance handles the CPU governor via powerprofilesctl
-# All effects revert on exit (game close, Ctrl-C, crash) via trap.
+# Effects revert on normal exit/termination via trap. A Hyprland startup reset
+# handles crash/reboot cases where the trap cannot run.
 #
 # Resolves before /usr/bin because ~/.local/bin precedes it in $PATH on
 # systemd-user-session-managed setups.
@@ -30,7 +31,13 @@ revert() {
     set_dp1_vrr 0
     caelestia shell gameMode disable >/dev/null 2>&1
 }
-trap revert EXIT INT TERM
+
+if [ "${1:-}" = "--reset" ]; then
+    revert
+    exit 0
+fi
+
+trap revert EXIT HUP INT TERM
 
 set_dp1_vrr 1
 caelestia shell gameMode enable >/dev/null 2>&1

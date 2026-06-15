@@ -113,6 +113,23 @@ describe("installUserScripts — deployment", () => {
 			fs.existsSync(path.join(tmpHome, ".local", "bin")),
 		).toBe(false);
 	});
+
+	it("ships game-performance with a reset mode for crash-stale VRR", () => {
+		const script = fs.readFileSync(
+			path.join(
+				process.cwd(),
+				"configs",
+				"scripts",
+				"game-performance",
+			),
+			"utf8",
+		);
+
+		expect(script).toContain(`if [ "$` + `{1:-}" = "--reset" ]; then`);
+		expect(script).toContain("set_dp1_vrr 0");
+		expect(script).toContain("exit 0");
+		expect(script).toContain("/usr/bin/game-performance");
+	});
 });
 
 // ---------------------------------------------------------------------------

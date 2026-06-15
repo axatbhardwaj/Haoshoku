@@ -621,6 +621,17 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		expect(conf).toMatch(/workspace\s*=\s*1\s*,\s*monitor:DP-1/);
 	});
 
+	it("resets crash-stale DP-1 VRR on PC Hyprland startup", () => {
+		const conf = fs.readFileSync(
+			path.join(CONFIGS_CAELESTIA_DIR, "hypr-user-pc.conf"),
+			"utf8",
+		);
+
+		expect(conf).toContain(
+			"exec-once = /home/xzat/.local/bin/game-performance --reset",
+		);
+	});
+
 	it("routes Super+A to DP-2 (agents split) and Super+D to HDMI-A-1 on PC", () => {
 		const conf = fs.readFileSync(
 			path.join(CONFIGS_CAELESTIA_DIR, "hypr-user-pc.conf"),
@@ -649,6 +660,7 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		// NO NVIDIA exec-once on Intel iGPU laptop
 		expect(conf).not.toMatch(/nvidia-settings/);
 		expect(conf).not.toMatch(/\bvrr\b/);
+		expect(conf).not.toContain("game-performance --reset");
 		// Workspaces should be persistent but NOT monitor-pinned
 		expect(conf).toMatch(/workspace\s*=\s*10/);
 		expect(conf).not.toMatch(/workspace\s*=\s*\d+\s*,\s*monitor:/);
