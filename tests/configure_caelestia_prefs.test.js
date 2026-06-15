@@ -616,6 +616,8 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 			"utf8",
 		);
 		expect(conf).toMatch(/workspace\s*=\s*10\s*,\s*monitor:DP-2/);
+		expect(conf).toMatch(/workspace\s*=\s*7\s*,\s*monitor:DP-2/);
+		expect(conf).toMatch(/workspace\s*=\s*6\s*,\s*monitor:DP-2/);
 		expect(conf).toMatch(/workspace\s*=\s*5\s*,\s*monitor:HDMI-A-1/);
 		expect(conf).toMatch(/workspace\s*=\s*4\s*,\s*monitor:HDMI-A-1/);
 		expect(conf).toMatch(/workspace\s*=\s*1\s*,\s*monitor:DP-1/);
@@ -645,6 +647,28 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 			"bind = $kbCommunication, exec, hyprctl dispatch focusmonitor HDMI-A-1 && caelestia toggle communication",
 		);
 		expect(conf).not.toContain("caelestia toggle claude");
+	});
+
+	it("routes Super+6 and Super+7 to the vertical monitor on PC", () => {
+		const conf = fs.readFileSync(
+			path.join(CONFIGS_CAELESTIA_DIR, "hypr-user-pc.conf"),
+			"utf8",
+		);
+
+		expect(conf).toContain(
+			"workspace = 6, monitor:DP-2, persistent:true",
+		);
+		expect(conf).toContain(
+			"workspace = 7, monitor:DP-2, persistent:true",
+		);
+		expect(conf).toContain("unbind = $kbGoToWs, 6");
+		expect(conf).toContain(
+			"bind = $kbGoToWs, 6, exec, hyprctl dispatch focusmonitor DP-2 && hyprctl dispatch workspace 6",
+		);
+		expect(conf).toContain("unbind = $kbGoToWs, 7");
+		expect(conf).toContain(
+			"bind = $kbGoToWs, 7, exec, hyprctl dispatch focusmonitor DP-2 && /home/xzat/.local/bin/warp-workspace-7",
+		);
 	});
 
 	it("ships hypr-user-laptop.conf with eDP-1 + no monitor: pins + no NVIDIA exec-once", () => {
@@ -745,11 +769,15 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 			"workspace = 3, persistent:true",
 			"workspace = 4, persistent:true",
 			"workspace = 5, default:true, persistent:true",
+			"workspace = 6, persistent:true",
+			"workspace = 7, persistent:true",
 			"windowrule = workspace 2 silent, match:class ^[Ss]team$",
 			"windowrule = workspace 4 silent, match:class vesktop",
 			"windowrule = workspace 5 silent, match:class (teams-for-linux|TelegramDesktop|org\\.telegram\\.desktop)",
 			"hyprctl dispatch exec \"[workspace 2 silent] app2unit -- steam\"",
 			"hyprctl dispatch exec \"[workspace 4 silent] app2unit -- vesktop\"",
+			"bind = $kbGoToWs, 6, exec, hyprctl dispatch workspace 6",
+			"bind = $kbGoToWs, 7, exec, /home/xzat/.local/bin/warp-workspace-7",
 			"hyprshot -m output -m active",
 		];
 

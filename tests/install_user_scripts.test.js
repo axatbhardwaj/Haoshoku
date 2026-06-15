@@ -130,6 +130,24 @@ describe("installUserScripts — deployment", () => {
 		expect(script).toContain("exit 0");
 		expect(script).toContain("/usr/bin/game-performance");
 	});
+
+	it("ships warp-workspace-7 as a plain home Warp launcher", () => {
+		const script = fs.readFileSync(
+			path.join(process.cwd(), "configs", "scripts", "warp-workspace-7"),
+			"utf8",
+		);
+
+		expect(script).toContain("WS=7");
+		expect(script).toContain(
+			String.raw`cd \"\$HOME\" && exec warp-terminal`,
+		);
+		expect(script).toContain("dev.warp.Warp");
+		expect(script).toContain("movetoworkspacesilent");
+		expect(script).toContain('hyprctl dispatch workspace "$WS"');
+		expect(script).not.toContain("tab_config");
+		expect(script).not.toContain("warp://");
+		expect(script).not.toContain("agents");
+	});
 });
 
 // ---------------------------------------------------------------------------
