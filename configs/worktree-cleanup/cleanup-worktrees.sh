@@ -227,10 +227,20 @@ apply_plan() {
 # stale_active_work: echo "wt|lineno|line" for ACTIVE-WORK.md entries whose
 # worktree path is in the (planned or done) removal set.
 stale_active_work() {
+  local mode="${1:-dry-run}"
   [[ -f "$ACTIVE_WORK" ]] || return
+  # In apply mode, only the worktrees actually removed (DONE_REMOVE) are gone —
+  # a planned removal that failed in do_remove() still exists. In dry-run,
+  # report the planned removals.
+  local -a entries=()
+  if [[ "$mode" == apply ]]; then
+    entries=("${DONE_REMOVE[@]:-}")
+  else
+    entries=("${PLAN_REMOVE[@]:-}")
+  fi
   local -a removed_paths=()
   local entry wt
-  for entry in "${PLAN_REMOVE[@]:-}"; do [[ -n "$entry" ]] && removed_paths+=("${entry%%|*}"); done
+  for entry in "${entries[@]:-}"; do [[ -n "$entry" ]] && removed_paths+=("${entry%%|*}"); done
   [[ ${#removed_paths[@]} -eq 0 ]] && return
   for wt in "${removed_paths[@]}"; do
     awk -v p="$wt" 'substr($0,1,length(p))==p {print NR"\t"$0}' "$ACTIVE_WORK"
@@ -340,7 +350,7 @@ HTML_HEAD
     fi
 
     # stale ACTIVE-WORK.md
-    local stale; stale=$(stale_active_work)
+    local stale; stale=$(stale_active_work "$mode")
     if [[ -n "$stale" ]]; then
       echo '<h2>Stale ~/ACTIVE-WORK.md entries (removed worktrees — prune by hand)</h2>'
       echo '<table><tr><th>Line</th><th>Entry</th></tr>'
@@ -434,6 +444,11 @@ main() {
     local e; for e in "${PLAN_REMOVE[@]:-}"; do [[ -n "$e" ]] && echo "  would-remove: ${e%%|*}"; done
   fi
   echo "report: $HTML_OUT"
+
+  # Apply-mode removal failures must fail the run so systemd marks the unit failed.
+  if [[ $APPLY -eq 1 && ${#ERRORS[@]} -gt 0 ]]; then
+    return 1
+  fi
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
