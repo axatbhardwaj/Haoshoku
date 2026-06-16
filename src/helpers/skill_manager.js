@@ -22,6 +22,7 @@ const XDG_CACHE_HOME = process.env.XDG_CACHE_HOME || path.join(HOME, ".cache");
 export const CACHE_DIR = path.join(XDG_CACHE_HOME, "haoshoku");
 const CLAUDE_SKILLS_DIR = path.join(HOME, ".claude", "skills");
 const CLAUDE_AGENTS_DIR = path.join(HOME, ".claude", "agents");
+const AGENTS_SKILLS_DIR = path.join(HOME, ".agents", "skills");
 const CONFIG_PATH = path.join(HOME, ".haoshoku.json");
 
 const DEFAULT_CONFIG = {
@@ -652,6 +653,8 @@ export function syncSkills(options = {}) {
 		update = false,
 		configPath = CONFIG_PATH,
 		cacheDir = CACHE_DIR,
+		skillsDir = CLAUDE_SKILLS_DIR,
+		agentsSkillsDir = AGENTS_SKILLS_DIR,
 	} = options;
 
 	const config = loadConfig(configPath);
@@ -671,7 +674,10 @@ export function syncSkills(options = {}) {
 		return { status: "all-failed", merged: 0 };
 	}
 
-	mergeSkills(sources);
+	mergeSkills(sources, { skillsDir });
+	// Codex reads Agent Skills from ~/.agents/skills — mirror the same symlinks
+	// there so skills are available to Codex too, not just Claude Code.
+	mergeSkills(sources, { skillsDir: agentsSkillsDir });
 	mergeAgents(sources);
 	return { status: "ok", merged: sources.length };
 }

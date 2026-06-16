@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Sync skills to Codex too. `syncSkills` now symlinks every skill into `~/.agents/skills/` (where Codex reads Agent Skills) in addition to `~/.claude/skills/`, by calling the existing `mergeSkills` a second time with that destination. New injectable `skillsDir`/`agentsSkillsDir` options (default to the real dirs) make the dual-target behavior unit-testable without touching the live config. Previously Codex skills had to be symlinked by hand (README Option 3) and drifted — only `teaching-deep-understanding` was linked, while `testing` and `defi-worktree-setup` were missing. Regression coverage in `tests/skill_manager.test.js`.
+
 ## 5.5.3 - 2026-05-31
 
 - Pin the FIFINE USB mic as the default capture source. New `configs/audio/wireplumber/pc/52-fifine-default-source.conf` raises the FIFINE's `priority.session` to 3000 so it wins default-source selection deterministically. Without it the default input is fragile: by stock `priority.session` the Lenovo webcam mic (2109) outranks the FIFINE (2100), so a WirePlumber configured-default state reset, a fresh setup, or a newly-enumerated device would silently route the default mic to the webcam. The rule auto-deploys via the existing device-routed `wireplumber/pc/` path in `configure_audio.js` (no code change needed) and is documented in `configs/audio/CLAUDE.md`. Regression coverage in `tests/configure_audio.test.js` asserts the drop-in ships with the FIFINE `node.name` and `priority.session = 3000`. Live-verified: WirePlumber restarts cleanly with the drop-in, the default source is the FIFINE at priority 3000, and audio output is intact.
