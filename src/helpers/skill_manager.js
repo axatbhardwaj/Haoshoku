@@ -22,6 +22,7 @@ const XDG_CACHE_HOME = process.env.XDG_CACHE_HOME || path.join(HOME, ".cache");
 export const CACHE_DIR = path.join(XDG_CACHE_HOME, "haoshoku");
 const CLAUDE_SKILLS_DIR = path.join(HOME, ".claude", "skills");
 const CLAUDE_AGENTS_DIR = path.join(HOME, ".claude", "agents");
+const AGENTS_SKILLS_DIR = path.join(HOME, ".agents", "skills");
 const CONFIG_PATH = path.join(HOME, ".haoshoku.json");
 
 const DEFAULT_CONFIG = {
@@ -534,34 +535,36 @@ export function mergeSkills(sources, opts = {}) {
  * Same first-source-wins semantics as mergeSkills: earlier sources in
  * the array take priority when multiple sources provide the same agent name.
  */
-export function mergeAgents(sources) {
+export function mergeAgents(sources, opts = {}) {
+	const agentsDir = opts.agentsDir ?? CLAUDE_AGENTS_DIR;
+
 	// Replace old whole-directory symlink (from configure_claude) with real dir
-	if (pathExists(CLAUDE_AGENTS_DIR)) {
+	if (pathExists(agentsDir)) {
 		try {
-			const stats = fs.lstatSync(CLAUDE_AGENTS_DIR);
+			const stats = fs.lstatSync(agentsDir);
 			if (stats.isSymbolicLink()) {
-				fs.unlinkSync(CLAUDE_AGENTS_DIR);
+				fs.unlinkSync(agentsDir);
 			}
 		} catch {}
 	}
 
-	if (!fs.existsSync(CLAUDE_AGENTS_DIR)) {
-		fs.mkdirSync(CLAUDE_AGENTS_DIR, { recursive: true });
+	if (!fs.existsSync(agentsDir)) {
+		fs.mkdirSync(agentsDir, { recursive: true });
 	}
 
 	const seenAgents = new Set();
 
 	for (const source of sources) {
-		const agentsDir = path.join(source.cachePath, "agents");
-		if (!fs.existsSync(agentsDir)) continue;
+		const srcAgentsDir = path.join(source.cachePath, "agents");
+		if (!fs.existsSync(srcAgentsDir)) continue;
 
-		const entries = fs.readdirSync(agentsDir, { withFileTypes: true });
+		const entries = fs.readdirSync(srcAgentsDir, { withFileTypes: true });
 		for (const entry of entries) {
 			if (!entry.isFile() || !entry.name.endsWith(".md")) continue;
 			if (seenAgents.has(entry.name)) continue;
 
-			const srcPath = path.join(agentsDir, entry.name);
-			const destPath = path.join(CLAUDE_AGENTS_DIR, entry.name);
+			const srcPath = path.join(srcAgentsDir, entry.name);
+			const destPath = path.join(agentsDir, entry.name);
 
 			if (pathExists(destPath) && updateSymlinkIfNeeded(destPath, srcPath)) {
 				seenAgents.add(entry.name);
@@ -578,7 +581,7 @@ export function mergeAgents(sources) {
 		}
 	}
 
-	log.success(`Merged ${seenAgents.size} agents to ${CLAUDE_AGENTS_DIR}`);
+	log.success(`Merged ${seenAgents.size} agents to ${agentsDir}`);
 }
 
 /**
@@ -652,6 +655,9 @@ export function syncSkills(options = {}) {
 		update = false,
 		configPath = CONFIG_PATH,
 		cacheDir = CACHE_DIR,
+		skillsDir = CLAUDE_SKILLS_DIR,
+		agentsSkillsDir = AGENTS_SKILLS_DIR,
+		agentsDir = CLAUDE_AGENTS_DIR,
 	} = options;
 
 	const config = loadConfig(configPath);
@@ -671,7 +677,10 @@ export function syncSkills(options = {}) {
 		return { status: "all-failed", merged: 0 };
 	}
 
-	mergeSkills(sources);
-	mergeAgents(sources);
+	mergeSkills(sources, { skillsDir });
+	// Codex reads Agent Skills from ~/.agents/skills — mirror the same symlinks
+	// there so skills are available to Codex too, not just Claude Code.
+	mergeSkills(sources, { skillsDir: agentsSkillsDir });
+	mergeAgents(sources, { agentsDir });
 	return { status: "ok", merged: sources.length };
 }

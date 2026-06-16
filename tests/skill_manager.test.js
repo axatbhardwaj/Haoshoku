@@ -52,6 +52,52 @@ describe("syncSkills()", () => {
 		expect(result).toEqual({ status: "all-failed", merged: 0 });
 		expect(exitSpy).not.toHaveBeenCalled();
 	});
+
+	it("symlinks skills into the Codex agents-skills dir and isolates agents", () => {
+		// Pre-seed the cache so cloneOrPullRepo returns it without a network clone.
+		const url = "https://github.com/owner/codextest";
+		const skillRoot = path.join(
+			cacheDir,
+			"owner-codextest",
+			"skills",
+			"codex-skill",
+		);
+		fs.mkdirSync(skillRoot, { recursive: true });
+		fs.writeFileSync(path.join(skillRoot, "SKILL.md"), "# codex-skill\n");
+		// An agent .md in the source so we can assert agents land in the injected dir.
+		const agentsSrc = path.join(cacheDir, "owner-codextest", "agents");
+		fs.mkdirSync(agentsSrc, { recursive: true });
+		fs.writeFileSync(path.join(agentsSrc, "sample-agent.md"), "# agent\n");
+		fs.writeFileSync(configPath, JSON.stringify({ skillSources: [url] }));
+
+		const claudeDir = path.join(tmpDir, "claude-skills");
+		const codexSkillsDir = path.join(tmpDir, "agents-skills");
+		const claudeAgentsDir = path.join(tmpDir, "claude-agents");
+
+		const result = syncSkills({
+			configPath,
+			cacheDir,
+			skillsDir: claudeDir,
+			agentsSkillsDir: codexSkillsDir,
+			agentsDir: claudeAgentsDir,
+		});
+
+		const isSymlink = (p) => {
+			try {
+				return fs.lstatSync(p).isSymbolicLink();
+			} catch {
+				return false;
+			}
+		};
+
+		expect(result.status).toBe("ok");
+		// Claude skills dir gets the skill (existing behavior, via injected skillsDir)
+		expect(isSymlink(path.join(claudeDir, "codex-skill"))).toBe(true);
+		// Codex skills dir gets the same skill (~/.agents/skills behavior)
+		expect(isSymlink(path.join(codexSkillsDir, "codex-skill"))).toBe(true);
+		// Agents merge respects the injected dir — never touches the real ~/.claude/agents
+		expect(isSymlink(path.join(claudeAgentsDir, "sample-agent.md"))).toBe(true);
+	});
 });
 
 // ---------------------------------------------------------------------------
