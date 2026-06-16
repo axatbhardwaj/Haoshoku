@@ -1,0 +1,14 @@
+[Unit]
+Description=Clean up merged/stale git worktrees under ~/defi
+Documentation=file:///home/xzat/defi/.worktree-cleanup/cleanup-worktrees.sh
+
+[Service]
+Type=oneshot
+# User services get a minimal PATH; make sure git and gh resolve.
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+# --apply actually removes the provably-safe worktrees. Switch to --dry-run for
+# a report-only week (then `systemctl --user daemon-reload`).
+ExecStart=/home/xzat/defi/.worktree-cleanup/cleanup-worktrees.sh --apply
+# Be a good citizen on a desktop.
+Nice=10
+IOSchedulingClass=idle
