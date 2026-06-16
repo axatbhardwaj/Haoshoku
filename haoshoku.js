@@ -47,6 +47,10 @@ import {
   backupLockfix,
   syncLockfix,
 } from "./src/helpers/configure_lockfix.js";
+import {
+  backupWorktreeCleanup,
+  syncWorktreeCleanup,
+} from "./src/helpers/configure_worktree_cleanup.js";
 import { configureSddm } from "./src/helpers/configure_sddm.js";
 import {
   syncSkills,
@@ -120,6 +124,14 @@ program
   .option(
     "--lockfix-backup",
     "Backup caelestia-lockfix kit from ~/.local/share/caelestia-lockfix/ to configs/caelestia-lockfix/",
+  )
+  .option(
+    "--worktree-cleanup",
+    "Deploy the ~/defi git-worktree cleanup script + systemd timer (configs/worktree-cleanup/ → live) and enable the Friday timer",
+  )
+  .option(
+    "--worktree-cleanup-backup",
+    "Backup the ~/defi worktree-cleanup script + systemd units to configs/worktree-cleanup/",
   )
   .option("--kde-theme", "Deploy KDE Ocean theme files (sync only, no activate)")
   .option("--kde-theme-backup", "Backup KDE Ocean theme from system to configs/kde/")
@@ -274,6 +286,16 @@ async function runAction(options) {
 
     if (options.lockfix) {
       await syncLockfix();
+      return;
+    }
+
+    if (options.worktreeCleanupBackup) {
+      await backupWorktreeCleanup();
+      return;
+    }
+
+    if (options.worktreeCleanup) {
+      await syncWorktreeCleanup();
       return;
     }
 

@@ -1,0 +1,12 @@
+[Unit]
+Description=Weekly ~/defi git worktree cleanup (Fridays 18:00)
+
+[Timer]
+OnCalendar=Fri 18:00
+# If the machine was off at the scheduled time, run on next boot/login.
+Persistent=true
+# Spread load / avoid an exact-minute thundering herd.
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target
