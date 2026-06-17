@@ -1,11 +1,12 @@
 import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
-import { log, safeCopyFile } from "../common/utils.js";
+import { log, runCommand, safeCopyFile } from "../common/utils.js";
 
 const HOME = homedir();
 const PROJECT_ROOT = path.resolve(__dirname, "..", "..");
 const CUSTOM_CODEX_DIR = path.join(PROJECT_ROOT, "configs", "codex");
+const CODEX_NPM_PACKAGE = "@openai/codex";
 
 // ~/.codex also holds runtime state (auth.json, *.sqlite, history.jsonl) —
 // only AGENTS.md is reproducible config. Exported for the manifest test.
@@ -14,6 +15,24 @@ export const CODEX_PERSONAL_FILES = [{ src: "AGENTS.md" }];
 /** Resolve where a CODEX_PERSONAL_FILES entry lives on a given $HOME (inside ~/.codex/). */
 function codexFilePath(src, home = HOME) {
   return path.join(home, ".codex", src);
+}
+
+function defaultCommandExists(cmd) {
+  return Bun.which(cmd) !== null;
+}
+
+/** Install Codex CLI if not already present. */
+export async function installCodex({
+  commandExists = defaultCommandExists,
+  run = runCommand,
+} = {}) {
+  if (commandExists("codex")) {
+    log.info("Codex CLI already installed.");
+    return;
+  }
+
+  log.info("Installing Codex CLI...");
+  await run(`bun install -g ${CODEX_NPM_PACKAGE}`);
 }
 
 /**
@@ -60,7 +79,9 @@ export async function backupCodexConfig(options = {}) {
   log.success("Codex config backed up to configs/codex/");
 }
 
-/** Deploy Codex config (used by OS setup scripts). Config-only — no CLI install. */
-export async function configureCodex() {
-  await syncCodexConfig();
+/** Install Codex CLI and deploy config (used by OS setup scripts). */
+export async function configureCodex(options = {}) {
+  const { installOptions, ...syncOptions } = options;
+  await installCodex(installOptions);
+  await syncCodexConfig(syncOptions);
 }

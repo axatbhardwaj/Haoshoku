@@ -2,6 +2,7 @@
 [Default Applications]
 x-scheme-handler/claude-cli=claude-code-url-handler.desktop
 x-scheme-handler/discord=vesktop.desktop
+inode/directory=com.system76.CosmicFiles.desktop
 image/avif=swayimg.desktop
 image/bmp=swayimg.desktop
 image/gif=swayimg.desktop

@@ -390,6 +390,17 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 		).toBe(true);
 	});
 
+	it("sets COSMIC Files as the XDG default for directories", () => {
+		const content = fs.readFileSync(
+			path.join(CONFIGS_MIMEAPPS_DIR, "mimeapps.list"),
+			"utf8",
+		);
+
+		expect(content).toContain(
+			"inode/directory=com.system76.CosmicFiles.desktop",
+		);
+	});
+
 	it("covers every managed desktop entry with either a deployed handler or installed package", () => {
 		const mimeapps = fs.readFileSync(
 			path.join(CONFIGS_MIMEAPPS_DIR, "mimeapps.list"),
@@ -420,6 +431,7 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 		// cohesion.desktop), so a naive basename match would false-flag them.
 		const providerAliases = {
 			"brave-browser.desktop": "brave-bin",
+			"com.system76.CosmicFiles.desktop": "cosmic-files",
 			"cohesion.desktop": "cohesion-git",
 		};
 		const installed = new Set(

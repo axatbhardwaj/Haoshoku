@@ -642,6 +642,10 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		expect(conf).toContain(
 			"bind = Super, A, exec, hyprctl dispatch focusmonitor DP-2 && /home/xzat/.local/bin/agents-toggle",
 		);
+		const unbindIndex = conf.indexOf("unbind = Super, A");
+		const bindIndex = conf.indexOf("bind = Super, A, exec");
+		expect(unbindIndex).toBeGreaterThanOrEqual(0);
+		expect(bindIndex).toBeGreaterThan(unbindIndex);
 		expect(conf).not.toContain("match:title agents");
 		expect(conf).toContain(
 			"bind = $kbCommunication, exec, hyprctl dispatch focusmonitor HDMI-A-1 && caelestia toggle communication",
@@ -699,6 +703,10 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		expect(conf).toContain(
 			"bind = Super, A, exec, /home/xzat/.local/bin/agents-toggle",
 		);
+		const unbindIndex = conf.indexOf("unbind = Super, A");
+		const bindIndex = conf.indexOf("bind = Super, A, exec");
+		expect(unbindIndex).toBeGreaterThanOrEqual(0);
+		expect(bindIndex).toBeGreaterThan(unbindIndex);
 		expect(conf).not.toContain("match:title agents");
 		// Laptop has eDP-1, not DP-2/HDMI-A-1 — no focusmonitor forcing on Super+A
 		expect(conf).not.toMatch(/focusmonitor\s+DP-2/);
@@ -925,6 +933,21 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		}
 	});
 
+	it("rebinds Super+E (default file manager) to COSMIC Files in both hypr-user variants", () => {
+		for (const file of ["hypr-user-pc.conf", "hypr-user-laptop.conf"]) {
+			const conf = fs.readFileSync(
+				path.join(CONFIGS_CAELESTIA_DIR, file),
+				"utf8",
+			);
+
+			expect(conf).toContain("$fileExplorer = cosmic-files");
+			expect(conf).toContain("unbind = $kbFileExplorer");
+			expect(conf).toContain(
+				"bind = $kbFileExplorer, exec, app2unit -- $fileExplorer",
+			);
+		}
+	});
+
 	it("ships configs/scripts/agents-toggle with the occupancy guard", () => {
 		const s = fs.readFileSync(
 			path.join(PROJECT_ROOT, "configs", "scripts", "agents-toggle"),
@@ -935,6 +958,9 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		expect(s).toContain(
 			"warp-terminal warp://tab_config/agents?new_window=true",
 		);
+		expect(s).toContain("haoshoku-agents-toggle.lock");
+		expect(s).toContain('mkdir "$LOCK_DIR"');
+		expect(s).toContain('trap \'rmdir "$LOCK_DIR"\' 0 HUP INT TERM');
 		expect(s).not.toContain("xdg-open");
 	});
 
@@ -959,6 +985,10 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 				"utf8",
 			);
 			expect(conf).toMatch(/bind = Super, A, exec,.*agents-toggle/);
+			const unbindIndex = conf.indexOf("unbind = Super, A");
+			const bindIndex = conf.indexOf("bind = Super, A, exec");
+			expect(unbindIndex).toBeGreaterThanOrEqual(0);
+			expect(bindIndex).toBeGreaterThan(unbindIndex);
 			expect(conf).not.toContain("caelestia toggle agents");
 		}
 	});

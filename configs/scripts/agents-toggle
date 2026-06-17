@@ -11,6 +11,14 @@
 # Launch warp-terminal directly so the warp:// scheme handler (the GNOME "Warp" app,
 # app.drey.Warp) cannot intercept it.
 WS=special:agents
+LOCK_DIR="${XDG_RUNTIME_DIR:-/tmp}/haoshoku-agents-toggle.lock"
+
+# Hyprland can run duplicate binds close enough together that both instances see no
+# agents window yet. Serialize the whole toggle/launch path so only one can spawn.
+if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+	exit 0
+fi
+trap 'rmdir "$LOCK_DIR"' 0 HUP INT TERM
 
 # 1. Already on special:agents -> just toggle its visibility.
 if hyprctl clients -j | jq -e --arg ws "$WS" 'any(.[]; .workspace.name == $ws)' >/dev/null 2>&1; then

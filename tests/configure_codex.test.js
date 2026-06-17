@@ -4,6 +4,8 @@ import os from "node:os";
 import path from "node:path";
 import {
   CODEX_PERSONAL_FILES,
+  configureCodex,
+  installCodex,
   syncCodexConfig,
   backupCodexConfig,
 } from "../src/helpers/configure_codex.js";
@@ -53,5 +55,69 @@ describe("syncCodexConfig", () => {
     expect(fs.readFileSync(path.join(configsDir, "AGENTS.md"), "utf-8")).toBe(
       "LIVE-EDIT",
     );
+  });
+});
+
+describe("installCodex", () => {
+  it("installs the @openai/codex package when the codex command is missing", async () => {
+    const commands = [];
+
+    await installCodex({
+      commandExists: () => false,
+      run: async (cmd) => {
+        commands.push(cmd);
+        return true;
+      },
+    });
+
+    expect(commands).toEqual(["bun install -g @openai/codex"]);
+  });
+
+  it("skips installation when the codex command already exists", async () => {
+    const commands = [];
+
+    await installCodex({
+      commandExists: () => true,
+      run: async (cmd) => {
+        commands.push(cmd);
+        return true;
+      },
+    });
+
+    expect(commands).toEqual([]);
+  });
+});
+
+describe("configureCodex", () => {
+  it("installs Codex before syncing AGENTS.md", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-codex-configure-"));
+    try {
+      const configsDir = path.join(tmpDir, "configs", "codex");
+      const codexHome = path.join(tmpDir, "codex-home");
+      const codexDir = path.join(codexHome, ".codex");
+      fs.mkdirSync(configsDir, { recursive: true });
+      fs.writeFileSync(path.join(configsDir, "AGENTS.md"), "BUNDLE");
+
+      const commands = [];
+      await configureCodex({
+        srcDir: configsDir,
+        codexHome,
+        installOptions: {
+          commandExists: () => false,
+          run: async (cmd) => {
+            commands.push(cmd);
+            expect(fs.existsSync(path.join(codexDir, "AGENTS.md"))).toBe(false);
+            return true;
+          },
+        },
+      });
+
+      expect(commands).toEqual(["bun install -g @openai/codex"]);
+      expect(fs.readFileSync(path.join(codexDir, "AGENTS.md"), "utf-8")).toBe(
+        "BUNDLE",
+      );
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
   });
 });
