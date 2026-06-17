@@ -148,6 +148,22 @@ describe("installUserScripts — deployment", () => {
 		expect(script).not.toContain("warp://");
 		expect(script).not.toContain("agents");
 	});
+
+	it("ships mic-toggle for the default audio source with a notification", () => {
+		const script = fs.readFileSync(
+			path.join(process.cwd(), "configs", "scripts", "mic-toggle"),
+			"utf8",
+		);
+
+		expect(script).toContain("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle");
+		expect(script).toContain("wpctl set-volume @DEFAULT_AUDIO_SOURCE@ 100%");
+		expect(script).toContain("pactl set-source-mute @DEFAULT_SOURCE@ toggle");
+		expect(script).toContain("pactl set-source-volume @DEFAULT_SOURCE@ 100%");
+		expect(script).toContain("notify-send");
+		expect(script).toContain("Microphone muted");
+		expect(script).toContain("Microphone unmuted");
+		expect(script).not.toContain("@DEFAULT_AUDIO_SINK@");
+	});
 });
 
 // ---------------------------------------------------------------------------

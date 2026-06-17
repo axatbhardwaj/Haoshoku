@@ -1,5 +1,9 @@
 # Changelog
 
+## 5.9.1 - 2026-06-17
+
+- Add a managed microphone mute shortcut. New `configs/scripts/mic-toggle` toggles the current default audio source through `wpctl` (with `pactl` fallback), sends a desktop notification for muted/unmuted state, and restores the input source volume to 100% whenever it unmutes so a stale zero-gain capture state does not silently break voice input again. Both Caelestia variants now override stock `Super+Shift+M` (speaker mute) and bind it to `~/.local/bin/mic-toggle`. Regression coverage in `tests/install_user_scripts.test.js` and `tests/configure_caelestia_prefs.test.js`; live verified against the FIFINE default source.
+
 ## 5.9.0 - 2026-06-17
 
 - Make COSMIC Files the Haoshoku-managed default file manager. `cosmic-files` is now in `common/paru_applist.txt`, `configs/mimeapps/mimeapps.list` sets `inode/directory=com.system76.CosmicFiles.desktop`, and both Caelestia variants rebind `$kbFileExplorer` to `cosmic-files` because Caelestia's stock Super+E bind is expanded before `hypr-user.conf` is sourced. Regression coverage in `tests/cachyos.test.js`, `tests/configure_mimeapps.test.js`, and `tests/configure_caelestia_prefs.test.js`.

@@ -1,0 +1,38 @@
+#!/usr/bin/env sh
+# Toggle the current default microphone and show a short desktop notification.
+
+notify_status() {
+	if command -v notify-send >/dev/null 2>&1; then
+		notify-send \
+			-a Haoshoku \
+			-h string:x-canonical-private-synchronous:haoshoku-mic-toggle \
+			"$1"
+	fi
+}
+
+if command -v wpctl >/dev/null 2>&1; then
+	wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
+	state=$(wpctl get-volume @DEFAULT_AUDIO_SOURCE@ 2>/dev/null || true)
+	if printf "%s\n" "$state" | grep -q "\\[MUTED\\]"; then
+		notify_status "Microphone muted"
+	else
+		wpctl set-volume @DEFAULT_AUDIO_SOURCE@ 100%
+		notify_status "Microphone unmuted"
+	fi
+	exit 0
+fi
+
+if command -v pactl >/dev/null 2>&1; then
+	pactl set-source-mute @DEFAULT_SOURCE@ toggle
+	state=$(pactl get-source-mute @DEFAULT_SOURCE@ 2>/dev/null || true)
+	if printf "%s\n" "$state" | grep -qi "yes"; then
+		notify_status "Microphone muted"
+	else
+		pactl set-source-volume @DEFAULT_SOURCE@ 100%
+		notify_status "Microphone unmuted"
+	fi
+	exit 0
+fi
+
+notify_status "No PipeWire/PulseAudio control command found"
+exit 127

@@ -992,4 +992,20 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 			expect(conf).not.toContain("caelestia toggle agents");
 		}
 	});
+
+	it("overrides Super+Shift+M to toggle microphone mute in both hypr-user variants", () => {
+		for (const file of ["hypr-user-pc.conf", "hypr-user-laptop.conf"]) {
+			const conf = fs.readFileSync(
+				path.join(CONFIGS_CAELESTIA_DIR, file),
+				"utf8",
+			);
+			const unbindIndex = conf.indexOf("unbind = Super+Shift, M");
+			const bindIndex = conf.indexOf(
+				"bindl = Super+Shift, M, exec, /home/xzat/.local/bin/mic-toggle",
+			);
+
+			expect(unbindIndex).toBeGreaterThanOrEqual(0);
+			expect(bindIndex).toBeGreaterThan(unbindIndex);
+		}
+	});
 });
