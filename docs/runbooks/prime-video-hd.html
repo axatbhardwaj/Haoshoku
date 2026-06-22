@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prime Video HD — Runbook</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --line:#2b3340;
+    --txt:#e6edf3; --dim:#9aa7b4; --accent:#ff9900; --accent2:#5eb1ff;
+    --ok:#3fb950; --warn:#d29922; --bad:#f85149;
+    --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:Inter,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);line-height:1.55;
+       padding:48px 20px;max-width:980px;margin-inline:auto;font-size:15px}
+  h1{font-size:30px;margin:0 0 4px;letter-spacing:-.02em}
+  h2{font-size:20px;margin:40px 0 14px;padding-bottom:7px;border-bottom:1px solid var(--line);letter-spacing:-.01em}
+  h3{font-size:15px;margin:20px 0 8px;color:var(--accent2)}
+  p{margin:10px 0}
+  a{color:var(--accent2)}
+  code,kbd{font-family:var(--mono);font-size:.86em;background:var(--panel2);border:1px solid var(--line);
+       padding:1px 6px;border-radius:5px;color:#ffd9a0}
+  pre{background:#0a0e14;border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow:auto;
+       font-family:var(--mono);font-size:13px;color:#cfe3ff}
+  .sub{color:var(--dim);font-size:14px;margin-top:2px}
+  .tag{display:inline-block;font-family:var(--mono);font-size:11px;padding:2px 9px;border-radius:999px;
+       border:1px solid var(--line);background:var(--panel2);color:var(--dim);vertical-align:middle}
+  .tag.ok{color:var(--ok);border-color:#1f6f33}.tag.bad{color:var(--bad);border-color:#7a2620}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin:14px 0}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .kv{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:10px 12px}
+  .kv .k{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+  .kv .v{font-family:var(--mono);font-size:13px;margin-top:3px;color:var(--txt);word-break:break-word}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13.5px}
+  th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:var(--dim);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+  td.ok{color:var(--ok)}td.bad{color:var(--bad)}td.warn{color:var(--warn)}
+  details{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:4px 16px;margin:10px 0}
+  summary{cursor:pointer;padding:10px 0;font-weight:600;color:var(--accent2)}
+  .note{border-left:3px solid var(--accent);background:#1a160d;padding:10px 14px;border-radius:0 8px 8px 0;margin:12px 0}
+  .ok-note{border-left:3px solid var(--ok);background:#0f1a12}
+  .ladder{display:flex;align-items:flex-end;gap:18px;margin:18px 0 6px;height:200px}
+  .bar{flex:1;border-radius:8px 8px 0 0;display:flex;flex-direction:column;justify-content:flex-end;
+       align-items:center;position:relative;border:1px solid var(--line);border-bottom:none;padding-bottom:8px}
+  .bar b{font-family:var(--mono);font-size:13px}.bar span{font-size:11px;color:var(--dim)}
+  .bar .lbl{position:absolute;top:-22px;font-size:11px;color:var(--dim);white-space:nowrap}
+  footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);color:var(--dim);font-size:12.5px}
+</style>
+</head>
+<body>
+
+<h1>Prime Video HD <span class="tag ok">1080p</span> <span class="tag">Wine · Bottles</span></h1>
+<div class="sub">Windows Brave under Wine-TkG, on CachyOS / Hyprland — runbook &amp; rationale. Generated 2026-06-23.</div>
+
+<div class="note ok-note">
+<b>TL;DR.</b> Amazon throttles Prime Video on Linux (native Brave here = <b>540p</b>). Running <b>Windows Brave under Wine-TkG 10.8</b> (via Bottles) gets the full <b>1080p</b> — goal achieved. <b>One catch:</b> Prime picks resolution from the <i>player viewport</i>, so you only get 1080p <b>fullscreen</b> (a small/windowed player is served ~720p). Launch as <b>“Prime Video HD”</b> (or <kbd>Super+Shift+P</kbd>), then go fullscreen.
+</div>
+
+<h2>Resolution ladder</h2>
+<div class="ladder">
+  <div class="bar" style="height:42%;background:linear-gradient(#3a2a2a,#2a1f1f)"><span class="lbl">native Brave</span><b>540p</b><span>960×540</span></div>
+  <div class="bar" style="height:62%;background:linear-gradient(#33301c,#26240f);border-color:#6b5d1f"><span class="lbl">windowed</span><b>720p</b><span>1280×720</span></div>
+  <div class="bar" style="height:100%;background:linear-gradient(#1f3a26,#15281a);border-color:#1f6f33"><span class="lbl">fullscreen ✓</span><b>1080p</b><span>1920×1080</span></div>
+</div>
+<p class="sub">Verify (fullscreen, after ~30s ramp): <kbd>F12</kbd> → Console →<br>
+<code>Math.max(...[...document.querySelectorAll('video')].map(v=&gt;v.videoHeight))</code> → expect <code>1080</code>.<br>
+(Plain <code>querySelector('video')</code> hits an empty placeholder element and reads 0 — use the <code>Math.max</code> form.)</p>
+
+<h2>What got built</h2>
+<div class="grid">
+  <div class="kv"><div class="k">Bottle</div><div class="v">primevideo-tkg9</div></div>
+  <div class="kv"><div class="k">Browser</div><div class="v">Brave 1.91.175 (Windows)</div></div>
+  <div class="kv"><div class="k">Runner</div><div class="v">wine-10.8-staging-tkg</div></div>
+  <div class="kv"><div class="k">Max res</div><div class="v">1080p (fullscreen)</div></div>
+  <div class="kv"><div class="k">Launcher</div><div class="v">Super+Shift+P · special:primevideo</div></div>
+  <div class="kv"><div class="k">Desktop entry</div><div class="v">Prime Video HD</div></div>
+</div>
+
+<h2>How to launch</h2>
+<div class="card">
+<h3>1 · Keybind (normal use)</h3>
+<p><kbd>Super+Shift+P</kbd> → toggles its own <code>special:primevideo</code> workspace (like Spotify) and launches Prime if not already running. <b>Then press fullscreen</b> for 1080p.</p>
+<h3>2 · App launcher</h3>
+<p>Run <b>“Prime Video HD”</b> from the Caelestia/Hyprland launcher (same toggle behavior).</p>
+<h3>3 · Terminal</h3>
+<pre>~/.local/bin/primevideo-hd</pre>
+</div>
+<p class="sub">Launch flags baked into the launcher (all required — see "How we got here"):</p>
+<pre>--app=https://www.primevideo.com
+--disable-gpu                          # NVIDIA Vulkan-WSI blank-window fix
+--disable-accelerated-video-decode     # avoids D3D11 video-buffer crash
+--disable-gpu-memory-buffer-video-frames</pre>
+
+<h2 id="why">How we got here (and the 720p red herring)</h2>
+<p>Getting Brave to <i>run</i> Prime under Wine took three real fixes. The "resolution cap" did not — that was a measurement mistake (I read <code>videoHeight</code> in a windowed player, where Prime legitimately serves 720p to match the viewport). Fullscreen was 1080p all along.</p>
+<table>
+  <tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr>
+  <tr><td>Blank white window</td><td>DXVK can't make a Vulkan swapchain (NVIDIA + XWayland)</td><td class="ok"><code>--disable-gpu</code></td></tr>
+  <tr><td>Hard crash on Play (system Wine 11.11)</td><td>Prime uses PlayReady → unimplemented WinRT in Wine 11.11</td><td class="ok">runner = <b>Wine-TkG 10.8</b></td></tr>
+  <tr><td>Crash entering the video pipeline</td><td>D3D11 GPU video-frame buffer under Wine</td><td class="ok">software-video flags</td></tr>
+  <tr><td>"Only 720p"</td><td class="warn">measured in a <b>windowed</b> player — viewport-limited, not a DRM cap</td><td class="ok">watch <b>fullscreen</b> → 1080p</td></tr>
+</table>
+<div class="note ok-note"><b>Detour worth noting:</b> chasing the phantom 720p cap, we tried Brave <b>1.82</b> (to force Widevine). It won't run on any Wine here (a <code>UISettings</code> WinRT recursion → stack overflow). Turned out irrelevant — <b>Brave 1.91 + TkG 10.8 does 1080p</b> fine. The 1.82 path was abandoned and its artifacts cleaned up.</div>
+
+<h2>Troubleshooting</h2>
+<details><summary>Only getting 720p (not 1080p)</summary><p><b>Go fullscreen.</b> Prime serves resolution to match the player viewport; a windowed/<code>--app</code> player gets ~720p. Fullscreen + ~30s ramp → 1080p. Verify with the <code>Math.max(...videoHeight)</code> check above.</p></details>
+<details><summary>Window is blank / white</summary><p>GPU path failed; <code>--disable-gpu</code> (already in the launcher) fixes it.</p></details>
+<details><summary>Crashes the instant you press Play</summary><p>You're on the wrong runner. The bottle must use <b>Wine-TkG 10.8</b> (<code>wine-10.8-staging-tkg-amd64</code>), not system Wine 11.11.</p></details>
+<details><summary>Asks me to log in again / quality drops</summary><p>Login lives in the bottle's Brave profile — sign in once, it persists. Keep <b>Brave Shields OFF</b> for primevideo.com (already set).</p></details>
+
+<h2>Remove it / reclaim disk</h2>
+<pre># keybind: remove the Super+Shift+P / windowrule lines from
+#   ~/personal/Haoshoku/configs/caelestia/hypr-user-pc.conf  (+ the "primevideo" block in cli.json), re-sync
+# launcher + desktop entry
+rm ~/.local/bin/primevideo-hd ~/.local/share/applications/primevideo-hd.desktop
+# the bottle (~6 GB) — via Bottles GUI (delete "primevideo-tkg9") or:
+rm -rf ~/.local/share/bottles/bottles/primevideo-tkg9
+# the safety backup (~5.7 GB, shows as "primevideo" in Bottles)
+rm -rf ~/.local/share/bottles/bottles/primevideo.bak-pre182</pre>
+<p class="sub">The Wine-TkG runner at <code>~/.local/share/bottles/runners/wine-10.8-staging-tkg-amd64</code> can also go if no other bottle uses it.</p>
+
+<footer>
+Built via a Dvandva (Claude vadi + Codex prativadi) debugging run, 2026-06-23. Real fixes: NVIDIA Vulkan-WSI blank window (<code>--disable-gpu</code>), D3D11 video-buffer crash (software-video flags), PlayReady-WinRT crash on system Wine (→ Wine-TkG 10.8). Final outcome: native 540p → <b>1080p fullscreen</b> (the "720p ceiling" was a windowed-measurement artifact, corrected after fullscreen verification).
+</footer>
+
+</body>
+</html>
