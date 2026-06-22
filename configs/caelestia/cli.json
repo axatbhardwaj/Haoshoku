@@ -58,6 +58,14 @@
         "command": ["brave", "--profile-directory=Profile 1"],
         "move": true
       }
+    },
+    "primevideo": {
+      "primevideo": {
+        "enable": true,
+        "match": [{"class": "brave.exe"}],
+        "command": ["/home/xzat/.local/bin/primevideo-hd"],
+        "move": true
+      }
     }
   },
   "wallpaper": {
