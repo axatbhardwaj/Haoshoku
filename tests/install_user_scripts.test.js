@@ -164,6 +164,30 @@ describe("installUserScripts — deployment", () => {
 		expect(script).toContain("Microphone unmuted");
 		expect(script).not.toContain("@DEFAULT_AUDIO_SINK@");
 	});
+
+	it("ships ai-webapps-toggle for the Claude and ChatGPT Brave PWAs", () => {
+		const script = fs.readFileSync(
+			path.join(process.cwd(), "configs", "scripts", "ai-webapps-toggle"),
+			"utf8",
+		);
+
+		expect(script).toContain("MONITOR=DP-2");
+		expect(script).toContain("WS=special:ai-webapps");
+		expect(script).toContain(
+			"CLAUDE_CLASS=brave-fmpnliohjhemenmnlpbfagaolkdacoja-Default",
+		);
+		expect(script).toContain("CLAUDE_APP_ID=fmpnliohjhemenmnlpbfagaolkdacoja");
+		expect(script).toContain(
+			"CHATGPT_CLASS=brave-cadlkienfkclaiaibeoongdcgmdikeeg-Default",
+		);
+		expect(script).toContain("CHATGPT_APP_ID=cadlkienfkclaiaibeoongdcgmdikeeg");
+		expect(script).toContain("workspace_visible");
+		expect(script).toContain("place_stack");
+		expect(script).toContain("reserved_left");
+		expect(script).toContain("inner_gap=10");
+		expect(script).toContain("movewindowpixel");
+		expect(script).toContain("resizewindowpixel");
+	});
 });
 
 // ---------------------------------------------------------------------------

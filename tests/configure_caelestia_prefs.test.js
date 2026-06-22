@@ -653,6 +653,24 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		expect(conf).not.toContain("caelestia toggle claude");
 	});
 
+	it("routes Super+I to Claude and ChatGPT Brave PWAs on DP-2 for PC", () => {
+		const conf = fs.readFileSync(
+			path.join(CONFIGS_CAELESTIA_DIR, "hypr-user-pc.conf"),
+			"utf8",
+		);
+
+		expect(conf).toContain(
+			"windowrule = workspace special:ai-webapps, match:class brave-fmpnliohjhemenmnlpbfagaolkdacoja-Default",
+		);
+		expect(conf).toContain(
+			"windowrule = workspace special:ai-webapps, match:class brave-cadlkienfkclaiaibeoongdcgmdikeeg-Default",
+		);
+		expect(conf).toContain(
+			"bind = Super, I, exec, hyprctl dispatch focusmonitor DP-2 && /home/xzat/.local/bin/ai-webapps-toggle",
+		);
+		expect(conf).not.toContain("bind = Super, I, exec, caelestia toggle");
+	});
+
 	it("routes Super+6 and Super+7 to the vertical monitor on PC", () => {
 		const conf = fs.readFileSync(
 			path.join(CONFIGS_CAELESTIA_DIR, "hypr-user-pc.conf"),
