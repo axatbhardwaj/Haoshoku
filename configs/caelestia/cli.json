@@ -62,8 +62,16 @@
     "primevideo": {
       "primevideo": {
         "enable": true,
-        "match": [{"class": "brave.exe"}],
+        "match": [{"class": "brave.exe", "initialTitle": "www.primevideo.com_/"}],
         "command": ["/home/xzat/.local/bin/primevideo-hd"],
+        "move": true
+      }
+    },
+    "zee5": {
+      "zee5": {
+        "enable": true,
+        "match": [{"class": "brave.exe", "initialTitle": "www.zee5.com_/"}],
+        "command": ["/home/xzat/.local/bin/zee5-hd"],
         "move": true
       }
     }

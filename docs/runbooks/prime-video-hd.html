@@ -107,6 +107,7 @@ Environment: Application   (any default runner — the helper swaps it)</pre>
 --disable-gpu                          # NVIDIA Vulkan-WSI blank-window fix
 --disable-accelerated-video-decode     # avoids D3D11 video-buffer crash
 --disable-gpu-memory-buffer-video-frames</pre>
+<p class="sub"><b>ZEE5:</b> the same bottle also serves ZEE5 — <kbd>Super+Shift+Z</kbd> → <code>special:zee5</code> (launcher <code>~/.local/bin/zee5-hd</code>; the two Wine-Brave windows are told apart by <code>initial_title</code>). Whether the bottle beats native Brave for ZEE5 is unconfirmed — ZEE5 may gate HD on Widevine L1 (hardware), which Wine can't provide.</p>
 
 <h2 id="why">How we got here (and the 720p red herring)</h2>
 <p>Getting Brave to <i>run</i> Prime under Wine took three real fixes. The "resolution cap" did not — that was a measurement mistake (I read <code>videoHeight</code> in a windowed player, where Prime legitimately serves 720p to match the viewport). Fullscreen was 1080p all along.</p>
