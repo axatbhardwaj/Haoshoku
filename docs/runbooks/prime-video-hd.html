@@ -78,6 +78,21 @@
   <div class="kv"><div class="k">Desktop entry</div><div class="v">Prime Video HD</div></div>
 </div>
 
+<h2 id="setup">First-time setup (build the bottle)</h2>
+<p>On a machine without the bottle yet, the <code>primevideo-setup</code> helper does the heavy lifting; two steps stay <span class="tag bad">manual</span> (Bottles' component bootstrap is GUI-only, and the Amazon sign-in is yours). The helper is idempotent — re-run it freely.</p>
+<div class="card">
+<h3>1 · Run the helper</h3>
+<pre>primevideo-setup        # deployed to ~/.local/bin by Haoshoku</pre>
+<p>Fetches the <b>Wine-TkG 10.8</b> runner and — once the bottle exists — sets its runner + Win10, installs <b>Brave 1.91</b>, and writes the <code>primevideo-hd</code> launcher.</p>
+<h3>2 · <span class="tag bad">manual</span> Create the bottle (Bottles GUI)</h3>
+<p>If the bottle is missing, the helper stops and asks for it. In <b>Bottles</b>, create a new bottle, then <b>re-run <code>primevideo-setup</code></b>:</p>
+<pre>Name:        primevideo-tkg9
+Environment: Application   (any default runner — the helper swaps it)</pre>
+<h3>3 · <span class="tag bad">manual</span> First launch + sign in</h3>
+<p>Launch with <kbd>Super+Shift+P</kbd> (or <code>~/.local/bin/primevideo-hd</code>). In Brave: sign into Amazon, accept the Widevine prompt, keep <b>Shields OFF</b> for primevideo.com, play a title, and <b>go fullscreen</b> for 1080p.</p>
+</div>
+<p class="sub">Recipe lives in <code>configs/scripts/primevideo-setup</code>. On a machine that already has the bottle, a re-run just verifies and no-ops.</p>
+
 <h2>How to launch</h2>
 <div class="card">
 <h3>1 · Keybind (normal use)</h3>
