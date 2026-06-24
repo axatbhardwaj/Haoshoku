@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Crunchyroll HD
+Comment=Open Crunchyroll in the managed native Brave HD workspace
+Exec=caelestia toggle crunchyroll
+Terminal=false
+Type=Application
+Categories=AudioVideo;Video;
+StartupWMClass=brave-www.crunchyroll.com__-Default

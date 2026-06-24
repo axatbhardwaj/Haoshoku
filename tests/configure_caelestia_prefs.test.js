@@ -598,6 +598,28 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		expect(
 			toggles.zee5.zee5.match.some((entry) => entry.class === "brave.exe"),
 		).toBe(false);
+		expect(toggles.crunchyroll.crunchyroll).toMatchObject({
+			enable: true,
+			match: [
+				{
+					class: "brave-www.crunchyroll.com__-Default",
+					initialTitle: "www.crunchyroll.com_/",
+				},
+			],
+			command: ["/home/xzat/.local/bin/crunchyroll-hd"],
+			move: true,
+		});
+		expect(toggles.jiohotstar.jiohotstar).toMatchObject({
+			enable: true,
+			match: [
+				{
+					class: "brave-www.jiohotstar.com__-Default",
+					initialTitle: "www.jiohotstar.com_/",
+				},
+			],
+			command: ["/home/xzat/.local/bin/jiohotstar-hd"],
+			move: true,
+		});
 		expect(toggles).not.toHaveProperty("agents");
 		expect(toggles).not.toHaveProperty("claude");
 		expect(toggles).not.toHaveProperty("vivaldi");
@@ -712,6 +734,28 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		);
 	});
 
+	it("routes Crunchyroll (Super+Shift+C) and JioHotstar (Super+Shift+J), moving hyprpicker to Super+Alt+C", () => {
+		const conf = fs.readFileSync(
+			path.join(CONFIGS_CAELESTIA_DIR, "hypr-user-pc.conf"),
+			"utf8",
+		);
+
+		expect(conf).toContain(
+			"windowrule = workspace special:crunchyroll, match:class brave-www\\.crunchyroll\\.com__-Default, match:initial_title www\\.crunchyroll\\.com_/",
+		);
+		expect(conf).toContain("unbind = Super+Shift, C");
+		expect(conf).toContain(
+			"bind = Super+Shift, C, exec, caelestia toggle crunchyroll",
+		);
+		expect(conf).toContain("bind = Super+Alt, C, exec, hyprpicker -a");
+		expect(conf).toContain(
+			"windowrule = workspace special:jiohotstar, match:class brave-www\\.jiohotstar\\.com__-Default, match:initial_title www\\.jiohotstar\\.com_/",
+		);
+		expect(conf).toContain(
+			"bind = Super+Shift, J, exec, caelestia toggle jiohotstar",
+		);
+	});
+
 	it("routes Super+6 and Super+7 to the vertical monitor on PC", () => {
 		const conf = fs.readFileSync(
 			path.join(CONFIGS_CAELESTIA_DIR, "hypr-user-pc.conf"),
@@ -772,7 +816,7 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		expect(conf).not.toContain("caelestia toggle claude");
 	});
 
-	it("routes Notion through Cohesion on workspace 10", () => {
+	it("routes Notion through the Brave web app on workspace 10", () => {
 		const pc = fs.readFileSync(
 			path.join(CONFIGS_CAELESTIA_DIR, "hypr-user-pc.conf"),
 			"utf8",
@@ -789,20 +833,25 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 
 		for (const conf of [pc, laptop]) {
 			expect(conf).toContain(
-				"windowrule = workspace 10 silent, match:class cohesion",
+				"windowrule = workspace 10 silent, match:class brave-dcokohelbbehjlcjjfmhfbpdgfjcoopf-Default",
 			);
 			expect(conf).toContain("bind = $kbGoToWs, 0, exec, sh -lc");
 			expect(conf).toContain("hyprctl dispatch workspace 10");
-			expect(conf).toContain('any(.[]; .class == "cohesion")');
 			expect(conf).toContain(
-				'hyprctl dispatch exec "[workspace 10 silent] app2unit -- cohesion"',
+				'select(.class == "brave-dcokohelbbehjlcjjfmhfbpdgfjcoopf-Default") | .address',
+			);
+			expect(conf).toContain(
+				'hyprctl dispatch movetoworkspacesilent "10,address:$addr"',
+			);
+			expect(conf).toContain(
+				'hyprctl dispatch exec "[workspace 10 silent] app2unit -- gtk-launch brave-dcokohelbbehjlcjjfmhfbpdgfjcoopf-Default"',
 			);
 			expect(conf).toContain(
 				"bind = $kbMoveWinToWs, 0, exec, hyprctl dispatch movetoworkspace 10",
 			);
 			expect(conf).not.toContain("workspace = name:0");
-			expect(conf).not.toContain("brave-adaalabfemebkikihnkbonlockjjpbml-Default");
-			expect(conf).not.toContain("--app-id=adaalabfemebkikihnkbonlockjjpbml");
+			expect(conf).not.toContain('any(.[]; .class == "cohesion")');
+			expect(conf).not.toContain("app2unit -- cohesion");
 		}
 	});
 

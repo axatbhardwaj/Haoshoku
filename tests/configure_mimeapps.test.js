@@ -404,6 +404,30 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 		expect(desktop).not.toContain("brave.exe");
 	});
 
+	it("ships a Crunchyroll desktop entry that opens the managed special workspace", () => {
+		const desktop = fs.readFileSync(
+			path.join(CONFIGS_MIMEAPPS_DIR, "applications", "crunchyroll-hd.desktop"),
+			"utf8",
+		);
+
+		expect(desktop).toContain("Name=Crunchyroll HD");
+		expect(desktop).toContain("Exec=caelestia toggle crunchyroll");
+		expect(desktop).toContain("Type=Application");
+		expect(desktop).not.toContain("bottles-cli");
+	});
+
+	it("ships a JioHotstar desktop entry that opens the managed special workspace", () => {
+		const desktop = fs.readFileSync(
+			path.join(CONFIGS_MIMEAPPS_DIR, "applications", "jiohotstar-hd.desktop"),
+			"utf8",
+		);
+
+		expect(desktop).toContain("Name=JioHotstar HD");
+		expect(desktop).toContain("Exec=caelestia toggle jiohotstar");
+		expect(desktop).toContain("Type=Application");
+		expect(desktop).not.toContain("bottles-cli");
+	});
+
 	it("sets COSMIC Files as the XDG default for directories", () => {
 		const content = fs.readFileSync(
 			path.join(CONFIGS_MIMEAPPS_DIR, "mimeapps.list"),
@@ -412,6 +436,33 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 
 		expect(content).toContain(
 			"inode/directory=com.system76.CosmicFiles.desktop",
+		);
+	});
+
+	it("routes notion:// links to the managed Brave Notion web app", () => {
+		const content = fs.readFileSync(
+			path.join(CONFIGS_MIMEAPPS_DIR, "mimeapps.list"),
+			"utf8",
+		);
+		const desktop = fs.readFileSync(
+			path.join(
+				CONFIGS_MIMEAPPS_DIR,
+				"applications",
+				"brave-dcokohelbbehjlcjjfmhfbpdgfjcoopf-Default.desktop",
+			),
+			"utf8",
+		);
+
+		expect(content).toContain(
+			"x-scheme-handler/notion=brave-dcokohelbbehjlcjjfmhfbpdgfjcoopf-Default.desktop",
+		);
+		expect(content).not.toContain("x-scheme-handler/notion=cohesion.desktop");
+		expect(desktop).toContain("Name=Genesis Block | Notion");
+		expect(desktop).toContain(
+			"Exec=/opt/brave-bin/brave --profile-directory=Default --app-id=dcokohelbbehjlcjjfmhfbpdgfjcoopf",
+		);
+		expect(desktop).toContain(
+			"StartupWMClass=brave-dcokohelbbehjlcjjfmhfbpdgfjcoopf-Default",
 		);
 	});
 
@@ -441,12 +492,11 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 		];
 
 		// Some AUR packages ship a .desktop whose basename differs from the
-		// package name (brave-bin → brave-browser.desktop, cohesion-git →
-		// cohesion.desktop), so a naive basename match would false-flag them.
+		// package name (brave-bin → brave-browser.desktop), so a naive basename
+		// match would false-flag them.
 		const providerAliases = {
 			"brave-browser.desktop": "brave-bin",
 			"com.system76.CosmicFiles.desktop": "cosmic-files",
-			"cohesion.desktop": "cohesion-git",
 		};
 		const installed = new Set(
 			packageLists.split("\n").map((line) => line.trim()),

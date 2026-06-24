@@ -253,6 +253,34 @@ describe("installUserScripts — deployment", () => {
 		expect(script).not.toContain("https://www.zee5.com");
 		expect(script).not.toContain("Launchers: ~/.local/bin/{primevideo-hd,zee5-hd}");
 	});
+
+	it("ships crunchyroll-hd as a native Brave app launcher (no bottle, no CDP)", () => {
+		const script = fs.readFileSync(
+			path.join(process.cwd(), "configs", "scripts", "crunchyroll-hd"),
+			"utf8",
+		);
+
+		expect(script).toContain("https://www.crunchyroll.com");
+		expect(script).toContain("--app=");
+		expect(script).toContain("--profile-directory=Default");
+		expect(script).not.toContain("bottles-cli");
+		expect(script).not.toContain("brave.exe");
+		expect(script).not.toContain("remote-debugging-port");
+	});
+
+	it("ships jiohotstar-hd as a native Brave app launcher (no bottle, no CDP)", () => {
+		const script = fs.readFileSync(
+			path.join(process.cwd(), "configs", "scripts", "jiohotstar-hd"),
+			"utf8",
+		);
+
+		expect(script).toContain("https://www.jiohotstar.com");
+		expect(script).toContain("--app=");
+		expect(script).toContain("--profile-directory=Default");
+		expect(script).not.toContain("bottles-cli");
+		expect(script).not.toContain("brave.exe");
+		expect(script).not.toContain("remote-debugging-port");
+	});
 });
 
 // ---------------------------------------------------------------------------

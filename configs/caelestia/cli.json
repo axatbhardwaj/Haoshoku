@@ -74,6 +74,22 @@
         "command": ["/home/xzat/.local/bin/zee5-hd"],
         "move": true
       }
+    },
+    "crunchyroll": {
+      "crunchyroll": {
+        "enable": true,
+        "match": [{"class": "brave-www.crunchyroll.com__-Default", "initialTitle": "www.crunchyroll.com_/"}],
+        "command": ["/home/xzat/.local/bin/crunchyroll-hd"],
+        "move": true
+      }
+    },
+    "jiohotstar": {
+      "jiohotstar": {
+        "enable": true,
+        "match": [{"class": "brave-www.jiohotstar.com__-Default", "initialTitle": "www.jiohotstar.com_/"}],
+        "command": ["/home/xzat/.local/bin/jiohotstar-hd"],
+        "move": true
+      }
     }
   },
   "wallpaper": {

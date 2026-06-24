@@ -201,7 +201,7 @@ describe("AUR package list", () => {
     expect(pkgs).toContain("swayimg");
   });
 
-  it("includes cohesion-git for the Notion desktop client", () => {
+  it("does not install cohesion-git after returning Notion to the Brave web app", () => {
     const list = fs.readFileSync(
       path.join(PROJECT_ROOT, "common", "paru_applist.txt"),
       "utf8",
@@ -210,7 +210,7 @@ describe("AUR package list", () => {
       .split("\n")
       .map((l) => l.trim())
       .filter((l) => l && !l.startsWith("#"));
-    expect(pkgs).toContain("cohesion-git");
+    expect(pkgs).not.toContain("cohesion-git");
   });
 });
 

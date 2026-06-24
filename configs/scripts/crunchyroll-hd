@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Crunchyroll HD - native Brave app-mode launcher (personal Default profile).
+# Crunchyroll plays 1080p natively in Linux Brave, so there is no Wine bottle, no
+# CDP selector, and no profile seeding - just the app window. Routed to
+# special:crunchyroll by the app-id class brave-www.crunchyroll.com__-Default
+# (Super+Shift+C via caelestia toggle crunchyroll).
+set -euo pipefail
+
+CR_URL="${CR_URL:-https://www.crunchyroll.com}"
+
+find_brave() {
+  if [ -n "${BRAVE_BIN:-}" ]; then
+    [ -x "$BRAVE_BIN" ] || command -v "$BRAVE_BIN" >/dev/null 2>&1 \
+      || { echo "crunchyroll-hd: BRAVE_BIN is not executable: $BRAVE_BIN" >&2; exit 1; }
+    printf '%s\n' "$BRAVE_BIN"; return 0
+  fi
+  for candidate in /opt/brave-bin/brave brave brave-browser; do
+    if [ -x "$candidate" ]; then printf '%s\n' "$candidate"; return 0; fi
+    if command -v "$candidate" >/dev/null 2>&1; then command -v "$candidate"; return 0; fi
+  done
+  echo "crunchyroll-hd: native Brave not found (expected /opt/brave-bin/brave, brave, or brave-browser)" >&2
+  exit 1
+}
+
+BRAVE="$(find_brave)"
+exec "$BRAVE" \
+  --profile-directory=Default \
+  --no-first-run \
+  --no-default-browser-check \
+  --app="$CR_URL" \
+  "$@"
