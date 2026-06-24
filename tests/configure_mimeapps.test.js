@@ -390,6 +390,20 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 		).toBe(true);
 	});
 
+	it("ships a ZEE5 desktop entry that opens the managed special workspace", () => {
+		const desktop = fs.readFileSync(
+			path.join(CONFIGS_MIMEAPPS_DIR, "applications", "zee5-hd.desktop"),
+			"utf8",
+		);
+
+		expect(desktop).toContain("Name=ZEE5 HD");
+		expect(desktop).toContain("Exec=caelestia toggle zee5");
+		expect(desktop).toContain("Type=Application");
+		expect(desktop).toContain("Categories=AudioVideo;Video;");
+		expect(desktop).not.toContain("bottles-cli");
+		expect(desktop).not.toContain("brave.exe");
+	});
+
 	it("sets COSMIC Files as the XDG default for directories", () => {
 		const content = fs.readFileSync(
 			path.join(CONFIGS_MIMEAPPS_DIR, "mimeapps.list"),

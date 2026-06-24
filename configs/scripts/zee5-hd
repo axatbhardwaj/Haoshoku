@@ -1,0 +1,289 @@
+#!/usr/bin/env bash
+# ZEE5 HD - native Brave app-mode launcher with an automatic Full HD selector.
+set -euo pipefail
+
+ZEE5_URL="${ZEE5_URL:-https://www.zee5.com}"
+ZEE5_PROFILE="${ZEE5_PROFILE:-$HOME/.local/share/zee5-brave-profile}"
+ZEE5_SOURCE_PROFILE="${ZEE5_SOURCE_PROFILE:-$HOME/.config/BraveSoftware/Brave-Browser}"
+ZEE5_SELECTOR_SECONDS="${ZEE5_SELECTOR_SECONDS:-900}"
+LOG_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/haoshoku"
+LOG_FILE="$LOG_DIR/zee5-hd.log"
+
+mkdir -p "$LOG_DIR"
+
+say() { printf '%s\n' "$*" >>"$LOG_FILE"; }
+warn() {
+  printf 'zee5-hd: %s\n' "$*" >&2
+  printf 'WARN: %s\n' "$*" >>"$LOG_FILE"
+}
+die() {
+  printf 'zee5-hd: %s\n' "$*" >&2
+  printf 'ERROR: %s\n' "$*" >>"$LOG_FILE"
+  exit 1
+}
+
+find_brave() {
+  if [ -n "${BRAVE_BIN:-}" ]; then
+    [ -x "$BRAVE_BIN" ] || command -v "$BRAVE_BIN" >/dev/null 2>&1 || die "BRAVE_BIN is not executable: $BRAVE_BIN"
+    printf '%s\n' "$BRAVE_BIN"
+    return 0
+  fi
+
+  for candidate in /opt/brave-bin/brave brave brave-browser; do
+    if [ -x "$candidate" ]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+    if command -v "$candidate" >/dev/null 2>&1; then
+      command -v "$candidate"
+      return 0
+    fi
+  done
+
+  die "native Brave was not found (expected /opt/brave-bin/brave, brave, or brave-browser)"
+}
+
+seed_profile() {
+  copy_local_state() {
+    if [ -f "$ZEE5_SOURCE_PROFILE/Local State" ]; then
+      cp -a "$ZEE5_SOURCE_PROFILE/Local State" "$ZEE5_PROFILE/Local State" \
+        || warn "could not copy Brave Local State; continuing with the ZEE5 profile"
+    fi
+  }
+
+  if [ -d "$ZEE5_PROFILE/Default" ]; then
+    copy_local_state
+    rm -f "$ZEE5_PROFILE"/Singleton* 2>/dev/null || true
+    return 0
+  fi
+
+  mkdir -p "$ZEE5_PROFILE"
+  if [ ! -d "$ZEE5_SOURCE_PROFILE/Default" ]; then
+    warn "no native Brave Default profile found to seed from; ZEE5 may ask you to sign in"
+    return 0
+  fi
+
+  say "Seeding ZEE5 profile from $ZEE5_SOURCE_PROFILE/Default"
+  mkdir -p "$ZEE5_PROFILE/Default"
+  copy_local_state
+  if command -v rsync >/dev/null 2>&1; then
+    rsync -a \
+      --exclude='Singleton*' \
+      --exclude='Crash Reports/' \
+      --exclude='BrowserMetrics*' \
+      --exclude='*/Cache/' \
+      --exclude='*/Code Cache/' \
+      --exclude='*/GPUCache/' \
+      --exclude='*/GrShaderCache/' \
+      --exclude='*/ShaderCache/' \
+      --exclude='*/DawnCache/' \
+      "$ZEE5_SOURCE_PROFILE/Default/" "$ZEE5_PROFILE/Default/" \
+      || warn "profile seed via rsync failed; continuing with a fresh ZEE5 profile"
+  else
+    cp -a "$ZEE5_SOURCE_PROFILE/Default/." "$ZEE5_PROFILE/Default/" \
+      || warn "profile seed via cp failed; continuing with a fresh ZEE5 profile"
+  fi
+
+  rm -f "$ZEE5_PROFILE"/Singleton* 2>/dev/null || true
+}
+
+port_is_open() {
+  timeout 0.2 bash -c "</dev/tcp/127.0.0.1/$1" >/dev/null 2>&1
+}
+
+choose_debug_port() {
+  for port in 9335 9336 9337 9338 9339; do
+    if ! port_is_open "$port"; then
+      printf '%s\n' "$port"
+      return 0
+    fi
+  done
+
+  printf '%s\n' "9335"
+}
+
+start_full_hd_selector() {
+  [ "${ZEE5_NO_SELECTOR:-0}" != "1" ] || return 0
+
+  local runtime=""
+  if command -v bun >/dev/null 2>&1; then
+    runtime="$(command -v bun)"
+  elif command -v node >/dev/null 2>&1; then
+    runtime="$(command -v node)"
+  else
+    warn "neither bun nor node is available; ZEE5 will open but Full HD cannot be auto-selected"
+    return 0
+  fi
+
+  local selector_js
+  selector_js="$(mktemp "${TMPDIR:-/tmp}/zee5-full-hd-selector.XXXXXX.js")"
+  cat >"$selector_js" <<'JS'
+const port = Number(process.argv[2] || 9335);
+const maxSeconds = Number(process.argv[3] || 900);
+const deadline = Date.now() + maxSeconds * 1000;
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+if (typeof WebSocket === "undefined") {
+  console.error("WebSocket is unavailable in this JS runtime");
+  process.exit(0);
+}
+
+async function fetchTargets() {
+  const response = await fetch(`http://127.0.0.1:${port}/json/list`);
+  if (!response.ok) throw new Error(`CDP target list failed: ${response.status}`);
+  return response.json();
+}
+
+async function connectToZee5() {
+  const targets = await fetchTargets();
+  const target = targets.find((entry) => {
+    if (entry.type !== "page") return false;
+    return /zee5\.com/i.test(`${entry.url || ""} ${entry.title || ""}`);
+  });
+  if (!target?.webSocketDebuggerUrl) throw new Error("ZEE5 page target not ready");
+
+  const ws = new WebSocket(target.webSocketDebuggerUrl);
+  let nextId = 0;
+  const pending = new Map();
+
+  ws.addEventListener("message", (event) => {
+    const message = JSON.parse(event.data);
+    if (message.id && pending.has(message.id)) {
+      pending.get(message.id)(message);
+      pending.delete(message.id);
+    }
+  });
+
+  await new Promise((resolve, reject) => {
+    ws.addEventListener("open", resolve, { once: true });
+    ws.addEventListener("error", reject, { once: true });
+  });
+
+  const send = (method, params = {}) =>
+    new Promise((resolve) => {
+      const id = ++nextId;
+      pending.set(id, resolve);
+      ws.send(JSON.stringify({ id, method, params }));
+    });
+
+  await send("Runtime.enable");
+  return { ws, send };
+}
+
+const expression = `(() => {
+  const normalize = (value) => String(value || "").replace(/\\s+/g, " ").trim();
+  const fullHdLabel = "Full HD - 1080p";
+  const dispatchMouse = (el, type) => {
+    if (!el) return;
+    el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window }));
+  };
+  const pokePlayerControls = () => {
+    const player = document.querySelector(".video-js") || document.querySelector("video") || document.body;
+    for (const type of ["mousemove", "mouseover"]) dispatchMouse(player, type);
+  };
+  const openQualityMenu = () => {
+    const menu = document.querySelector(".vjs-http-source-selector, .vjs-http-source-selector .vjs-menu-button, .vjs-http-source-selector button");
+    if (!menu) return false;
+    for (const type of ["mousemove", "mouseover", "mousedown", "mouseup", "click"]) dispatchMouse(menu, type);
+    if (typeof menu.click === "function") menu.click();
+    return true;
+  };
+  const findFullHd = () => {
+    const items = [...document.querySelectorAll('li[role="menuitemradio"], .vjs-menu-item')];
+    return items.find((item) => normalize(item.textContent).includes(fullHdLabel));
+  };
+  const videos = [...document.querySelectorAll("video")];
+  const beforeHeight = Math.max(0, ...videos.map((video) => video.videoHeight || 0));
+  const beforeWidth = Math.max(0, ...videos.map((video) => video.videoWidth || 0));
+  pokePlayerControls();
+  let fullHd = findFullHd();
+  let menuOpened = false;
+  if (!fullHd) {
+    menuOpened = openQualityMenu();
+    fullHd = findFullHd();
+  }
+  const selected = Boolean(fullHd && (
+    fullHd.getAttribute("aria-checked") === "true" ||
+    fullHd.classList.contains("vjs-selected") ||
+    /selected/i.test(String(fullHd.className || ""))
+  ));
+
+  if (fullHd && !selected) {
+    for (const type of ["mousemove", "mouseover", "mousedown", "mouseup", "click"]) dispatchMouse(fullHd, type);
+    if (typeof fullHd.click === "function") fullHd.click();
+  }
+
+  return {
+    foundFullHd: Boolean(fullHd),
+    selected,
+    clicked: Boolean(fullHd && !selected),
+    menuOpened,
+    videoWidth: beforeWidth,
+    videoHeight: beforeHeight,
+    url: location.href
+  };
+})()`;
+
+while (Date.now() < deadline) {
+  try {
+    const { ws, send } = await connectToZee5();
+    while (Date.now() < deadline && ws.readyState === WebSocket.OPEN) {
+      const response = await send("Runtime.evaluate", {
+        expression,
+        awaitPromise: true,
+        returnByValue: true
+      });
+      const value = response.result?.result?.value;
+      if (value?.clicked || value?.videoHeight >= 1080) {
+        console.log(JSON.stringify({ at: new Date().toISOString(), ...value }));
+      }
+      await sleep(5000);
+    }
+  } catch (error) {
+    console.log(JSON.stringify({ at: new Date().toISOString(), waiting: String(error.message || error) }));
+    await sleep(2000);
+  }
+}
+JS
+
+  "$runtime" "$selector_js" "$ZEE5_DEBUG_PORT" "$ZEE5_SELECTOR_SECONDS" >>"$LOG_FILE" 2>&1 &
+  local selector_runtime_pid="$!"
+  (
+    while kill -0 "$selector_runtime_pid" >/dev/null 2>&1; do
+      sleep 5
+    done
+    rm -f "$selector_js"
+  ) >/dev/null 2>&1 &
+  printf '%s\n' "$selector_runtime_pid"
+}
+
+seed_profile
+BRAVE="$(find_brave)"
+ZEE5_DEBUG_PORT="${ZEE5_DEBUG_PORT:-$(choose_debug_port)}"
+
+selector_pid="$(start_full_hd_selector || true)"
+brave_pid=""
+cleanup() {
+  if [ -n "${selector_pid:-}" ]; then
+    kill "$selector_pid" >/dev/null 2>&1 || true
+  fi
+  if [ -n "${brave_pid:-}" ]; then
+    kill "$brave_pid" >/dev/null 2>&1 || true
+  fi
+}
+trap cleanup EXIT HUP INT TERM
+
+say "Launching ZEE5 through $BRAVE on CDP port $ZEE5_DEBUG_PORT"
+"$BRAVE" \
+  --user-data-dir="$ZEE5_PROFILE" \
+  --profile-directory=Default \
+  --remote-debugging-address=127.0.0.1 \
+  --remote-debugging-port="$ZEE5_DEBUG_PORT" \
+  --no-first-run \
+  --no-default-browser-check \
+  --autoplay-policy=no-user-gesture-required \
+  --app="$ZEE5_URL" \
+  "$@" &
+
+brave_pid=$!
+wait "$brave_pid"

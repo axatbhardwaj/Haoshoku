@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# primevideo-setup — build the shared Wine-TkG bottle for HD streaming on Linux:
+# primevideo-setup — build the Prime Video Wine-TkG bottle for HD streaming on Linux:
 # Windows Brave under Wine-TkG 10.8 via Bottles (native Linux Brave is throttled —
-# Prime 540p). Generates launchers for Prime Video and ZEE5. Idempotent — safe to re-run.
+# Prime 540p). Generates the Prime Video launcher. Idempotent — safe to re-run.
 #
 # It automates the scriptable parts and stops with clear instructions at the two
 # steps that cannot be done headlessly:
@@ -9,7 +9,7 @@
 #              GUI-only — bottles-cli can't download runners/dxvk itself)
 #   [MANUAL 2] streaming-service sign-in (+ accept Widevine, then go fullscreen)
 #
-# Pairs with caelestia keybinds: Super+Shift+P -> special:primevideo, Super+Shift+Z -> special:zee5.
+# Pairs with caelestia keybinds: Super+Shift+P -> special:primevideo.
 # Full rationale: docs/runbooks/prime-video-hd.html
 set -euo pipefail
 
@@ -76,7 +76,7 @@ else
   say "Brave installed"
 fi
 
-# 5 — launchers (one per service; flags required: blank-window + video-crash workarounds)
+# 5 — launcher (flags required: blank-window + video-crash workarounds)
 write_launcher() {  # $1=path  $2=app-url  $3=banner
   say "writing launcher: $1"
   mkdir -p "$(dirname "$1")"
@@ -94,11 +94,10 @@ LAUNCH
   chmod +x "$1"
 }
 write_launcher "$HOME/.local/bin/primevideo-hd" "https://www.primevideo.com" "Prime Video HD (1080p fullscreen)"
-write_launcher "$HOME/.local/bin/zee5-hd"       "https://www.zee5.com"       "ZEE5 HD"
 
 # 6 — done; MANUAL 2
-say "Setup complete. Launchers: ~/.local/bin/{primevideo-hd,zee5-hd}"
-warn "[MANUAL 2] Launch — Prime: Super+Shift+P  ·  ZEE5: Super+Shift+Z  (or run the launchers). Then in Brave:"
+say "Setup complete. Launcher: ~/.local/bin/primevideo-hd"
+warn "[MANUAL 2] Launch Prime with Super+Shift+P (or run the launcher). Then in Brave:"
 warn "  sign in, accept the Widevine prompt, keep Shields OFF for the site,"
 warn "  play a title, and GO FULLSCREEN — that's what unlocks max resolution (windowed is throttled)."
 say "Verify: F12 -> Console -> Math.max(...[...document.querySelectorAll('video')].map(v=>v.videoHeight))"

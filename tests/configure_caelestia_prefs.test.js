@@ -578,6 +578,26 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 			command: ["brave", "--profile-directory=Profile 1"],
 			move: true,
 		});
+		expect(toggles.primevideo.primevideo).toMatchObject({
+			enable: true,
+			match: [{ class: "brave.exe", initialTitle: "www.primevideo.com_/" }],
+			command: ["/home/xzat/.local/bin/primevideo-hd"],
+			move: true,
+		});
+		expect(toggles.zee5.zee5).toMatchObject({
+			enable: true,
+			match: [
+				{
+					class: "brave-www.zee5.com__-Default",
+					initialTitle: "www.zee5.com_/",
+				},
+			],
+			command: ["/home/xzat/.local/bin/zee5-hd"],
+			move: true,
+		});
+		expect(
+			toggles.zee5.zee5.match.some((entry) => entry.class === "brave.exe"),
+		).toBe(false);
 		expect(toggles).not.toHaveProperty("agents");
 		expect(toggles).not.toHaveProperty("claude");
 		expect(toggles).not.toHaveProperty("vivaldi");
@@ -669,6 +689,27 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 			"bind = Super, I, exec, hyprctl dispatch focusmonitor DP-2 && /home/xzat/.local/bin/ai-webapps-toggle",
 		);
 		expect(conf).not.toContain("bind = Super, I, exec, caelestia toggle");
+	});
+
+	it("keeps Prime in Wine but routes ZEE5 through native Brave app mode on PC", () => {
+		const conf = fs.readFileSync(
+			path.join(CONFIGS_CAELESTIA_DIR, "hypr-user-pc.conf"),
+			"utf8",
+		);
+
+		expect(conf).toContain(
+			"windowrule = workspace special:primevideo, match:class brave\\.exe, match:initial_title www\\.primevideo\\.com_/",
+		);
+		expect(conf).toContain(
+			"windowrule = workspace special:zee5, match:class brave-www\\.zee5\\.com__-Default, match:initial_title www\\.zee5\\.com_/",
+		);
+		expect(conf).toContain(
+			"bind = Super+Shift, P, exec, caelestia toggle primevideo",
+		);
+		expect(conf).toContain("bind = Super+Shift, Z, exec, caelestia toggle zee5");
+		expect(conf).not.toContain(
+			"windowrule = workspace special:zee5, match:class brave\\.exe",
+		);
 	});
 
 	it("routes Super+6 and Super+7 to the vertical monitor on PC", () => {

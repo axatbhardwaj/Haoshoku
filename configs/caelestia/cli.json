@@ -70,7 +70,7 @@
     "zee5": {
       "zee5": {
         "enable": true,
-        "match": [{"class": "brave.exe", "initialTitle": "www.zee5.com_/"}],
+        "match": [{"class": "brave-www.zee5.com__-Default", "initialTitle": "www.zee5.com_/"}],
         "command": ["/home/xzat/.local/bin/zee5-hd"],
         "move": true
       }

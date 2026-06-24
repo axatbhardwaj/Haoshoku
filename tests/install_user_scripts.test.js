@@ -188,6 +188,71 @@ describe("installUserScripts — deployment", () => {
 		expect(script).toContain("movewindowpixel");
 		expect(script).toContain("resizewindowpixel");
 	});
+
+	it("ships zee5-hd as a native Brave launcher with a Full HD selector", () => {
+		const script = fs.readFileSync(
+			path.join(process.cwd(), "configs", "scripts", "zee5-hd"),
+			"utf8",
+		);
+
+		expect(script).toContain(
+			'ZEE5_URL="$' + '{ZEE5_URL:-https://www.zee5.com}"',
+		);
+		expect(script).toContain(".local/share/zee5-brave-profile");
+		expect(script).toContain("remote-debugging-port");
+		expect(script).toContain("Full HD - 1080p");
+		expect(script).toContain("videoHeight");
+		expect(script).toContain("li[role=\"menuitemradio\"]");
+		expect(script).not.toContain("bottles-cli");
+		expect(script).not.toContain("brave.exe");
+	});
+
+	it("keeps zee5-hd selector startup non-blocking inside command substitution", () => {
+		const script = fs.readFileSync(
+			path.join(process.cwd(), "configs", "scripts", "zee5-hd"),
+			"utf8",
+		);
+
+		expect(script).toContain(") >/dev/null 2>&1 &");
+		expect(script).toContain('selector_pid="$(start_full_hd_selector || true)"');
+	});
+
+	it("seeds only the native Brave Default profile for zee5-hd", () => {
+		const script = fs.readFileSync(
+			path.join(process.cwd(), "configs", "scripts", "zee5-hd"),
+			"utf8",
+		);
+
+		expect(script).toContain('"$ZEE5_SOURCE_PROFILE/Default/" "$ZEE5_PROFILE/Default/"');
+		expect(script).toContain('"$ZEE5_SOURCE_PROFILE/Local State"');
+		expect(script).not.toContain('"$ZEE5_SOURCE_PROFILE/" "$ZEE5_PROFILE/"');
+		expect(script).not.toContain('"$ZEE5_SOURCE_PROFILE/." "$ZEE5_PROFILE/"');
+	});
+
+	it("cleans up both the selector and Brave process for zee5-hd", () => {
+		const script = fs.readFileSync(
+			path.join(process.cwd(), "configs", "scripts", "zee5-hd"),
+			"utf8",
+		);
+
+		expect(script).toContain('kill "$selector_pid"');
+		expect(script).toContain('kill "$brave_pid"');
+		expect(script).toContain('wait "$brave_pid"');
+	});
+
+	it("keeps primevideo-setup scoped to the Prime bottle launcher", () => {
+		const script = fs.readFileSync(
+			path.join(process.cwd(), "configs", "scripts", "primevideo-setup"),
+			"utf8",
+		);
+
+		expect(script).toContain(
+			'write_launcher "$HOME/.local/bin/primevideo-hd" "https://www.primevideo.com"',
+		);
+		expect(script).not.toContain("$HOME/.local/bin/zee5-hd");
+		expect(script).not.toContain("https://www.zee5.com");
+		expect(script).not.toContain("Launchers: ~/.local/bin/{primevideo-hd,zee5-hd}");
+	});
 });
 
 // ---------------------------------------------------------------------------

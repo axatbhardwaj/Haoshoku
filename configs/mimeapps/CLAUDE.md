@@ -7,6 +7,7 @@ XDG default-applications config (`mimeapps.list`). Fully portable — no device 
 | File             | What                                                                                              | When to read                                             |
 | ---------------- | ------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
 | `mimeapps.list`  | XDG default-application and URI scheme-handler associations (one file, same on every machine)    | Changing which app opens a MIME type or scheme handler  |
+| `applications/*.desktop` | Managed desktop entries deployed to `~/.local/share/applications/` alongside `mimeapps.list` | Adding launcher entries for local scripts or URI handlers |
 
 ## Notes
 
