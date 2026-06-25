@@ -52,11 +52,10 @@
 <body>
 
 <h1>Prime Video HD <span class="tag ok">1080p</span> <span class="tag">Wine · Bottles</span></h1>
-<div class="sub">Windows Brave under Wine-TkG plus native Brave app-mode, on CachyOS / Hyprland — runbook &amp; rationale. Updated 2026-06-24.</div>
+<div class="sub">Windows Brave under Wine-TkG, on CachyOS / Hyprland — runbook &amp; rationale. Generated 2026-06-23.</div>
 
 <div class="note ok-note">
 <b>TL;DR.</b> Amazon throttles Prime Video on Linux (native Brave here = <b>540p</b>). Running <b>Windows Brave under Wine-TkG 10.8</b> (via Bottles) gets the full <b>1080p</b> — goal achieved. <b>One catch:</b> Prime picks resolution from the <i>player viewport</i>, so you only get 1080p <b>fullscreen</b> (a small/windowed player is served ~720p). Launch as <b>“Prime Video HD”</b> (or <kbd>Super+Shift+P</kbd>), then go fullscreen.
-<br><br><b>ZEE5 differs:</b> the Wine bottle fails ZEE5's hardware-acceleration requirement. ZEE5 now launches through <b>native Brave app mode</b> with a small localhost CDP helper that selects <b>Full HD - 1080p</b>. Launch with <kbd>Super+Shift+Z</kbd>.
 </div>
 
 <h2>Resolution ladder</h2>
@@ -108,15 +107,7 @@ Environment: Application   (any default runner — the helper swaps it)</pre>
 --disable-gpu                          # NVIDIA Vulkan-WSI blank-window fix
 --disable-accelerated-video-decode     # avoids D3D11 video-buffer crash
 --disable-gpu-memory-buffer-video-frames</pre>
-<h2>ZEE5 HD</h2>
-<div class="card">
-<h3>Launch</h3>
-<p><kbd>Super+Shift+Z</kbd> → toggles <code>special:zee5</code> and starts <code>~/.local/bin/zee5-hd</code> if needed. The launcher uses native Brave <code>--app=https://www.zee5.com</code>, so Hyprland sees class <code>brave-www.zee5.com__-Default</code> and initial title <code>www.zee5.com_/</code>.</p>
-<h3>Profile</h3>
-<p>ZEE5 uses <code>~/.local/share/zee5-brave-profile</code>. On first run, the launcher seeds it from the native Brave Default profile so Widevine and the existing ZEE5 login can carry over. If the seed is missing or stale, sign in once inside the ZEE5 window.</p>
-<h3>1080p helper</h3>
-<p>ZEE5 exposes <b>Full HD - 1080p</b> in the Video.js quality menu, but it can reset to Auto when the stream navigates. The launcher opens Chrome DevTools Protocol only on <code>127.0.0.1</code> and runs a Bun/Node loop that clicks the hidden <code>li[role="menuitemradio"]</code> item for <b>Full HD - 1080p</b>. While the ZEE5 window is open, any local process on the same user session can reach that localhost CDP port and drive this isolated ZEE5 browser, so the profile is seeded from only Brave's <code>Default</code> profile plus <code>Local State</code>, not the whole Brave profile root. Runtime proof from the disposable profile reached <code>videoWidth=1920</code>, <code>videoHeight=1080</code> for 60 seconds after selection.</p>
-</div>
+<p class="sub"><b>ZEE5:</b> the same bottle also serves ZEE5 — <kbd>Super+Shift+Z</kbd> → <code>special:zee5</code> (launcher <code>~/.local/bin/zee5-hd</code>; the two Wine-Brave windows are told apart by <code>initial_title</code>). Whether the bottle beats native Brave for ZEE5 is unconfirmed — ZEE5 may gate HD on Widevine L1 (hardware), which Wine can't provide.</p>
 
 <h2 id="why">How we got here (and the 720p red herring)</h2>
 <p>Getting Brave to <i>run</i> Prime under Wine took three real fixes. The "resolution cap" did not — that was a measurement mistake (I read <code>videoHeight</code> in a windowed player, where Prime legitimately serves 720p to match the viewport). Fullscreen was 1080p all along.</p>
@@ -131,7 +122,6 @@ Environment: Application   (any default runner — the helper swaps it)</pre>
 
 <h2>Troubleshooting</h2>
 <details><summary>Only getting 720p (not 1080p)</summary><p><b>Go fullscreen.</b> Prime serves resolution to match the player viewport; a windowed/<code>--app</code> player gets ~720p. Fullscreen + ~30s ramp → 1080p. Verify with the <code>Math.max(...videoHeight)</code> check above.</p></details>
-<details><summary>ZEE5 opens but stays below 1080p</summary><p>Check <code>~/.local/state/haoshoku/zee5-hd.log</code>. The helper should log either a <code>clicked</code> Full HD selection or a current <code>videoHeight</code>. If the helper says Bun/Node is missing, install one of them or select <b>Full HD - 1080p</b> manually from the player quality menu.</p></details>
 <details><summary>Window is blank / white</summary><p>GPU path failed; <code>--disable-gpu</code> (already in the launcher) fixes it.</p></details>
 <details><summary>Crashes the instant you press Play</summary><p>You're on the wrong runner. The bottle must use <b>Wine-TkG 10.8</b> (<code>wine-10.8-staging-tkg-amd64</code>), not system Wine 11.11.</p></details>
 <details><summary>Asks me to log in again / quality drops</summary><p>Login lives in the bottle's Brave profile — sign in once, it persists. Keep <b>Brave Shields OFF</b> for primevideo.com (already set).</p></details>
@@ -146,13 +136,9 @@ rm -rf ~/.local/share/bottles/bottles/primevideo-tkg9
 # the safety backup (~5.7 GB, shows as "primevideo" in Bottles)
 rm -rf ~/.local/share/bottles/bottles/primevideo.bak-pre182</pre>
 <p class="sub">The Wine-TkG runner at <code>~/.local/share/bottles/runners/wine-10.8-staging-tkg-amd64</code> can also go if no other bottle uses it.</p>
-<pre># ZEE5 native app-mode launcher/profile/log
-rm ~/.local/bin/zee5-hd ~/.local/share/applications/zee5-hd.desktop
-rm -rf ~/.local/share/zee5-brave-profile
-rm -f ~/.local/state/haoshoku/zee5-hd.log</pre>
 
 <footer>
-Prime path built via Dvandva debugging, 2026-06-23; ZEE5 path revised after native Brave measurement on 2026-06-24. Prime fixes: NVIDIA Vulkan-WSI blank window (<code>--disable-gpu</code>), D3D11 video-buffer crash (software-video flags), PlayReady-WinRT crash on system Wine (→ Wine-TkG 10.8). ZEE5 fix: native Brave app mode plus automatic <b>Full HD - 1080p</b> selection after the Wine bottle failed its hardware-acceleration gate.
+Built via a Dvandva (Claude vadi + Codex prativadi) debugging run, 2026-06-23. Real fixes: NVIDIA Vulkan-WSI blank window (<code>--disable-gpu</code>), D3D11 video-buffer crash (software-video flags), PlayReady-WinRT crash on system Wine (→ Wine-TkG 10.8). Final outcome: native 540p → <b>1080p fullscreen</b> (the "720p ceiling" was a windowed-measurement artifact, corrected after fullscreen verification).
 </footer>
 
 </body>

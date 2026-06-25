@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Browser Video Freeze — Root-Cause Diagnosis</title>
+<style>
+  :root{
+    --bg:#0a0e14; --surface:#121925; --surface2:#0d141e; --card:#141c28;
+    --border:#243040; --line:#2c3949;
+    --text:#cdd8e8; --muted:#8492a8; --dim:#5d6b80;
+    --accent:#5eead4; --accent-dim:#2a6b63;
+    --danger:#f87171; --success:#5ad888; --warn:#fbbf24;
+    --mono:"JetBrains Mono",ui-monospace,"Fira Code",Menlo,Consolas,monospace;
+    --sans:-apple-system,"Segoe UI",Roboto,Inter,"Helvetica Neue",sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);
+    font-size:15.5px;line-height:1.6;-webkit-font-smoothing:antialiased}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* sticky top bar */
+  .topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;
+    padding:12px 28px;background:rgba(10,14,20,.82);backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--border)}
+  .topbar .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);
+    box-shadow:0 0 10px var(--accent)}
+  .topbar h1{font-size:14.5px;margin:0;font-weight:600;letter-spacing:.2px}
+  .topbar .sub{color:var(--muted);font-size:12.5px;font-weight:400}
+  .topbar .spacer{flex:1}
+
+  .wrap{max-width:1000px;margin:0 auto;padding:34px 28px 80px}
+
+  .badge{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;
+    letter-spacing:.4px;text-transform:uppercase;padding:4px 10px;border-radius:999px;
+    border:1px solid;white-space:nowrap}
+  .b-ok{color:var(--success);border-color:#2f6b45;background:#11231a}
+  .b-warn{color:var(--warn);border-color:#6b561f;background:#23200f}
+  .b-bad{color:var(--danger);border-color:#6b2f2f;background:#231313}
+  .b-acc{color:var(--accent);border-color:var(--accent-dim);background:#0e211f}
+
+  h2{font-size:13px;text-transform:uppercase;letter-spacing:1.6px;color:var(--muted);
+    font-weight:600;margin:46px 0 16px;display:flex;align-items:center;gap:10px}
+  h2::before{content:"";width:22px;height:1px;background:var(--line)}
+
+  /* verdict */
+  .verdict{display:grid;grid-template-columns:1fr;gap:0;border:1px solid var(--border);
+    border-radius:14px;overflow:hidden;background:linear-gradient(180deg,#131c2a,#0f1622)}
+  .verdict .row{padding:18px 22px;border-bottom:1px solid var(--border)}
+  .verdict .row:last-child{border-bottom:0}
+  .verdict .k{font-size:11.5px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);
+    margin-bottom:6px;display:flex;gap:9px;align-items:center}
+  .verdict .v{font-size:16px}
+  .verdict .v b{color:#fff}
+  .hl{color:var(--accent)}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px}
+  figure{margin:0}
+  figcaption{color:var(--muted);font-size:13px;margin-top:12px;text-align:center}
+  svg{display:block;width:100%;height:auto}
+
+  table{width:100%;border-collapse:collapse;font-size:14px;margin-top:4px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+  th{color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.7px;font-weight:600}
+  td.ts{font-family:var(--mono);font-size:12.5px;color:var(--muted);white-space:nowrap}
+  tr:last-child td{border-bottom:0}
+
+  pre{background:#0c121b;border:1px solid var(--border);border-radius:10px;padding:14px 16px;
+    overflow:auto;font-family:var(--mono);font-size:13px;line-height:1.5;color:#dbe6f2;margin:0}
+  code{font-family:var(--mono);font-size:.92em;background:#0c121b;border:1px solid var(--border);
+    padding:1px 6px;border-radius:5px;color:#bfe9e0}
+  .codewrap{position:relative}
+  .copy{position:absolute;top:10px;right:10px;font:600 11.5px/1 var(--sans);color:var(--accent);
+    background:#0e211f;border:1px solid var(--accent-dim);border-radius:7px;padding:6px 10px;cursor:pointer}
+  .copy:hover{background:#123029}
+  .flag{color:var(--accent)}.cm{color:var(--muted)}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:720px){.grid2{grid-template-columns:1fr}}
+  .mini{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px}
+  .mini .t{font-size:12px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:8px}
+  .big{font-size:30px;font-weight:700;font-family:var(--mono)}
+  .strike{text-decoration:line-through;color:var(--danger);opacity:.85}
+
+  details{border:1px solid var(--border);border-radius:12px;background:var(--card);margin-top:14px}
+  summary{cursor:pointer;padding:14px 18px;font-weight:600;color:var(--text);list-style:none;
+    display:flex;align-items:center;gap:10px}
+  summary::-webkit-details-marker{display:none}
+  summary .chev{color:var(--accent);transition:transform .2s}
+  details[open] summary .chev{transform:rotate(90deg)}
+  details .body{padding:0 18px 16px}
+
+  .note{border-left:3px solid var(--accent);background:#0e1a1c;padding:12px 16px;border-radius:0 10px 10px 0;
+    color:#bfe0d9;font-size:14px}
+  footer{margin-top:54px;padding-top:20px;border-top:1px solid var(--border);color:var(--dim);font-size:12.5px}
+  .lede{color:var(--muted);font-size:15px;max-width:70ch;margin:6px 0 0}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="dot"></span>
+  <h1>Browser Video Freeze <span class="sub">— root-cause diagnosis</span></h1>
+  <span class="spacer"></span>
+  <span class="badge b-ok">● Fixed &amp; verified</span>
+</div>
+
+<div class="wrap">
+
+  <p class="lede">Videos froze in-browser on YouTube and Hotstar — no crash, no error. This is the
+  diagnostic path: four plausible causes eliminated by evidence, the real one found in the kernel log,
+  and a no-sudo fix verified at the system level. <span style="color:var(--dim)">CachyOS · Hyprland/Wayland · RTX&nbsp;4070&nbsp;Ti.</span></p>
+
+  <!-- VERDICT -->
+  <div class="verdict" style="margin-top:22px">
+    <div class="row">
+      <div class="k"><span class="badge b-bad">Root cause</span></div>
+      <div class="v"><b>NVIDIA open driver 610.x can't map GPU video buffers.</b> The kernel logs
+        <code>nvidia_drm: Failed to map NvKmsKapiMemory</code>; Brave's media thread dies in that path at
+        the same instant, so the decoded frame is never presented — the picture freezes while the page keeps running.</div>
+    </div>
+    <div class="row">
+      <div class="k"><span class="badge b-ok">Fix</span></div>
+      <div class="v">Force the <b class="hl">software video path</b> via <code>~/.config/brave-flags.conf</code>
+        — sidesteps the GPU buffer that won't map. No sudo, reversible, persists across updates.</div>
+    </div>
+    <div class="row">
+      <div class="k"><span class="badge b-acc">Not the cause</span></div>
+      <div class="v">Pending reboot · suspend/resume · CachyOS&nbsp;v4 instruction mismatch · a Brave crash needing reinstall — <b>all ruled out by evidence</b> before the fix.</div>
+    </div>
+  </div>
+
+  <!-- CAUSAL CHAIN -->
+  <h2>How it was diagnosed</h2>
+  <div class="card">
+  <figure>
+  <svg viewBox="0 0 960 660" role="img" aria-label="Diagnostic causal chain flowchart">
+    <defs>
+      <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0 0L10 5L0 10z" fill="#5eead4"/>
+      </marker>
+      <marker id="arm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M0 0L10 5L0 10z" fill="#5d6b80"/>
+      </marker>
+    </defs>
+
+    <!-- spine connectors -->
+    <path d="M190 96 L190 118" stroke="#3a4a5e" stroke-width="2" fill="none" marker-end="url(#ar)"/>
+    <path d="M190 162 L190 292" stroke="#5eead4" stroke-width="2.5" fill="none" marker-end="url(#ar)"/>
+    <path d="M190 408 L190 436" stroke="#5ad888" stroke-width="2.5" fill="none" marker-end="url(#ar)"/>
+    <path d="M190 534 L190 558" stroke="#5ad888" stroke-width="2.5" fill="none" marker-end="url(#ar)"/>
+
+    <!-- dead-end branches to ruled-out hypotheses -->
+    <path d="M362 140 C 460 140, 470 144, 556 144" stroke="#3a4a5e" stroke-width="1.6" stroke-dasharray="5 4" fill="none" marker-end="url(#arm)"/>
+    <path d="M362 140 C 470 140, 480 228, 556 228" stroke="#3a4a5e" stroke-width="1.6" stroke-dasharray="5 4" fill="none" marker-end="url(#arm)"/>
+    <path d="M362 140 C 470 140, 480 312, 556 312" stroke="#3a4a5e" stroke-width="1.6" stroke-dasharray="5 4" fill="none" marker-end="url(#arm)"/>
+    <path d="M362 140 C 470 140, 480 396, 556 396" stroke="#3a4a5e" stroke-width="1.6" stroke-dasharray="5 4" fill="none" marker-end="url(#arm)"/>
+
+    <!-- SYMPTOM -->
+    <rect x="20" y="24" width="340" height="72" rx="11" fill="#23200f" stroke="#6b561f"/>
+    <rect x="20" y="24" width="4" height="72" rx="2" fill="#fbbf24"/>
+    <text x="38" y="48" fill="#fbbf24" font-family="monospace" font-size="11" font-weight="700" letter-spacing="1">SYMPTOM</text>
+    <text x="38" y="68" fill="#e7eefb" font-size="13.5">Video frozen on YouTube + Hotstar —</text>
+    <text x="38" y="86" fill="#e7eefb" font-size="13.5">picture stuck, no crash, page still responds.</text>
+
+    <!-- INVESTIGATION pill -->
+    <rect x="20" y="118" width="340" height="44" rx="10" fill="#101826" stroke="#2c3949"/>
+    <text x="38" y="145" fill="#8492a8" font-size="13"><tspan fill="#5eead4" font-weight="700">→ </tspan>Eliminate by evidence before any fix</text>
+
+    <!-- ROOT CAUSE -->
+    <rect x="18" y="292" width="344" height="116" rx="12" fill="#0e211f" stroke="#5eead4" stroke-width="2"/>
+    <rect x="18" y="292" width="4" height="116" rx="2" fill="#5eead4"/>
+    <text x="38" y="316" fill="#5eead4" font-family="monospace" font-size="11" font-weight="700" letter-spacing="1">ROOT CAUSE</text>
+    <text x="38" y="338" fill="#fff" font-size="13.5" font-weight="600">NVIDIA 610.x can't map GPU video buffers.</text>
+    <text x="38" y="360" fill="#bfe0d9" font-size="12.5">kernel: nvidia_drm “Failed to map</text>
+    <text x="38" y="377" fill="#bfe0d9" font-size="12.5">NvKmsKapiMemory” — Brave Media thread</text>
+    <text x="38" y="394" fill="#bfe0d9" font-size="12.5">SIGILLs in that path, same instant.</text>
+
+    <!-- FIX -->
+    <rect x="20" y="436" width="340" height="98" rx="12" fill="#11231a" stroke="#2f6b45"/>
+    <rect x="20" y="436" width="4" height="98" rx="2" fill="#5ad888"/>
+    <text x="38" y="460" fill="#5ad888" font-family="monospace" font-size="11" font-weight="700" letter-spacing="1">FIX</text>
+    <text x="38" y="481" fill="#eafff1" font-size="13" font-weight="600">Force the software video path</text>
+    <text x="38" y="500" fill="#c8e8d4" font-size="12" font-family="monospace">--disable-gpu-memory-buffer-video-frames</text>
+    <text x="38" y="517" fill="#c8e8d4" font-size="12" font-family="monospace">--disable-accelerated-video-decode</text>
+
+    <!-- VERIFIED -->
+    <rect x="20" y="558" width="340" height="62" rx="11" fill="#11231a" stroke="#2f6b45"/>
+    <text x="38" y="582" fill="#5ad888" font-family="monospace" font-size="11" font-weight="700" letter-spacing="1">✓ VERIFIED</text>
+    <text x="38" y="603" fill="#c8e8d4" font-size="12.5">Flags live in cmdline · 0 GPU/Media errors in playback</text>
+
+    <!-- RULED-OUT column -->
+    <text x="556" y="92" fill="#5d6b80" font-size="11" font-weight="700" letter-spacing="1.2">RULED OUT</text>
+    <!-- RO1 -->
+    <rect x="556" y="112" width="384" height="64" rx="10" fill="#161616" stroke="#3a2626"/>
+    <text x="574" y="138" font-size="13"><tspan fill="#f87171" font-weight="700">✗ </tspan><tspan fill="#d7c3c3">Pending reboot / module mismatch</tspan></text>
+    <text x="592" y="158" fill="#8a7a7a" font-size="11.5">booted after the upgrade; versions match; modules intact</text>
+    <!-- RO2 -->
+    <rect x="556" y="196" width="384" height="64" rx="10" fill="#161616" stroke="#3a2626"/>
+    <text x="574" y="222" font-size="13"><tspan fill="#f87171" font-weight="700">✗ </tspan><tspan fill="#d7c3c3">Suspend/resume VRAM loss</tspan></text>
+    <text x="592" y="242" fill="#8a7a7a" font-size="11.5">no sleep/resume events in the journal this boot</text>
+    <!-- RO3 -->
+    <rect x="556" y="280" width="384" height="64" rx="10" fill="#161616" stroke="#3a2626"/>
+    <text x="574" y="306" font-size="13"><tspan fill="#f87171" font-weight="700">✗ </tspan><tspan fill="#d7c3c3">CachyOS v4 / no-AVX-512 mismatch</tspan></text>
+    <text x="592" y="326" fill="#8a7a7a" font-size="11.5">i7-14700K correctly on the v3 repo (glibc confirms)</text>
+    <!-- RO4 -->
+    <rect x="556" y="364" width="384" height="64" rx="10" fill="#161616" stroke="#3a2626"/>
+    <text x="574" y="390" font-size="13"><tspan fill="#f87171" font-weight="700">✗ </tspan><tspan fill="#d7c3c3">Brave crash → reinstall / downgrade</tspan></text>
+    <text x="592" y="410" fill="#8a7a7a" font-size="11.5">it's stuck, not crashing — wrong read until clarified</text>
+  </svg>
+  <figcaption>Four hypotheses tested and eliminated (right); the spine is the path that held up to evidence.</figcaption>
+  </figure>
+  </div>
+
+  <!-- MECHANISM -->
+  <h2>The failure mechanism</h2>
+  <div class="card">
+  <figure>
+  <svg viewBox="0 0 1000 132" role="img" aria-label="Video pipeline showing where it breaks">
+    <defs>
+      <marker id="p" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M0 0L10 5L0 10z" fill="#5d6b80"/>
+      </marker>
+    </defs>
+    <!-- arrows -->
+    <path d="M178 66 L206 66" stroke="#5d6b80" stroke-width="2" marker-end="url(#p)"/>
+    <path d="M382 66 L410 66" stroke="#5d6b80" stroke-width="2" marker-end="url(#p)"/>
+    <path d="M586 66 L614 66" stroke="#f87171" stroke-width="2" marker-end="url(#p)"/>
+    <path d="M790 66 L818 66" stroke="#f87171" stroke-width="2" marker-end="url(#p)"/>
+    <!-- nodes -->
+    <g font-size="12" text-anchor="middle">
+      <rect x="14" y="38" width="164" height="56" rx="9" fill="#141c28" stroke="#243040"/>
+      <text x="96" y="62" fill="#cdd8e8">Brave decodes</text><text x="96" y="80" fill="#cdd8e8">a video frame</text>
+      <rect x="218" y="38" width="164" height="56" rx="9" fill="#141c28" stroke="#243040"/>
+      <text x="300" y="62" fill="#cdd8e8">Hands it to a</text><text x="300" y="80" fill="#cdd8e8">GPU memory buffer</text>
+      <rect x="422" y="34" width="164" height="64" rx="9" fill="#231313" stroke="#f87171" stroke-width="2"/>
+      <text x="504" y="58" fill="#f87171" font-weight="700">✗ NVIDIA KMS</text><text x="504" y="76" fill="#f4b9b9">map FAILS</text>
+      <rect x="626" y="38" width="164" height="56" rx="9" fill="#1d1614" stroke="#6b3f2f"/>
+      <text x="708" y="62" fill="#f3c6a6">Media thread</text><text x="708" y="80" fill="#f3c6a6">traps (SIGILL)</text>
+      <rect x="822" y="34" width="164" height="64" rx="9" fill="#23200f" stroke="#fbbf24" stroke-width="2"/>
+      <text x="904" y="58" fill="#fbbf24" font-weight="700">Frame never</text><text x="904" y="76" fill="#f6dca0">shown → FREEZE</text>
+    </g>
+  </svg>
+  <figcaption>The break is at step 3 — everything upstream works, which is why the page stays alive while the picture locks.</figcaption>
+  </figure>
+  </div>
+
+  <!-- EVIDENCE -->
+  <h2>Evidence</h2>
+  <div class="card" style="padding:8px 22px 16px">
+  <table>
+    <thead><tr><th style="width:120px">When</th><th>Signal</th><th style="width:150px">Reading</th></tr></thead>
+    <tbody>
+      <tr><td class="ts">03:23:16</td><td><code>nvidia_drm … Failed to map NvKmsKapiMemory</code> <span style="color:var(--muted)">paired same-instant with</span> <code>traps: Media[…] invalid opcode … in brave</code></td><td><span class="badge b-bad">cause</span></td></tr>
+      <tr><td class="ts">boot 23:09</td><td>Booted <em>after</em> the 18:42 upgrade; <code>uname -r</code> = installed kernel; nvidia kmod 610.43.02 = nvidia-smi; module tree present</td><td><span class="badge b-acc">not reboot</span></td></tr>
+      <tr><td class="ts">this boot</td><td>No <code>suspend</code>/<code>resume</code>/<code>sleep</code> events in the journal</td><td><span class="badge b-acc">not resume</span></td></tr>
+      <tr><td class="ts">—</td><td>i7-14700K (no AVX-512); glibc hwcaps tops out at <code>x86-64-v3</code>; system on <code>cachyos-v3</code> repo</td><td><span class="badge b-acc">not v4</span></td></tr>
+      <tr><td class="ts">—</td><td>All 9 traps are Brave's <code>Media</code> thread; no Firefox/Chrome/Vivaldi traps; symptom is freeze, not crash</td><td><span class="badge b-acc">app-local</span></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <!-- FIX -->
+  <h2>The fix</h2>
+  <p class="lede" style="margin-bottom:14px"><code>~/.config/brave-flags.conf</code> — read by the <code>/usr/bin/brave</code> wrapper (it skips <code>#</code>/blank lines, one flag per line). No sudo; delete the file to revert.</p>
+  <div class="codewrap">
+    <button class="copy" onclick="copyEl('flags',this)">Copy</button>
+<pre id="flags"><span class="cm"># Force software video path — NVIDIA 610.x can't map GPU video buffers.</span>
+<span class="flag">--disable-gpu-memory-buffer-video-frames</span>
+<span class="flag">--disable-accelerated-video-decode</span></pre>
+  </div>
+  <div class="note" style="margin-top:14px">Applying it needs a <b>full Brave restart</b> — <code>pkill brave</code> (~40 procs); closing a window leaves a background process that keeps the old flags. Reopen, then check <code>brave://version</code> → the flags should appear in the Command Line row.</div>
+
+  <!-- VERIFICATION -->
+  <h2>Verification</h2>
+  <div class="grid2">
+    <div class="mini"><div class="t">Brave processes</div>
+      <div class="big"><span class="strike">43</span> → 0 → relaunched</div>
+      <div style="color:var(--muted);font-size:13px;margin-top:6px">killed clean, came back with both flags live in its command line</div></div>
+    <div class="mini"><div class="t">GPU / Media errors during playback</div>
+      <div class="big" style="color:var(--success)">0</div>
+      <div style="color:var(--muted);font-size:13px;margin-top:6px">last error 03:23:16 was <em>before</em> the restart; none since — fixed at the system level, not just visually</div></div>
+  </div>
+
+  <!-- REVERT -->
+  <h2>Revert &amp; future</h2>
+  <div class="card" style="font-size:14.5px">
+    This is a <b>driver-bug workaround</b>, not a Brave defect. When a newer NVIDIA driver fixes the mapping,
+    remove <code>--disable-accelerated-video-decode</code> first to get hardware (NVDEC) decode back; keep
+    <code>--disable-gpu-memory-buffer-video-frames</code> if frames still stall. Other Chromium/Electron apps
+    (Vesktop/Discord, …) using the same GPU video path may need the equivalent flag.
+  </div>
+
+  <details>
+    <summary><span class="chev">▸</span> Why each hypothesis was dropped (full reasoning)</summary>
+    <div class="body">
+      <table>
+        <tbody>
+          <tr><td style="width:230px"><b>Pending reboot</b></td><td>Box booted 23:09, <em>after</em> the 18:42 kernel/nvidia upgrade; running kernel = installed package; loaded nvidia kmod version = nvidia-smi; <code>/usr/lib/modules/$(uname -r)</code> present. No mismatch.</td></tr>
+          <tr><td><b>Suspend/resume</b></td><td><code>NvKmsKapiMemory</code> failures classically follow VRAM loss on wake — but the journal shows zero sleep/resume events this boot. Not it.</td></tr>
+          <tr><td><b>CachyOS v4 / AVX-512</b></td><td>"Invalid opcode" on CachyOS often means v4 binaries on a CPU without AVX-512. But the 14700K has no AVX-512 <em>and</em> the system is correctly on <code>cachyos-v3</code> (glibc hwcaps confirm) — libraries match the CPU.</td></tr>
+          <tr><td><b>Brave crash → reinstall</b></td><td>The early read (5× SIGILL coredumps) suggested a corrupt/regressed Brave. The user clarified the videos are <em>stuck, not crashing</em> — repointing the diagnosis at the GPU buffer path, where forcing software decode fixed it without touching the package.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+
+  <footer>
+    Generated by Claude · self-contained, offline (<code>file://</code>), inline SVG — no libraries, no CDNs.<br>
+    A demonstration of the <em>visual-first</em> deliverable bar: lead with the diagram, let prose annotate it.
+  </footer>
+
+</div>
+
+<script>
+  function copyEl(id, btn){
+    var el=document.getElementById(id);
+    var text=el.innerText.replace(/^#.*\n/,'').trim();
+    navigator.clipboard.writeText(text).then(function(){
+      var o=btn.textContent; btn.textContent='Copied ✓';
+      setTimeout(function(){btn.textContent=o;},1300);
+    });
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZEE5 in the Wine Bottle — Hardware-Acceleration Wall</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --line:#2b3340;
+    --txt:#e6edf3; --dim:#9aa7b4; --accent:#ff9900; --accent2:#5eb1ff;
+    --ok:#3fb950; --warn:#d29922; --bad:#f85149; --purple:#bc8cff;
+    --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:Inter,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);line-height:1.55;
+       padding:48px 20px;max-width:1000px;margin-inline:auto;font-size:15px}
+  h1{font-size:29px;margin:0 0 4px;letter-spacing:-.02em}
+  h2{font-size:20px;margin:42px 0 14px;padding-bottom:7px;border-bottom:1px solid var(--line);letter-spacing:-.01em}
+  h3{font-size:15px;margin:18px 0 8px;color:var(--accent2)}
+  p{margin:10px 0}
+  a{color:var(--accent2)}
+  code,kbd{font-family:var(--mono);font-size:.85em;background:var(--panel2);border:1px solid var(--line);
+       padding:1px 6px;border-radius:5px;color:#ffd9a0}
+  pre{background:#0a0e14;border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow:auto;
+       font-family:var(--mono);font-size:12.5px;color:#cfe3ff;line-height:1.5}
+  .sub{color:var(--dim);font-size:14px;margin-top:2px}
+  .tag{display:inline-block;font-family:var(--mono);font-size:11px;padding:2px 9px;border-radius:999px;
+       border:1px solid var(--line);background:var(--panel2);color:var(--dim);vertical-align:middle}
+  .tag.bad{color:var(--bad);border-color:#7a2620}.tag.ok{color:var(--ok);border-color:#1f6f33}
+  .tag.warn{color:var(--warn);border-color:#6b5d1f}
+  .note{border-left:3px solid var(--accent);background:#1a160d;padding:11px 15px;border-radius:0 8px 8px 0;margin:14px 0}
+  .bad-note{border-left-color:var(--bad);background:#1a0f0e}
+  .ok-note{border-left-color:var(--ok);background:#0f1a12}
+  table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13.5px}
+  th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:var(--dim);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+  td code{font-size:.9em}
+  .b{color:var(--bad);font-weight:600}.g{color:var(--ok);font-weight:600}.w{color:var(--warn);font-weight:600}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px 20px 18px;margin:16px 0}
+  /* timeline */
+  .tl{list-style:none;padding:0;margin:14px 0}
+  .tl li{position:relative;padding:10px 0 14px 30px;border-left:2px solid var(--line);margin-left:8px}
+  .tl li::before{content:"";position:absolute;left:-8px;top:14px;width:13px;height:13px;border-radius:50%;
+       background:var(--bg);border:2px solid var(--bad)}
+  .tl li.fix::before{border-color:var(--warn)}
+  .tl li.root::before{border-color:var(--ok);background:var(--ok)}
+  .tl b{color:var(--txt)} .tl .r{color:var(--dim);font-size:13.5px}
+  svg{max-width:100%;height:auto;display:block;margin:6px auto}
+  footer{margin-top:46px;padding-top:16px;border-top:1px solid var(--line);color:var(--dim);font-size:12.5px}
+</style>
+</head>
+<body>
+
+<h1>ZEE5 in the Wine Bottle — the Hardware-Acceleration Wall</h1>
+<div class="sub">Problem statement &amp; debugging findings · CachyOS / Hyprland · bottle <code>primevideo-tkg9</code> · 2026-06-24
+  &nbsp;<span class="tag bad">BLOCKED — architectural</span></div>
+
+<div class="note bad-note">
+<b>Verdict.</b> ZEE5 cannot run in the Windows-Brave / Wine-TkG bottle on this machine. It demands GPU
+<b>hardware acceleration</b>, and <b>every</b> GPU path available to Chromium under Wine here is blocked —
+not by a missing flag, but by Wine's WGL/WSI limitations on this NVIDIA+Intel hybrid. Prime Video works
+only because it tolerates <i>software</i> rendering; ZEE5 does not. <b>Fix: run ZEE5 in native Linux Brave</b>
+(real hardware acceleration), keeping the same <kbd>Super+Shift+Z</kbd> / <code>special:zee5</code> setup.
+</div>
+
+<h2>1 · Problem statement</h2>
+<p><b>Goal.</b> Mirror the Prime Video setup for ZEE5: launch ZEE5 in the same Wine-TkG bottle (Windows Brave),
+on <kbd>Super+Shift+Z</kbd> with its own <code>special:zee5</code> workspace.</p>
+<p><b>Symptom.</b> ZEE5's player refuses to start and shows:</p>
+<pre>Hardware Acceleration Required For Video Playback
+To enable: Open Chrome Settings &gt; System &gt; Turn on "Use hardware acceleration when available"</pre>
+<p>The keybind, workspace routing, and window all work — ZEE5 <i>loads</i>, but blocks playback at the
+hardware-acceleration gate. The same bottle plays Prime Video at 1080p without complaint.</p>
+
+<h2>2 · Why every GPU path in the bottle is blocked</h2>
+<p>Chromium can drive its GPU through several backends. Under Wine on this hardware, each one hits a wall:</p>
+
+<svg viewBox="0 0 960 360" role="img" aria-label="Diagram: every Chromium GPU backend fails under Wine">
+  <defs>
+    <marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L7,3 L0,6 Z" fill="#5b6677"/></marker>
+    <style>
+      .bx{fill:#161b22;stroke:#2b3340;rx:8}
+      .lbl{fill:#e6edf3;font:600 13px Inter,sans-serif}
+      .sm{fill:#9aa7b4;font:11px JetBrains Mono,monospace}
+      .ln{stroke:#5b6677;stroke-width:1.5;fill:none;marker-end:url(#ar)}
+      .bad rect{stroke:#7a2620} .bad .lbl{fill:#f85149}
+      .warn rect{stroke:#6b5d1f} .warn .lbl{fill:#d29922}
+    </style>
+  </defs>
+
+  <!-- source -->
+  <g>
+    <rect class="bx" x="14" y="150" width="120" height="60" rx="8"/>
+    <text class="lbl" x="74" y="176" text-anchor="middle">Chromium</text>
+    <text class="sm" x="74" y="194" text-anchor="middle">GPU process</text>
+  </g>
+
+  <!-- backend lanes: y = 40,120,200,280 -->
+  <!-- GL -->
+  <g class="warn">
+    <line class="ln" x1="134" y1="172" x2="196" y2="58"/>
+    <rect class="bx" x="198" y="34" width="150" height="48"/>
+    <text class="lbl" x="273" y="54" text-anchor="middle">ANGLE → OpenGL</text>
+    <text class="sm" x="273" y="71" text-anchor="middle">--use-angle=gl</text>
+    <line class="ln" x1="348" y1="58" x2="410" y2="58"/>
+    <rect class="bx warn" x="412" y="34" width="276" height="48"/>
+    <text class="sm" x="424" y="53">WGL_NV_DX_interop2 missing in Wine</text>
+    <text class="sm" x="424" y="70">→ eglInitialize fails → GPU process exits</text>
+    <line class="ln" x1="688" y1="58" x2="750" y2="120"/>
+  </g>
+  <!-- D3D11 -->
+  <g class="bad">
+    <line class="ln" x1="134" y1="176" x2="196" y2="138"/>
+    <rect class="bx" x="198" y="114" width="150" height="48"/>
+    <text class="lbl" x="273" y="134" text-anchor="middle">ANGLE → D3D11</text>
+    <text class="sm" x="273" y="151" text-anchor="middle">DXVK → Vulkan</text>
+    <line class="ln" x1="348" y1="138" x2="410" y2="138"/>
+    <rect class="bx bad" x="412" y="114" width="276" height="48"/>
+    <text class="sm" x="424" y="133">Vulkan swapchain / WSI init fails</text>
+    <text class="sm" x="424" y="150">(NVIDIA + XWayland) → blank window</text>
+    <line class="ln" x1="688" y1="150" x2="752" y2="210"/>
+  </g>
+  <!-- Vulkan -->
+  <g class="bad">
+    <line class="ln" x1="134" y1="186" x2="196" y2="218"/>
+    <rect class="bx" x="198" y="194" width="150" height="48"/>
+    <text class="lbl" x="273" y="214" text-anchor="middle">ANGLE → Vulkan</text>
+    <text class="sm" x="273" y="231" text-anchor="middle">winevulkan</text>
+    <line class="ln" x1="348" y1="218" x2="410" y2="218"/>
+    <rect class="bx bad" x="412" y="194" width="276" height="48"/>
+    <text class="sm" x="424" y="213">Same WSI swapchain failure</text>
+    <text class="sm" x="424" y="230">→ blank window</text>
+    <line class="ln" x1="688" y1="218" x2="752" y2="212"/>
+  </g>
+  <!-- SwiftShader -->
+  <g class="warn">
+    <line class="ln" x1="134" y1="190" x2="196" y2="298"/>
+    <rect class="bx" x="198" y="274" width="150" height="48"/>
+    <text class="lbl" x="273" y="294" text-anchor="middle">SwiftShader / WARP</text>
+    <text class="sm" x="273" y="311" text-anchor="middle">CPU by design</text>
+    <line class="ln" x1="348" y1="298" x2="410" y2="298"/>
+    <rect class="bx warn" x="412" y="274" width="276" height="48"/>
+    <text class="sm" x="424" y="293">Renders, but is software —</text>
+    <text class="sm" x="424" y="310">not "hardware accelerated"</text>
+    <line class="ln" x1="688" y1="298" x2="750" y2="216"/>
+  </g>
+
+  <!-- converge -->
+  <rect class="bx" x="752" y="120" width="196" height="118" rx="10" style="stroke:#7a2620"/>
+  <text x="850" y="150" text-anchor="middle" style="fill:#f85149;font:700 13px Inter">No usable HW-accel</text>
+  <text x="850" y="168" text-anchor="middle" style="fill:#f85149;font:700 13px Inter">rendering path</text>
+  <text x="850" y="196" text-anchor="middle" class="sm">software-only</text>
+  <text x="850" y="212" text-anchor="middle" class="sm">or blank window</text>
+  <text x="850" y="230" text-anchor="middle" style="fill:#e6edf3;font:600 12px Inter">ZEE5 refuses ✗</text>
+</svg>
+<p class="sub">Red = blank window (GPU present path crashes); amber = falls back to software (ZEE5 rejects it).</p>
+
+<h2>3 · How we got here (hypotheses ruled out)</h2>
+<p>Worked through systematically — each fix attempt, and why it failed:</p>
+<ul class="tl">
+  <li><b>H1 · <code>--use-angle=gl</code></b> (route the compositor via OpenGL). <span class="r">Window rendered, but ZEE5 still blocked. <span class="b">Ruled out.</span></span></li>
+  <li><b>H2 · <code>+ --ignore-gpu-blocklist</code></b> (force past Chromium's GPU blocklist). <span class="r">No change. <span class="b">Ruled out.</span></span></li>
+  <li class="fix"><b>Methodology fix.</b> <span class="r">Realized Brave is <b>single-instance</b> — the running <code>--disable-gpu</code> process was <i>ignoring</i> the new flags. Re-tested by fully killing the bottle's Brave first (<code>wineserver -k</code>) so flags actually applied.</span></li>
+  <li><b>H3 · clean launch, flags genuinely applied.</b> <span class="r">Still blocked. <span class="b">Ruled out.</span></span></li>
+  <li class="fix"><b>Cleared GPU shader cache.</b> <span class="r">A repeating <code>Sharing violation</code> on <code>DawnGraphiteCache</code> was noise, not the cause. <span class="b">Not it.</span></span></li>
+  <li class="root"><b>Evidence: <code>brave://gpu</code>.</b> <span class="r">Definitive — every feature <span class="b">Software only / Disabled</span>, with the exact failing extension named. <span class="g">Root cause found.</span></span></li>
+</ul>
+
+<h2>4 · Root cause — definitive, from <code>brave://gpu</code></h2>
+<p>The GPU page reports <b>Software Rendering: Yes</b> and <code>GL_RENDERER = SwANGLE</code> (D3D11-WARP, a software rasterizer). Every line of the Graphics Feature Status is <span class="b">Software only</span> or <span class="b">Disabled</span>. The Log Messages give the precise chain:</p>
+<pre>ANGLE Display::initialize error 12289: <span style="color:#f85149">WGL_NV_DX_interop2 is required but not present</span>
+EGL Driver message (Critical) eglInitialize: WGL_NV_DX_interop2 is required but not present
+eglInitialize OpenGL failed with error EGL_NOT_INITIALIZED
+Initialization of all (1) EGL display types failed
+<span style="color:#f85149">Exiting GPU process due to errors during initialization</span>
+...
+media\base\win\mf_initializer.cc: Failed to start Media Foundation ... <span style="color:#f85149">Could not load mf.dll</span></pre>
+<div class="note">
+<b>In plain terms:</b> the OpenGL backend needs the WGL extension <code>WGL_NV_DX_interop2</code>, which <b>Wine's WGL does not implement</b> → GL initialization fails → the GPU process dies → Chromium falls back to a CPU rasterizer. The D3D11/Vulkan backends would use real GPU, but they hit the <b>Vulkan swapchain (WSI) failure</b> that blanks the window (the original Prime bug). And <b>Media Foundation can't load</b> (<code>mf.dll</code> absent — it was stripped to fix Prime's crash), so accelerated <i>video decode</i> is impossible regardless. There is no remaining path to hardware acceleration in this bottle.</p>
+</div>
+
+<h2>5 · The backend matrix</h2>
+<table>
+  <tr><th>GPU backend</th><th>Path under Wine</th><th>Outcome</th><th>Blocker</th></tr>
+  <tr><td><code>--use-angle=gl</code></td><td>WGL → host GL</td><td class="w">software fallback</td><td><code>WGL_NV_DX_interop2</code> missing in Wine → EGL init fails → GPU process exits</td></tr>
+  <tr><td><code>--use-angle=d3d11</code> <span class="sub">(default)</span></td><td>DXVK → Vulkan</td><td class="b">blank window</td><td>Vulkan swapchain / WSI init fails on NVIDIA + XWayland</td></tr>
+  <tr><td><code>--use-angle=vulkan</code></td><td>winevulkan → DXVK</td><td class="b">blank window</td><td>same WSI swapchain failure</td></tr>
+  <tr><td><code>--use-angle=swiftshader</code></td><td>CPU</td><td class="w">software</td><td>software by design — not "hardware accelerated"</td></tr>
+  <tr><td>video decode (any)</td><td>Media Foundation</td><td class="b">unavailable</td><td><code>mf.dll</code> not loadable (removed to fix Prime's playback crash)</td></tr>
+</table>
+<p class="sub">No combination yields a hardware-accelerated <i>and</i> visible window. That intersection is empty on this setup.</p>
+
+<h2>6 · Why Prime works but ZEE5 doesn't</h2>
+<table>
+  <tr><th></th><th>Prime Video</th><th>ZEE5</th></tr>
+  <tr><td>Software rendering</td><td class="g">tolerated → plays fine (1080p)</td><td class="b">rejected → hard gate</td></tr>
+  <tr><td>Needs the bottle?</td><td class="g">yes — gives a "Windows" client for 1080p</td><td class="b">no benefit — and can't even start</td></tr>
+  <tr><td>Right tool here</td><td>Wine bottle (software OK)</td><td>native Linux Brave (real HW accel)</td></tr>
+</table>
+
+<h2>7 · Recommendation</h2>
+<div class="note ok-note">
+<b>Run ZEE5 in native Linux Brave.</b> It has genuine hardware acceleration, so ZEE5's gate passes and it plays. Keep the
+<kbd>Super+Shift+Z</kbd> keybind and the <code>special:zee5</code> workspace — only the launcher target and the window-routing
+class change (native Brave is <code>brave-browser</code>, not the bottle's <code>brave.exe</code>). <b>Prime Video is unaffected</b>
+— it stays in the bottle exactly as it is.
+</div>
+<p class="sub">Not pursued further (each is a deep Wine-internals project with low odds and no resolution upside over native): implementing
+<code>WGL_NV_DX_interop2</code> in Wine, fixing the Vulkan WSI swapchain on this NVIDIA/XWayland combo, or wiring VA-API video
+decode through Wine.</p>
+
+<footer>
+Findings from a systematic-debugging session, 2026-06-24. Evidence: bottle <code>primevideo-tkg9</code> (Brave 1.91 /
+Wine-TkG 10.8), <code>brave://gpu</code> dump (Chrome 149, all features software; <code>WGL_NV_DX_interop2</code> absent;
+<code>mf.dll</code> not loadable). Companion to <code>prime-video-hd</code> runbook.
+</footer>
+
+</body>
+</html>

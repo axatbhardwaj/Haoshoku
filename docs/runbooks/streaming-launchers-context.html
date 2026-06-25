@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brave App-Mode Launchers on Hyprland — Context</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --line:#2b3340;
+    --txt:#e6edf3; --dim:#9aa7b4; --accent:#ff9900; --accent2:#5eb1ff;
+    --ok:#3fb950; --warn:#d29922; --bad:#f85149; --pur:#bc8cff; --wa:#25d366;
+    --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:Inter,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);line-height:1.55;
+       padding:46px 20px;max-width:1060px;margin-inline:auto;font-size:15px}
+  h1{font-size:30px;margin:0 0 4px;letter-spacing:-.02em}
+  h2{font-size:20px;margin:42px 0 14px;padding-bottom:7px;border-bottom:1px solid var(--line)}
+  h3{font-size:15px;margin:18px 0 7px;color:var(--accent2)}
+  p{margin:10px 0}
+  a{color:var(--accent2)}
+  code,kbd{font-family:var(--mono);font-size:.85em;background:var(--panel2);border:1px solid var(--line);
+       padding:1px 6px;border-radius:5px;color:#ffd9a0}
+  kbd{color:#cfe3ff}
+  pre{background:#0a0e14;border:1px solid var(--line);border-radius:10px;padding:13px 15px;overflow:auto;
+       font-family:var(--mono);font-size:12.5px;color:#cfe3ff;line-height:1.5}
+  .sub{color:var(--dim);font-size:14px;margin-top:2px}
+  .tag{display:inline-block;font-family:var(--mono);font-size:11px;padding:2px 9px;border-radius:999px;
+       border:1px solid var(--line);background:var(--panel2);color:var(--dim);vertical-align:middle;margin:2px}
+  .tag.ok{color:var(--ok);border-color:#1f6f33}.tag.warn{color:var(--warn);border-color:#6b5d1f}
+  .tag.pur{color:var(--pur);border-color:#5b3f8a}.tag.blue{color:var(--accent2);border-color:#27496b}
+  .tag.wa{color:var(--wa);border-color:#1f6b3f}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:var(--dim);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em}
+  td code{font-size:.92em}
+  .g{color:var(--ok)}.w{color:var(--warn)}.b{color:var(--bad)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin:14px 0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 17px}
+  .card h3{margin-top:4px}
+  .card .kv{font-family:var(--mono);font-size:12px;color:var(--dim);margin:3px 0}
+  .card .kv b{color:var(--txt);font-weight:600}
+  .note{border-left:3px solid var(--accent);background:#1a160d;padding:11px 15px;border-radius:0 8px 8px 0;margin:14px 0}
+  .ok-note{border-left-color:var(--ok);background:#0f1a12}
+  svg{max-width:100%;height:auto;display:block;margin:8px auto}
+  footer{margin-top:44px;padding-top:15px;border-top:1px solid var(--line);color:var(--dim);font-size:12.5px}
+</style>
+</head>
+<body>
+
+<h1>Brave App-Mode Launchers on Hyprland</h1>
+<div class="sub">Context for the five chromeless app launchers — CachyOS / Hyprland / Caelestia, managed by Haoshoku (v5.9.9). Generated 2026-06-25.</div>
+<div style="margin-top:12px">
+  <span class="tag warn">Prime Video · Wine bottle</span>
+  <span class="tag ok">ZEE5 · native + selector</span>
+  <span class="tag blue">Crunchyroll · native</span>
+  <span class="tag pur">JioHotstar · native</span>
+  <span class="tag wa">WhatsApp · native</span>
+</div>
+
+<div class="note ok-note">
+<b>TL;DR.</b> Five chromeless app windows — four streaming (Prime, ZEE5, Crunchyroll, JioHotstar) plus WhatsApp Web —
+each pinned to a workspace and a keybind. <b>Prime</b> needs a <b>Windows-Brave Wine bottle</b> for 1080p (Linux is
+throttled); everyone else runs in <b>native Linux Brave</b>. Windows route to workspaces by their <b>app-id class</b>,
+so they never collide. Every native launcher now lives in its <b>own dedicated Brave profile</b>
+(<code>~/.local/share/&lt;app&gt;-brave-profile</code>) — isolated from your personal Default profile and from each other.
+</div>
+
+<h2>1 · At a glance</h2>
+<table>
+  <tr><th>Service</th><th>Keybind</th><th>Workspace</th><th>Engine</th><th>Profile</th><th>Max res</th><th>Launcher</th></tr>
+  <tr>
+    <td><b>Prime Video</b></td><td><kbd>Super+Shift+P</kbd></td><td><code>special:primevideo</code></td>
+    <td class="w">Wine-TkG 10.8 bottle<br><span class="sub">Windows Brave 1.91</span></td>
+    <td>in-bottle</td><td class="g">1080p <span class="sub">(fullscreen)</span></td>
+    <td><code>primevideo-hd</code></td>
+  </tr>
+  <tr>
+    <td><b>ZEE5</b></td><td><kbd>Super+Shift+Z</kbd></td><td><code>special:zee5</code></td>
+    <td class="g">native Brave<br><span class="sub">+ CDP Full-HD selector</span></td>
+    <td>dedicated <span class="sub">(seeded)</span></td><td class="g">1080p <span class="sub">(auto-selected)</span></td>
+    <td><code>zee5-hd</code></td>
+  </tr>
+  <tr>
+    <td><b>Crunchyroll</b></td><td><kbd>Super+Shift+C</kbd></td><td><code>special:crunchyroll</code></td>
+    <td class="g">native Brave</td><td>dedicated <span class="sub">(fresh)</span></td>
+    <td class="g">1080p <span class="sub">(native)</span></td><td><code>crunchyroll-hd</code></td>
+  </tr>
+  <tr>
+    <td><b>JioHotstar</b></td><td><kbd>Super+Shift+J</kbd></td><td><code>special:jiohotstar</code></td>
+    <td class="g">native Brave</td><td>dedicated <span class="sub">(fresh)</span></td>
+    <td class="w">Linux-served <span class="sub">(L3 / sw path)</span></td><td><code>jiohotstar-hd</code></td>
+  </tr>
+  <tr>
+    <td><b>WhatsApp Web</b></td><td><kbd>Super+D</kbd></td><td><code>special:communication</code></td>
+    <td class="g">native Brave</td><td>dedicated <span class="sub">(fresh / QR)</span></td>
+    <td class="sub">— messaging</td><td><code>whatsapp-web</code></td>
+  </tr>
+</table>
+<p class="sub">All launchers live in <code>~/.local/bin/</code> and are invoked via <code>caelestia toggle &lt;name&gt;</code> (show/hide + launch). WhatsApp shares the <code>communication</code> toggle (Super+D) with Signal — it <b>replaced the ZapZap Flatpak</b>. Source in Haoshoku <code>configs/scripts/</code> + <code>configs/caelestia/</code>; desktop entries in <code>configs/mimeapps/applications/</code>.</p>
+
+<h2>2 · How a keypress becomes a routed window</h2>
+<svg viewBox="0 0 980 250" role="img" aria-label="Routing flow from keybind to workspace">
+  <defs>
+    <marker id="a" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#5b6677"/></marker>
+    <style>.bx{fill:#161b22;stroke:#2b3340;rx:8}.l{fill:#e6edf3;font:600 13px Inter,sans-serif}.s{fill:#9aa7b4;font:11px JetBrains Mono,monospace}.ln{stroke:#5b6677;stroke-width:1.5;fill:none;marker-end:url(#a)}</style>
+  </defs>
+  <rect class="bx" x="12" y="96" width="120" height="56" rx="8"/><text class="l" x="72" y="120" text-anchor="middle">keybind</text><text class="s" x="72" y="138" text-anchor="middle">Super+Shift+C</text>
+  <line class="ln" x1="132" y1="124" x2="184" y2="124"/>
+  <rect class="bx" x="186" y="96" width="150" height="56" rx="8"/><text class="l" x="261" y="120" text-anchor="middle">caelestia toggle</text><text class="s" x="261" y="138" text-anchor="middle">show/hide + launch</text>
+  <line class="ln" x1="336" y1="124" x2="388" y2="124"/>
+  <rect class="bx" x="390" y="96" width="150" height="56" rx="8"/><text class="l" x="465" y="120" text-anchor="middle">~/.local/bin</text><text class="s" x="465" y="138" text-anchor="middle">launcher (own profile)</text>
+  <line class="ln" x1="540" y1="124" x2="592" y2="86"/>
+  <line class="ln" x1="540" y1="124" x2="592" y2="162"/>
+  <rect class="bx" x="594" y="44" width="172" height="52" rx="8" style="stroke:#1f6f33"/><text class="l" x="680" y="65" text-anchor="middle" style="fill:#3fb950">native Brave</text><text class="s" x="680" y="82" text-anchor="middle">ZEE5/CR/JioHotstar/WA</text>
+  <rect class="bx" x="594" y="152" width="172" height="52" rx="8" style="stroke:#6b5d1f"/><text class="l" x="680" y="173" text-anchor="middle" style="fill:#d29922">Wine bottle</text><text class="s" x="680" y="190" text-anchor="middle">Prime Video</text>
+  <line class="ln" x1="766" y1="70" x2="818" y2="110"/>
+  <line class="ln" x1="766" y1="178" x2="818" y2="138"/>
+  <rect class="bx" x="820" y="92" width="150" height="64" rx="8" style="stroke:#27496b"/>
+  <text class="s" x="895" y="114" text-anchor="middle">match app-id class</text>
+  <text class="l" x="895" y="133" text-anchor="middle" style="fill:#5eb1ff">special:&lt;ws&gt;</text>
+  <text class="s" x="895" y="149" text-anchor="middle">pinned workspace</text>
+  <text class="s" x="430" y="225" text-anchor="middle">Routing key: class is brave-www.&lt;host&gt;__-Default / brave-web.whatsapp.com__-Default (native) or brave.exe (bottle) — unique per app.</text>
+</svg>
+<p class="sub">The dedicated <code>--user-data-dir</code> does <b>not</b> change the class — the suffix comes from <code>--profile-directory=Default</code>, so the window class (and therefore routing) is identical whether the profile is shared or isolated.</p>
+
+<h2>3 · Two engines, and the profile model</h2>
+<div class="grid">
+  <div class="card">
+    <h3>🍷 Wine bottle — Prime Video only</h3>
+    <p>Amazon throttles Prime on Linux to 540p. A <b>Windows-Brave bottle</b> (Wine-TkG 10.8) presents a "Windows" client and unlocks <b>1080p</b> (fullscreen — Prime picks resolution by viewport). Built by <code>primevideo-setup</code>.</p>
+    <p class="sub">Software-rendered to dodge the NVIDIA Vulkan-WSI blank window; Prime tolerates that.</p>
+  </div>
+  <div class="card">
+    <h3>🦁 Native Brave — everyone else</h3>
+    <p>ZEE5, Crunchyroll, JioHotstar, WhatsApp run in <b>native Linux Brave</b> — it has real hardware acceleration, which these players require. The bottle <b>cannot</b> give them that here (Wine lacks <code>WGL_NV_DX_interop2</code>; Vulkan WSI fails; no Media Foundation).</p>
+    <p class="sub">See the findings: <code>~/zee5-bottle-hwaccel-findings.html</code>.</p>
+  </div>
+</div>
+<div class="note">
+<b>Profile isolation.</b> Each app gets its own profile so logins, cookies, and history never mix with personal browsing or each other:
+<ul style="margin:8px 0 2px;padding-left:20px">
+  <li><b>Prime</b> — the Wine bottle <i>is</i> the profile (Amazon sign-in lives inside the bottle).</li>
+  <li><b>ZEE5</b> — isolated <code>~/.local/share/zee5-brave-profile</code>, <b>seeded</b> from Default (the CDP Full-HD automation needs the login already present).</li>
+  <li><b>Crunchyroll / JioHotstar / WhatsApp</b> — isolated, <b>fresh</b> (no seeding): a clean profile created on first launch, so you <b>log in once</b> per app (WhatsApp = one QR scan). This keeps them reproducible and uncoupled from your Default profile's cookie clears.</li>
+</ul>
+</div>
+
+<h2>4 · Per-service detail</h2>
+<div class="grid">
+  <div class="card">
+    <h3 style="color:var(--warn)">Prime Video</h3>
+    <div class="kv"><b>class</b> brave.exe</div>
+    <div class="kv"><b>initialTitle</b> www.primevideo.com_/</div>
+    <div class="kv"><b>bottle</b> primevideo-tkg9</div>
+    <div class="kv"><b>setup</b> primevideo-setup (GUI + sign-in)</div>
+    <div class="kv"><b>note</b> go fullscreen for 1080p</div>
+  </div>
+  <div class="card">
+    <h3 style="color:var(--ok)">ZEE5</h3>
+    <div class="kv"><b>class</b> brave-www.zee5.com__-Default</div>
+    <div class="kv"><b>profile</b> dedicated, seeded Default+Local State</div>
+    <div class="kv"><b>selector</b> CDP loop auto-picks "Full HD - 1080p"</div>
+    <div class="kv"><b>cdp</b> 127.0.0.1, closes on window-close</div>
+  </div>
+  <div class="card">
+    <h3 style="color:var(--accent2)">Crunchyroll</h3>
+    <div class="kv"><b>class</b> brave-www.crunchyroll.com__-Default</div>
+    <div class="kv"><b>profile</b> dedicated crunchyroll-brave-profile (fresh)</div>
+    <div class="kv"><b>selector</b> none — 1080p native</div>
+    <div class="kv"><b>url</b> www.crunchyroll.com</div>
+  </div>
+  <div class="card">
+    <h3 style="color:var(--pur)">JioHotstar</h3>
+    <div class="kv"><b>class</b> brave-www.jiohotstar.com__-Default</div>
+    <div class="kv"><b>profile</b> dedicated jiohotstar-brave-profile (fresh)</div>
+    <div class="kv"><b>selector</b> none</div>
+    <div class="kv"><b>note</b> software video path; res Linux-served, not guaranteed 1080p</div>
+  </div>
+  <div class="card">
+    <h3 style="color:var(--wa)">WhatsApp Web</h3>
+    <div class="kv"><b>class</b> brave-web.whatsapp.com__-Default</div>
+    <div class="kv"><b>profile</b> dedicated whatsapp-brave-profile (QR scan)</div>
+    <div class="kv"><b>workspace</b> special:communication (with Signal)</div>
+    <div class="kv"><b>note</b> replaced the ZapZap Flatpak; opened via Super+D</div>
+  </div>
+</div>
+
+<h2>5 · Keybind map</h2>
+<table>
+  <tr><th>Chord</th><th>Action</th><th>Note</th></tr>
+  <tr><td><kbd>Super+Shift+P</kbd></td><td>toggle Prime Video</td><td>bottle</td></tr>
+  <tr><td><kbd>Super+Shift+Z</kbd></td><td>toggle ZEE5</td><td>native + selector</td></tr>
+  <tr><td><kbd>Super+Shift+C</kbd></td><td>toggle Crunchyroll</td><td class="g">took this from hyprpicker</td></tr>
+  <tr><td><kbd>Super+Shift+J</kbd></td><td>toggle JioHotstar</td><td>was free</td></tr>
+  <tr><td><kbd>Super+D</kbd></td><td>toggle communication (WhatsApp + Signal)</td><td class="g">$kbCommunication, on HDMI-A-1</td></tr>
+  <tr><td><kbd>Super+Alt+C</kbd></td><td>hyprpicker (colour picker)</td><td class="w">relocated here to free Super+Shift+C</td></tr>
+</table>
+<p class="sub">Desktop entries (app launcher): "Prime Video HD", "ZEE5 HD", "Crunchyroll HD", "JioHotstar HD", "WhatsApp Web". Streaming binds are PC-variant only (<code>hypr-user-pc.conf</code>); the communication windowrule + Super+D are in both PC and laptop variants.</p>
+
+<h2>6 · Adding another service</h2>
+<p>The native pattern (CR/JioHotstar/WhatsApp) is the template. For a service that plays acceptably in native Linux Brave:</p>
+<pre>1. Probe the real window class once:
+   brave --profile-directory=Default --app=https://www.SERVICE.com &
+   hyprctl clients -j | jq '.[]|select(.initialTitle|test("SERVICE"))|{class,initialTitle}'
+   # -> class brave-www.SERVICE.com__-Default, initialTitle www.SERVICE.com_/
+
+2. configs/scripts/SERVICE-hd      (clone crunchyroll-hd; set URL + a dedicated
+                                    --user-data-dir=~/.local/share/SERVICE-brave-profile)
+3. configs/caelestia/cli.json      (add the toggle: class brave-www.SERVICE.com__-Default)
+4. configs/caelestia/hypr-user-pc.conf
+      windowrule = workspace special:SERVICE, match:class brave-www\.SERVICE\.com__-Default, match:initial_title www\.SERVICE\.com_/
+      bind = Super+Shift, KEY, exec, caelestia toggle SERVICE   # check the chord is free: hyprctl binds
+5. configs/mimeapps/applications/SERVICE-hd.desktop   (clone, set StartupWMClass)
+6. Add tests (mirror the CR/JioHotstar tests), bun test, then deploy + caelestia toggle to verify.</pre>
+<p class="sub">The dedicated <code>--user-data-dir</code> keeps the class as <code>...__-Default</code>, so routing is unaffected — only the profile (and login) is isolated. If the service won't hit 1080p natively and needs the quality forced, port ZEE5's CDP selector. If it's Linux-throttled <i>and</i> 1080p matters, only the Prime-style Wine bottle helps — and only if it doesn't require hardware-accelerated decode.</p>
+
+<footer>
+Managed by Haoshoku (configs/ + tests/), released v5.9.9 (2026-06-25). Companion docs: <code>~/prime-video-hd-runbook.html</code> (Prime bottle build), <code>~/zee5-bottle-hwaccel-findings.html</code> (why the others can't use the bottle). Routing by app-id class; profiles: Prime in-bottle, ZEE5 dedicated+seeded, CR/JioHotstar/WhatsApp dedicated+fresh.
+</footer>
+
+</body>
+</html>
