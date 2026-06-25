@@ -1,4 +1,3 @@
 io.ente.auth
 io.github.nozwock.Packet
-com.rtosta.zapzap
 org.gnome.Calendar

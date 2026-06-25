@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=WhatsApp Web
+Comment=Open WhatsApp Web (dedicated Brave profile) in the communication workspace
+Exec=caelestia toggle communication
+Terminal=false
+Type=Application
+Categories=Network;InstantMessaging;
+StartupWMClass=brave-web.whatsapp.com__-Default

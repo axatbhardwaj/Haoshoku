@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
-# JioHotstar HD - native Brave app-mode launcher (personal Default profile).
-# Same native-Brave pattern as crunchyroll-hd: no Wine bottle, no CDP selector, no
-# profile seeding. Routed to special:jiohotstar by the app-id class
-# brave-www.jiohotstar.com__-Default (Super+Shift+J via caelestia toggle jiohotstar).
-# Note: resolution is whatever JioHotstar serves Linux/Brave (Widevine L3) - it plays
-# via the software video path (see ~/.config/brave-flags.conf), not necessarily 1080p.
+# JioHotstar HD - native Brave app-mode launcher in a dedicated profile.
+# Same native-Brave pattern as crunchyroll-hd: no Wine bottle, no CDP selector, and an
+# isolated user-data-dir (no seeding; log in once). Routed to special:jiohotstar by the
+# app-id class brave-www.jiohotstar.com__-Default (Super+Shift+J via caelestia toggle
+# jiohotstar). Note: resolution is whatever JioHotstar serves Linux/Brave (Widevine L3)
+# - it plays via the software video path (see ~/.config/brave-flags.conf).
 set -euo pipefail
 
 JH_URL="${JH_URL:-https://www.jiohotstar.com}"
+JH_PROFILE="${JH_PROFILE:-$HOME/.local/share/jiohotstar-brave-profile}"
 
 find_brave() {
   if [ -n "${BRAVE_BIN:-}" ]; then
@@ -25,6 +26,7 @@ find_brave() {
 
 BRAVE="$(find_brave)"
 exec "$BRAVE" \
+  --user-data-dir="$JH_PROFILE" \
   --profile-directory=Default \
   --no-first-run \
   --no-default-browser-check \

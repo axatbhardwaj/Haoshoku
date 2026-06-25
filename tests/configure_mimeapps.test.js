@@ -428,6 +428,18 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 		expect(desktop).not.toContain("bottles-cli");
 	});
 
+	it("ships a WhatsApp Web desktop entry that opens the communication workspace", () => {
+		const desktop = fs.readFileSync(
+			path.join(CONFIGS_MIMEAPPS_DIR, "applications", "whatsapp-web.desktop"),
+			"utf8",
+		);
+
+		expect(desktop).toContain("Name=WhatsApp Web");
+		expect(desktop).toContain("Exec=caelestia toggle communication");
+		expect(desktop).toContain("Type=Application");
+		expect(desktop).toContain("StartupWMClass=brave-web.whatsapp.com__-Default");
+	});
+
 	it("sets COSMIC Files as the XDG default for directories", () => {
 		const content = fs.readFileSync(
 			path.join(CONFIGS_MIMEAPPS_DIR, "mimeapps.list"),

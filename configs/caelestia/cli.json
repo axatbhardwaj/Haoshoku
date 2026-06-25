@@ -13,10 +13,10 @@
         "command": ["signal-desktop"],
         "move": true
       },
-      "zapzap": {
+      "whatsapp-web": {
         "enable": true,
-        "match": [{"class": "zapzap"}],
-        "command": ["flatpak", "run", "com.rtosta.zapzap"],
+        "match": [{"class": "brave-web.whatsapp.com__-Default"}],
+        "command": ["/home/xzat/.local/bin/whatsapp-web"],
         "move": true
       }
     },

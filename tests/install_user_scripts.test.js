@@ -263,6 +263,7 @@ describe("installUserScripts — deployment", () => {
 		expect(script).toContain("https://www.crunchyroll.com");
 		expect(script).toContain("--app=");
 		expect(script).toContain("--profile-directory=Default");
+		expect(script).toContain(".local/share/crunchyroll-brave-profile");
 		expect(script).not.toContain("bottles-cli");
 		expect(script).not.toContain("brave.exe");
 		expect(script).not.toContain("remote-debugging-port");
@@ -277,6 +278,21 @@ describe("installUserScripts — deployment", () => {
 		expect(script).toContain("https://www.jiohotstar.com");
 		expect(script).toContain("--app=");
 		expect(script).toContain("--profile-directory=Default");
+		expect(script).toContain(".local/share/jiohotstar-brave-profile");
+		expect(script).not.toContain("bottles-cli");
+		expect(script).not.toContain("brave.exe");
+		expect(script).not.toContain("remote-debugging-port");
+	});
+
+	it("ships whatsapp-web as a native Brave app launcher in a dedicated profile", () => {
+		const script = fs.readFileSync(
+			path.join(process.cwd(), "configs", "scripts", "whatsapp-web"),
+			"utf8",
+		);
+
+		expect(script).toContain("https://web.whatsapp.com");
+		expect(script).toContain("--app=");
+		expect(script).toContain(".local/share/whatsapp-brave-profile");
 		expect(script).not.toContain("bottles-cli");
 		expect(script).not.toContain("brave.exe");
 		expect(script).not.toContain("remote-debugging-port");

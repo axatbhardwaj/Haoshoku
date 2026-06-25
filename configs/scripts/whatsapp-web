@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# WhatsApp Web - native Brave app-mode launcher in a dedicated profile.
+# Replaces the ZapZap Flatpak. Runs web.whatsapp.com as an app window in an isolated
+# user-data-dir - a persistent, phone-linked session kept separate from personal
+# browsing (no seeding; scan the QR once). Routed to special:communication by the
+# app-id class brave-web.whatsapp.com__-Default (Super+D via caelestia toggle communication).
+set -euo pipefail
+
+WA_URL="${WA_URL:-https://web.whatsapp.com}"
+WA_PROFILE="${WA_PROFILE:-$HOME/.local/share/whatsapp-brave-profile}"
+
+find_brave() {
+  if [ -n "${BRAVE_BIN:-}" ]; then
+    [ -x "$BRAVE_BIN" ] || command -v "$BRAVE_BIN" >/dev/null 2>&1 \
+      || { echo "whatsapp-web: BRAVE_BIN is not executable: $BRAVE_BIN" >&2; exit 1; }
+    printf '%s\n' "$BRAVE_BIN"; return 0
+  fi
+  for candidate in /opt/brave-bin/brave brave brave-browser; do
+    if [ -x "$candidate" ]; then printf '%s\n' "$candidate"; return 0; fi
+    if command -v "$candidate" >/dev/null 2>&1; then command -v "$candidate"; return 0; fi
+  done
+  echo "whatsapp-web: native Brave not found (expected /opt/brave-bin/brave, brave, or brave-browser)" >&2
+  exit 1
+}
+
+BRAVE="$(find_brave)"
+exec "$BRAVE" \
+  --user-data-dir="$WA_PROFILE" \
+  --profile-directory=Default \
+  --no-first-run \
+  --no-default-browser-check \
+  --app="$WA_URL" \
+  "$@"
