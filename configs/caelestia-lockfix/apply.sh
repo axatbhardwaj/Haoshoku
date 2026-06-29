@@ -47,7 +47,7 @@ apply_one() {
 
 echo "═══ Caelestia portrait lock-screen fix ═══"
 changed=0; failed=0
-apply_one LockSurface.qml 'root.fitBase' 'lockContent.fitBase'; rc=$?
+apply_one LockSurface.qml 'lockContent?.fitBase' 'contentItem.Tokens'; rc=$?
 [ "$rc" = 0 ] && changed=1
 [ "$rc" = 1 ] && failed=1
 apply_one Center.qml 'lock.fitBase' ''; rc=$?

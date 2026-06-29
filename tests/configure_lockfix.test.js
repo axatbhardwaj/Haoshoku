@@ -422,4 +422,22 @@ describe("seeded configs/caelestia-lockfix/ (in-tree static files)", () => {
 			/reverted; shell restarted with the originals[\s\S]*reverted; shell restart failed/i,
 		);
 	});
+
+	it("heals the stale contentItem-based portrait fix before reapplying", () => {
+		const applySh = fs.readFileSync(
+			path.join(CONFIGS_LOCKFIX_DIR, "apply.sh"),
+			"utf8",
+		);
+		const lockSurfacePatch = fs.readFileSync(
+			path.join(CONFIGS_LOCKFIX_DIR, "LockSurface.qml.portrait-fix.patch"),
+			"utf8",
+		);
+
+		expect(applySh).toContain(
+			"apply_one LockSurface.qml 'lockContent?.fitBase' 'contentItem.Tokens'",
+		);
+		expect(lockSurfacePatch).toContain("lockContent?.fitBase");
+		expect(lockSurfacePatch).toContain("lockContent.fitBase");
+		expect(lockSurfacePatch).not.toContain("contentItem.Tokens.sizes.lock");
+	});
 });

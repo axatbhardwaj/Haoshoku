@@ -5,9 +5,9 @@
      readonly property alias unlocking: unlockAnim.running
  
 +    // Portrait fit: clamp the height-derived panel basis so the lock panel never
-+    // exceeds the screen WIDTH. Landscape: min() keeps screen.height (unchanged);
-+    // portrait: shrinks to 95% of screen width. Shared by LockSurface + Center.qml.
-+    readonly property real fitBase: Math.min(root.screen?.height ?? 0, (root.screen?.width ?? 0) / (contentItem.Tokens.sizes.lock.heightMult * contentItem.Tokens.sizes.lock.ratio) * 0.95)
++    // exceeds the screen WIDTH. Keep the token-dependent math on lockContent.fitBase:
++    // contentItem is not bindable during surface construction and can evaluate to 0.
++    readonly property real fitBase: lockContent?.fitBase ?? (root.screen?.height ?? 0)
 +
      contentItem.Config.screen: screen.name
      contentItem.Tokens.screen: screen.name
@@ -28,7 +28,16 @@
                      type: Anim.DefaultSpatial
                  }
              }
-@@ -216,8 +221,8 @@
+@@ -176,6 +181,8 @@
+     Item {
+         id: lockContent
+ 
++        readonly property real fitBase: Math.min(root.screen?.height ?? 0, (root.screen?.width ?? 0) / (Tokens.sizes.lock.heightMult * Tokens.sizes.lock.ratio) * 0.95)
++
+         readonly property int size: lockIcon.implicitHeight + Tokens.padding.large * 4
+         readonly property int radius: size / 4 * Tokens.rounding.scale
+ 
+@@ -216,8 +223,8 @@
              id: content
  
              anchors.centerIn: parent
