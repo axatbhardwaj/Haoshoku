@@ -51,29 +51,31 @@
 </head>
 <body>
 
-<h1>Prime Video HD <span class="tag ok">1080p</span> <span class="tag">Wine · Bottles</span></h1>
-<div class="sub">Windows Brave under Wine-TkG, on CachyOS / Hyprland — runbook &amp; rationale. Generated 2026-06-23.</div>
+<h1>Prime Video HD <span class="tag bad">SD — broke 2026-06-25</span> <span class="tag">Wine · Bottles</span></h1>
+<div class="sub">Windows Brave under Wine-TkG, on CachyOS / Hyprland — runbook &amp; rationale. Generated 2026-06-23; status update 2026-06-26.</div>
+
+<div class="note" style="border-left-color:var(--bad);background:#1a0f0f">
+<b>⚠ STATUS — broke 2026-06-25.</b> This 1080p path <b>stopped working</b>. Amazon deployed a <b>server-side Wine/VM detection</b> change (~June 25, 2026) that defeats the mechanism this bottle relied on. Crucially, the 1080p here was <b>not</b> Widevine L1 or HDCP hardware — it was <b>VMP</b> (the Windows Widevine CDM's signed <i>Verified Media Path</i> certificate, which Amazon's policy trusts for HD while it caps native Linux to SD). With VM detection on, the bottle is treated like untrusted Linux, so the <b>encrypted feature now plays SD (≈540p)</b>. The same break hit all <code>prime-wine</code> users the same day (issue #4 + Winboat). <b>Not recoverable by any client-side config</b> as of 2026-06-26 — GPU-enabled, UA override, and a fresh profile all stay SD (POC + evidence: <code>~/superpowers/prime-hd-poc/</code>). HD now requires a real Windows environment (VFIO GPU-passthrough VM), a community detection-bypass (none confirmed yet), or dedicated HDCP hardware (Fire stick / smart TV / Windows PC). Everything below describes the setup as it worked <i>before</i> the break.
+</div>
 
 <div class="note ok-note">
-<b>TL;DR.</b> Amazon throttles Prime Video on Linux (native Brave here = <b>540p</b>). Running <b>Windows Brave under Wine-TkG 10.8</b> (via Bottles) gets the full <b>1080p</b> — goal achieved. <b>One catch:</b> Prime picks resolution from the <i>player viewport</i>, so you only get 1080p <b>fullscreen</b> (a small/windowed player is served ~720p). Launch as <b>“Prime Video HD”</b> (or <kbd>Super+Shift+P</kbd>), then go fullscreen.
+<b>TL;DR.</b> Amazon throttles Prime Video on Linux (native Brave here = <b>540p</b>). Running <b>Windows Brave under Wine-TkG 10.8</b> (via Bottles) <i>used to</i> get the full <b>1080p</b> by presenting the Windows VMP-certified Widevine CDM, but that path broke on <b>2026-06-25</b>. Launch as <b>“Prime Video HD”</b> (or <kbd>Super+Shift+P</kbd>) only if you accept current SD playback; fullscreen no longer restores HD.
 </div>
 
-<h2>Resolution ladder</h2>
+<h2>Resolution ladder (historical vs current)</h2>
 <div class="ladder">
   <div class="bar" style="height:42%;background:linear-gradient(#3a2a2a,#2a1f1f)"><span class="lbl">native Brave</span><b>540p</b><span>960×540</span></div>
-  <div class="bar" style="height:62%;background:linear-gradient(#33301c,#26240f);border-color:#6b5d1f"><span class="lbl">windowed</span><b>720p</b><span>1280×720</span></div>
-  <div class="bar" style="height:100%;background:linear-gradient(#1f3a26,#15281a);border-color:#1f6f33"><span class="lbl">fullscreen ✓</span><b>1080p</b><span>1920×1080</span></div>
+  <div class="bar" style="height:42%;background:linear-gradient(#3a2a2a,#2a1f1f);border-color:#7a2620"><span class="lbl">bottle now</span><b>SD</b><span>480–540p</span></div>
+  <div class="bar" style="height:100%;background:linear-gradient(#1f3a26,#15281a);border-color:#1f6f33"><span class="lbl">bottle pre-break</span><b>1080p</b><span>VMP path</span></div>
 </div>
-<p class="sub">Verify (fullscreen, after ~30s ramp): <kbd>F12</kbd> → Console →<br>
-<code>Math.max(...[...document.querySelectorAll('video')].map(v=&gt;v.videoHeight))</code> → expect <code>1080</code>.<br>
-(Plain <code>querySelector('video')</code> hits an empty placeholder element and reads 0 — use the <code>Math.max</code> form.)</p>
+<p class="sub">Current verification lives in <code>~/superpowers/prime-hd-poc/</code>: the encrypted Prime feature now measures SD through the CDP Media domain. Do not trust a plain <code>videoHeight</code> reading alone — Prime can expose unencrypted 1080p hero/UI players that are not the DRM feature stream.</p>
 
 <h2>What got built</h2>
 <div class="grid">
   <div class="kv"><div class="k">Bottle</div><div class="v">primevideo-tkg9</div></div>
   <div class="kv"><div class="k">Browser</div><div class="v">Brave 1.91.175 (Windows)</div></div>
   <div class="kv"><div class="k">Runner</div><div class="v">wine-10.8-staging-tkg</div></div>
-  <div class="kv"><div class="k">Max res</div><div class="v">1080p (fullscreen)</div></div>
+  <div class="kv"><div class="k">Current res</div><div class="v">SD (was 1080p before 2026-06-25)</div></div>
   <div class="kv"><div class="k">Launcher</div><div class="v">Super+Shift+P · special:primevideo</div></div>
   <div class="kv"><div class="k">Desktop entry</div><div class="v">Prime Video HD</div></div>
 </div>
@@ -89,14 +91,14 @@
 <pre>Name:        primevideo-tkg9
 Environment: Application   (any default runner — the helper swaps it)</pre>
 <h3>3 · <span class="tag bad">manual</span> First launch + sign in</h3>
-<p>Launch with <kbd>Super+Shift+P</kbd> (or <code>~/.local/bin/primevideo-hd</code>). In Brave: sign into Amazon, accept the Widevine prompt, keep <b>Shields OFF</b> for primevideo.com, play a title, and <b>go fullscreen</b> for 1080p.</p>
+<p>Launch with <kbd>Super+Shift+P</kbd> (or <code>~/.local/bin/primevideo-hd</code>). In Brave: sign into Amazon, accept the Widevine prompt, keep <b>Shields OFF</b> for primevideo.com, and play a title. Expect SD unless Amazon's server-side Wine/VM detection changes again.</p>
 </div>
 <p class="sub">Recipe lives in <code>configs/scripts/primevideo-setup</code>. On a machine that already has the bottle, a re-run just verifies and no-ops.</p>
 
 <h2>How to launch</h2>
 <div class="card">
 <h3>1 · Keybind (normal use)</h3>
-<p><kbd>Super+Shift+P</kbd> → toggles its own <code>special:primevideo</code> workspace (like Spotify) and launches Prime if not already running. <b>Then press fullscreen</b> for 1080p.</p>
+<p><kbd>Super+Shift+P</kbd> → toggles its own <code>special:primevideo</code> workspace (like Spotify) and launches Prime if not already running. This is currently an SD fallback, not an HD launcher.</p>
 <h3>2 · App launcher</h3>
 <p>Run <b>“Prime Video HD”</b> from the Caelestia/Hyprland launcher (same toggle behavior).</p>
 <h3>3 · Terminal</h3>
@@ -110,18 +112,18 @@ Environment: Application   (any default runner — the helper swaps it)</pre>
 <p class="sub"><b>ZEE5:</b> the same bottle also serves ZEE5 — <kbd>Super+Shift+Z</kbd> → <code>special:zee5</code> (launcher <code>~/.local/bin/zee5-hd</code>; the two Wine-Brave windows are told apart by <code>initial_title</code>). Whether the bottle beats native Brave for ZEE5 is unconfirmed — ZEE5 may gate HD on Widevine L1 (hardware), which Wine can't provide.</p>
 
 <h2 id="why">How we got here (and the 720p red herring)</h2>
-<p>Getting Brave to <i>run</i> Prime under Wine took three real fixes. The "resolution cap" did not — that was a measurement mistake (I read <code>videoHeight</code> in a windowed player, where Prime legitimately serves 720p to match the viewport). Fullscreen was 1080p all along.</p>
+<p>Getting Brave to <i>run</i> Prime under Wine took three real fixes. Before Amazon's 2026-06-25 server-side change, the bottle did reach real 1080p through the Windows VMP path. The current SD cap is a new break, not the original viewport-size mistake.</p>
 <table>
   <tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr>
   <tr><td>Blank white window</td><td>DXVK can't make a Vulkan swapchain (NVIDIA + XWayland)</td><td class="ok"><code>--disable-gpu</code></td></tr>
   <tr><td>Hard crash on Play (system Wine 11.11)</td><td>Prime uses PlayReady → unimplemented WinRT in Wine 11.11</td><td class="ok">runner = <b>Wine-TkG 10.8</b></td></tr>
   <tr><td>Crash entering the video pipeline</td><td>D3D11 GPU video-frame buffer under Wine</td><td class="ok">software-video flags</td></tr>
-  <tr><td>"Only 720p"</td><td class="warn">measured in a <b>windowed</b> player — viewport-limited, not a DRM cap</td><td class="ok">watch <b>fullscreen</b> → 1080p</td></tr>
+  <tr><td>"Only 720p" pre-break</td><td class="warn">measured in a <b>windowed</b> player — viewport-limited, not a DRM cap</td><td class="ok">fullscreen reached 1080p before 2026-06-25</td></tr>
 </table>
-<div class="note ok-note"><b>Detour worth noting:</b> chasing the phantom 720p cap, we tried Brave <b>1.82</b> (to force Widevine). It won't run on any Wine here (a <code>UISettings</code> WinRT recursion → stack overflow). Turned out irrelevant — <b>Brave 1.91 + TkG 10.8 does 1080p</b> fine. The 1.82 path was abandoned and its artifacts cleaned up.</div>
+<div class="note ok-note"><b>Detour worth noting:</b> chasing the phantom 720p cap, we tried Brave <b>1.82</b> (to force Widevine). It won't run on any Wine here (a <code>UISettings</code> WinRT recursion → stack overflow). Turned out irrelevant to the old path — <b>Brave 1.91 + TkG 10.8 did 1080p</b> before Amazon's server-side break. The 1.82 path was abandoned and its artifacts cleaned up.</div>
 
 <h2>Troubleshooting</h2>
-<details><summary>Only getting 720p (not 1080p)</summary><p><b>Go fullscreen.</b> Prime serves resolution to match the player viewport; a windowed/<code>--app</code> player gets ~720p. Fullscreen + ~30s ramp → 1080p. Verify with the <code>Math.max(...videoHeight)</code> check above.</p></details>
+<details><summary>Only getting SD / 720p (not 1080p)</summary><p>That is the expected state after the 2026-06-25 server-side Wine/VM detection change. Fullscreen no longer restores HD in the bottle. See <code>~/superpowers/prime-hd-poc/</code> for the CDP evidence and experiment matrix.</p></details>
 <details><summary>Window is blank / white</summary><p>GPU path failed; <code>--disable-gpu</code> (already in the launcher) fixes it.</p></details>
 <details><summary>Crashes the instant you press Play</summary><p>You're on the wrong runner. The bottle must use <b>Wine-TkG 10.8</b> (<code>wine-10.8-staging-tkg-amd64</code>), not system Wine 11.11.</p></details>
 <details><summary>Asks me to log in again / quality drops</summary><p>Login lives in the bottle's Brave profile — sign in once, it persists. Keep <b>Brave Shields OFF</b> for primevideo.com (already set).</p></details>
@@ -138,7 +140,7 @@ rm -rf ~/.local/share/bottles/bottles/primevideo.bak-pre182</pre>
 <p class="sub">The Wine-TkG runner at <code>~/.local/share/bottles/runners/wine-10.8-staging-tkg-amd64</code> can also go if no other bottle uses it.</p>
 
 <footer>
-Built via a Dvandva (Claude vadi + Codex prativadi) debugging run, 2026-06-23. Real fixes: NVIDIA Vulkan-WSI blank window (<code>--disable-gpu</code>), D3D11 video-buffer crash (software-video flags), PlayReady-WinRT crash on system Wine (→ Wine-TkG 10.8). Final outcome: native 540p → <b>1080p fullscreen</b> (the "720p ceiling" was a windowed-measurement artifact, corrected after fullscreen verification).
+Built via a Dvandva (Claude vadi + Codex prativadi) debugging run, 2026-06-23, then re-audited 2026-06-26 after Amazon's server-side break. Real local fixes: NVIDIA Vulkan-WSI blank window (<code>--disable-gpu</code>), D3D11 video-buffer crash (software-video flags), PlayReady-WinRT crash on system Wine (→ Wine-TkG 10.8). Historical outcome: native 540p → <b>1080p fullscreen</b> through the Windows VMP path. Current outcome after 2026-06-25: encrypted Prime feature playback is SD in the bottle too.
 </footer>
 
 </body>

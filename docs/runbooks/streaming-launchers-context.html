@@ -61,8 +61,8 @@
 
 <div class="note ok-note">
 <b>TL;DR.</b> Five chromeless app windows — four streaming (Prime, ZEE5, Crunchyroll, JioHotstar) plus WhatsApp Web —
-each pinned to a workspace and a keybind. <b>Prime</b> needs a <b>Windows-Brave Wine bottle</b> for 1080p (Linux is
-throttled); everyone else runs in <b>native Linux Brave</b>. Windows route to workspaces by their <b>app-id class</b>,
+each pinned to a workspace and a keybind. <b>Prime</b> needed a <b>Windows-Brave Wine bottle</b> for 1080p (Linux is
+throttled) — but Amazon broke that ~2026-06-25 (server-side Wine/VM detection; see the Prime note below), so it now plays <b>SD</b> too; everyone else runs in <b>native Linux Brave</b>. Windows route to workspaces by their <b>app-id class</b>,
 so they never collide. Every native launcher now lives in its <b>own dedicated Brave profile</b>
 (<code>~/.local/share/&lt;app&gt;-brave-profile</code>) — isolated from your personal Default profile and from each other.
 </div>
@@ -73,7 +73,7 @@ so they never collide. Every native launcher now lives in its <b>own dedicated B
   <tr>
     <td><b>Prime Video</b></td><td><kbd>Super+Shift+P</kbd></td><td><code>special:primevideo</code></td>
     <td class="w">Wine-TkG 10.8 bottle<br><span class="sub">Windows Brave 1.91</span></td>
-    <td>in-bottle</td><td class="g">1080p <span class="sub">(fullscreen)</span></td>
+    <td>in-bottle</td><td class="w">SD now <span class="sub">(was 1080p via VMP; broke ~06-25)</span></td>
     <td><code>primevideo-hd</code></td>
   </tr>
   <tr>
@@ -129,7 +129,7 @@ so they never collide. Every native launcher now lives in its <b>own dedicated B
 <div class="grid">
   <div class="card">
     <h3>🍷 Wine bottle — Prime Video only</h3>
-    <p>Amazon throttles Prime on Linux to 540p. A <b>Windows-Brave bottle</b> (Wine-TkG 10.8) presents a "Windows" client and unlocks <b>1080p</b> (fullscreen — Prime picks resolution by viewport). Built by <code>primevideo-setup</code>.</p>
+    <p>Amazon throttles Prime on Linux to 540p. A <b>Windows-Brave bottle</b> (Wine-TkG 10.8) presented a "Windows" client (a VMP-certified CDM) and <i>used to</i> unlock <b>1080p</b> — but Amazon's <b>~2026-06-25 server-side Wine/VM detection broke that</b>, and it now plays <b>SD</b> like native. (VMP policy, never L1/HDCP.) Built by <code>primevideo-setup</code>.</p>
     <p class="sub">Software-rendered to dodge the NVIDIA Vulkan-WSI blank window; Prime tolerates that.</p>
   </div>
   <div class="card">
@@ -155,7 +155,7 @@ so they never collide. Every native launcher now lives in its <b>own dedicated B
     <div class="kv"><b>initialTitle</b> www.primevideo.com_/</div>
     <div class="kv"><b>bottle</b> primevideo-tkg9</div>
     <div class="kv"><b>setup</b> primevideo-setup (GUI + sign-in)</div>
-    <div class="kv"><b>note</b> go fullscreen for 1080p</div>
+    <div class="kv"><b>note</b> BROKE ~2026-06-25 (Amazon Wine/VM detection); now SD. POC: ~/superpowers/prime-hd-poc/</div>
   </div>
   <div class="card">
     <h3 style="color:var(--ok)">ZEE5</h3>
@@ -214,7 +214,7 @@ so they never collide. Every native launcher now lives in its <b>own dedicated B
       bind = Super+Shift, KEY, exec, caelestia toggle SERVICE   # check the chord is free: hyprctl binds
 5. configs/mimeapps/applications/SERVICE-hd.desktop   (clone, set StartupWMClass)
 6. Add tests (mirror the CR/JioHotstar tests), bun test, then deploy + caelestia toggle to verify.</pre>
-<p class="sub">The dedicated <code>--user-data-dir</code> keeps the class as <code>...__-Default</code>, so routing is unaffected — only the profile (and login) is isolated. If the service won't hit 1080p natively and needs the quality forced, port ZEE5's CDP selector. If it's Linux-throttled <i>and</i> 1080p matters, only the Prime-style Wine bottle helps — and only if it doesn't require hardware-accelerated decode.</p>
+<p class="sub">The dedicated <code>--user-data-dir</code> keeps the class as <code>...__-Default</code>, so routing is unaffected — only the profile (and login) is isolated. If the service won't hit 1080p natively and needs the quality forced, port ZEE5's CDP selector. The Prime-style Wine bottle used to help when a Windows VMP-certified CDM unlocked an HD tier, but Amazon's ~2026-06-25 Wine/VM detection broke that path; do not assume it restores HD for new services.</p>
 
 <footer>
 Managed by Haoshoku (configs/ + tests/), released v5.9.9 (2026-06-25). Companion docs: <code>~/prime-video-hd-runbook.html</code> (Prime bottle build), <code>~/zee5-bottle-hwaccel-findings.html</code> (why the others can't use the bottle). Routing by app-id class; profiles: Prime in-bottle, ZEE5 dedicated+seeded, CR/JioHotstar/WhatsApp dedicated+fresh.
