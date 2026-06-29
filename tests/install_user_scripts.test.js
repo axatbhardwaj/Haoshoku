@@ -100,6 +100,25 @@ describe("installUserScripts — deployment", () => {
 		expect(fs.existsSync(path.join(localBin, "real-tool"))).toBe(true);
 	});
 
+	it("skips Markdown guidance files", async () => {
+		seedScript(tmpProjectRoot, "real-tool");
+		const dir = scriptsSrcDir(tmpProjectRoot);
+		const localBin = path.join(tmpHome, ".local", "bin");
+		fs.writeFileSync(path.join(dir, "CLAUDE.md"), "# guidance\n");
+		fs.mkdirSync(localBin, { recursive: true });
+		fs.writeFileSync(path.join(localBin, "CLAUDE.md"), "# stale guidance\n");
+		fs.writeFileSync(path.join(localBin, "CLAUDE.md.bak"), "# stale backup\n");
+
+		await userScripts.installUserScripts({
+			home: tmpHome,
+			projectRoot: tmpProjectRoot,
+		});
+
+		expect(fs.existsSync(path.join(localBin, "CLAUDE.md"))).toBe(false);
+		expect(fs.existsSync(path.join(localBin, "CLAUDE.md.bak"))).toBe(false);
+		expect(fs.existsSync(path.join(localBin, "real-tool"))).toBe(true);
+	});
+
 	it("is a no-op (no error) when configs/scripts/ does not exist", async () => {
 		// No seedScript — source dir absent
 		await expect(
@@ -112,6 +131,37 @@ describe("installUserScripts — deployment", () => {
 		expect(
 			fs.existsSync(path.join(tmpHome, ".local", "bin")),
 		).toBe(false);
+	});
+
+	it("removes retired streaming scripts from ~/.local/bin/", async () => {
+		seedScript(tmpProjectRoot, "my-tool");
+		const localBin = path.join(tmpHome, ".local", "bin");
+		fs.mkdirSync(localBin, { recursive: true });
+		for (const script of [
+			"primevideo-setup",
+			"primevideo-hd",
+			"zee5-hd",
+			"crunchyroll-hd",
+			"jiohotstar-hd",
+		]) {
+			fs.writeFileSync(path.join(localBin, script), "# stale\n");
+		}
+
+		await userScripts.installUserScripts({
+			home: tmpHome,
+			projectRoot: tmpProjectRoot,
+		});
+
+		expect(fs.existsSync(path.join(localBin, "my-tool"))).toBe(true);
+		for (const script of [
+			"primevideo-setup",
+			"primevideo-hd",
+			"zee5-hd",
+			"crunchyroll-hd",
+			"jiohotstar-hd",
+		]) {
+			expect(fs.existsSync(path.join(localBin, script))).toBe(false);
+		}
 	});
 
 	it("ships game-performance with a reset mode for crash-stale VRR", () => {
@@ -189,99 +239,18 @@ describe("installUserScripts — deployment", () => {
 		expect(script).toContain("resizewindowpixel");
 	});
 
-	it("ships zee5-hd as a native Brave launcher with a Full HD selector", () => {
-		const script = fs.readFileSync(
-			path.join(process.cwd(), "configs", "scripts", "zee5-hd"),
-			"utf8",
-		);
-
-		expect(script).toContain(
-			'ZEE5_URL="$' + '{ZEE5_URL:-https://www.zee5.com}"',
-		);
-		expect(script).toContain(".local/share/zee5-brave-profile");
-		expect(script).toContain("remote-debugging-port");
-		expect(script).toContain("Full HD - 1080p");
-		expect(script).toContain("videoHeight");
-		expect(script).toContain("li[role=\"menuitemradio\"]");
-		expect(script).not.toContain("bottles-cli");
-		expect(script).not.toContain("brave.exe");
-	});
-
-	it("keeps zee5-hd selector startup non-blocking inside command substitution", () => {
-		const script = fs.readFileSync(
-			path.join(process.cwd(), "configs", "scripts", "zee5-hd"),
-			"utf8",
-		);
-
-		expect(script).toContain(") >/dev/null 2>&1 &");
-		expect(script).toContain('selector_pid="$(start_full_hd_selector || true)"');
-	});
-
-	it("seeds only the native Brave Default profile for zee5-hd", () => {
-		const script = fs.readFileSync(
-			path.join(process.cwd(), "configs", "scripts", "zee5-hd"),
-			"utf8",
-		);
-
-		expect(script).toContain('"$ZEE5_SOURCE_PROFILE/Default/" "$ZEE5_PROFILE/Default/"');
-		expect(script).toContain('"$ZEE5_SOURCE_PROFILE/Local State"');
-		expect(script).not.toContain('"$ZEE5_SOURCE_PROFILE/" "$ZEE5_PROFILE/"');
-		expect(script).not.toContain('"$ZEE5_SOURCE_PROFILE/." "$ZEE5_PROFILE/"');
-	});
-
-	it("cleans up both the selector and Brave process for zee5-hd", () => {
-		const script = fs.readFileSync(
-			path.join(process.cwd(), "configs", "scripts", "zee5-hd"),
-			"utf8",
-		);
-
-		expect(script).toContain('kill "$selector_pid"');
-		expect(script).toContain('kill "$brave_pid"');
-		expect(script).toContain('wait "$brave_pid"');
-	});
-
-	it("keeps primevideo-setup scoped to the Prime bottle launcher", () => {
-		const script = fs.readFileSync(
-			path.join(process.cwd(), "configs", "scripts", "primevideo-setup"),
-			"utf8",
-		);
-
-		expect(script).toContain(
-			'write_launcher "$HOME/.local/bin/primevideo-hd" "https://www.primevideo.com"',
-		);
-		expect(script).not.toContain("$HOME/.local/bin/zee5-hd");
-		expect(script).not.toContain("https://www.zee5.com");
-		expect(script).not.toContain("Launchers: ~/.local/bin/{primevideo-hd,zee5-hd}");
-	});
-
-	it("ships crunchyroll-hd as a native Brave app launcher (no bottle, no CDP)", () => {
-		const script = fs.readFileSync(
-			path.join(process.cwd(), "configs", "scripts", "crunchyroll-hd"),
-			"utf8",
-		);
-
-		expect(script).toContain("https://www.crunchyroll.com");
-		expect(script).toContain("--app=");
-		expect(script).toContain("--profile-directory=Default");
-		expect(script).toContain(".local/share/crunchyroll-brave-profile");
-		expect(script).not.toContain("bottles-cli");
-		expect(script).not.toContain("brave.exe");
-		expect(script).not.toContain("remote-debugging-port");
-	});
-
-	it("ships jiohotstar-hd as a native Brave app launcher (no bottle, no CDP)", () => {
-		const script = fs.readFileSync(
-			path.join(process.cwd(), "configs", "scripts", "jiohotstar-hd"),
-			"utf8",
-		);
-
-		expect(script).toContain("https://www.jiohotstar.com");
-		expect(script).toContain("--app=");
-		expect(script).toContain("--profile-directory=Default");
-		expect(script).toContain(".local/share/jiohotstar-brave-profile");
-		expect(script).not.toContain("bottles-cli");
-		expect(script).not.toContain("brave.exe");
-		expect(script).not.toContain("remote-debugging-port");
+	it("does not ship deprecated streaming launcher scripts", () => {
+		for (const script of [
+			"primevideo-setup",
+			"primevideo-hd",
+			"zee5-hd",
+			"crunchyroll-hd",
+			"jiohotstar-hd",
+		]) {
+			expect(
+				fs.existsSync(path.join(process.cwd(), "configs", "scripts", script)),
+			).toBe(false);
+		}
 	});
 
 	it("ships whatsapp-web as a native Brave app launcher in a dedicated profile", () => {

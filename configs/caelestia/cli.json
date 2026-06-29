@@ -58,38 +58,6 @@
         "command": ["brave", "--profile-directory=Profile 1"],
         "move": true
       }
-    },
-    "primevideo": {
-      "primevideo": {
-        "enable": true,
-        "match": [{"class": "brave.exe", "initialTitle": "www.primevideo.com_/"}],
-        "command": ["/home/xzat/.local/bin/primevideo-hd"],
-        "move": true
-      }
-    },
-    "zee5": {
-      "zee5": {
-        "enable": true,
-        "match": [{"class": "brave-www.zee5.com__-Default", "initialTitle": "www.zee5.com_/"}],
-        "command": ["/home/xzat/.local/bin/zee5-hd"],
-        "move": true
-      }
-    },
-    "crunchyroll": {
-      "crunchyroll": {
-        "enable": true,
-        "match": [{"class": "brave-www.crunchyroll.com__-Default", "initialTitle": "www.crunchyroll.com_/"}],
-        "command": ["/home/xzat/.local/bin/crunchyroll-hd"],
-        "move": true
-      }
-    },
-    "jiohotstar": {
-      "jiohotstar": {
-        "enable": true,
-        "match": [{"class": "brave-www.jiohotstar.com__-Default", "initialTitle": "www.jiohotstar.com_/"}],
-        "command": ["/home/xzat/.local/bin/jiohotstar-hd"],
-        "move": true
-      }
     }
   },
   "wallpaper": {

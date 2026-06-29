@@ -1,8 +1,0 @@
-[Desktop Entry]
-Name=JioHotstar HD
-Comment=Open JioHotstar in the managed native Brave HD workspace
-Exec=caelestia toggle jiohotstar
-Terminal=false
-Type=Application
-Categories=AudioVideo;Video;
-StartupWMClass=brave-www.jiohotstar.com__-Default

@@ -1,8 +1,0 @@
-[Desktop Entry]
-Name=ZEE5 HD
-Comment=Open ZEE5 in the managed native Brave HD workspace
-Exec=caelestia toggle zee5
-Terminal=false
-Type=Application
-Categories=AudioVideo;Video;
-StartupWMClass=brave-www.zee5.com__-Default

@@ -6,6 +6,15 @@ import { log, safeCopyFile } from "../common/utils.js";
 
 const HOME_DEFAULT = homedir();
 const PROJECT_ROOT_DEFAULT = path.resolve(__dirname, "..", "..");
+const RETIRED_LOCAL_BIN_ENTRIES = [
+  "primevideo-setup",
+  "primevideo-hd",
+  "zee5-hd",
+  "crunchyroll-hd",
+  "jiohotstar-hd",
+  "CLAUDE.md",
+  "CLAUDE.md.bak",
+];
 
 function resolvePaths({ home = HOME_DEFAULT, projectRoot = PROJECT_ROOT_DEFAULT } = {}) {
   return {
@@ -34,6 +43,14 @@ function resolvePaths({ home = HOME_DEFAULT, projectRoot = PROJECT_ROOT_DEFAULT 
 export async function installUserScripts(opts = {}) {
   const { scriptsSrc, localBin } = resolvePaths(opts);
 
+  for (const script of RETIRED_LOCAL_BIN_ENTRIES) {
+    const retiredPath = path.join(localBin, script);
+    if (fs.existsSync(retiredPath)) {
+      fs.rmSync(retiredPath, { force: true });
+      log.info(`Removed retired local-bin entry ${script}`);
+    }
+  }
+
   if (!fs.existsSync(scriptsSrc)) {
     log.info("No configs/scripts/ directory; skipping user-script install.");
     return;
@@ -41,7 +58,10 @@ export async function installUserScripts(opts = {}) {
 
   const entries = fs
     .readdirSync(scriptsSrc, { withFileTypes: true })
-    .filter((e) => e.isFile() && !e.name.startsWith("."));
+    .filter(
+      (e) =>
+        e.isFile() && !e.name.startsWith(".") && !e.name.endsWith(".md"),
+    );
 
   if (entries.length === 0) {
     log.info("configs/scripts/ is empty; skipping user-script install.");

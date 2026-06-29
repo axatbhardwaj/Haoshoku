@@ -163,7 +163,40 @@ describe("syncMimeappsConfig — deploys mimeapps.list to ~/.config/", () => {
 			"MimeType=x-scheme-handler/claude-cli;",
 		);
 	});
-});
+
+	it("removes retired streaming desktop entries from ~/.local/share/applications/", async () => {
+		seedRepoMimeapps();
+		const liveApplicationsDir = path.join(
+			tmpHome,
+			".local",
+			"share",
+			"applications",
+		);
+		fs.mkdirSync(liveApplicationsDir, { recursive: true });
+		for (const desktop of [
+			"zee5-hd.desktop",
+			"crunchyroll-hd.desktop",
+			"jiohotstar-hd.desktop",
+			"primevideo-hd.desktop",
+		]) {
+			fs.writeFileSync(path.join(liveApplicationsDir, desktop), "[Desktop Entry]\n");
+		}
+
+		await mimeapps.syncMimeappsConfig({
+			home: tmpHome,
+			projectRoot: tmpProjectRoot,
+		});
+
+		for (const desktop of [
+			"zee5-hd.desktop",
+			"crunchyroll-hd.desktop",
+			"jiohotstar-hd.desktop",
+			"primevideo-hd.desktop",
+		]) {
+			expect(fs.existsSync(path.join(liveApplicationsDir, desktop))).toBe(false);
+		}
+	});
+	});
 
 // ---------------------------------------------------------------------------
 // backupMimeappsConfig — live → repo
@@ -390,42 +423,17 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 		).toBe(true);
 	});
 
-	it("ships a ZEE5 desktop entry that opens the managed special workspace", () => {
-		const desktop = fs.readFileSync(
-			path.join(CONFIGS_MIMEAPPS_DIR, "applications", "zee5-hd.desktop"),
-			"utf8",
-		);
-
-		expect(desktop).toContain("Name=ZEE5 HD");
-		expect(desktop).toContain("Exec=caelestia toggle zee5");
-		expect(desktop).toContain("Type=Application");
-		expect(desktop).toContain("Categories=AudioVideo;Video;");
-		expect(desktop).not.toContain("bottles-cli");
-		expect(desktop).not.toContain("brave.exe");
-	});
-
-	it("ships a Crunchyroll desktop entry that opens the managed special workspace", () => {
-		const desktop = fs.readFileSync(
-			path.join(CONFIGS_MIMEAPPS_DIR, "applications", "crunchyroll-hd.desktop"),
-			"utf8",
-		);
-
-		expect(desktop).toContain("Name=Crunchyroll HD");
-		expect(desktop).toContain("Exec=caelestia toggle crunchyroll");
-		expect(desktop).toContain("Type=Application");
-		expect(desktop).not.toContain("bottles-cli");
-	});
-
-	it("ships a JioHotstar desktop entry that opens the managed special workspace", () => {
-		const desktop = fs.readFileSync(
-			path.join(CONFIGS_MIMEAPPS_DIR, "applications", "jiohotstar-hd.desktop"),
-			"utf8",
-		);
-
-		expect(desktop).toContain("Name=JioHotstar HD");
-		expect(desktop).toContain("Exec=caelestia toggle jiohotstar");
-		expect(desktop).toContain("Type=Application");
-		expect(desktop).not.toContain("bottles-cli");
+	it("does not ship deprecated streaming desktop entries", () => {
+		for (const desktop of [
+			"zee5-hd.desktop",
+			"crunchyroll-hd.desktop",
+			"jiohotstar-hd.desktop",
+			"primevideo-hd.desktop",
+		]) {
+			expect(
+				fs.existsSync(path.join(CONFIGS_MIMEAPPS_DIR, "applications", desktop)),
+			).toBe(false);
+		}
 	});
 
 	it("ships a WhatsApp Web desktop entry that opens the communication workspace", () => {

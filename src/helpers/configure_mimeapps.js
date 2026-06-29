@@ -6,6 +6,12 @@ import { log, safeCopyFile } from "../common/utils.js";
 
 const HOME_DEFAULT = homedir();
 const PROJECT_ROOT_DEFAULT = path.resolve(__dirname, "..", "..");
+const RETIRED_DESKTOP_HANDLERS = [
+  "zee5-hd.desktop",
+  "crunchyroll-hd.desktop",
+  "jiohotstar-hd.desktop",
+  "primevideo-hd.desktop",
+];
 
 /**
  * Resolve the live and in-repo mimeapps.list paths from injected home +
@@ -26,6 +32,14 @@ function resolvePaths({ home = HOME_DEFAULT, projectRoot = PROJECT_ROOT_DEFAULT 
 }
 
 function syncDesktopHandlers(repoApplicationsDir, liveApplicationsDir) {
+  for (const desktop of RETIRED_DESKTOP_HANDLERS) {
+    const retiredPath = path.join(liveApplicationsDir, desktop);
+    if (fs.existsSync(retiredPath)) {
+      fs.rmSync(retiredPath, { force: true });
+      log.info(`Removed retired applications/${desktop}`);
+    }
+  }
+
   if (!fs.existsSync(repoApplicationsDir)) return;
 
   fs.mkdirSync(liveApplicationsDir, { recursive: true });
