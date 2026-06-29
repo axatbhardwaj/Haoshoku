@@ -1,7 +1,4 @@
 {
-  "env": {
-    "CLAUDE_CODE_EFFORT_LEVEL": "max"
-  },
   "attribution": {
     "commit": "",
     "pr": ""
@@ -153,8 +150,8 @@
     "superpowers@claude-plugins-official": true,
     "cloudflare@cloudflare": false,
     "ralph-loop@claude-plugins-official": true,
-    "dvandva@dvandva": true,
-    "warp@claude-code-warp": true
+    "warp@claude-code-warp": true,
+    "dvandva@dvandva": true
   },
   "extraKnownMarketplaces": {
     "azure-skills": {
@@ -183,6 +180,7 @@
     }
   },
   "effortLevel": "xhigh",
+  "tui": "fullscreen",
   "skipDangerousModePermissionPrompt": true,
   "editorMode": "normal",
   "verbose": true,
