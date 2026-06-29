@@ -40,6 +40,7 @@ C_CYAN=$'\033[38;2;137;221;255m'    # cyan       #89DDFF — branch
 C_MAGENTA=$'\033[38;2;199;146;234m' # magenta    #C792EA — worktree, agent
 C_YELLOW=$'\033[38;2;255;203;107m'  # yellow     #FFCB6B — cost, warn band
 C_GREEN=$'\033[38;2;195;232;141m'   # green      #C3E88D — rl healthy
+C_LTGREEN=$'\033[38;2;144;238;144m' # light green #90EE90 — xhigh effort
 C_BLUE=$'\033[38;2;130;170;255m'    # blue       #82AAFF — ctx healthy
 C_RED=$'\033[38;2;240;113;120m'     # red        #f07178 — critical band
 
@@ -173,7 +174,7 @@ elif [ -n "$effort_level" ] && [ "$thinking_on" = "true" ]; then
     low)    eff_render="${C_DIM}low${C_RESET}" ;;
     medium) eff_render="${C_BLUE}medium${C_RESET}" ;;
     high)   eff_render="${C_GREEN}high${C_RESET}" ;;
-    xhigh)  eff_render="${C_MAGENTA}xhigh${C_RESET}" ;;
+    xhigh)  eff_render="${C_LTGREEN}xhigh${C_RESET}" ;;
     max)    eff_render="${C_RAIN1}m${C_RAIN2}a${C_RAIN3}x${C_RESET}" ;;
     *)      eff_render="${C_FG}${effort_level}${C_RESET}" ;;
   esac
