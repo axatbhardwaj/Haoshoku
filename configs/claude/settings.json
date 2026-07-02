@@ -116,8 +116,20 @@
     ],
     "defaultMode": "bypassPermissions"
   },
-  "model": "opus",
+  "model": "claude-fable-5[1m]",
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -c 'if (.tool_input.skill // \"\") | IN(\"superpowers:brainstorming\", \"superpowers:writing-plans\") then {hookSpecificOutput:{hookEventName:\"PreToolUse\",additionalContext:\"[output-contract] Working docs from this skill go to gitignored ./superpowers/ at the repo root as a SINGLE self-contained dark-mode HTML file (specs/YYYY-MM-DD-<topic>-design.html | plans/YYYY-MM-DD-<feature>.html) — never a tracked docs/ path, never markdown. Ensure /superpowers/ and agent-os/ are in .gitignore before writing. See ~/.claude/CLAUDE.md Working artifacts + Deliverables.\"},suppressOutput:true} else empty end'",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
     "UserPromptSubmit": [
       {
         "hooks": [
@@ -151,7 +163,8 @@
     "cloudflare@cloudflare": false,
     "ralph-loop@claude-plugins-official": true,
     "warp@claude-code-warp": true,
-    "dvandva@dvandva": true
+    "dvandva@dvandva": true,
+    "tempo@claude": true
   },
   "extraKnownMarketplaces": {
     "azure-skills": {
@@ -176,6 +189,12 @@
       "source": {
         "source": "github",
         "repo": "warpdotdev/claude-code-warp"
+      }
+    },
+    "claude": {
+      "source": {
+        "source": "github",
+        "repo": "tempoxyz/docs"
       }
     }
   },
