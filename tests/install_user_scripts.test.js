@@ -143,6 +143,7 @@ describe("installUserScripts — deployment", () => {
 			"zee5-hd",
 			"crunchyroll-hd",
 			"jiohotstar-hd",
+			"ai-webapps-toggle",
 		]) {
 			fs.writeFileSync(path.join(localBin, script), "# stale\n");
 		}
@@ -159,6 +160,7 @@ describe("installUserScripts — deployment", () => {
 			"zee5-hd",
 			"crunchyroll-hd",
 			"jiohotstar-hd",
+			"ai-webapps-toggle",
 		]) {
 			expect(fs.existsSync(path.join(localBin, script))).toBe(false);
 		}
@@ -215,28 +217,30 @@ describe("installUserScripts — deployment", () => {
 		expect(script).not.toContain("@DEFAULT_AUDIO_SINK@");
 	});
 
-	it("ships ai-webapps-toggle for the Claude and ChatGPT Brave PWAs", () => {
+	it("ships claude-desktop-toggle for native claude-desktop stacked with the ChatGPT PWA", () => {
 		const script = fs.readFileSync(
-			path.join(process.cwd(), "configs", "scripts", "ai-webapps-toggle"),
+			path.join(process.cwd(), "configs", "scripts", "claude-desktop-toggle"),
 			"utf8",
 		);
 
 		expect(script).toContain("MONITOR=DP-2");
-		expect(script).toContain("WS=special:ai-webapps");
-		expect(script).toContain(
-			"CLAUDE_CLASS=brave-fmpnliohjhemenmnlpbfagaolkdacoja-Default",
-		);
-		expect(script).toContain("CLAUDE_APP_ID=fmpnliohjhemenmnlpbfagaolkdacoja");
+		expect(script).toContain("WS=special:claude-desktop");
+		expect(script).toContain("WS_NAME=claude-desktop");
+		// Claude slot is the native app, launched directly (no --app-id).
+		expect(script).toContain("CLAUDE_CLASS=claude-desktop");
+		expect(script).toContain("app2unit -- claude-desktop");
+		// ChatGPT rides along as its Brave PWA.
 		expect(script).toContain(
 			"CHATGPT_CLASS=brave-cadlkienfkclaiaibeoongdcgmdikeeg-Default",
 		);
-		expect(script).toContain("CHATGPT_APP_ID=cadlkienfkclaiaibeoongdcgmdikeeg");
-		expect(script).toContain("workspace_visible");
+		expect(script).toContain("cadlkienfkclaiaibeoongdcgmdikeeg");
+		// Two-window top/bottom stack machinery is back.
 		expect(script).toContain("place_stack");
 		expect(script).toContain("reserved_left");
-		expect(script).toContain("inner_gap=10");
 		expect(script).toContain("movewindowpixel");
 		expect(script).toContain("resizewindowpixel");
+		// The old Claude *PWA* stays gone — Claude is native now.
+		expect(script).not.toContain("brave-fmpnliohjhemenmnlpbfagaolkdacoja");
 	});
 
 	it("does not ship deprecated streaming launcher scripts", () => {

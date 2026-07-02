@@ -1,13 +1,17 @@
 #!/usr/bin/env sh
-# Super+I: toggle Claude + ChatGPT Brave PWAs on a DP-2 special workspace.
+# Super+I: toggle the native claude-desktop app + the ChatGPT Brave PWA on a
+# DP-2 special workspace, floated as a top/bottom stack.
 
 MONITOR=DP-2
-WS=special:ai-webapps
-WS_NAME=ai-webapps
-LOCK_DIR="${XDG_RUNTIME_DIR:-/tmp}/haoshoku-ai-webapps-toggle.lock"
+WS=special:claude-desktop
+WS_NAME=claude-desktop
+LOCK_DIR="${XDG_RUNTIME_DIR:-/tmp}/haoshoku-claude-desktop-toggle.lock"
 
-CLAUDE_CLASS=brave-fmpnliohjhemenmnlpbfagaolkdacoja-Default
-CLAUDE_APP_ID=fmpnliohjhemenmnlpbfagaolkdacoja
+# Claude is the native Anthropic desktop app (pacman: claude-desktop, class
+# claude-desktop, single-instance). ChatGPT rides along as its Brave PWA, which
+# exposes a stable brave-<app-id>-Default class. Each app carries the exact
+# launch command used when no existing window can be reclaimed.
+CLAUDE_CLASS=claude-desktop
 CHATGPT_CLASS=brave-cadlkienfkclaiaibeoongdcgmdikeeg-Default
 CHATGPT_APP_ID=cadlkienfkclaiaibeoongdcgmdikeeg
 
@@ -15,6 +19,9 @@ BRAVE=/opt/brave-bin/brave
 if [ ! -x "$BRAVE" ]; then
 	BRAVE=brave
 fi
+
+CLAUDE_LAUNCH="app2unit -- claude-desktop"
+CHATGPT_LAUNCH="app2unit -- $BRAVE --profile-directory=Default --app-id=$CHATGPT_APP_ID"
 
 if ! mkdir "$LOCK_DIR" 2>/dev/null; then
 	exit 0
@@ -107,13 +114,13 @@ place_stack() {
 
 ensure_app() {
 	class=$1
-	app_id=$2
+	launch=$2
 
 	if move_existing_window "$class"; then
 		return
 	fi
 
-	hyprctl dispatch exec "[workspace $WS silent] app2unit -- $BRAVE --profile-directory=Default --app-id=$app_id"
+	hyprctl dispatch exec "[workspace $WS silent] $launch"
 }
 
 hyprctl dispatch focusmonitor "$MONITOR" >/dev/null 2>&1 || true
@@ -124,8 +131,8 @@ if window_on_workspace "$CLAUDE_CLASS" && window_on_workspace "$CHATGPT_CLASS"; 
 	exit 0
 fi
 
-ensure_app "$CLAUDE_CLASS" "$CLAUDE_APP_ID"
-ensure_app "$CHATGPT_CLASS" "$CHATGPT_APP_ID"
+ensure_app "$CLAUDE_CLASS" "$CLAUDE_LAUNCH"
+ensure_app "$CHATGPT_CLASS" "$CHATGPT_LAUNCH"
 
 i=0
 while [ "$i" -lt 80 ]; do

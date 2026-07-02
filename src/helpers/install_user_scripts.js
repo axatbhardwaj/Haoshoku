@@ -12,6 +12,7 @@ const RETIRED_LOCAL_BIN_ENTRIES = [
   "zee5-hd",
   "crunchyroll-hd",
   "jiohotstar-hd",
+  "ai-webapps-toggle",
   "CLAUDE.md",
   "CLAUDE.md.bak",
 ];
