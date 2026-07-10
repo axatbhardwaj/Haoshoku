@@ -178,7 +178,7 @@ Initialization of all (1) EGL display types failed
 ...
 media\base\win\mf_initializer.cc: Failed to start Media Foundation ... <span style="color:#f85149">Could not load mf.dll</span></pre>
 <div class="note">
-<b>In plain terms:</b> the OpenGL backend needs the WGL extension <code>WGL_NV_DX_interop2</code>, which <b>Wine's WGL does not implement</b> → GL initialization fails → the GPU process dies → Chromium falls back to a CPU rasterizer. The D3D11/Vulkan backends would use real GPU, but they hit the <b>Vulkan swapchain (WSI) failure</b> that blanks the window (the original Prime bug). And <b>Media Foundation can't load</b> (<code>mf.dll</code> absent — it was stripped to fix Prime's crash), so accelerated <i>video decode</i> is impossible regardless. There is no remaining path to hardware acceleration in this bottle.</p>
+<p><b>In plain terms:</b> the OpenGL backend needs the WGL extension <code>WGL_NV_DX_interop2</code>, which <b>Wine's WGL does not implement</b> → GL initialization fails → the GPU process dies → Chromium falls back to a CPU rasterizer. The D3D11/Vulkan backends would use real GPU, but they hit the <b>Vulkan swapchain (WSI) failure</b> that blanks the window (the original Prime bug). And <b>Media Foundation can't load</b> (<code>mf.dll</code> absent — it was stripped to fix Prime's crash), so accelerated <i>video decode</i> is impossible regardless. There is no remaining path to hardware acceleration in this bottle.</p>
 </div>
 
 <h2>5 · The backend matrix</h2>
