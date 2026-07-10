@@ -448,15 +448,13 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 		expect(desktop).toContain("StartupWMClass=brave-web.whatsapp.com__-Default");
 	});
 
-	it("sets COSMIC Files as the XDG default for directories", () => {
+	it("sets Dolphin as the XDG default for directories", () => {
 		const content = fs.readFileSync(
 			path.join(CONFIGS_MIMEAPPS_DIR, "mimeapps.list"),
 			"utf8",
 		);
 
-		expect(content).toContain(
-			"inode/directory=com.system76.CosmicFiles.desktop",
-		);
+		expect(content).toContain("inode/directory=org.kde.dolphin.desktop");
 	});
 
 	it("routes notion:// links to the managed Brave Notion web app", () => {
@@ -516,7 +514,7 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 		// match would false-flag them.
 		const providerAliases = {
 			"brave-browser.desktop": "brave-bin",
-			"com.system76.CosmicFiles.desktop": "cosmic-files",
+			"org.kde.dolphin.desktop": "dolphin",
 		};
 		const installed = new Set(
 			packageLists.split("\n").map((line) => line.trim()),

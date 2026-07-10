@@ -177,7 +177,7 @@ describe("AUR package list", () => {
     expect(pkgs).toContain("thunar");
   });
 
-  it("includes cosmic-files for the managed default file manager", () => {
+  it("includes Dolphin for the managed default file manager", () => {
     const list = fs.readFileSync(
       path.join(PROJECT_ROOT, "common", "paru_applist.txt"),
       "utf8",
@@ -186,7 +186,8 @@ describe("AUR package list", () => {
       .split("\n")
       .map((l) => l.trim())
       .filter((l) => l && !l.startsWith("#"));
-    expect(pkgs).toContain("cosmic-files");
+    expect(pkgs).toContain("dolphin");
+    expect(pkgs).not.toContain("cosmic-files");
   });
 
   it("includes swayimg for the managed image MIME defaults", () => {

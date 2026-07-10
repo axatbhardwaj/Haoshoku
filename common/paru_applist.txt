@@ -14,7 +14,7 @@ bitwarden
 partitionmanager
 inotify-tools
 thunar
-cosmic-files
+dolphin
 swayimg
 teams-for-linux
 onlyoffice-bin

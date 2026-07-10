@@ -981,14 +981,14 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		}
 	});
 
-	it("rebinds Super+E (default file manager) to COSMIC Files in both hypr-user variants", () => {
+	it("rebinds Super+E (default file manager) to Dolphin in both hypr-user variants", () => {
 		for (const file of ["hypr-user-pc.conf", "hypr-user-laptop.conf"]) {
 			const conf = fs.readFileSync(
 				path.join(CONFIGS_CAELESTIA_DIR, file),
 				"utf8",
 			);
 
-			expect(conf).toContain("$fileExplorer = cosmic-files");
+			expect(conf).toContain("$fileExplorer = dolphin");
 			expect(conf).toContain("unbind = $kbFileExplorer");
 			expect(conf).toContain(
 				"bind = $kbFileExplorer, exec, app2unit -- $fileExplorer",
