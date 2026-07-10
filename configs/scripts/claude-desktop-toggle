@@ -1,0 +1,181 @@
+#!/usr/bin/env sh
+# Super+I: toggle the native claude-desktop app + the ChatGPT Brave PWA on a
+# DP-2 special workspace, floated as a top/bottom stack.
+
+MONITOR=DP-2
+WS=special:claude-desktop
+WS_NAME=claude-desktop
+LOCK_DIR="${XDG_RUNTIME_DIR:-/tmp}/haoshoku-claude-desktop-toggle.lock"
+
+# Claude is the native Anthropic desktop app (pacman: claude-desktop, class
+# claude-desktop, single-instance). ChatGPT rides along as its Brave PWA. Brave
+# has exposed both classes across reinstalls, so match either.
+CLAUDE_CLASS=claude-desktop
+CHATGPT_CLASS=brave-cadlkienfkclaiaibeoongdcgmdikeeg-Default
+CHATGPT_ALT_CLASS=crx_cadlkienfkclaiaibeoongdcgmdikeeg
+CHATGPT_APP_ID=cadlkienfkclaiaibeoongdcgmdikeeg
+
+BRAVE=/opt/brave-bin/brave
+if [ ! -x "$BRAVE" ]; then
+	BRAVE=brave
+fi
+
+CLAUDE_LAUNCH="app2unit -- claude-desktop"
+CHATGPT_LAUNCH="app2unit -- $BRAVE --profile-directory=Default --app-id=$CHATGPT_APP_ID"
+
+if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+	exit 0
+fi
+trap 'rmdir "$LOCK_DIR"' 0 HUP INT TERM
+
+clients() {
+	hyprctl clients -j
+}
+
+window_address() {
+	clients | jq -r --arg class "$1" 'first(.[] | select(.class == $class) | .address) // empty'
+}
+
+chatgpt_address() {
+	clients | jq -r --arg class "$CHATGPT_CLASS" --arg alt "$CHATGPT_ALT_CLASS" \
+		'first(.[] | select(.class == $class or .class == $alt) | .address) // empty'
+}
+
+window_on_workspace() {
+	clients | jq -e --arg class "$1" --arg ws "$WS" \
+		'any(.[]; .class == $class and .workspace.name == $ws)' >/dev/null 2>&1
+}
+
+chatgpt_on_workspace() {
+	clients | jq -e --arg class "$CHATGPT_CLASS" --arg alt "$CHATGPT_ALT_CLASS" --arg ws "$WS" \
+		'any(.[]; (.class == $class or .class == $alt) and .workspace.name == $ws)' >/dev/null 2>&1
+}
+
+workspace_visible() {
+	hyprctl monitors -j | jq -e --arg ws "$WS" \
+		'any(.[]; .specialWorkspace.name == $ws)' >/dev/null 2>&1
+}
+
+reveal_if_hidden() {
+	if ! workspace_visible; then
+		hyprctl dispatch togglespecialworkspace "$WS_NAME"
+	fi
+}
+
+move_existing_window() {
+	addr=$(window_address "$1")
+	if [ -n "$addr" ]; then
+		hyprctl dispatch movetoworkspacesilent "$WS,address:$addr"
+		return 0
+	fi
+	return 1
+}
+
+move_existing_chatgpt() {
+	addr=$(chatgpt_address)
+	if [ -n "$addr" ]; then
+		hyprctl dispatch movetoworkspacesilent "$WS,address:$addr"
+		return 0
+	fi
+	return 1
+}
+
+place_stack() {
+	claude_addr=$(window_address "$CLAUDE_CLASS")
+	chatgpt_addr=$(chatgpt_address)
+
+	if [ -z "$claude_addr" ] || [ -z "$chatgpt_addr" ]; then
+		return 1
+	fi
+
+	geometry=$(hyprctl monitors -j | jq -r --arg monitor "$MONITOR" '
+		first(.[] | select(.name == $monitor)) as $mon |
+		if $mon == null then empty
+		elif ($mon.transform == 1 or $mon.transform == 3 or $mon.transform == 5 or $mon.transform == 7) then
+			[$mon.x, $mon.y, $mon.height, $mon.width, $mon.reserved[0], $mon.reserved[1], $mon.reserved[2], $mon.reserved[3]]
+		else
+			[$mon.x, $mon.y, $mon.width, $mon.height, $mon.reserved[0], $mon.reserved[1], $mon.reserved[2], $mon.reserved[3]]
+		end |
+		@tsv
+	')
+
+	if [ -z "$geometry" ]; then
+		return 1
+	fi
+
+	set -- $geometry
+	monitor_x=$1
+	monitor_y=$2
+	monitor_width=$3
+	monitor_height=$4
+	reserved_left=$5
+	reserved_top=$6
+	reserved_right=$7
+	reserved_bottom=$8
+
+	# Hyprland's reserved strip covers Caelestia's side bar; keep the usual
+	# post-reservation gap so the stack matches normal tiled window placement.
+	edge_gap=11
+	inner_gap=10
+	win_x=$((monitor_x + reserved_left + edge_gap))
+	win_width=$((monitor_width - reserved_left - reserved_right - edge_gap * 2))
+	win_height=$(((monitor_height - reserved_top - reserved_bottom - edge_gap * 2 - inner_gap) / 2))
+	claude_y=$((monitor_y + reserved_top + edge_gap))
+	chatgpt_y=$((claude_y + win_height + inner_gap))
+
+	hyprctl dispatch setfloating "address:$claude_addr"
+	hyprctl dispatch setfloating "address:$chatgpt_addr"
+	hyprctl dispatch resizewindowpixel "exact $win_width $win_height,address:$claude_addr"
+	hyprctl dispatch movewindowpixel "exact $win_x $claude_y,address:$claude_addr"
+	hyprctl dispatch resizewindowpixel "exact $win_width $win_height,address:$chatgpt_addr"
+	hyprctl dispatch movewindowpixel "exact $win_x $chatgpt_y,address:$chatgpt_addr"
+}
+
+ensure_app() {
+	class=$1
+	launch=$2
+
+	if move_existing_window "$class"; then
+		return
+	fi
+
+	hyprctl dispatch exec "[workspace $WS silent] $launch"
+}
+
+ensure_chatgpt() {
+	if move_existing_chatgpt; then
+		return
+	fi
+
+	hyprctl dispatch exec "[workspace $WS silent] $CHATGPT_LAUNCH"
+}
+
+hyprctl dispatch focusmonitor "$MONITOR" >/dev/null 2>&1 || true
+
+if window_on_workspace "$CLAUDE_CLASS" && chatgpt_on_workspace; then
+	place_stack >/dev/null 2>&1 || true
+	hyprctl dispatch togglespecialworkspace "$WS_NAME"
+	exit 0
+fi
+
+ensure_app "$CLAUDE_CLASS" "$CLAUDE_LAUNCH"
+ensure_chatgpt
+
+i=0
+while [ "$i" -lt 80 ]; do
+	move_existing_window "$CLAUDE_CLASS" >/dev/null 2>&1 || true
+	move_existing_chatgpt >/dev/null 2>&1 || true
+
+	if window_on_workspace "$CLAUDE_CLASS" && chatgpt_on_workspace; then
+		place_stack >/dev/null 2>&1 || true
+		reveal_if_hidden
+		exit 0
+	fi
+
+	i=$((i + 1))
+	sleep 0.1
+done
+
+place_stack >/dev/null 2>&1 || true
+reveal_if_hidden
+exit 0

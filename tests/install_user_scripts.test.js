@@ -142,14 +142,11 @@ describe("installUserScripts — deployment", () => {
 			"primevideo-hd",
 			"zee5-hd",
 			"crunchyroll-hd",
-				"jiohotstar-hd",
-				"ai-webapps-toggle",
-				"ai-webapps-toggle.bak",
-				"claude-desktop-toggle",
-				"claude-desktop-toggle.bak",
-			]) {
-				fs.writeFileSync(path.join(localBin, script), "# stale\n");
-			}
+			"jiohotstar-hd",
+			"ai-webapps-toggle",
+		]) {
+			fs.writeFileSync(path.join(localBin, script), "# stale\n");
+		}
 
 		await userScripts.installUserScripts({
 			home: tmpHome,
@@ -162,14 +159,11 @@ describe("installUserScripts — deployment", () => {
 			"primevideo-hd",
 			"zee5-hd",
 			"crunchyroll-hd",
-				"jiohotstar-hd",
-				"ai-webapps-toggle",
-				"ai-webapps-toggle.bak",
-				"claude-desktop-toggle",
-				"claude-desktop-toggle.bak",
-			]) {
-				expect(fs.existsSync(path.join(localBin, script))).toBe(false);
-			}
+			"jiohotstar-hd",
+			"ai-webapps-toggle",
+		]) {
+			expect(fs.existsSync(path.join(localBin, script))).toBe(false);
+		}
 	});
 
 	it("ships game-performance with a reset mode for crash-stale VRR", () => {
@@ -223,15 +217,42 @@ describe("installUserScripts — deployment", () => {
 		expect(script).not.toContain("@DEFAULT_AUDIO_SINK@");
 	});
 
-	it("does not ship deprecated launcher scripts", () => {
+	it("ships claude-desktop-toggle for native claude-desktop stacked with the ChatGPT PWA", () => {
+		const script = fs.readFileSync(
+			path.join(process.cwd(), "configs", "scripts", "claude-desktop-toggle"),
+			"utf8",
+		);
+
+		expect(script).toContain("MONITOR=DP-2");
+		expect(script).toContain("WS=special:claude-desktop");
+		expect(script).toContain("WS_NAME=claude-desktop");
+		// Claude slot is the native app, launched directly (no --app-id).
+		expect(script).toContain("CLAUDE_CLASS=claude-desktop");
+		expect(script).toContain("app2unit -- claude-desktop");
+		// ChatGPT rides along as its Brave PWA.
+		expect(script).toContain(
+			"CHATGPT_CLASS=brave-cadlkienfkclaiaibeoongdcgmdikeeg-Default",
+		);
+		expect(script).toContain("CHATGPT_ALT_CLASS=crx_cadlkienfkclaiaibeoongdcgmdikeeg");
+		expect(script).toContain('--arg alt "$CHATGPT_ALT_CLASS"');
+		expect(script).toContain("or .class == $alt");
+		expect(script).toContain("cadlkienfkclaiaibeoongdcgmdikeeg");
+		// Two-window top/bottom stack machinery is back.
+		expect(script).toContain("place_stack");
+		expect(script).toContain("reserved_left");
+		expect(script).toContain("movewindowpixel");
+		expect(script).toContain("resizewindowpixel");
+		// The old Claude *PWA* stays gone — Claude is native now.
+		expect(script).not.toContain("brave-fmpnliohjhemenmnlpbfagaolkdacoja");
+	});
+
+	it("does not ship deprecated streaming launcher scripts", () => {
 		for (const script of [
 			"primevideo-setup",
 			"primevideo-hd",
 			"zee5-hd",
 			"crunchyroll-hd",
 			"jiohotstar-hd",
-			"ai-webapps-toggle",
-			"claude-desktop-toggle",
 		]) {
 			expect(
 				fs.existsSync(path.join(process.cwd(), "configs", "scripts", script)),

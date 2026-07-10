@@ -657,16 +657,21 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		expect(conf).not.toContain("caelestia toggle claude");
 	});
 
-	it("does not bind Super+I on PC", () => {
+	it("routes Super+I to native claude-desktop plus the ChatGPT PWA on DP-2 for PC", () => {
 		const conf = fs.readFileSync(
 			path.join(CONFIGS_CAELESTIA_DIR, "hypr-user-pc.conf"),
 			"utf8",
 		);
 
-		expect(conf).not.toContain("bind = Super, I");
-		expect(conf).not.toContain("claude-desktop-toggle");
-		expect(conf).not.toContain("special:claude-desktop");
-		expect(conf).not.toContain("brave-cadlkienfkclaiaibeoongdcgmdikeeg-Default");
+		expect(conf).toContain(
+			"windowrule = workspace special:claude-desktop, match:class claude-desktop",
+		);
+		expect(conf).toContain(
+			"windowrule = workspace special:claude-desktop, match:class (brave-cadlkienfkclaiaibeoongdcgmdikeeg-Default|crx_cadlkienfkclaiaibeoongdcgmdikeeg)",
+		);
+		expect(conf).toContain(
+			"bind = Super, I, exec, hyprctl dispatch focusmonitor DP-2 && /home/xzat/.local/bin/claude-desktop-toggle",
+		);
 		// Claude's old Brave PWA stays gone; workspace was renamed off ai-webapps.
 		expect(conf).not.toContain("brave-fmpnliohjhemenmnlpbfagaolkdacoja-Default");
 		expect(conf).not.toContain("special:ai-webapps");
