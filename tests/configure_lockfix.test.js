@@ -440,4 +440,17 @@ describe("seeded configs/caelestia-lockfix/ (in-tree static files)", () => {
 		expect(lockSurfacePatch).toContain("lockContent.fitBase");
 		expect(lockSurfacePatch).not.toContain("contentItem.Tokens.sizes.lock");
 	});
+
+	it("targets the Caelestia 2.1 lockscreen layout", () => {
+		const lockSurfacePatch = fs.readFileSync(
+			path.join(CONFIGS_LOCKFIX_DIR, "LockSurface.qml.portrait-fix.patch"),
+			"utf8",
+		);
+
+		expect(lockSurfacePatch).toContain("Tokens.padding.extraLargeIncreased");
+		expect(lockSurfacePatch).not.toContain("Tokens.padding.large * 2");
+		expect(lockSurfacePatch).toContain(
+			"to: root.fitBase * lockContent.Tokens.sizes.lock.heightMult",
+		);
+	});
 });
