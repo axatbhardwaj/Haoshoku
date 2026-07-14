@@ -234,6 +234,7 @@ Inside workflows the lane policy is unchanged:
 * Deep-review / refutation stations run on Opus; light support on Sonnet
 * Cross-vendor verification before adjudication: Opus verifies Codex findings and vice versa; nobody judges their own vendor
 * Every workflow `agent()` call pins a `model` or `agentType` explicitly — unpinned stations inherit the session model, and when the chair is Fable that silently burns the scarcest quota on execution work Fable must never do
+* Never pass a `schema` to a `codex-wrapper` station — the schema nudge kills the wrapper mid-supervision. The wrapper returns `result.json` verbatim as text; if the script needs JSON, add a cheap Sonnet structurer station after it. Codex run artifacts persist under `/tmp/codex-wrapper/run-*/` (prompt, result, report, logs) — that is the recovery channel if a station dies
 
 Parallelism rules:
 
