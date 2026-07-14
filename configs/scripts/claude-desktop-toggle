@@ -8,9 +8,9 @@ WS_NAME=claude-desktop
 LOCK_DIR="${XDG_RUNTIME_DIR:-/tmp}/haoshoku-claude-desktop-toggle.lock"
 
 # Claude is the native Anthropic desktop app (pacman: claude-desktop, class
-# claude-desktop, single-instance). ChatGPT rides along as its Brave PWA. Brave
-# has exposed both classes across reinstalls, so match either.
-CLAUDE_CLASS=claude-desktop
+# com.anthropic.Claude, single-instance). ChatGPT rides along as its Brave PWA.
+# Brave has exposed both classes across reinstalls, so match either.
+CLAUDE_CLASS=com.anthropic.Claude
 CHATGPT_CLASS=brave-cadlkienfkclaiaibeoongdcgmdikeeg-Default
 CHATGPT_ALT_CLASS=crx_cadlkienfkclaiaibeoongdcgmdikeeg
 CHATGPT_APP_ID=cadlkienfkclaiaibeoongdcgmdikeeg

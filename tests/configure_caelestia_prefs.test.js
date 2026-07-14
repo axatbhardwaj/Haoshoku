@@ -664,7 +664,7 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		);
 
 		expect(conf).toContain(
-			"windowrule = workspace special:claude-desktop, match:class claude-desktop",
+			String.raw`windowrule = workspace special:claude-desktop, match:class com\.anthropic\.Claude`,
 		);
 		expect(conf).toContain(
 			"windowrule = workspace special:claude-desktop, match:class (brave-cadlkienfkclaiaibeoongdcgmdikeeg-Default|crx_cadlkienfkclaiaibeoongdcgmdikeeg)",

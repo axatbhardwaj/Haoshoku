@@ -227,7 +227,7 @@ describe("installUserScripts — deployment", () => {
 		expect(script).toContain("WS=special:claude-desktop");
 		expect(script).toContain("WS_NAME=claude-desktop");
 		// Claude slot is the native app, launched directly (no --app-id).
-		expect(script).toContain("CLAUDE_CLASS=claude-desktop");
+		expect(script).toContain("CLAUDE_CLASS=com.anthropic.Claude");
 		expect(script).toContain("app2unit -- claude-desktop");
 		// ChatGPT rides along as its Brave PWA.
 		expect(script).toContain(
