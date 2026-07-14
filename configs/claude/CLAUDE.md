@@ -31,6 +31,7 @@ Training data is stale. Before quoting a version, API, feature, or flag: verify.
 
 - Codex default implementation model: **terra**. **luna** only for short-context mechanical/terminal bulk. Escalate to **sol** for hard or long-horizon execution.
 - Claude-family for judgment, subtle review, and taste-sensitive output. Anything user-facing ships only after a taste-strong pass (sonnet-5/opus-4.8/fable-5). Never haiku; sonnet is the floor for code-touching subagents.
+- **When this session is chaired by fable:** fable never writes code, and never burns its scarce quota on mechanical execution — dispatch every implementation, test, fix, and low-judgment tool-driving task (browser automation like Playwright / claude-in-chrome, MCP interactions, log/data digging) to **opus** as the default extension (opus is fable's hands); sonnet for lighter support. Fable does planning, judgment, review, taste, and coordination only.
 - Grok: real-time research lane, prose first drafts (never ships raw), and disjoint parallel bulk — never review or adjudication stations.
 - Standing bias: implementation volume ~60/40 Codex/Claude. Advisory, not per-task bookkeeping. Standing permission to escalate models when output misses the bar.
 
@@ -46,7 +47,7 @@ Training data is stale. Before quoting a version, API, feature, or flag: verify.
 
 - **Normal:** I plan and dispatch → Codex implements and tests → I inspect the diff and verify → done. My inspection is the credited cross-vendor review for Codex-authored work.
 - **Medium:** add one fix round — I review, Codex fixes confirmed findings once, I verify.
-- **High-assurance ring** (fable plans → terra plan-review → terra/sol executes → opus deep-review → fable adjudicates) only for: smart contracts / fund movement, authn/authz, cryptographic logic, schema or data migrations, shared infra, novel architecture, large cross-cutting changes.
+- **High-assurance ring** (fable plans → sol plan-review → terra/sol executes → opus deep-review → fable adjudicates) only for: smart contracts / fund movement, authn/authz, cryptographic logic, schema or data migrations, shared infra, novel architecture, large cross-cutting changes.
 - Nobody reviews their own vendor's work: fresh Opus review for high-risk or large Codex diffs; a `codex-wrapper` review-mode dispatch (read-only by launcher construction) for non-trivial Claude-authored diffs.
 - Correction loops cap at 2 rounds; then surface the disagreement or reconsider scope. Reviewers are always read-only.
 
