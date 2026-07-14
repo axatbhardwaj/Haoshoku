@@ -100,6 +100,8 @@ Fable never writes code.
 
 When the current session runs on Fable, it remains the chair and delegates every code change, test, migration, fix, and MCP-driven verification or tool automation (Playwright, Svelte, browser drivers, and similar). Opus is Fable's default extension for that work; use Sonnet for lighter support.
 
+Authoring and running a Workflow orchestration script is the one exception: it is chair coordination — the deterministic harness that dispatches the work — not the implementation the no-code rule refers to. The code, tests, and fixes that ship still run only in dispatched stations, never in the chair.
+
 ### Opus policy
 
 Use Opus when additional capability materially reduces failure risk:
@@ -217,6 +219,31 @@ Concurrent code-writing workers require disjoint write scopes or separate worktr
 Do not manufacture task divisions merely to create parallelism.
 
 The chair owns dependency ordering and integration.
+
+## Workflow Orchestration
+
+This section is a standing opt-in to multi-agent orchestration via the Workflow tool.
+
+**Ultracode is always on.** Treat every session as if the user had typed `ultracode`: use a Workflow whenever possible — exhaustive coverage, adversarial verification, several workflows in sequence for multi-phase work — rather than solo execution. Token cost is not a constraint. Solo work is correct only for conversational turns and trivial mechanical edits.
+
+Whenever a task can be expressed as a Workflow — implementation phases, deep reviews, audits, migrations, research sweeps, verification passes — the chair authors and runs a Workflow script instead of dispatching agents ad hoc. The script is deterministic orchestration; the chair stays out of its stations: author the script, read the structured results, adjudicate.
+
+Inside workflows the lane policy is unchanged:
+
+* Implementation and adversarial-review stations run through `codex-wrapper` (`agentType`), with the chair-selected Codex tier
+* Deep-review / refutation stations run on Opus; light support on Sonnet
+* Cross-vendor verification before adjudication: Opus verifies Codex findings and vice versa; nobody judges their own vendor
+* Every workflow `agent()` call pins a `model` or `agentType` explicitly — unpinned stations inherit the session model, and when the chair is Fable that silently burns the scarcest quota on execution work Fable must never do
+
+Parallelism rules:
+
+* Read-only stations fan out freely
+* Write stations parallelize only with disjoint write scopes or worktree isolation; the Codex launcher requires a clean tree, so same-tree write chains are pipelined serially, each step committing its chunk
+* Do not manufacture stations to create parallelism
+
+Skip workflows for conversational turns, single-fact lookups, throwaway one-liners, and sub-30-second edits — the same exemptions as Superpowers.
+
+Save recurring orchestration shapes as named workflows under `.claude/workflows/` so they can be invoked by name instead of re-authored.
 
 ## Review Policy
 
