@@ -163,7 +163,6 @@
     "cloudflare@cloudflare": false,
     "ralph-loop@claude-plugins-official": true,
     "warp@claude-code-warp": true,
-    "dvandva@dvandva": true,
     "tempo@claude": true
   },
   "extraKnownMarketplaces": {
@@ -179,12 +178,6 @@
         "repo": "cloudflare/skills"
       }
     },
-    "dvandva": {
-      "source": {
-        "source": "directory",
-        "path": "/home/xzat/personal/Dvandva"
-      }
-    },
     "claude-code-warp": {
       "source": {
         "source": "github",
@@ -198,7 +191,7 @@
       }
     }
   },
-  "effortLevel": "xhigh",
+  "effortLevel": "high",
   "tui": "fullscreen",
   "skipDangerousModePermissionPrompt": true,
   "editorMode": "normal",
