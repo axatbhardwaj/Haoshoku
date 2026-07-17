@@ -58,6 +58,7 @@ anydesk-bin
 anytype-bin
 azd-cli
 bottles
+claude-desktop
 google-chrome
 kiro-ide-bin
 obs-backgroundremoval

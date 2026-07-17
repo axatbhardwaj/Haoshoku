@@ -514,6 +514,7 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 		// match would false-flag them.
 		const providerAliases = {
 			"brave-browser.desktop": "brave-bin",
+			"com.anthropic.Claude.desktop": "claude-desktop",
 			"org.kde.dolphin.desktop": "dolphin",
 		};
 		const installed = new Set(
