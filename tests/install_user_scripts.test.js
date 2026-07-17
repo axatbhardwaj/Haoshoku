@@ -183,6 +183,24 @@ describe("installUserScripts — deployment", () => {
 		expect(script).toContain("/usr/bin/game-performance");
 	});
 
+	it("toggles game VRR without reloading all monitor outputs", () => {
+		const script = fs.readFileSync(
+			path.join(
+				process.cwd(),
+				"configs",
+				"scripts",
+				"game-performance",
+			),
+			"utf8",
+		);
+
+		expect(script).toContain(
+			'hyprctl keyword monitor "DP-1,2560x1440@143.97,1080x240,1,vrr,$1"',
+		);
+		expect(script).not.toContain("hyprctl reload");
+		expect(script).not.toContain("sed -i");
+	});
+
 	it("ships warp-workspace-7 as a plain home Warp launcher", () => {
 		const script = fs.readFileSync(
 			path.join(process.cwd(), "configs", "scripts", "warp-workspace-7"),

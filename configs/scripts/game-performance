@@ -10,21 +10,15 @@
 # Resolves before /usr/bin because ~/.local/bin precedes it in $PATH on
 # systemd-user-session-managed setups.
 #
-# Mechanism note: Hyprland 0.55.x's `hyprctl keyword monitor` accepts VRR
-# changes but doesn't propagate them to live output state — the keyword is
-# registered in-memory but the KMS/Wayland output never re-modesets. The only
-# reliable runtime toggle is file-edit + `hyprctl reload`. So this wrapper
-# sed-edits the user's monitor declaration in place at
-# ~/.config/caelestia/hypr-user.conf and reloads.
+# Hyprland 0.55.4 applies a targeted monitor keyword to live VRR state without
+# reloading every output. A full reload can cause NVIDIA hotplug storms and kill
+# Wayland clients, so keep the persistent config at vrr=0 and override DP-1 only
+# for the game's lifetime.
 
 set -u
 
-HYPR_USER="$HOME/.config/caelestia/hypr-user.conf"
-
 set_dp1_vrr() {
-    # Replace the trailing "vrr, 0" or "vrr, 1" on the DP-1 monitor line.
-    sed -i -E "s|^(monitor = DP-1,[^v]*vrr,) [01]$|\\1 $1|" "$HYPR_USER"
-    hyprctl reload >/dev/null 2>&1
+    hyprctl keyword monitor "DP-1,2560x1440@143.97,1080x240,1,vrr,$1" >/dev/null 2>&1
 }
 
 revert() {

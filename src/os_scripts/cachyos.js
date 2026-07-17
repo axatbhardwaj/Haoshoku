@@ -469,8 +469,8 @@ async function configureHyprland() {
   await configureCaelestiaPrefs();
   await configureSddm();
   // Install ~/.local/bin/ scripts (e.g. game-performance shadow wrapper).
-  // Must run after configureCaelestiaPrefs because the wrapper edits the
-  // hypr-user.conf that prefs deploys.
+  // Must run after configureCaelestiaPrefs so the persistent vrr=0 baseline is
+  // present before the wrapper applies runtime-only game overrides.
   await installUserScripts();
   // Wallpapers ride along with the Hyprland rice — Caelestia's shell picks
   // them up from ~/Pictures/Wallpapers/ via its wallpaper subcommand.
