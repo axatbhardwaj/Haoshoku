@@ -517,14 +517,23 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		expect(toggles).not.toContain("vivaldi");
 	});
 
-	it("ships configs/warp/tab_configs/agents.toml and retires the kitty config", () => {
+	it("ships configs/warp/tab_configs/agents.toml as a Claude-only tab", () => {
 		const t = fs.readFileSync(
 			path.join(PROJECT_ROOT, "configs", "warp", "tab_configs", "agents.toml"),
 			"utf8",
 		);
-		expect(t).toContain('split = "vertical"');
-		expect(t).toContain("claude -r io");
-		expect(t).toContain("codex resume 019e5020-3b8e-7871-aa56-a22277dae669");
+		// Assert against directives only. The file documents the split it used
+		// to be, so matching raw text would fail on the comment's own history.
+		const directives = t
+			.split("\n")
+			.filter((line) => !line.trim().startsWith("#"))
+			.join("\n");
+
+		expect(directives).toContain("claude -r io");
+		// Super+A opens Claude alone. Codex is started by hand when wanted, so
+		// there is no second pane and therefore no root split to declare.
+		expect(directives).not.toContain("codex");
+		expect(directives).not.toContain("split =");
 		expect(fs.existsSync(path.join(PROJECT_ROOT, "configs", "kitty"))).toBe(
 			false,
 		);
