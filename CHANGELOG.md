@@ -1,5 +1,9 @@
 # Changelog
 
+## 5.11.3 - 2026-07-18
+
+- Replace Vesktop with the official Discord client. `common/paru_applist.txt` installs `discord`, `configs/mimeapps/mimeapps.list` points `x-scheme-handler/discord` at `discord.desktop`, the redundant `vesktop` entry is dropped from `configs/caelestia/cli.json`, and both Caelestia variants pin the official client's lowercase `discord` class (matching `StartupWMClass` in `discord.desktop`) to workspace 4 — window rule and the `Super+4` launch bind. The ws 4 pin overrides Caelestia's stock `rules.conf:39`, which also matches `discord` and would otherwise route it to `special:communication`; that override is not new, since the stock rule matched `vesktop` the same way and the pin already took precedence. Regression coverage in `tests/configure_caelestia_prefs.test.js`. Note the repo had drifted from the machine: `vesktop` was no longer installed and Discord was already running on workspace 4.
+
 ## 5.9.1 - 2026-06-17
 
 - Add a managed microphone mute shortcut. New `configs/scripts/mic-toggle` toggles the current default audio source through `wpctl` (with `pactl` fallback), sends a desktop notification for muted/unmuted state, and restores the input source volume to 100% whenever it unmutes so a stale zero-gain capture state does not silently break voice input again. Both Caelestia variants now override stock `Super+Shift+M` (speaker mute) and bind it to `~/.local/bin/mic-toggle`. Regression coverage in `tests/install_user_scripts.test.js` and `tests/configure_caelestia_prefs.test.js`; live verified against the FIFINE default source.

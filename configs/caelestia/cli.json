@@ -4,9 +4,6 @@
       "discord": {
         "enable": false
       },
-      "vesktop": {
-        "enable": false
-      },
       "signal": {
         "enable": true,
         "match": [{"class": "signal"}],
