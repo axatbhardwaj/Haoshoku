@@ -300,33 +300,40 @@ describe("installUserScripts — deployment", () => {
 		expect(script).not.toContain("hyprctl reload");
 	});
 
-	it("ships claude-desktop-toggle for native claude-desktop stacked with the ChatGPT PWA", () => {
+	it("ships claude-desktop-toggle as a Claude-only special workspace", () => {
 		const script = fs.readFileSync(
 			path.join(process.cwd(), "configs", "scripts", "claude-desktop-toggle"),
 			"utf8",
 		);
+		// Directives only: the file documents the ChatGPT stack it used to be,
+		// so matching raw text would trip on the comment's own history.
+		const code = script
+			.split("\n")
+			.filter((line) => !line.trim().startsWith("#"))
+			.join("\n");
 
-		expect(script).toContain("MONITOR=DP-2");
-		expect(script).toContain("WS=special:claude-desktop");
-		expect(script).toContain("WS_NAME=claude-desktop");
-		// Claude slot is the native app, launched directly (no --app-id).
-		expect(script).toContain("CLAUDE_CLASS=com.anthropic.Claude");
-		expect(script).toContain("app2unit -- claude-desktop");
-		// ChatGPT rides along as its Brave PWA.
-		expect(script).toContain(
-			"CHATGPT_CLASS=brave-cadlkienfkclaiaibeoongdcgmdikeeg-Default",
-		);
-		expect(script).toContain("CHATGPT_ALT_CLASS=crx_cadlkienfkclaiaibeoongdcgmdikeeg");
-		expect(script).toContain('--arg alt "$CHATGPT_ALT_CLASS"');
-		expect(script).toContain("or .class == $alt");
-		expect(script).toContain("cadlkienfkclaiaibeoongdcgmdikeeg");
-		// Two-window top/bottom stack machinery is back.
-		expect(script).toContain("place_stack");
-		expect(script).toContain("reserved_left");
-		expect(script).toContain("movewindowpixel");
-		expect(script).toContain("resizewindowpixel");
-		// The old Claude *PWA* stays gone — Claude is native now.
-		expect(script).not.toContain("brave-fmpnliohjhemenmnlpbfagaolkdacoja");
+		expect(code).toContain("MONITOR=DP-2");
+		expect(code).toContain("WS=special:claude-desktop");
+		expect(code).toContain("WS_NAME=claude-desktop");
+		// Claude is the native app, launched directly (no --app-id).
+		expect(code).toContain("CLAUDE_CLASS=com.anthropic.Claude");
+		expect(code).toContain("app2unit -- claude-desktop");
+
+		// Super+I is Claude alone — no PWA class, no Brave, no app-id.
+		expect(code).not.toContain("cadlkienfkclaiaibeoongdcgmdikeeg");
+		expect(code).not.toContain("CHATGPT");
+		expect(code).not.toContain("--app-id");
+		expect(code).not.toContain("brave");
+
+		// One window tiles into the work area on its own, honouring both the
+		// reserved bar strip and DP-2's portrait transform, so the hand-rolled
+		// two-window geometry is gone with the second window.
+		expect(code).not.toContain("place_stack");
+		expect(code).not.toContain("movewindowpixel");
+		expect(code).not.toContain("resizewindowpixel");
+		expect(code).not.toContain("reserved_left");
+		// Reclaim a window the old stacking version left floating at half height.
+		expect(code).toContain("settiled");
 	});
 
 	it("does not ship deprecated streaming launcher scripts", () => {
