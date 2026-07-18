@@ -1061,4 +1061,21 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 			expect(bindIndex).toBeGreaterThan(unbindIndex);
 		}
 	});
+
+	it("binds Super+Shift+Delete to the unlocked Caelestia restart helper in both variants", () => {
+		const bind =
+			"bind = Super+Shift, Delete, exec, /home/xzat/.local/bin/caelestia-restart";
+
+		for (const file of ["hypr-user-pc.conf", "hypr-user-laptop.conf"]) {
+			const conf = fs.readFileSync(
+				path.join(CONFIGS_CAELESTIA_DIR, file),
+				"utf8",
+			);
+
+			expect(conf).toContain(bind);
+			expect(conf).not.toMatch(/bindl\s*=\s*Super\+Shift,\s*Delete/);
+			expect(conf).not.toContain("unbind = Super+Shift, Delete");
+			expect(conf.split("Super+Shift, Delete").length - 1).toBe(1);
+		}
+	});
 });
