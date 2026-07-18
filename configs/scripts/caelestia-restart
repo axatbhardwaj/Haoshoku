@@ -1,0 +1,200 @@
+#!/usr/bin/env sh
+# Restart Caelestia's quickshell process after a hung shell or QML event loop.
+#
+# Every call that talks to the shell's socket is bounded by `timeout`. Both the
+# cooperative kill and the IPC probe connect to a socket that a stalled QML
+# event loop never answers, so an unbounded call would hang here while holding
+# the fd lock below — and because a held lock exits silently, that would leave
+# this shortcut permanently dead for the rest of the session with no feedback.
+# GNU timeout runs the child in its own process group and signals the group, so
+# the `qs` process behind the `caelestia` wrapper is bounded with it.
+#
+# `caelestia shell -d` already passes quickshell `--no-duplicate`, so quickshell
+# prevents a second instance itself. This flock only serializes kill -> start.
+#
+# Exit: 0 healthy · 1 missing tool · 2 already running (duplicate press, silent)
+#       3 old shell survived / could not be identified · 4 IPC never came up
+
+notify_failure() {
+	timeout 3 hyprctl notify 3 5000 "rgb(ff5555)" "$1" >/dev/null 2>&1 9>&-
+}
+
+missing_tools=""
+for tool in qs caelestia flock timeout hyprctl date; do
+	if ! command -v "$tool" >/dev/null 2>&1; then
+		missing_tools="${missing_tools}${missing_tools:+, }$tool"
+	fi
+done
+
+if [ -n "$missing_tools" ]; then
+	if command -v hyprctl >/dev/null 2>&1; then
+		notify_failure "Caelestia restart unavailable: missing $missing_tools"
+	fi
+	exit 1
+fi
+
+exec 9>"${XDG_RUNTIME_DIR:-/tmp}/caelestia-restart-$(id -u).lock"
+if ! flock -n 9; then
+	exit 2
+fi
+
+is_alive() {
+	kill -0 "$1" >/dev/null 2>&1
+}
+
+any_alive() {
+	for pid in "$@"; do
+		if is_alive "$pid"; then
+			return 0
+		fi
+	done
+	return 1
+}
+
+wait_for_exit() {
+	attempts=$1
+	shift
+
+	while any_alive "$@"; do
+		if [ "$attempts" -eq 0 ]; then
+			return 1
+		fi
+		sleep 0.5
+		attempts=$((attempts - 1))
+	done
+	return 0
+}
+
+terminate_alive() {
+	for pid in "$@"; do
+		if is_alive "$pid"; then
+			kill -TERM "$pid" >/dev/null 2>&1 || true
+		fi
+	done
+}
+
+force_kill_alive() {
+	for pid in "$@"; do
+		if is_alive "$pid"; then
+			kill -KILL "$pid" >/dev/null 2>&1 || true
+		fi
+	done
+}
+
+# Bounded so a stalled event loop cannot wedge the caller. Success means the
+# shell completed an IPC round-trip, not merely that its socket exists.
+ipc_healthy() {
+	timeout 3 qs -c caelestia ipc show >/dev/null 2>&1 9>&-
+}
+
+# `qs list --all` is the authoritative live-instance list, and it spans every
+# config, so an instance counts only when its Config path ends at Caelestia's
+# own shell.qml — a bare /caelestia/ substring also matches unrelated configs
+# nested under a directory of that name.
+#
+# The Instance rule tolerates leading whitespace so an unexpectedly indented
+# header still resets the block. Without that, a header we failed to recognise
+# would leave is_caelestia set and attribute the NEXT block's PID to Caelestia.
+#
+# PIDs are validated as unsigned integers before they can ever reach `kill`.
+# A negative value is a process-group selector — `kill -TERM -1` would signal
+# every process this user owns, ending the session.
+list_caelestia_pids() {
+	timeout 5 qs list --all 2>/dev/null 9>&- | awk '
+		/^[[:space:]]*Instance / {
+			if (pid != "" && is_caelestia) print pid
+			pid = ""
+			is_caelestia = 0
+			next
+		}
+		/^[[:space:]]*Process ID: / {
+			if ($3 ~ /^[0-9]+$/) pid = $3
+			next
+		}
+		/^[[:space:]]*Config path: / && /\/caelestia\/shell\.qml/ {
+			is_caelestia = 1
+		}
+		END {
+			if (pid != "" && is_caelestia) print pid
+		}
+	'
+}
+
+# Deadline is wall-clock, not an iteration count: each probe can itself burn up
+# to its own timeout, so counting attempts would silently multiply the bound.
+#
+# 45s is empirical, not a guess. A warm start on this machine answers IPC at
+# ~14s: the socket exists early but does not reply until the QML engine is up,
+# so every probe blocks its full timeout and the loop advances ~3.5s at a time.
+# A cold start after a shell update recompiles QML and is slower still. Too
+# short a deadline is the worse failure — it reports "restart failed" over a
+# restart that in fact succeeded, and trains you to ignore the notification.
+wait_for_ipc() {
+	deadline=$(($(date +%s) + 45))
+
+	while :; do
+		if ipc_healthy; then
+			return 0
+		fi
+		if [ "$(date +%s)" -ge "$deadline" ]; then
+			return 1
+		fi
+		sleep 0.5
+	done
+}
+
+pids=$(list_caelestia_pids)
+
+# A live shell we could not name must not be left running: the start below
+# would be refused by --no-duplicate, the old shell would answer the health
+# probe, and this would report success for a restart that never happened.
+if [ -z "$pids" ] && ipc_healthy; then
+	notify_failure "Caelestia restart failed: shell is live but could not be identified"
+	exit 3
+fi
+
+kill_exhausted=0
+
+# If no instance remains, it died on its own: recover directly with a start.
+if [ -n "$pids" ] && any_alive $pids; then
+	timeout 5 caelestia shell -k >/dev/null 2>&1 9>&- || true
+
+	if ! wait_for_exit 10 $pids; then
+		terminate_alive $pids
+		if ! wait_for_exit 6 $pids; then
+			force_kill_alive $pids
+			if ! wait_for_exit 4 $pids; then
+				kill_exhausted=1
+			fi
+		fi
+	fi
+fi
+
+# Attempt the start even after an unkillable process; --no-duplicate rejects a
+# surviving registry entry, while a healthy IPC round-trip is still success.
+#
+# `9>&-` is load-bearing, not tidiness. The new shell is a DAEMON that outlives
+# this script, and a child inherits fd 9 along with the flock held on it. Left
+# open, the lock would stay held by the daemon for the rest of the session, so
+# every later press would fail flock and take the silent exit-2 path: the
+# shortcut would work exactly once per login and then die without a word.
+caelestia shell -d >/dev/null 2>&1 9>&- || true
+
+if wait_for_ipc; then
+	# A survivor of the ladder answers IPC exactly as a fresh shell would, and
+	# --no-duplicate would have refused our start. Healthy IPC is only success
+	# when nothing we set out to kill is still running.
+	if any_alive $pids; then
+		notify_failure "Caelestia restart failed: old shell survived and still owns IPC"
+		exit 3
+	fi
+	exit 0
+fi
+
+if [ "$kill_exhausted" -eq 1 ]; then
+	notify_failure "Caelestia restart failed: old shell would not exit"
+	exit 3
+fi
+
+notify_failure "Caelestia restart failed: IPC did not become healthy"
+exit 4
