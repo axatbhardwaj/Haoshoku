@@ -6,7 +6,7 @@ Warp terminal configuration, deployed by `configureWarp()` (`src/helpers/configu
 
 | File                      | What                                                  | When to read                          |
 | ------------------------- | ----------------------------------------------------- | ------------------------------------- |
-| `tab_configs/agents.toml` | Super+A agents split (claude + codex), tab title "agents" | Modifying the agents workspace layout |
+| `tab_configs/agents.toml` | Super+A agents tab (Claude only), tab title "agents" | Modifying the agents workspace layout |
 
 ## Theme: activated, not shipped
 
@@ -21,7 +21,8 @@ string selects a built-in). Warp ignores Caelestia's OSC palette injection
 ## Agents tab config
 
 `tab_configs/agents.toml` deploys to `${XDG_DATA_HOME:-~/.local/share}/warp-terminal/tab_configs/`
-(claude | codex, top/bottom split via `split = "vertical"`). Super+A runs the
+(a single Claude pane; the Codex half of the old top/bottom split was dropped, so
+there is no root `split = "vertical"` pane left to declare). Super+A runs the
 `agents-toggle` guard script (`configs/scripts/` → `~/.local/bin/`): if `special:agents`
 already holds a window it just toggles that workspace's visibility; otherwise it spawns
 `warp-terminal warp://tab_config/agents?new_window=true` pinned to `special:agents` via a
