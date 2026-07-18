@@ -29,7 +29,7 @@ nvtop
 wmctrl
 fastfetch
 expect
-vesktop
+discord
 solaar
 okular
 slack-desktop-wayland
