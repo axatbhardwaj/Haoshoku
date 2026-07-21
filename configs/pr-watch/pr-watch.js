@@ -13,6 +13,7 @@ const STATUS_FAILING_STATES = new Set(["FAILURE", "ERROR"]);
 const STATUS_GREEN_STATES = new Set(["SUCCESS"]);
 const DEFAULT_INTERVAL_SECONDS = 120;
 const HEARTBEAT_MILLISECONDS = 15 * 60 * 1_000;
+const GH_TIMEOUT_MS = 30000;
 const GH_PR_FIELDS = [
   "number",
   "state",
@@ -355,6 +356,12 @@ export function diffSnapshots(previous, next) {
       number: next.number,
       readiness: nextReadiness,
     });
+  } else if (previousReady && !nextReadiness.looks_ready) {
+    events.push({
+      type: "readiness_lost",
+      number: next.number,
+      readiness: nextReadiness,
+    });
   }
 
   if (previous.state !== "MERGED" && next.state === "MERGED") {
@@ -405,12 +412,16 @@ function textOutput(value) {
   return new TextDecoder().decode(value ?? new Uint8Array());
 }
 
-export function defaultGhRunner(args) {
-  return Bun.spawnSync(args, { stdout: "pipe", stderr: "pipe" });
+export function defaultGhRunner(args, { timeout = GH_TIMEOUT_MS } = {}) {
+  return Bun.spawnSync(args, {
+    stdout: "pipe",
+    stderr: "pipe",
+    timeout,
+  });
 }
 
-async function checkedGh(args, ghRunner) {
-  const result = await ghRunner(args);
+async function checkedGh(args, ghRunner, ghTimeoutMs) {
+  const result = await ghRunner(args, { timeout: ghTimeoutMs });
   const exitCode = result?.exitCode ?? result?.exit_code ?? 1;
   if (exitCode !== 0) {
     const detail = textOutput(result?.stderr).trim() || `exit ${exitCode}`;
@@ -419,12 +430,16 @@ async function checkedGh(args, ghRunner) {
   return textOutput(result.stdout);
 }
 
-export async function fetchSnapshot(url, { ghRunner = defaultGhRunner } = {}) {
+export async function fetchSnapshot(
+  url,
+  { ghRunner = defaultGhRunner, ghTimeoutMs = GH_TIMEOUT_MS } = {},
+) {
   const { owner, repo, number } = parsePrUrl(url);
   const raw = JSON.parse(
     await checkedGh(
       ["gh", "pr", "view", url, "--json", GH_PR_FIELDS],
       ghRunner,
+      ghTimeoutMs,
     ),
   );
   const graphql = JSON.parse(
@@ -443,6 +458,7 @@ export async function fetchSnapshot(url, { ghRunner = defaultGhRunner } = {}) {
         `number=${number}`,
       ],
       ghRunner,
+      ghTimeoutMs,
     ),
   );
   const threads =
@@ -489,11 +505,54 @@ function emitLine(fsApi, logPath, stdout, event) {
   fsApi.appendFileSync(logPath, `${line}\n`, "utf8");
 }
 
+function defaultPidIsAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function acquireLock(fsApi, lockPath, slug, isPidAlive, clock) {
+  if (fsApi.existsSync(lockPath)) {
+    let existingLock = null;
+    try {
+      existingLock = JSON.parse(String(fsApi.readFileSync(lockPath, "utf8")));
+    } catch {
+      existingLock = null; // corrupt lock file → treat as stale, take over
+    }
+    if (
+      existingLock &&
+      Number.isInteger(existingLock.pid) &&
+      isPidAlive(existingLock.pid)
+    ) {
+      throw new Error(`already watching ${slug} (pid ${existingLock.pid})`);
+    }
+  }
+  fsApi.writeFileSync(
+    lockPath,
+    `${JSON.stringify({
+      pid: process.pid,
+      startedAt: new Date(clock()).toISOString(),
+    })}\n`,
+    "utf8",
+  );
+}
+
+function releaseLock(fsApi, lockPath) {
+  if (fsApi.existsSync(lockPath)) {
+    fsApi.unlinkSync(lockPath);
+  }
+}
+
 export async function watchPr(url, options = {}) {
   const fsApi = options.fsApi ?? fs;
   const stateRoot = options.stateRoot ?? defaultStateRoot();
   const ghRunner = options.ghRunner ?? defaultGhRunner;
+  const ghTimeoutMs = options.ghTimeoutMs ?? GH_TIMEOUT_MS;
   const clock = options.clock ?? Date.now;
+  const isPidAlive = options.isPidAlive ?? defaultPidIsAlive;
   const sleep = options.sleep ?? ((milliseconds) => Bun.sleep(milliseconds));
   const stdout = options.stdout ?? ((line) => console.log(line));
   const intervalSeconds =
@@ -501,85 +560,91 @@ export async function watchPr(url, options = {}) {
   const slug = prSlug(url);
   const statePath = path.join(stateRoot, `${slug}.state.json`);
   const logPath = path.join(stateRoot, `${slug}.log`);
+  const lockPath = path.join(stateRoot, `${slug}.lock`);
 
   fsApi.mkdirSync(stateRoot, { recursive: true });
-  let previous = readState(fsApi, statePath);
-  let firstPoll = true;
-  let lastEventAt = null;
+  acquireLock(fsApi, lockPath, slug, isPidAlive, clock);
+  try {
+    let previous = readState(fsApi, statePath);
+    let firstPoll = true;
+    let lastEventAt = null;
 
-  while (true) {
-    const now = clock();
-    let snapshot;
-    try {
-      snapshot = await fetchSnapshot(url, { ghRunner });
-    } catch (error) {
-      const event = {
-        type: "poll_error",
-        slug,
-        at: new Date(now).toISOString(),
-        error: error?.message ?? String(error),
-      };
-      emitLine(fsApi, logPath, stdout, event);
-      lastEventAt = now;
-      await sleep(intervalSeconds * 1_000);
-      continue;
-    }
-
-    let events = diffSnapshots(previous, snapshot);
-    if (firstPoll && previous !== null) {
-      const catchUp = diffSnapshots(null, snapshot)[0];
-      events = [{ ...catchUp, resumed: true }, ...events];
-    }
-    firstPoll = false;
-
-    const terminalType =
-      snapshot.state === "MERGED"
-        ? "merged"
-        : snapshot.state === "CLOSED"
-          ? "closed"
-          : null;
-    if (terminalType && !events.some((event) => event.type === terminalType)) {
-      events.push({ type: terminalType, number: snapshot.number });
-    }
-
-    if (
-      events.length === 0 &&
-      lastEventAt !== null &&
-      now - lastEventAt >= HEARTBEAT_MILLISECONDS
-    ) {
-      events = [
-        {
-          type: "heartbeat",
+    while (true) {
+      const now = clock();
+      let snapshot;
+      try {
+        snapshot = await fetchSnapshot(url, { ghRunner, ghTimeoutMs });
+      } catch (error) {
+        const event = {
+          type: "poll_error",
           slug,
-          number: snapshot.number,
           at: new Date(now).toISOString(),
-        },
-      ];
-    }
+          error: error?.message ?? String(error),
+        };
+        emitLine(fsApi, logPath, stdout, event);
+        lastEventAt = now;
+        await sleep(intervalSeconds * 1_000);
+        continue;
+      }
 
-    for (const event of events) {
-      emitLine(fsApi, logPath, stdout, {
-        ...event,
-        at: event.at ?? new Date(now).toISOString(),
-      });
-    }
-    if (events.length > 0) {
-      lastEventAt = now;
-    }
+      let events = diffSnapshots(previous, snapshot);
+      if (firstPoll && previous !== null) {
+        const catchUp = diffSnapshots(null, snapshot)[0];
+        events = [{ ...catchUp, resumed: true }, ...events];
+      }
+      firstPoll = false;
 
-    const state = {
-      ...nextSeenState(previous, snapshot),
-      slug,
-      url,
-      lastPollAt: new Date(now).toISOString(),
-    };
-    writeStateAtomic(fsApi, statePath, state);
-    previous = state;
+      const terminalType =
+        snapshot.state === "MERGED"
+          ? "merged"
+          : snapshot.state === "CLOSED"
+            ? "closed"
+            : null;
+      if (terminalType && !events.some((event) => event.type === terminalType)) {
+        events.push({ type: terminalType, number: snapshot.number });
+      }
 
-    if (terminalType) {
-      return 0;
+      if (
+        events.length === 0 &&
+        lastEventAt !== null &&
+        now - lastEventAt >= HEARTBEAT_MILLISECONDS
+      ) {
+        events = [
+          {
+            type: "heartbeat",
+            slug,
+            number: snapshot.number,
+            at: new Date(now).toISOString(),
+          },
+        ];
+      }
+
+      for (const event of events) {
+        emitLine(fsApi, logPath, stdout, {
+          ...event,
+          at: event.at ?? new Date(now).toISOString(),
+        });
+      }
+      if (events.length > 0) {
+        lastEventAt = now;
+      }
+
+      const state = {
+        ...nextSeenState(previous, snapshot),
+        slug,
+        url,
+        lastPollAt: new Date(now).toISOString(),
+      };
+      writeStateAtomic(fsApi, statePath, state);
+      previous = state;
+
+      if (terminalType) {
+        return 0;
+      }
+      await sleep(intervalSeconds * 1_000);
     }
-    await sleep(intervalSeconds * 1_000);
+  } finally {
+    releaseLock(fsApi, lockPath);
   }
 }
 

@@ -151,7 +151,7 @@ class MemoryFs {
   }
 
   writeFileSync(filePath, contents) {
-    this.operations.push(["write", filePath]);
+    this.operations.push(["write", filePath, String(contents)]);
     this.files.set(filePath, String(contents));
   }
 
@@ -164,6 +164,11 @@ class MemoryFs {
     this.operations.push(["rename", from, to]);
     this.files.set(to, this.files.get(from));
     this.files.delete(from);
+  }
+
+  unlinkSync(filePath) {
+    this.operations.push(["unlink", filePath]);
+    this.files.delete(filePath);
   }
 
   readdirSync(directory) {
@@ -322,6 +327,36 @@ describe("pr-watch deterministic core", () => {
     expect(diffSnapshots(snapshot, structuredClone(snapshot))).toEqual([]);
   });
 
+  test("ready to not-ready emits readiness_lost with reasons", () => {
+    const previous = snap();
+    const next = snap({ isDraft: true });
+
+    const event = diffSnapshots(previous, next).find(
+      (candidate) => candidate.type === "readiness_lost",
+    );
+    expect(event).toBeDefined();
+    expect(event.number).toBe(7);
+    expect(event.readiness.looks_ready).toBe(false);
+    expect(event.readiness.reasons).toContain("PR is a draft");
+  });
+
+  test("not-ready to not-ready emits no readiness transition", () => {
+    const previous = snap({ isDraft: true });
+    const next = snap({ mergeStateStatus: "BEHIND" });
+
+    expect(
+      eventTypes(diffSnapshots(previous, next)).filter((type) =>
+        ["ready", "readiness_lost"].includes(type),
+      ),
+    ).toEqual([]);
+  });
+
+  test("first not-ready poll still emits only watch_started", () => {
+    const events = diffSnapshots(null, snap({ isDraft: true }));
+
+    expect(eventTypes(events)).toEqual(["watch_started"]);
+  });
+
   test("baseline, serialization, slugging, and cumulative seen state are deterministic", () => {
     const initial = snap({ comments: [issueComment({ id: "IC_OLD" })] });
     const next = snap({ comments: [issueComment({ id: "IC_NEW" })] });
@@ -387,6 +422,7 @@ describe("pr-watch injected effects and commands", () => {
     expect(exitCode).toBe(0);
     expect(lines.map((line) => JSON.parse(line).type)).toEqual([
       "watch_started",
+      "readiness_lost",
       "merged",
     ]);
     expect(sleeps).toEqual([120_000]);
@@ -438,8 +474,188 @@ describe("pr-watch injected effects and commands", () => {
       "poll_error",
       "watch_started",
       "heartbeat",
+      "readiness_lost",
       "closed",
     ]);
+  });
+
+  test("watch loop treats a timed-out gh call as poll_error and continues", async () => {
+    const fsApi = new MemoryFs();
+    const lines = [];
+    const sleeps = [];
+    const runnerOptions = [];
+    const successfulRunner = ghSequence([
+      { raw: rawSnapshot({ state: "MERGED" }), threads: [] },
+    ]);
+    let firstCall = true;
+    const ghRunner = async (args, options) => {
+      runnerOptions.push(options);
+      if (firstCall) {
+        firstCall = false;
+        return {
+          exitCode: null,
+          signalCode: "SIGTERM",
+          success: false,
+          stdout: "",
+          stderr: "timed out",
+        };
+      }
+      return successfulRunner(args);
+    };
+
+    const exitCode = await watchPr(
+      "https://github.com/acme/widget/pull/7",
+      {
+        ghRunner,
+        ghTimeoutMs: 123,
+        fsApi,
+        stateRoot: "/state",
+        clock: () => 1_000,
+        sleep: async (milliseconds) => sleeps.push(milliseconds),
+        stdout: (line) => lines.push(line),
+        intervalSeconds: 1,
+      },
+    );
+
+    expect(exitCode).toBe(0);
+    expect(lines.map((line) => JSON.parse(line).type)).toEqual([
+      "poll_error",
+      "watch_started",
+      "merged",
+    ]);
+    expect(JSON.parse(lines[0]).error).toContain("timed out");
+    expect(sleeps).toEqual([1_000]);
+    expect(runnerOptions).toEqual([
+      { timeout: 123 },
+      { timeout: 123 },
+      { timeout: 123 },
+    ]);
+  });
+
+  test("watch loop refuses a second live lock without polling", async () => {
+    const lockPath = "/state/acme-widget-7.lock";
+    const fsApi = new MemoryFs({
+      [lockPath]: JSON.stringify({
+        pid: 4242,
+        startedAt: "2026-07-21T00:00:00.000Z",
+      }),
+    });
+    const runner = ghSequence([
+      { raw: rawSnapshot({ state: "MERGED" }), threads: [] },
+    ]);
+    let ghCalls = 0;
+
+    await expect(
+      watchPr("https://github.com/acme/widget/pull/7", {
+        ghRunner: async (...args) => {
+          ghCalls += 1;
+          return runner(...args);
+        },
+        fsApi,
+        stateRoot: "/state",
+        clock: () => 1_000,
+        sleep: async () => {},
+        stdout: () => {},
+        intervalSeconds: 1,
+        isPidAlive: (pid) => pid === 4242,
+      }),
+    ).rejects.toThrow("already watching acme-widget-7 (pid 4242)");
+
+    expect(ghCalls).toBe(0);
+    expect(JSON.parse(fsApi.files.get(lockPath)).pid).toBe(4242);
+  });
+
+  test("watch loop takes over a stale lock and records a fresh owner", async () => {
+    const lockPath = "/state/acme-widget-7.lock";
+    const fsApi = new MemoryFs({
+      [lockPath]: JSON.stringify({
+        pid: 4242,
+        startedAt: "2026-07-21T00:00:00.000Z",
+      }),
+    });
+    const lines = [];
+    let checkedPid = null;
+
+    const exitCode = await watchPr(
+      "https://github.com/acme/widget/pull/7",
+      {
+        ghRunner: ghSequence([
+          { raw: rawSnapshot({ state: "MERGED" }), threads: [] },
+        ]),
+        fsApi,
+        stateRoot: "/state",
+        clock: () => 1_000,
+        sleep: async () => {},
+        stdout: (line) => lines.push(line),
+        intervalSeconds: 1,
+        isPidAlive: (pid) => {
+          checkedPid = pid;
+          return false;
+        },
+      },
+    );
+
+    expect(exitCode).toBe(0);
+    expect(checkedPid).toBe(4242);
+    expect(lines.map((line) => JSON.parse(line).type)).toEqual([
+      "watch_started",
+      "merged",
+    ]);
+    const lockWrite = fsApi.operations.find(
+      (operation) => operation[0] === "write" && operation[1] === lockPath,
+    );
+    expect(JSON.parse(lockWrite[2])).toEqual({
+      pid: process.pid,
+      startedAt: new Date(1_000).toISOString(),
+    });
+  });
+
+  test("terminal watch exit removes its lock file", async () => {
+    const lockPath = "/state/acme-widget-7.lock";
+    const fsApi = new MemoryFs();
+
+    await watchPr("https://github.com/acme/widget/pull/7", {
+      ghRunner: ghSequence([
+        { raw: rawSnapshot({ state: "CLOSED" }), threads: [] },
+      ]),
+      fsApi,
+      stateRoot: "/state",
+      clock: () => 1_000,
+      sleep: async () => {},
+      stdout: () => {},
+      intervalSeconds: 1,
+      isPidAlive: () => {
+        throw new Error("liveness should not be checked without an old lock");
+      },
+    });
+
+    expect(fsApi.files.has(lockPath)).toBe(false);
+    expect(fsApi.operations).toContainEqual(["unlink", lockPath]);
+  });
+
+  test("exceptional watch exit also removes its lock file", async () => {
+    const lockPath = "/state/acme-widget-7.lock";
+    const fsApi = new MemoryFs();
+
+    await expect(
+      watchPr("https://github.com/acme/widget/pull/7", {
+        ghRunner: ghSequence([{ raw: rawSnapshot(), threads: [] }]),
+        fsApi,
+        stateRoot: "/state",
+        clock: () => 1_000,
+        sleep: async () => {},
+        stdout: () => {
+          throw new Error("output failed");
+        },
+        intervalSeconds: 1,
+        isPidAlive: () => {
+          throw new Error("liveness should not be checked without an old lock");
+        },
+      }),
+    ).rejects.toThrow("output failed");
+
+    expect(fsApi.files.has(lockPath)).toBe(false);
+    expect(fsApi.operations).toContainEqual(["unlink", lockPath]);
   });
 
   test("status lists persisted watches with age and open state", () => {
