@@ -1,0 +1,150 @@
+#!/usr/bin/env bash
+# claude-stay-awake — block system suspend while any Claude Code CLI session runs.
+#
+# On this machine auto-suspend is driven by Caelestia's quickshell (hypridle is
+# dead, logind IdleAction=ignore), which suspends via logind's
+# org.freedesktop.login1.Manager.Suspend(). logind refuses that call while a
+# block-mode `sleep` inhibitor is held, so we hold one while >=1 live `claude`
+# CLI process exists.
+#
+# Architecture — the lock's lifetime IS a watcher process's lifetime, so there
+# is no manual holder-PID bookkeeping to get wrong: `systemd-inhibit CMD` holds
+# the lock for exactly as long as CMD runs, and releases it (fd close) when CMD
+# exits — including on `systemctl stop` (default KillMode=control-group reaps
+# the whole unit cgroup) or a crash. Modes:
+#   (default)          supervisor — polling backstop; while a session exists,
+#                      wraps a "wait until idle" child in the inhibitor.
+#   --hold-until-idle  (internal) held under the inhibitor; returns when no
+#                      session remains.
+#   --hold-for-pid N   (internal) held under the inhibitor; returns when pid N
+#                      dies. Used for per-session, near-instant coverage.
+#   --session-hook     (SessionStart hook) finds this session's claude pid and
+#                      spawns a detached per-session inhibitor for it.
+#
+# Scope: blocks SUSPEND/HIBERNATE only — screen dpms-off and lock still work.
+# Manual suspend is also blocked while a session runs; force with
+# `systemctl suspend -i` or by ending the session.
+#
+# Detection: `pgrep -x claude` (comm == "claude") matches the CLI exactly; the
+# desktop app's native host has a different comm and is excluded. Zombie/defunct
+# matches are skipped. On a pgrep/ps operational error the state is treated as
+# "unknown" and coverage is KEPT (fail safe), never dropped.
+
+set -uo pipefail
+
+readonly WHO="claude-code"
+readonly WHY="Claude Code session active — blocking auto-suspend"
+
+INTERVAL="${CLAUDE_STAY_AWAKE_INTERVAL:-15}"
+if ! [[ "$INTERVAL" =~ ^[1-9][0-9]*$ ]]; then
+	printf '%s claude-stay-awake: invalid CLAUDE_STAY_AWAKE_INTERVAL=%q — using 15\n' \
+		"$(date '+%H:%M:%S')" "$INTERVAL" >&2
+	INTERVAL=15
+fi
+readonly INTERVAL
+
+log() { printf '%s claude-stay-awake: %s\n' "$(date '+%H:%M:%S')" "$*"; }
+
+# Session state. Return: 0 = a live claude CLI session exists; 1 = definitively
+# none; 2 = pgrep itself errored (unknown — callers fail safe by keeping the
+# lock). Fail-safe design: once pgrep confirms a `claude` process, we treat it
+# as LIVE unless we positively confirm EVERY match is a zombie — an unreadable
+# `ps` counts as "not confirmed dead," so a ps hiccup never drops coverage.
+claude_state() {
+	local pids rc p st all_zombie
+	pids=$(pgrep -x claude)
+	rc=$?
+	(( rc == 1 )) && return 1        # pgrep: no match → none
+	(( rc > 1 )) && return 2         # pgrep: operational error → unknown
+	all_zombie=1
+	for p in $pids; do
+		st=$(ps -o state= -p "$p" 2>/dev/null)
+		if (( $? == 0 )) && [[ "$st" == Z* ]]; then
+			continue                 # positively-confirmed zombie → keep scanning
+		fi
+		all_zombie=0                 # live, OR unreadable (treated as live)
+		break
+	done
+	(( all_zombie )) && return 1     # every match confirmed zombie → none
+	return 0                         # at least one live-or-unknown → live
+}
+
+require_inhibit() {
+	command -v systemd-inhibit >/dev/null 2>&1 || {
+		printf 'claude-stay-awake: systemd-inhibit not found — cannot run\n' >&2
+		exit 1
+	}
+}
+
+case "${1:-}" in
+	--hold-until-idle)
+		# Runs UNDER systemd-inhibit. Return only when a session is DEFINITIVELY
+		# gone; "unknown" (pgrep/ps error) keeps the lock held (fail safe).
+		while true; do
+			claude_state
+			s=$?
+			(( s == 1 )) && break        # definitively no session → release
+			sleep "$INTERVAL"            # live (0) or unknown (2) → keep holding
+		done
+		exit 0
+		;;
+	--hold-for-pid)
+		# Runs UNDER systemd-inhibit. Return when the given session pid dies.
+		# Reject 0/1: `kill -0 0` probes the process GROUP (not a real pid) and
+		# pid 1 never exits, either of which would pin the lock forever.
+		pid="${2:-}"
+		{ [[ "$pid" =~ ^[0-9]+$ ]] && (( pid > 1 )); } || { printf 'claude-stay-awake: --hold-for-pid needs a pid > 1\n' >&2; exit 2; }
+		while kill -0 "$pid" 2>/dev/null; do sleep "$INTERVAL"; done
+		exit 0
+		;;
+	--session-hook)
+		# SessionStart hook: find this session's `claude` pid by walking our
+		# ancestry, then spawn a DETACHED per-session inhibitor scoped to it.
+		# Returns immediately so it never delays session startup.
+		require_inhibit
+		p="$PPID"
+		for _ in $(seq 1 12); do
+			[[ "$p" =~ ^[0-9]+$ ]] && (( p > 1 )) || break
+			if [[ "$(ps -o comm= -p "$p" 2>/dev/null)" == claude ]]; then
+				# Idempotent: SessionStart can re-fire on the same process
+				# (/clear, /compact, resume). Don't stack a second holder for a
+				# session we already cover.
+				if systemd-inhibit --list 2>/dev/null | grep -qF "(session $p)"; then
+					exit 0
+				fi
+				setsid systemd-inhibit --what=sleep --who="$WHO" \
+					--why="$WHY (session $p)" --mode=block \
+					"$0" --hold-for-pid "$p" >/dev/null 2>&1 &
+				disown 2>/dev/null || true
+				exit 0
+			fi
+			p="$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')"
+		done
+		# No claude ancestor found — the supervisor service will cover it.
+		exit 0
+		;;
+	"")
+		# Supervisor (systemd service): polling backstop for any session the
+		# SessionStart hook did not cover (already-running, or hooks disabled).
+		require_inhibit
+		log "supervisor started (poll ${INTERVAL}s)"
+		while true; do
+			claude_state
+			s=$?
+			if (( s == 0 )); then
+				log "claude session detected — acquiring block-sleep inhibitor"
+				if systemd-inhibit --what=sleep --who="$WHO" --why="$WHY" \
+					--mode=block "$0" --hold-until-idle; then
+					log "released — no claude sessions remain"
+				else
+					log "ERROR: systemd-inhibit exited $? — SUSPEND MAY NOT BE BLOCKED; retrying"
+				fi
+			fi
+			sleep "$INTERVAL"
+		done
+		;;
+	*)
+		printf 'claude-stay-awake: unknown argument %q\n' "$1" >&2
+		exit 2
+		;;
+esac

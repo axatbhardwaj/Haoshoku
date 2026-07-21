@@ -163,6 +163,17 @@
           }
         ]
       }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/xzat/.local/bin/claude-stay-awake --session-hook",
+            "timeout": 10
+          }
+        ]
+      }
     ]
   },
   "statusLine": {

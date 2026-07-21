@@ -1,0 +1,14 @@
+[Unit]
+Description=Block system suspend while a Claude Code session is running
+Documentation=man:systemd-inhibit(1)
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/claude-stay-awake
+Restart=always
+RestartSec=5
+# The watcher is cheap (one pgrep per interval); keep it lean.
+Nice=10
+
+[Install]
+WantedBy=default.target
