@@ -51,6 +51,10 @@ import {
   backupWorktreeCleanup,
   syncWorktreeCleanup,
 } from "./src/helpers/configure_worktree_cleanup.js";
+import {
+  backupClaudeStayAwake,
+  syncClaudeStayAwake,
+} from "./src/helpers/configure_claude_stay_awake.js";
 import { configureSddm } from "./src/helpers/configure_sddm.js";
 import {
   syncSkills,
@@ -132,6 +136,14 @@ program
   .option(
     "--worktree-cleanup-backup",
     "Backup the ~/defi worktree-cleanup script + systemd units to configs/worktree-cleanup/",
+  )
+  .option(
+    "--claude-stay-awake",
+    "Deploy the claude-stay-awake sleep inhibitor (configs/claude-stay-awake/ → live) and enable the systemd user service",
+  )
+  .option(
+    "--claude-stay-awake-backup",
+    "Backup the claude-stay-awake script + systemd unit to configs/claude-stay-awake/",
   )
   .option("--kde-theme", "Deploy KDE Ocean theme files (sync only, no activate)")
   .option("--kde-theme-backup", "Backup KDE Ocean theme from system to configs/kde/")
@@ -296,6 +308,16 @@ async function runAction(options) {
 
     if (options.worktreeCleanup) {
       await syncWorktreeCleanup();
+      return;
+    }
+
+    if (options.claudeStayAwakeBackup) {
+      await backupClaudeStayAwake();
+      return;
+    }
+
+    if (options.claudeStayAwake) {
+      await syncClaudeStayAwake();
       return;
     }
 
