@@ -46,18 +46,44 @@
 #    dispatch path already has: a dispatch after a write is trusted to have covered it.
 #    The design deliberately over-blocks on any doubt rather than risk under-blocking.
 #
+#    CH5 narrowing: receipts are now scoped per target; in-transcript dispatches remain
+#    target-blind, so a successful junk dispatch can still discharge every earlier write.
+#
+# 4. The final-text comparison is a suspected-staleness signal, not proof. It is a
+#    one-shot signal: after the visible block, stop_hook_active passes the next stop
+#    unconditionally. Short or repeated suffixes can still miss a stale transcript.
+#
+# 5. A final torn transcript tail is treated as staleness evidence and re-polled.
+#    Compaction-summary records are parsed normally; interior transcript corruption still fails open.
+#
+# D7 policy decision: ~/.claude/** is deliberately not exempt; the hook mirrors policy.
+#
 # The first two limitations fail in OPPOSITE directions — do not summarise them as one posture:
 #   #1 over-blocks (a clean session can be stopped and told to justify itself),
 #   #2 under-blocks (a real uncovered write can slip through).
 # Only #1 can inconvenience a well-behaved session, and it does so by asking for a carve-out
 # statement, never by trapping it — stop_hook_active still guarantees a second stop proceeds.
 # The gate is a tripwire, not a wall, and it is honest about which way each hole leans.
+#
+# WONTFIX — accepted deliberately 2026-07-21:
+#
+# **Not fixed, deliberately (2026-07-21; S3B dropped by human decision after two plan-review
+# rounds).** D1/D2 stand: the gate still cannot verify a stated carve-out or exemption, and the same
+# uncovered write re-blocks once per turn until genuinely covered. Every design that honored
+# statements or capped repeat blocks required the hook to trust a durable record that a block had
+# already occurred — and the only storage within a Stop hook's reach is writable by the same model
+# the gate watches. A strict-valid forged `{blocked, waived}` record would silence the tripwire
+# before it ever fired (S0-v2 finding R2-B2). We keep the noise rather than ship a quietable gate.
+# Also unfixed: in-transcript dispatches remain target-blind (a junk dispatch still discharges
+# everything — D5 residual); stops with work in flight still hard-block (any deferral that can repeat
+# is a standing bypass — R2-B3); receipts remain unauthenticated launcher files — per-target scoping
+# and the future-skew bound narrow forgery, they do not close it.
 
 INPUT=$(cat 2>/dev/null)
 command -v python3 >/dev/null 2>&1 || exit 0   # fail open
 python3 - "$INPUT" <<'PY' 2>/dev/null || exit 0
 from datetime import datetime, timedelta
-import glob, json, os, re, stat, sys
+import glob, json, os, re, shlex, stat, sys, time
 try:
     hook = json.loads(sys.argv[1]) if sys.argv[1].strip() else {}
     if not isinstance(hook, dict):
@@ -119,8 +145,8 @@ def path_values(value):
 # - heredocs/here-strings, [[ tests, arithmetic, function definitions, and command
 #   substitutions are skipped because their > tokens are not reliably writes;
 # - variables, globs, eval/wrappers, and runtime-computed targets are not resolved;
-# - writer commands without redirection (tee, cp, install, mv, dd, sed -i, etc.)
-#   are not detected. Detecting them would rebuild the parser this hook removed.
+# - the explicit cp/mv/install/tee/dd/rm/sed -i grammar below is intentionally bounded;
+#   other writer commands and runtime-computed operands remain invisible.
 #
 # Known dispatch-result blind spot:
 # - only structured objects and complete JSON strings are inspected. Unrecognized
@@ -130,9 +156,204 @@ AMBIGUOUS_BASH = re.compile(
     r"<<|\[\[|\(\(|\$\(|`|(?:^|[;|&\n])\s*(?:function\s+)?"
     r"[A-Za-z_][A-Za-z0-9_]*(?:\s*\(\s*\))?\s*\{"
 )
+SHELL_ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
+def shell_segments(command):
+    segments = []
+    segment = []
+    quote = None
+    index = 0
+    while index < len(command):
+        char = command[index]
+        if quote:
+            segment.append(char)
+            if char == quote:
+                quote = None
+            elif char == "\\" and quote == '"' and index + 1 < len(command):
+                index += 1
+                segment.append(command[index])
+            index += 1
+            continue
+        if char in {"'", '"'}:
+            quote = char
+            segment.append(char)
+            index += 1
+            continue
+        if char == "\\" and index + 1 < len(command):
+            segment.extend((char, command[index + 1]))
+            index += 2
+            continue
+        if char in ";|&\n":
+            value = "".join(segment).strip()
+            if value:
+                segments.append(value)
+            segment = []
+            if index + 1 < len(command) and command[index + 1] == char and char in "|&":
+                index += 1
+            index += 1
+            continue
+        segment.append(char)
+        index += 1
+    if quote:
+        raise ValueError("unterminated shell quote")
+    value = "".join(segment).strip()
+    if value:
+        segments.append(value)
+    return segments
+def option_operands(arguments, argument_flags, target_flags=frozenset()):
+    operands = []
+    target_directory = None
+    parsing_flags = True
+    index = 0
+    while index < len(arguments):
+        argument = arguments[index]
+        if parsing_flags and argument == "--":
+            parsing_flags = False
+            index += 1
+            continue
+        if parsing_flags and argument in argument_flags:
+            index += 1
+            if index >= len(arguments):
+                return None
+            if argument in target_flags:
+                target_directory = arguments[index]
+            index += 1
+            continue
+        if parsing_flags and argument.startswith("--"):
+            name, separator, value = argument.partition("=")
+            if name in argument_flags:
+                if not separator:
+                    index += 1
+                    if index >= len(arguments):
+                        return None
+                    value = arguments[index]
+                if name in target_flags:
+                    target_directory = value
+                index += 1
+                continue
+            if not separator:
+                return None
+            index += 1
+            continue
+        if parsing_flags and argument.startswith("-") and argument != "-":
+            index += 1
+            continue
+        operands.append(argument)
+        index += 1
+    return operands, target_directory
+def verb_segment_targets(segment):
+    lexer = shlex.shlex(segment, posix=True, punctuation_chars="<>")
+    lexer.whitespace_split = True
+    lexer.commenters = "#"
+    words = list(lexer)
+    for index, word in enumerate(words):
+        if word and set(word) <= {"<", ">"}:
+            cutoff = index - 1 if index and words[index - 1].isdigit() else index
+            words = words[:cutoff]
+            break
+    if not words or SHELL_ASSIGNMENT.match(words[0]):
+        return []
+    verb, arguments = words[0], words[1:]
+    if verb == "dd":
+        return [value[3:] for value in arguments if value.startswith("of=") and value[3:]]
+    if verb in {"cp", "mv"}:
+        parsed = option_operands(
+            arguments,
+            {"-t", "-S", "--target-directory", "--suffix"},
+            {"-t", "--target-directory"},
+        )
+        if parsed is None:
+            return []
+        operands, target_directory = parsed
+        if target_directory is not None:
+            return [target_directory] if operands else []
+        return [operands[-1]] if len(operands) >= 2 else []
+    if verb == "install":
+        parsed = option_operands(
+            arguments,
+            {
+                "-t", "-m", "-o", "-g", "-S", "--target-directory", "--mode",
+                "--owner", "--group", "--suffix",
+            },
+            {"-t", "--target-directory"},
+        )
+        if parsed is None:
+            return []
+        operands, target_directory = parsed
+        if target_directory is not None:
+            return [target_directory] if operands else []
+        return [operands[-1]] if len(operands) >= 2 else []
+    if verb == "tee":
+        parsed = option_operands(arguments, set())
+        if parsed is None:
+            return []
+        operands, _ = parsed
+        for argument in arguments:
+            if argument.startswith("-") and not argument.startswith("--") and argument != "-":
+                if any(flag not in "aip" for flag in argument[1:]):
+                    return []
+        return operands
+    if verb == "rm":
+        parsed = option_operands(arguments, set())
+        return [] if parsed is None else parsed[0]
+    if verb == "sed":
+        in_place = False
+        scripted = False
+        operands = []
+        parsing_flags = True
+        index = 0
+        while index < len(arguments):
+            argument = arguments[index]
+            if parsing_flags and argument == "--":
+                parsing_flags = False
+                index += 1
+                continue
+            if parsing_flags and (argument == "-i" or argument.startswith("-i")
+                                  or argument == "--in-place" or argument.startswith("--in-place=")):
+                in_place = True
+                index += 1
+                continue
+            if parsing_flags and argument in {"-e", "-f", "--expression", "--file"}:
+                scripted = True
+                index += 1
+                if index >= len(arguments):
+                    return []
+                index += 1
+                continue
+            if parsing_flags and (argument.startswith("--expression=") or argument.startswith("--file=")):
+                scripted = True
+                index += 1
+                continue
+            if parsing_flags and argument.startswith("--"):
+                if "=" not in argument:
+                    return []
+                index += 1
+                continue
+            if parsing_flags and argument.startswith("-") and argument != "-":
+                index += 1
+                continue
+            operands.append(argument)
+            index += 1
+        if not in_place:
+            return []
+        if scripted:
+            return operands
+        return operands[1:] if len(operands) >= 2 else []
+    return []
+def bash_verb_targets(command):
+    targets = []
+    for segment in shell_segments(command):
+        for value in verb_segment_targets(segment):
+            target = durable_path(value)
+            if target and target not in targets:
+                targets.append(target)
+    return targets
 def bash_write_targets(command):
     if not isinstance(command, str) or AMBIGUOUS_BASH.search(command):
         return []
+    try:
+        verb_targets = bash_verb_targets(command)
+    except Exception:
+        verb_targets = []
     targets = []
     index = 0
     quote = None
@@ -203,7 +424,7 @@ def bash_write_targets(command):
                     targets.append(target)
     if quote or word_quote:
         raise ValueError("unterminated shell quote")
-    return targets
+    return targets + [target for target in verb_targets if target not in targets]
 # A dispatch only discharges the gate if it actually reviewed something. Any terminal
 # state short of success means no review happened, so the writes stay uncovered.
 # The launcher_status/exit-code arm matters most in practice: blocked_dirty_tree is a
@@ -215,10 +436,17 @@ NON_SUCCESS_STATUS = {"failed", "blocked", "partial", "cancelled", "canceled", "
 # launchers: ok | detached | still_running | blocked_dirty_tree | codex_failed |
 # invalid_result | invalid_report | review_violated_readonly.
 OK_LAUNCHER_STATUS = {"ok"}
-REPORT_GLOBS = (
-    "/tmp/codex-wrapper/run-*/report.json",
-    "/tmp/opencode-wrapper/run-*/report.json",
-)
+report_glob_roots = os.environ.get("ROUTING_GATE_REPORT_GLOB_ROOTS")
+if report_glob_roots is None:
+    REPORT_GLOBS = (
+        "/tmp/codex-wrapper/run-*/report.json",
+        "/tmp/opencode-wrapper/run-*/report.json",
+    )
+else:
+    REPORT_GLOBS = tuple(
+        os.path.join(root, "run-*", "report.json")
+        for root in report_glob_roots.split(os.pathsep) if root
+    )
 MAX_REPORT_BYTES = 1024 * 1024
 
 def dispatch_failed(value):
@@ -267,11 +495,12 @@ def utc_epoch(value):
         return parsed.timestamp()
     except Exception:
         return None
-def review_receipt_covers(write_timestamp, session_timestamp):
-    write_epoch = utc_epoch(write_timestamp)
+def eligible_review_receipts(session_timestamp):
     session_epoch = utc_epoch(session_timestamp)
-    if write_epoch is None or session_epoch is None:
-        return False
+    if session_epoch is None:
+        return []
+    now = time.time()
+    receipts = []
     flags = os.O_RDONLY | os.O_NONBLOCK | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
     for pattern in REPORT_GLOBS:
         try:
@@ -302,14 +531,22 @@ def review_receipt_covers(write_timestamp, session_timestamp):
                     if report.get("mode") != "review" or report.get("launcher_status") != "ok":
                         continue
                     completed_epoch = utc_epoch(report.get("completed_at"))
-                    if (completed_epoch is not None and completed_epoch > write_epoch
-                            and completed_epoch >= session_epoch):
-                        return True
+                    if (completed_epoch is not None and completed_epoch >= session_epoch
+                            and completed_epoch <= now + 300):
+                        receipts.append((completed_epoch, report.get("workspace")))
                 except Exception:
                     continue
         except Exception:
             continue
-    return False
+    return receipts
+def receipt_workspace_covers(workspace, target):
+    if (not isinstance(workspace, str) or not workspace or not os.path.isabs(workspace)
+            or not isinstance(target, str) or target.startswith("<mcp__")):
+        return False
+    workspace = os.path.realpath(os.path.normpath(workspace))
+    if workspace == "/":
+        return False
+    return target == workspace or target.startswith(workspace + os.sep)
 def classify_tool(name, inp):
     if name in WRITE_TOOLS:
         targets = [p for p in map(durable_path, path_values(inp)) if p]
@@ -329,82 +566,165 @@ def classify_tool(name, inp):
             return None
         return ("write", targets or [f"<{name}>"])
     return None
-pending = {}
-written = []
-dispatches = []
-sequence = 0
-session_started_at = None
-try:
-    with open(path, "r", encoding="utf-8") as transcript:
-        for line in transcript:
-            if not line.strip():
-                continue
-            record = json.loads(line)
-            # Session start = the FIRST record that actually carries a timestamp. The literal
-            # first transcript record often has none (session-meta/summary), which previously
-            # left session_started_at None and made review_receipt_covers reject every receipt
-            # (fail-safe over-block, but the feature never fired). Keep the earliest real one.
-            if session_started_at is None and isinstance(record, dict):
-                ts = record.get("timestamp")
-                if isinstance(ts, str) and ts:
-                    session_started_at = ts
-            if not isinstance(record, dict):
-                continue
-            message = record.get("message")
-            content = message.get("content") if isinstance(message, dict) else None
-            if not isinstance(content, list):
-                continue
-            for block in content:
-                if not isinstance(block, dict):
+def normalized_text(value):
+    return re.sub(r"\s+", " ", value).strip()
+def parse_transcript():
+    pending = {}
+    written = []
+    dispatches = []
+    sequence = 0
+    session_started_at = None
+    last_assistant_text = ""
+    suspected_stale = False
+    try:
+        with open(path, "r", encoding="utf-8") as transcript:
+            for line in transcript:
+                if not line.strip():
                     continue
-                if block.get("type") == "tool_use":
-                    tool_id, name, inp = block.get("id"), block.get("name"), block.get("input", {})
-                    if not isinstance(tool_id, str) or not isinstance(name, str):
-                        continue
-                    if not isinstance(inp, dict) or tool_id in pending:
+                try:
+                    record = json.loads(line)
+                except Exception:
+                    if any(remaining.strip() for remaining in transcript):
                         sys.exit(0)
-                    event = classify_tool(name, inp)
-                    if event:
-                        sequence += 1
-                        pending[tool_id] = (sequence, event[0], event[1], record.get("timestamp"))
-                elif block.get("type") == "tool_result":
-                    tool_id = block.get("tool_use_id")
-                    if not isinstance(tool_id, str) or tool_id not in pending:
+                    suspected_stale = True
+                    break
+                # Session start = the FIRST record that actually carries a timestamp. The literal
+                # first transcript record often has none (session-meta/summary), which previously
+                # left session_started_at None and made review_receipt_covers reject every receipt
+                # (fail-safe over-block, but the feature never fired). Keep the earliest real one.
+                if session_started_at is None and isinstance(record, dict):
+                    ts = record.get("timestamp")
+                    if isinstance(ts, str) and ts:
+                        session_started_at = ts
+                if not isinstance(record, dict):
+                    continue
+                message = record.get("message")
+                content = message.get("content") if isinstance(message, dict) else None
+                if not isinstance(content, list):
+                    continue
+                if message.get("role") == "assistant":
+                    text_blocks = [
+                        block.get("text") for block in content
+                        if (isinstance(block, dict) and block.get("type") == "text"
+                            and isinstance(block.get("text"), str))
+                    ]
+                    if text_blocks:
+                        last_assistant_text = "".join(text_blocks)
+                for block in content:
+                    if not isinstance(block, dict):
                         continue
-                    is_error = block.get("is_error", False)
-                    if not isinstance(is_error, bool):
-                        sys.exit(0)
-                    event_sequence, kind, targets, event_timestamp = pending.pop(tool_id)
-                    if is_error:
-                        continue
-                    if kind == "dispatch":
-                        if not dispatch_failed(block.get("content")):
-                            dispatches.append(event_sequence)
-                    else:
-                        written.extend((event_sequence, target, event_timestamp) for target in targets)
-except Exception:
-    sys.exit(0)                                  # fail open
+                    if block.get("type") == "tool_use":
+                        tool_id, name, inp = block.get("id"), block.get("name"), block.get("input", {})
+                        if not isinstance(tool_id, str) or not isinstance(name, str):
+                            continue
+                        if not isinstance(inp, dict) or tool_id in pending:
+                            sys.exit(0)
+                        event = classify_tool(name, inp)
+                        if event:
+                            sequence += 1
+                            pending[tool_id] = (sequence, event[0], event[1], record.get("timestamp"))
+                    elif block.get("type") == "tool_result":
+                        tool_id = block.get("tool_use_id")
+                        if not isinstance(tool_id, str) or tool_id not in pending:
+                            continue
+                        is_error = block.get("is_error", False)
+                        if not isinstance(is_error, bool):
+                            sys.exit(0)
+                        event_sequence, kind, targets, event_timestamp = pending.pop(tool_id)
+                        if is_error:
+                            continue
+                        if kind == "dispatch":
+                            if not dispatch_failed(block.get("content")):
+                                dispatches.append(event_sequence)
+                        else:
+                            written.extend((event_sequence, target, event_timestamp) for target in targets)
+    except Exception:
+        sys.exit(0)                                  # fail open
+    expected = hook.get("last_assistant_message")
+    if isinstance(expected, str) and expected:
+        expected_suffix = normalized_text(expected)[-200:]
+        if expected_suffix not in normalized_text(last_assistant_text):
+            suspected_stale = True
+    return written, dispatches, session_started_at, suspected_stale
+def transcript_uncovered(written, dispatches):
+    last_dispatch = max(dispatches, default=-1)
+    return [event for event in written if event[0] > last_dispatch]
+try:
+    poll_ms = int(os.environ.get("ROUTING_GATE_POLL_MS", "500"))
+    if poll_ms < 0:
+        raise ValueError
+except (TypeError, ValueError):
+    poll_ms = 500
+written, dispatches, session_started_at, suspected_stale = parse_transcript()
+observed_uncovered = list(transcript_uncovered(written, dispatches))
+if suspected_stale:
+    for _ in range(5):
+        time.sleep(poll_ms / 1000)
+        written, dispatches, session_started_at, suspected_stale = parse_transcript()
+        for event in transcript_uncovered(written, dispatches):
+            if event not in observed_uncovered:
+                observed_uncovered.append(event)
+        if not suspected_stale:
+            break
 last_dispatch = max(dispatches, default=-1)
 uncovered_writes = [event for event in written if event[0] > last_dispatch]
-uncovered = sorted(set(target for _, target, _ in uncovered_writes))
+latest_by_target = {}
+for event_sequence, target, event_timestamp in uncovered_writes:
+    if target not in latest_by_target or event_sequence > latest_by_target[target][0]:
+        latest_by_target[target] = (event_sequence, event_timestamp)
+final_written = written
+current_uncovered = uncovered_writes
+for event_sequence, target, event_timestamp in observed_uncovered:
+    if ((event_sequence, target, event_timestamp) in final_written
+            and event_sequence <= last_dispatch):
+        continue
+    if (event_sequence, target, event_timestamp) in current_uncovered:
+        continue
+    if target not in latest_by_target:
+        latest_by_target[target] = (event_sequence, event_timestamp)
+        continue
+    current_sequence, current_timestamp = latest_by_target[target]
+    current_epoch = utc_epoch(current_timestamp)
+    observed_epoch = utc_epoch(event_timestamp)
+    if current_epoch is None or observed_epoch is None:
+        conservative_timestamp = None
+    else:
+        conservative_timestamp = event_timestamp if observed_epoch > current_epoch else current_timestamp
+    latest_by_target[target] = (max(event_sequence, current_sequence), conservative_timestamp)
+receipts = eligible_review_receipts(session_started_at) if latest_by_target else []
+uncovered = []
+for target, (_, write_timestamp) in latest_by_target.items():
+    write_epoch = utc_epoch(write_timestamp)
+    if (write_epoch is None or not any(
+            completed_epoch > write_epoch and receipt_workspace_covers(workspace, target)
+            for completed_epoch, workspace in receipts)):
+        uncovered.append(target)
+uncovered.sort()
+stale_reason = (
+    "ROUTING GATE — cannot verify this turn: transcript appears stale "
+    "(final assistant text not flushed after re-poll). Writes made this turn may be unreviewed. "
+    "Ensure coverage or state the carve-out for the ledger before stopping again."
+)
 if not uncovered:
-    sys.exit(0)
-latest_write = max(uncovered_writes, key=lambda event: event[0])
-if review_receipt_covers(latest_write[2], session_started_at):
+    if suspected_stale:
+        print(json.dumps({"decision": "block", "reason": stale_reason}))
     sys.exit(0)
 shown = uncovered[:8]
 listing = "\n".join("  - " + target for target in shown)
 if len(uncovered) > len(shown):
     listing += f"\n  ... and {len(uncovered) - len(shown)} more"
 reason = (
-    "ROUTING GATE — this session wrote durable bytes after its latest external-worker dispatch.\n\n"
-    f"{len(uncovered)} uncovered target(s); no later dispatch to codex-wrapper / opencode-wrapper:\n"
+    "ROUTING GATE — durable writes with no covering review.\n\n"
+    f"{len(uncovered)} uncovered target(s) (detected: Write/Edit/NotebookEdit/MultiEdit, MCP "
+    "mutations, shell redirections, cp/mv/install/tee/dd/rm/sed -i; heredocs and other shell "
+    "writes are NOT tracked — the true count may be higher):\n"
     f"{listing}\n\n"
-    "Every durable write needs non-author cross-review; these writes have no later worker dispatch.\n\n"
-    "Before finishing, do ONE of:\n"
-    "  1. Dispatch a batched review through codex-wrapper (mode review, --resume-from-pointer).\n"
-    "  2. State the applicable named carve-out and log the review as debt.\n"
-    "  3. If the target was genuinely exempt, state why explicitly."
+    "Coverage requires a later codex-wrapper / opencode-wrapper / grok-wrapper dispatch or a "
+    "review receipt whose workspace contains the target.\n\n"
+    "To proceed: dispatch a batched review covering these paths (mode review, "
+    "--resume-from-pointer). If a named carve-out or exemption genuinely applies, state it for "
+    "the completion ledger and stop again — the gate cannot verify statements; the statement is "
+    "your record, not the gate's."
 )
 print(json.dumps({"decision": "block", "reason": reason}))
 PY
