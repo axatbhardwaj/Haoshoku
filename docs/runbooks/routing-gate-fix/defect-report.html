@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Routing-gate Stop hook — defect report</title>
+<script type="application/json" id="dvandva-artifact-meta">
+{
+  "schema": "dvandva.artifact.research.v1",
+  "artifact_type": "defect-report",
+  "title": "Routing-gate Stop hook — defect report (D1–D7)",
+  "date": "2026-07-21",
+  "basis": "~/.claude/hooks/routing-gate.sh — 19,364 bytes, mtime 2026-07-21 05:03; source read in full plus a live session that blocked on it four times; content per FINDINGS.md, verbatim"
+}
+</script>
+<style>
+  :root{
+    color-scheme: dark;
+    --ground:#0b0f14; --panel:#121821; --panel2:#182130; --line:#26303e;
+    --ink:#dce4ee; --dim:#8a97a8; --faint:#5c6774;
+    --vadi:#34d399; --prat:#a78bfa; --team:#5ca9ff; --human:#e0a63d; --seal:#46c26a; --stop:#ff6a5e;
+    --mono:"JetBrains Mono","Cascadia Code",ui-monospace,SFMono-Regular,Menlo,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--ink);font:16px/1.65 var(--sans)}
+  a{color:var(--vadi)}
+  main{max-width:1120px;margin:0 auto;padding:0 2.2rem 6rem}
+  section{margin-top:4.2rem}
+  .eyebrow{font:600 .72rem/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--faint);margin:0 0 .9rem}
+  h1{font:800 clamp(2.2rem,6vw,3.6rem)/1.08 var(--sans);letter-spacing:-.03em;margin:.4rem 0;text-wrap:balance}
+  h2{font:700 1.6rem/1.25 var(--sans);letter-spacing:-.01em;margin:.1rem 0 .9rem;text-wrap:balance}
+  h3{font:650 1.05rem/1.3 var(--sans);margin:1.4rem 0 .4rem}
+  p{max-width:68ch}
+  .thesis{font-size:1.18rem;color:var(--dim);max-width:56ch}
+  code,.st{font-family:var(--mono);font-size:.85em;background:var(--panel2);border:1px solid var(--line);padding:.08em .4em;border-radius:5px}
+  pre{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:1rem 1.2rem;overflow-x:auto;font:.82rem/1.6 var(--mono)}
+  pre code{background:none;border:none;padding:0}
+  figure{margin:1.6rem 0;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:1.2rem;overflow-x:auto}
+  figcaption{font:.78rem/1.5 var(--mono);color:var(--dim);margin-top:.7rem;text-align:center}
+  svg{display:block;min-width:720px}
+  svg text{font-family:var(--mono)}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;margin:1.2rem 0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:1.1rem 1.25rem}
+  .card h4{margin:0 0 .45rem;font:650 1rem/1.3 var(--sans)}
+  .card p{font-size:.9rem;color:var(--dim);margin:.3rem 0}
+  .strip{display:flex;flex-wrap:wrap;gap:.55rem;margin:1.1rem 0 0}
+  .chip{font:600 .72rem/1 var(--mono);letter-spacing:.06em;padding:.5em .8em;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--dim)}
+  .lane{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:1.1rem 1.25rem;margin:.9rem 0}
+  .lane h4{margin:0;font:650 1rem var(--sans);display:flex;gap:.7rem;align-items:center}
+  .lane .dot{width:12px;height:12px;border-radius:50%;display:inline-block}
+  .lane p{font-size:.9rem;color:var(--dim)}
+  .lane .route{font:.78rem/2 var(--mono);color:var(--ink);overflow-x:auto;white-space:nowrap;padding-bottom:.2rem}
+  .k-vadi{color:var(--vadi)} .k-prat{color:var(--prat)} .k-team{color:var(--team)} .k-human{color:var(--human)} .k-seal{color:var(--seal)}
+  table{border-collapse:collapse;width:100%;margin:1rem 0;font-size:.86rem}
+  th,td{border:1px solid var(--line);padding:.5rem .7rem;text-align:left;vertical-align:top}
+  th{background:var(--panel2);font:600 .72rem/1.4 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+  tr:nth-child(even) td{background:var(--panel)}
+  nav{position:sticky;top:0;background:rgba(11,15,20,.94);backdrop-filter:blur(6px);border-bottom:1px solid var(--line);padding:.5rem 2.2rem;font:.8rem var(--mono);z-index:9}
+  nav a{color:var(--dim);text-decoration:none;margin-right:1.05rem} nav a:hover{color:var(--vadi)}
+  header{padding:4.5rem 2.2rem 0;max-width:1120px;margin:0 auto}
+  .foot{margin-top:5rem;border-top:1px solid var(--line);padding-top:1.2rem;font:.75rem var(--mono);color:var(--faint)}
+  @media (prefers-reduced-motion: reduce){*{animation:none !important;transition:none !important}}
+  /* ---- report extensions (built on the token palette above) ---- */
+  .k-stop{color:var(--stop)}
+  .facts td:first-child{font-family:var(--mono);color:var(--dim);white-space:nowrap;width:1%}
+  .filter{display:flex;flex-wrap:wrap;gap:.55rem;margin:0 0 .8rem}
+  .filter button{font:600 .72rem/1 var(--mono);letter-spacing:.06em;padding:.55em .9em;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--dim);cursor:pointer}
+  .filter button:hover{color:var(--ink);border-color:var(--dim)}
+  .filter button.on{color:var(--vadi);border-color:var(--vadi);background:rgba(52,211,153,.08)}
+  .sev{font:600 .68rem/1 var(--mono);letter-spacing:.08em;padding:.4em .75em;border-radius:999px;border:1px solid;white-space:nowrap}
+  .sev-blocker{color:var(--stop);border-color:var(--stop);background:rgba(255,106,94,.09)}
+  .sev-major{color:var(--human);border-color:var(--human);background:rgba(224,166,61,.09)}
+  .sev-minor{color:var(--team);border-color:var(--team);background:rgba(92,169,255,.09)}
+  details.defect{background:var(--panel);border:1px solid var(--line);border-radius:12px;margin:.9rem 0}
+  details.defect>summary{cursor:pointer;list-style:none;padding:1rem 1.2rem;display:flex;gap:.75rem;align-items:baseline;flex-wrap:wrap}
+  details.defect>summary::-webkit-details-marker{display:none}
+  details.defect>summary::before{content:"\25B8";color:var(--faint);font-family:var(--mono);font-size:.8rem}
+  details.defect[open]>summary::before{content:"\25BE"}
+  details.defect[open]>summary{border-bottom:1px solid var(--line)}
+  details.defect>summary .did{font:700 .82rem var(--mono);color:var(--ink)}
+  details.defect>summary .ds{font-weight:600}
+  details.defect .dbody{padding:1.1rem 1.3rem 1.2rem}
+  summary[id]{scroll-margin-top:4rem}
+  .right{list-style:none;padding:0;margin:1.2rem 0;max-width:78ch}
+  .right>li{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--vadi);border-radius:10px;padding:1rem 1.25rem;margin:.8rem 0;color:var(--ink)}
+  .right>li p{margin:.3rem 0}
+  /* svg legend/role classes — var names carry the legend: human / seal / stop / team / vadi */
+  .exit.human{fill:var(--human)}
+  .node.team{fill:var(--team)}
+  .node.panel{fill:var(--panel2);stroke:var(--line)}
+  .chan{fill:var(--panel2);stroke:var(--seal)}
+  .wire.seal{stroke:var(--seal);stroke-width:1.6;fill:none}
+  .wire.stop{stroke:var(--stop);stroke-width:1.6;fill:none}
+  .gate{fill:none;stroke:var(--seal);stroke-width:1.6}
+  .bar.vadi{fill:var(--vadi)}
+  .bar.stop{fill:var(--stop)}
+  .dead{fill:none;stroke:var(--stop);stroke-width:1.6}
+  .tGround{fill:var(--ground)} .tInk{fill:var(--ink)} .tDim{fill:var(--dim)} .tFaint{fill:var(--faint)}
+  .tStop{fill:var(--stop)} .tSeal{fill:var(--seal)} .tVadi{fill:var(--vadi)} .tHuman{fill:var(--human)} .tTeam{fill:var(--team)}
+</style>
+</head>
+<body>
+<nav><a href="#subject">subject</a><a href="#verdict">verdict</a><a href="#table">severity table</a><a href="#defects">defects D1–D7</a><a href="#right">what is right</a><a href="#order">order of work</a><a href="#verification">verification</a></nav>
+<header>
+  <p class="eyebrow">defect report · routing-gate stop hook</p>
+  <h1>Sound in posture, <span class="k-stop">broken in mechanism</span></h1>
+  <p class="thesis">A Stop hook that enforces "every durable write needs non-author review" — examined on its own source and on a live session that blocked on it four times. The design instincts are good; the mechanism does not implement them.</p>
+  <div class="strip">
+    <span class="chip">~/.claude/hooks/routing-gate.sh · 19,364 bytes · mtime 2026-07-21 05:03</span>
+    <span class="chip">wired at ~/.claude/settings.json:149 · Stop hook</span>
+    <span class="chip">analysed 2026-07-21</span>
+    <span class="chip">7 defects — 2 blocker · 3 major · 2 minor</span>
+    <span class="chip">observed live: blocked 4×</span>
+  </div>
+</header>
+<main>
+<section id="subject">
+  <p class="eyebrow">the hook under review</p>
+  <h2>A well-intentioned gate, examined on its own code</h2>
+  <p>This report critiques <code>routing-gate.sh</code>, the Stop hook that enforces the policy "every durable write needs non-author review". It is written for the engineer who owns the hook. The hook is well-intentioned and partly good — the tone here is engineering-honest, not dismissive; what works is credited in its own section below.</p>
+  <table class="facts">
+    <tr><td>subject</td><td><code>~/.claude/hooks/routing-gate.sh</code> (19,364 bytes, mtime 2026-07-21 05:03)</td></tr>
+    <tr><td>wired at</td><td><code>~/.claude/settings.json:149</code> — <code>Stop</code> hook, statusMessage "Checking routing gate..."</td></tr>
+    <tr><td>analysed</td><td>2026-07-21</td></tr>
+    <tr><td>basis</td><td>source read in full, plus a live session that blocked on it <strong>four times</strong></td></tr>
+    <tr><td>method</td><td>every claim below was verified by executing the hook's own extracted functions against the commands this session actually ran, or by reading the code path. No claim is inferred from the block messages alone.</td></tr>
+  </table>
+</section>
+<section id="verdict">
+  <p class="eyebrow">verdict</p>
+  <h2>The gate is sound in posture and broken in mechanism</h2>
+  <p>Its fail-open design, its <code>report.json</code> receipt idea, and its unusually honest limitation comments are all good. But it offers three remedies and can only observe one, it makes review-correction loops non-terminating, and its write detection is decided by which <em>tool</em> was used rather than what was written — so in the observed session it blocked four times over a 40-line memory note while never noticing a 70 KB user-facing deliverable.</p>
+</section>
+<section id="table">
+  <p class="eyebrow">defect index</p>
+  <h2>Seven defects: two blockers, three majors, two minors</h2>
+  <p>Severities are as assigned in the findings; nothing re-ranked. Each <code>#</code> links to the full defect — mechanism, evidence, observed consequence, and proposed fix — below.</p>
+  <div class="filter" role="group" aria-label="filter defects by severity">
+    <button class="on" data-filter="all">All · 7</button>
+    <button data-filter="blocker">blocker · 2</button>
+    <button data-filter="major">major · 3</button>
+    <button data-filter="minor">minor · 2</button>
+  </div>
+  <table id="sev">
+    <thead>
+      <tr><th>#</th><th>Severity</th><th>Summary</th></tr>
+    </thead>
+    <tbody>
+      <tr data-severity="blocker"><td><a href="#D1">D1</a></td><td><span class="sev sev-blocker">blocker</span></td><td>Offers three exits, implements one — options 2 and 3 are prose the hook never reads</td></tr>
+      <tr data-severity="blocker"><td><a href="#D2">D2</a></td><td><span class="sev sev-blocker">blocker</span></td><td>Review-correction loops cannot terminate: applying a finding is itself an uncovered write</td></tr>
+      <tr data-severity="major"><td><a href="#D3">D3</a></td><td><span class="sev sev-major">major</span></td><td>Write detection depends on tool choice — <code>cp</code>, <code>rm</code>, and heredocs are invisible</td></tr>
+      <tr data-severity="major"><td><a href="#D4">D4</a></td><td><span class="sev sev-major">major</span></td><td>Any review receipt discharges any write — verified live with an unrelated session's receipt</td></tr>
+      <tr data-severity="major"><td><a href="#D5">D5</a></td><td><span class="sev sev-major">major</span></td><td>The only observable exit is "dispatch a worker", which rewards junk dispatches</td></tr>
+      <tr data-severity="minor"><td><a href="#D6">D6</a></td><td><span class="sev sev-minor">minor</span></td><td>The uncovered-target count is presented as a count of writes; it is not</td></tr>
+      <tr data-severity="minor"><td><a href="#D7">D7</a></td><td><span class="sev sev-minor">minor</span></td><td>Policy says memory writes need review; the practical cost is a full Codex round per note</td></tr>
+    </tbody>
+  </table>
+</section>
+<section id="defects">
+  <p class="eyebrow">the seven defects</p>
+  <h2>Every defect, with its evidence and its fix</h2>
+<details class="defect">
+  <summary id="D1"><span class="did">D1</span><span class="sev sev-blocker">blocker</span><span class="ds">Three exits offered, one implemented — options 2 and 3 are prose the hook never reads</span></summary>
+  <div class="dbody">
+    <h3>Mechanism</h3>
+    <p>The block message instructs: do ONE of (1) dispatch a batched review, (2) state the applicable named carve-out and log the review as debt, (3) state why the target was genuinely exempt.</p>
+    <p><strong>Options 2 and 3 cannot be detected.</strong> The hook reads exactly two things:</p>
+    <ul>
+      <li>the session transcript, for <code>tool_use</code> / <code>tool_result</code> pairs (lines 337-386)</li>
+      <li><code>report.json</code> files under <code>/tmp/{codex,opencode}-wrapper/run-*/</code> (lines 270-312)</li>
+    </ul>
+    <p>There is no state file, no waiver marker, no parsing of assistant output, and no mechanism by which a stated carve-out could register. Taking option 2 is a no-op.</p>
+    <p><code>stop_hook_active</code> (lines 67-68) prevents re-blocking <em>within</em> a single stop cycle, but each new turn is a fresh cycle.</p>
+    <figure>
+    <svg viewBox="0 0 1080 390" width="100%" style="min-width:1020px" role="img" aria-label="Three exits, one door: of the three remedies the block message offers, only dispatching a worker produces anything the hook can observe">
+      <defs><marker id="arS" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#46c26a"/></marker></defs>
+      <text x="40" y="28" class="tFaint" font-size="10">the block message — &#8220;do ONE of:&#8221;</text>
+      <rect x="40" y="44" width="310" height="60" rx="9" class="exit human"/>
+      <text x="195" y="70" class="tGround" font-size="11.5" text-anchor="middle">1 &#183; dispatch a worker</text>
+      <text x="195" y="88" class="tGround" font-size="9" text-anchor="middle">trigger a review run</text>
+      <rect x="40" y="158" width="310" height="60" rx="9" class="exit human"/>
+      <text x="195" y="184" class="tGround" font-size="11.5" text-anchor="middle">2 &#183; state a named carve-out</text>
+      <text x="195" y="202" class="tGround" font-size="9" text-anchor="middle">&#8230;and log the review as debt</text>
+      <rect x="40" y="272" width="310" height="60" rx="9" class="exit human"/>
+      <text x="195" y="298" class="tGround" font-size="11.5" text-anchor="middle">3 &#183; state why the target was</text>
+      <text x="195" y="316" class="tGround" font-size="9" text-anchor="middle">genuinely exempt</text>
+      <rect x="560" y="36" width="230" height="56" rx="9" class="chan"/>
+      <text x="675" y="60" class="tInk" font-size="10.5" text-anchor="middle">session transcript</text>
+      <text x="675" y="78" class="tFaint" font-size="8.5" text-anchor="middle">tool_use / tool_result pairs &#183; L337-386</text>
+      <rect x="560" y="112" width="230" height="56" rx="9" class="chan"/>
+      <text x="675" y="136" class="tInk" font-size="10.5" text-anchor="middle">report.json receipts</text>
+      <text x="675" y="154" class="tFaint" font-size="8" text-anchor="middle">/tmp/{codex,opencode}-wrapper/run-*/ &#183; L270-312</text>
+      <rect x="900" y="96" width="150" height="110" rx="10" class="node team"/>
+      <text x="975" y="128" class="tGround" font-size="11" text-anchor="middle">routing-gate.sh</text>
+      <text x="975" y="146" class="tGround" font-size="9" text-anchor="middle">Stop hook</text>
+      <text x="975" y="170" class="tGround" font-size="8" text-anchor="middle">reads exactly</text>
+      <text x="975" y="184" class="tGround" font-size="8" text-anchor="middle">two things</text>
+      <path d="M 350 74 L 560 64" class="wire seal" marker-end="url(#arS)"/>
+      <path d="M 350 74 C 470 74 470 140 560 140" class="wire seal" marker-end="url(#arS)"/>
+      <path d="M 790 64 L 900 120" class="wire seal" marker-end="url(#arS)"/>
+      <path d="M 790 140 L 900 155" class="wire seal" marker-end="url(#arS)"/>
+      <path d="M 350 188 L 618 188" class="wire stop"/>
+      <circle cx="632" cy="188" r="8" class="dead"/>
+      <path d="M 626 182 L 638 194 M 638 182 L 626 194" class="dead"/>
+      <text x="655" y="184" class="tStop" font-size="9.5">&#8709; nothing observable</text>
+      <text x="655" y="200" class="tFaint" font-size="8.5">no state file records a stated carve-out</text>
+      <path d="M 350 302 L 618 302" class="wire stop"/>
+      <circle cx="632" cy="302" r="8" class="dead"/>
+      <path d="M 626 296 L 638 308 M 638 296 L 626 308" class="dead"/>
+      <text x="655" y="298" class="tStop" font-size="9.5">&#8709; nothing observable</text>
+      <text x="655" y="314" class="tFaint" font-size="8.5">no prose parsing of a stated exemption</text>
+      <rect x="40" y="352" width="16" height="12" rx="3" class="exit human"/>
+      <text x="64" y="362" class="tDim" font-size="9">offered remedy (prose)</text>
+      <line x1="300" y1="358" x2="330" y2="358" class="wire seal"/>
+      <text x="338" y="362" class="tDim" font-size="9">wire the hook can observe</text>
+      <line x1="560" y1="358" x2="590" y2="358" class="wire stop"/>
+      <text x="598" y="362" class="tDim" font-size="9">dead end — nothing registers</text>
+      <rect x="830" y="352" width="16" height="12" rx="3" class="node team"/>
+      <text x="854" y="362" class="tDim" font-size="9">the hook</text>
+    </svg>
+    <figcaption><strong>Three exits, one door.</strong> Two of the three documented exits are unreachable by the hook — there is no state file recording a stated carve-out and no parsing of a stated exemption — so in practice the block can only be cleared by dispatching a worker.</figcaption>
+    </figure>
+    <h3>Observed consequence</h3>
+    <p>The gate fired on <strong>four separate turns</strong> for the same target. A correct, policy-sanctioned carve-out was stated twice and changed nothing, because no code path could observe it.</p>
+    <p>Net effect: option 1 is not the recommended remedy, it is the <strong>only</strong> remedy.</p>
+    <h3>Proposed fix</h3>
+    <p>Have the hook read a session-scoped waiver file (e.g. <code>&lt;session-dir&gt;/routing-gate-waivers.jsonl</code>) listing <code>{path, reason, timestamp}</code>, and treat a matching entry as coverage. This reuses the mechanism the hook already has — filesystem receipts — and converts a prose promise into an auditable record. The model can trivially write that file, but that is already true of stating a carve-out; the change strictly improves auditability rather than weakening a guarantee that does not currently exist.</p>
+  </div>
+</details>
+<details class="defect">
+  <summary id="D2"><span class="did">D2</span><span class="sev sev-blocker">blocker</span><span class="ds">Review-correction loops cannot terminate: applying a finding is itself an uncovered write</span></summary>
+  <div class="dbody">
+    <h3>Mechanism</h3>
+    <p>The cycle is closed:</p>
+    <pre>review dispatched -&gt; findings returned -&gt; findings applied
+      -&gt; the application is a new durable write
+      -&gt; write has a higher sequence number than the last dispatch
+      -&gt; uncovered -&gt; gate blocks -&gt; review dispatched -&gt; ...</pre>
+    <p>The hook has no concept of "this write is the reviewer's own proposal applied", and no per-path round cap. <code>~/.claude/CLAUDE.md</code> caps review-correction loops at two rounds; the gate does not. When the two disagree the gate wins, because it is mechanical and the policy is prose.</p>
+    <h3>Observed consequence</h3>
+    <p>A 40-line memory note went through <strong>three</strong> review rounds. Round 3 was dispatched not because it was warranted — the correction loop was already capped and closed — but because it was the only observable way to clear the gate.</p>
+    <h3>Proposed fix</h3>
+    <p>Track block count per target path. After N blocks on the same path (N = 2, to match the policy cap), stop blocking and emit a non-blocking "debt logged" line instead. This makes the gate agree with the policy it is enforcing.</p>
+  </div>
+</details>
+<details class="defect">
+  <summary id="D3"><span class="did">D3</span><span class="sev sev-major">major</span><span class="ds">Write detection depends on tool choice — cp, rm, and heredocs are invisible</span></summary>
+  <div class="dbody">
+    <h3>Mechanism</h3>
+    <p><code>bash_write_targets</code> (lines 133-206) is a <strong>redirection</strong> parser. It scans for <code>&gt;</code> and extracts the following word. Commands that write without redirecting are not writes as far as the gate is concerned. <code>AMBIGUOUS_BASH</code> (lines 129-132) additionally causes the parser to bail entirely on any command containing <code>&lt;&lt;</code>, <code>[[</code>, <code>((</code>, <code>$(</code>, or a backtick.</p>
+    <h3>Evidence</h3>
+    <p>Verified by extracting the hook's own <code>AMBIGUOUS_BASH</code>, <code>bash_write_targets</code> and <code>durable_path</code> and executing them against commands from the observed session:</p>
+    <table>
+      <thead><tr><th>Command shape</th><th>Detected targets</th></tr></thead>
+      <tbody>
+        <tr><td><code>cp "$SRC" /home/xzat/defi/misc/reviews/review-PR-572.html</code></td><td><code>[]</code> — <strong>invisible</strong></td></tr>
+        <tr><td><code>python3 - &lt;&lt;'PY' &#8230; PY</code> writing <code>MEMORY.md</code></td><td><code>[]</code> — <strong>invisible</strong> (<code>&lt;&lt;</code> trips the bail-out)</td></tr>
+        <tr><td><code>rm -f &#8230;/memory/old.md</code></td><td><code>[]</code> — <strong>invisible</strong> (deletion is a durable change)</td></tr>
+        <tr><td><code>printf &#8230; &gt;&gt; /path/file</code></td><td><code>['/path/file']</code> — detected</td></tr>
+        <tr><td><code>echo hi &gt; /path/file</code></td><td><code>['/path/file']</code> — detected</td></tr>
+      </tbody>
+    </table>
+    <h3>Observed consequence</h3>
+    <p>In one session:</p>
+    <table>
+      <thead><tr><th>What was written</th><th>How</th><th>Gated?</th></tr></thead>
+      <tbody>
+        <tr><td>A 40-line memory note</td><td><code>Write</code> tool</td><td>Blocked 4&#215;</td></tr>
+        <tr><td>The <code>MEMORY.md</code> index line</td><td>python heredoc</td><td>Never seen</td></tr>
+        <tr><td>A file deletion during a rename</td><td><code>rm</code></td><td>Never seen</td></tr>
+        <tr><td><strong>A 70 KB user-facing HTML deliverable</strong></td><td><code>cp</code></td><td><strong>Never seen</strong></td></tr>
+      </tbody>
+    </table>
+    <figure>
+    <svg viewBox="0 0 1080 340" width="100%" style="min-width:1020px" role="img" aria-label="Coverage is decided by tool choice: the smallest write of the session is the only one the gate saw; the three larger writes through Bash were invisible">
+      <text x="24" y="26" class="tFaint" font-size="9">durable change (one observed session)</text>
+      <text x="380" y="26" class="tFaint" font-size="9">size / consequence</text>
+      <text x="826" y="26" class="tFaint" font-size="9">what the gate did</text>
+      <text x="24" y="66" class="tInk" font-size="10.5">~40-line memory note</text>
+      <text x="24" y="82" class="tFaint" font-size="8.5">tool: Write</text>
+      <rect x="380" y="58" width="34" height="18" rx="3" class="bar vadi"/>
+      <rect x="800" y="54" width="14" height="22" class="gate"/>
+      <text x="826" y="64" class="tVadi" font-size="10">GATED — blocked 4&#215;</text>
+      <text x="826" y="80" class="tFaint" font-size="8.5">the only artifact the gate ever saw</text>
+      <text x="24" y="134" class="tInk" font-size="10.5">MEMORY.md index line</text>
+      <text x="24" y="150" class="tFaint" font-size="8.5">tool: python3 heredoc via Bash ( &lt;&lt; trips AMBIGUOUS_BASH )</text>
+      <rect x="380" y="126" width="26" height="18" rx="3" class="bar stop"/>
+      <circle cx="807" cy="132" r="7" class="dead"/>
+      <path d="M 802 127 L 812 137 M 812 127 L 802 137" class="dead"/>
+      <text x="826" y="132" class="tStop" font-size="10">invisible — never seen</text>
+      <text x="826" y="148" class="tFaint" font-size="8.5">no wire to the hook</text>
+      <text x="24" y="202" class="tInk" font-size="10.5">file deletion during a rename</text>
+      <text x="24" y="218" class="tFaint" font-size="8.5">tool: rm via Bash</text>
+      <rect x="380" y="194" width="44" height="18" rx="3" class="bar stop"/>
+      <circle cx="807" cy="200" r="7" class="dead"/>
+      <path d="M 802 195 L 812 205 M 812 195 L 802 205" class="dead"/>
+      <text x="826" y="200" class="tStop" font-size="10">invisible — never seen</text>
+      <text x="826" y="216" class="tFaint" font-size="8.5">no wire to the hook</text>
+      <text x="24" y="270" class="tInk" font-size="10.5">~70 KB user-facing HTML deliverable</text>
+      <text x="24" y="286" class="tFaint" font-size="8.5">tool: cp via Bash</text>
+      <rect x="380" y="262" width="380" height="18" rx="3" class="bar stop"/>
+      <circle cx="807" cy="268" r="7" class="dead"/>
+      <path d="M 802 263 L 812 273 M 812 263 L 802 273" class="dead"/>
+      <text x="826" y="268" class="tStop" font-size="10">invisible — never seen</text>
+      <text x="826" y="284" class="tFaint" font-size="8.5">no wire to the hook</text>
+      <text x="24" y="326" class="tFaint" font-size="8.5">bar length &#8733; the write's size / consequence (not to scale)</text>
+    </svg>
+    <figcaption><strong>Coverage is decided by tool choice.</strong> Coverage follows the tool used to make the write, not the size or significance of the write: the only gated artifact of the session was the smallest one, while the 70 KB user-facing deliverable — placed by <code>cp</code> — was never seen.</figcaption>
+    </figure>
+    <p>The hook's comments (lines 118-123) acknowledge both blind spots individually and deliberately. What is not acknowledged is the <strong>combination</strong>: <code>Write</code>-tool paths are gated strictly while shell-placed paths are not gated at all, so coverage is determined by tool choice rather than by what the write was or how much it mattered. The most consequential artifact of the session was never examined; the least consequential one was blocked four times.</p>
+    <h3>Proposed fix</h3>
+    <p>Add a fixed allowlist of writer verbs with known target-argument positions — <code>cp</code>, <code>mv</code>, <code>install</code>, <code>tee</code>, <code>dd</code>, <code>rm</code>, <code>sed -i</code> — roughly six entries. The hook's comment argues that detecting these "would rebuild the parser this hook removed"; a lookup table of verbs and argument positions is not a shell parser. Alternatively, if shell writes are to remain out of scope, say so in the block message so the reported count is not misread (see D6).</p>
+  </div>
+</details>
+<details class="defect">
+  <summary id="D4"><span class="did">D4</span><span class="sev sev-major">major</span><span class="ds">Any review receipt discharges any write — verified live with an unrelated session's receipt</span></summary>
+  <div class="dbody">
+    <h3>Mechanism</h3>
+    <p><code>review_receipt_covers</code> (lines 270-312) accepts a receipt if:</p>
+    <ul>
+      <li><code>report.json</code> has <code>mode == "review"</code></li>
+      <li><code>launcher_status == "ok"</code></li>
+      <li><code>completed_at &gt; write_timestamp</code> and <code>completed_at &gt;= session_start</code></li>
+    </ul>
+    <p>It never checks <strong>what</strong> was reviewed. The report's <code>workspace</code> field is present in every receipt and is not consulted.</p>
+    <p>This is documented as accepted limitation #3 ("the same coarseness the existing Task/Agent path already has").</p>
+    <h3>Evidence — observed live</h3>
+    <p>During the session, a review receipt appeared from a different, unrelated session:</p>
+    <pre>run-2AZCZgfD   workspace: /tmp/claude-1000/-home-xzat/64d125df-&#8230;/stay-awake-review-ws
+               mode=review  launcher_status=ok  completed_at=2026-07-21T07:03:52Z</pre>
+    <p>— reviewing an unrelated <code>claude-stay-awake</code> service. It landed inside the window and was fully eligible to discharge this session's gate. Nothing about the design prevents a concurrent session's work from silently satisfying another session's review requirement.</p>
+    <h3>Proposed fix</h3>
+    <p>Require the receipt's <code>workspace</code> to be a prefix of (or otherwise contain) the uncovered path. This is a small change to an existing comparison and it is the difference between a receipt meaning "a review happened somewhere" and "this write was reviewed". Note it would correctly have <em>refused</em> several of the observed session's own receipts, whose review workspaces were scratch copies rather than the real target directory — which is the right outcome, and would have surfaced that the scratch-workspace review pattern does not actually prove coverage of the live file.</p>
+  </div>
+</details>
+<details class="defect">
+  <summary id="D5"><span class="did">D5</span><span class="sev sev-major">major</span><span class="ds">The only observable exit is "dispatch a worker", which rewards junk dispatches</span></summary>
+  <div class="dbody">
+    <h3>Mechanism</h3>
+    <p>Combining D1 (dispatch is the only detectable remedy) with D4 (any successful review receipt discharges every prior write) produces a clear cheapest path to clearing the gate: fire any review-mode dispatch at anything.</p>
+    <h3>Observed consequence</h3>
+    <p>A gate whose cheapest satisfaction is a content-free dispatch trains the behaviour it exists to prevent. This is not hypothetical — in the observed session the correct policy answer was to log debt and stop, and the gate's design pushed toward dispatching another review instead.</p>
+    <h3>Proposed fix</h3>
+    <p>D1 and D4 together remove the incentive: a real waiver path means the cheap exit is honest rather than performative, and workspace-scoped receipts mean a junk dispatch no longer discharges anything.</p>
+  </div>
+</details>
+<details class="defect">
+  <summary id="D6"><span class="did">D6</span><span class="sev sev-minor">minor</span><span class="ds">The uncovered-target count is presented as a count of writes; it is not</span></summary>
+  <div class="dbody">
+    <h3>Mechanism</h3>
+    <p>The message reads:</p>
+    <pre>1 uncovered target(s); no later dispatch to codex-wrapper / opencode-wrapper:</pre>
+    <p>Given D3, this is a count of uncovered writes <strong>that happened to use a detected tool</strong>.</p>
+    <h3>Observed consequence</h3>
+    <p>In the observed session it reported <code>1</code> while four durable changes had occurred. A reader reasonably concludes one write happened and the rest are covered; neither is true.</p>
+    <h3>Proposed fix</h3>
+    <p>Either fix D3, or reword to state the scope explicitly — e.g. "1 uncovered target detected (Write/Edit tools and shell redirections only; other shell writes are not tracked)".</p>
+  </div>
+</details>
+<details class="defect">
+  <summary id="D7"><span class="did">D7</span><span class="sev sev-minor">minor</span><span class="ds">Policy says memory writes need review; the practical cost is a full Codex round per note</span></summary>
+  <div class="dbody">
+    <h3>Mechanism</h3>
+    <p><code>durable_path</code> (lines 88-100) excludes <code>/dev/null</code>, <code>/tmp/**</code>, and any path containing a <code>scratchpad</code> component. It does <strong>not</strong> exclude <code>~/.claude/**</code>.</p>
+    <p><code>~/.claude/CLAUDE.md</code> lists memory among durable writes requiring review, so this is arguably correct by policy. But the Superpowers section of the same file exempts "edits to <code>~/.claude/</code>" from its own procedures, so the two rules pull in different directions, and the practical result is that a 40-line memory note triggers a ~7-minute heavy-model review round.</p>
+    <h3>Observed consequence</h3>
+    <p>Worth noting the review rounds in the observed session were <strong>not</strong> wasted — round 1 caught session-local vocabulary that would have made the note useless to a future reader, and round 2 caught that the body had been corrected while the frontmatter still carried the original over-strong claim (and the frontmatter description is what is actually loaded on recall). So the cost bought real value. The question is whether that cost should be paid automatically on every memory write or be an explicit choice.</p>
+    <h3>Proposed fix</h3>
+    <p>Decide deliberately: either exempt <code>~/.claude/**</code> in <code>durable_path</code>, or leave it and accept the cost knowingly. The current state is an unexamined default rather than a decision.</p>
+  </div>
+</details>
+</section>
+<section id="right">
+  <p class="eyebrow">credit where due</p>
+  <h2>What is right about the hook</h2>
+  <p>Stated because this is a defect report and would otherwise read as a condemnation:</p>
+  <ul class="right">
+    <li><p><strong>Fail-open throughout.</strong> Every parse failure, missing transcript, absent <code>python3</code>, and malformed record path exits 0. A gate that traps a session is worse than one that occasionally misses, and the hook takes that seriously and consistently.</p></li>
+    <li><p><strong>The <code>report.json</code> receipt is a genuinely good signal.</strong> It is the launcher's own file; a workflow cannot forge it without actually running a review. The header comments record that four earlier designs which read the <em>notification prose</em> all under-blocked, and abandoning prose for filesystem receipts was the correct correction.</p></li>
+    <li><p><strong>The limitation comments are unusually honest</strong> — they state which direction each hole leans (over-block vs under-block), record a fix that was attempted and reverted because it regressed something worse, and explicitly warn future editors to re-run a specific sweep as a hard gate.</p></li>
+    <li><p><strong>It caught a true positive.</strong> The memory writes it blocked on genuinely had no non-author review, and the reviews it forced found real problems.</p></li>
+  </ul>
+  <p>The defects above are about mechanism, not intent. D1 and D2 make it unusable as specified; D3 and D4 make it unreliable as a guarantee. None of them require abandoning the design.</p>
+</section>
+<section id="order">
+  <p class="eyebrow">recommended order of work</p>
+  <h2>Fix the dead ends first, then the meaning, then the scope</h2>
+  <ol>
+    <li><strong>D1 + D2 together</strong> — the waiver receipt and the per-path block cap. These are what make the gate usable; D2 without D1 just relocates the dead end. Together they would have reduced the observed session's four blocks to one.</li>
+    <li><strong>D4</strong> — scope receipts to the write. This is what makes the gate <em>mean</em> something; without it, discharge can happen by coincidence, as observed.</li>
+    <li><strong>D3 + D6</strong> — the writer-verb allowlist, or an honest scope statement in the message.</li>
+    <li><strong>D7</strong> — a deliberate decision either way on <code>~/.claude/**</code>.</li>
+  </ol>
+</section>
+<section id="verification">
+  <p class="eyebrow">verification notes</p>
+  <h2>How each claim was established — and what was not</h2>
+  <ul>
+    <li>All D3 results were produced by extracting <code>AMBIGUOUS_BASH</code>, <code>bash_write_targets</code> and <code>durable_path</code> verbatim from the hook and executing them; they are not inferred from behaviour.</li>
+    <li>D1, D2, D4, D6 and D7 are established by reading the code paths cited by line number.</li>
+    <li>D4's live example is a real receipt on disk at the time of analysis.</li>
+    <li><strong>Not verified:</strong> whether any concurrent-session receipt has <em>actually</em> discharged a gate in the past. The eligibility was demonstrated; a historical instance was not searched for.</li>
+  </ul>
+</section>
+</main>
+<p class="foot">routing-gate stop hook · defect report · reflects FINDINGS.md verbatim · hook: 19,364 bytes, mtime 2026-07-21 05:03 · analysed 2026-07-21 · Errata 2026-07-21: an earlier version of this report stated the hook blocked five times; the session transcript shows four (06:40:03Z, 06:51:24Z, 07:00:43Z, 07:02:42Z). Corrected throughout.</p>
+<script>
+(function(){
+  var buttons = document.querySelectorAll('.filter button');
+  var rows = document.querySelectorAll('#sev tbody tr');
+  buttons.forEach(function(b){
+    b.addEventListener('click', function(){
+      var f = b.getAttribute('data-filter');
+      buttons.forEach(function(x){ x.classList.toggle('on', x === b); });
+      rows.forEach(function(r){
+        r.style.display = (f === 'all' || r.dataset.severity === f) ? '' : 'none';
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>
