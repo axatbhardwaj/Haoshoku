@@ -8,6 +8,7 @@ Standalone setup scripts for specific tools.
 | --------------------- | -------------------------------------- | --------------------------------------------- |
 | `configure_claude.js` | Claude config sync, backup, update     | Adding Claude config features, debugging sync |
 | `configure_claude_stay_awake.js` | claude-stay-awake sleep inhibitor deploy/enable/backup | Adding or debugging the Claude sleep inhibitor |
+| `configure_pr_watch.js` | pr-watch PR watcher sync/backup | Adding or debugging the PR watcher deploy |
 | `configure_git.js`    | Git user and signing setup             | Modifying automated git configuration         |
 | `configure_kde_theme.js` | KDE Ocean theme backup/sync/activate | Adding KDE theme features, debugging deploy |
 | `configure_zed.js`    | Zed config backup/sync (sanitized)     | Adding Zed config features, debugging sync    |

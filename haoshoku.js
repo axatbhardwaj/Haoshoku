@@ -55,6 +55,10 @@ import {
   backupClaudeStayAwake,
   syncClaudeStayAwake,
 } from "./src/helpers/configure_claude_stay_awake.js";
+import {
+  backupPrWatch,
+  syncPrWatch,
+} from "./src/helpers/configure_pr_watch.js";
 import { configureSddm } from "./src/helpers/configure_sddm.js";
 import {
   syncSkills,
@@ -145,6 +149,14 @@ program
     "--claude-stay-awake-backup",
     "Backup the claude-stay-awake script + systemd unit to configs/claude-stay-awake/",
   )
+  .option(
+    "--pr-watch",
+    "Deploy the pr-watch PR watcher (configs/pr-watch/ → ~/.local/bin/)",
+  )
+  .option(
+    "--pr-watch-backup",
+    "Backup the pr-watch PR watcher from ~/.local/bin/ to configs/pr-watch/",
+  )
   .option("--kde-theme", "Deploy KDE Ocean theme files (sync only, no activate)")
   .option("--kde-theme-backup", "Backup KDE Ocean theme from system to configs/kde/")
   .option(
@@ -170,7 +182,10 @@ async function runAction(options) {
 
     // Mutually-exclusive mode flags: pass exactly one. Previously the if/return
     // chain silently ran only the first matching flag and ignored the rest.
-    const activeFlags = findActiveModeFlags(options);
+    const activeFlags = [
+      ...findActiveModeFlags(options),
+      ...["prWatch", "prWatchBackup"].filter((flag) => options[flag]),
+    ];
     if (activeFlags.length >= 2) {
       log.error(
         `--${activeFlags[0]} and --${activeFlags[1]} are mutually exclusive — pass exactly one mode flag`,
@@ -318,6 +333,16 @@ async function runAction(options) {
 
     if (options.claudeStayAwake) {
       await syncClaudeStayAwake();
+      return;
+    }
+
+    if (options.prWatchBackup) {
+      await backupPrWatch();
+      return;
+    }
+
+    if (options.prWatch) {
+      await syncPrWatch();
       return;
     }
 
