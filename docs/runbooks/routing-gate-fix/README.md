@@ -1,11 +1,18 @@
-# routing-gate.sh — S3A tighten-only fix (NOT MERGED)
+# routing-gate.sh — S3A tighten-only fix
 
-Branch `fix/routing-gate-s3a`. **Do not merge to `stable` until the remaining review stations pass**
-— `configs/claude/hooks/` is a `MANAGED_DIR`, so merging deploys this hook on the next apply.
+**Status: MERGED and RELEASED in v5.13.0; harness digest guard in v5.13.1.**
+Merged on explicit human instruction with review debt outstanding — see below.
+
+`configs/claude/hooks/` is a `MANAGED_DIR`, so the new hook and its test suite install into
+`~/.claude/hooks/` on the next Haoshoku apply. Until you run one, the live gate is still the
+pre-fix version.
 
 ## Status
 
-The change is implemented and tested; its adversarial cross-review has **not** run.
+Implemented, tested (78 tests), merged, released. **The adversarial cross-review (S3A-R), live-fire
+verification, and cold-madhyastha acceptance never ran** — this shipped with that debt recorded
+rather than discharged. The harness itself was reviewed twice post-release
+(`run-WFBFnUIU`, `run-cD14IjWz`); the hook's own S3A changes were not.
 
 | Station | State |
 |---|---|
