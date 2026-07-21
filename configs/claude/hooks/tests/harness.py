@@ -20,7 +20,12 @@ from typing import Any, Iterable
 
 ROOT = Path(__file__).resolve().parents[1]
 HOOK = ROOT / "routing-gate.sh"
-PRISTINE_COMMIT = "93e7372eccb5785c3d3d6f3ffedf6472129030be"
+# The pristine hook is the behavioural oracle for the differential property tests.
+# It is vendored as a fixture rather than read from git history so the suite runs
+# wherever it is deployed — including ~/.claude/hooks/, which is not a repository.
+# sha256 67eae3339c562933dcc235c1a62082de3c69c3abcfa324a7dae5324e39507c4e,
+# identical to Haoshoku commit f0125cb configs/claude/hooks/routing-gate.sh.
+PRISTINE_FIXTURE = Path(__file__).resolve().parent / "fixtures" / "routing-gate.pristine.sh"
 REAL_RECEIPT_ROOTS = (
     Path("/tmp/codex-wrapper"),
     Path("/tmp/opencode-wrapper"),
@@ -369,12 +374,12 @@ def load_receipt_workspace_covers(hook_path: Path = HOOK):
 
 
 def pristine_hook_copy(destination: Path) -> Path:
-    completed = subprocess.run(
-        ["git", "show", f"{PRISTINE_COMMIT}:routing-gate.sh"],
-        cwd=ROOT,
-        capture_output=True,
-        check=True,
-    )
-    destination.write_bytes(completed.stdout)
+    if not PRISTINE_FIXTURE.is_file():
+        raise FileNotFoundError(
+            f"pristine oracle fixture missing: {PRISTINE_FIXTURE}. "
+            "The differential property tests compare the current hook against the "
+            "pre-fix behaviour and cannot run without it."
+        )
+    destination.write_bytes(PRISTINE_FIXTURE.read_bytes())
     destination.chmod(0o755)
     return destination

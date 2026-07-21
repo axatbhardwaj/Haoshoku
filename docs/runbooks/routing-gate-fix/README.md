@@ -35,7 +35,7 @@ Every change is monotonic — the gate gets strictly noisier or detects more. Ne
 ## Verify before merging
 
 ```bash
-cd configs/claude/hooks && python3 -m unittest discover -s tests/routing-gate -t .
+cd configs/claude/hooks && python3 -m unittest discover -s tests -t .
 bash -n routing-gate.sh
 ```
 
