@@ -1,5 +1,11 @@
 # routing-gate.sh fix — state at close (2026-07-21)
 
+> **STATUS 2026-07-21:** merged into Haoshoku and released as **v5.13.0**; the harness digest guard
+> landed in the follow-up patch. Not yet applied to the running system — run Haoshoku to deploy.
+> Current source of truth: `docs/runbooks/routing-gate-fix/README.md` in the Haoshoku repo.
+> The "scratch git repo" described below has been superseded by that merge.
+
+
 **Nothing is deployed.** The live hook `~/.claude/hooks/routing-gate.sh` is byte-identical to its
 backup (`sha256 67eae333…`). The gate behaves exactly as it did before this work started.
 
@@ -64,13 +70,21 @@ targets while `sed` without `-i`, heredocs, and `/tmp` paths correctly do not.
    does not discharge; matching one does; future-dated one does not) then a **cold madhyastha**
    verdict — a fresh spawn, since the standing planner is anchored to its own design.
 
-## Deploy command, when the reviews pass
+## Deploy
+
+**SUPERSEDED — do not hand-copy.** This work is now merged into Haoshoku (v5.13.0+) at
+`configs/claude/hooks/`, which is a `MANAGED_DIR`. Deploy by running Haoshoku; it syncs the hook and
+its test suite into `~/.claude/hooks/`.
+
+The earlier hand-copy command in this section created `~/.claude/hooks/tests/routing-gate/` — one
+level too deep. That nesting broke `tests.harness` imports and caused **only 9 of 78 tests to be
+collected while still printing a passing summary**. The suite must sit flat at
+`<hook-dir>/tests/`, as a sibling of `routing-gate.sh`. Fixed in Haoshoku `9a457b2`.
+
+To run the suite wherever it is deployed:
 
 ```
-W=.../scratchpad/routing-gate-fix      # or ~/routing-gate-fix if copied
-cp "$W/routing-gate.sh" ~/.claude/hooks/routing-gate.sh
-mkdir -p ~/.claude/hooks/tests/routing-gate && cp -r "$W/tests/." ~/.claude/hooks/tests/routing-gate/
-bash -n ~/.claude/hooks/routing-gate.sh
+cd ~/.claude/hooks && python3 -m unittest discover -s tests -t .
 ```
 
 `~/.claude/settings.json` needs no change — the path and `timeout: 15` are unchanged by design.

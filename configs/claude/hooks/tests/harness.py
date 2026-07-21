@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import ast
 from dataclasses import dataclass
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -23,9 +24,14 @@ HOOK = ROOT / "routing-gate.sh"
 # The pristine hook is the behavioural oracle for the differential property tests.
 # It is vendored as a fixture rather than read from git history so the suite runs
 # wherever it is deployed — including ~/.claude/hooks/, which is not a repository.
-# sha256 67eae3339c562933dcc235c1a62082de3c69c3abcfa324a7dae5324e39507c4e,
-# identical to Haoshoku commit f0125cb configs/claude/hooks/routing-gate.sh.
+# Identical to Haoshoku commit f0125cb configs/claude/hooks/routing-gate.sh.
+#
+# The digest is ENFORCED at copy time, not merely documented: a truncated, empty,
+# or substituted fixture would otherwise be accepted silently, and every
+# differential monotonicity test would then compare the fixed hook against
+# whatever that file happened to contain while still reporting green.
 PRISTINE_FIXTURE = Path(__file__).resolve().parent / "fixtures" / "routing-gate.pristine.sh"
+PRISTINE_SHA256 = "67eae3339c562933dcc235c1a62082de3c69c3abcfa324a7dae5324e39507c4e"
 REAL_RECEIPT_ROOTS = (
     Path("/tmp/codex-wrapper"),
     Path("/tmp/opencode-wrapper"),
@@ -380,6 +386,17 @@ def pristine_hook_copy(destination: Path) -> Path:
             "The differential property tests compare the current hook against the "
             "pre-fix behaviour and cannot run without it."
         )
-    destination.write_bytes(PRISTINE_FIXTURE.read_bytes())
+    payload = PRISTINE_FIXTURE.read_bytes()
+    actual = hashlib.sha256(payload).hexdigest()
+    if actual != PRISTINE_SHA256:
+        raise ValueError(
+            f"pristine oracle fixture digest mismatch: {PRISTINE_FIXTURE}\n"
+            f"  expected {PRISTINE_SHA256}\n"
+            f"  actual   {actual}\n"
+            "Refusing to run differential tests against an unverified oracle — a "
+            "wrong fixture makes every monotonicity comparison meaningless while "
+            "still reporting green."
+        )
+    destination.write_bytes(payload)
     destination.chmod(0o755)
     return destination
