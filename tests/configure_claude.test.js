@@ -25,6 +25,12 @@ describe("PERSONAL_FILES manifest", () => {
 	});
 });
 
+describe("MANAGED_DIRS manifest", () => {
+	it("includes hooks (regression — must not be silently dropped)", () => {
+		expect(MANAGED_DIRS).toContain("hooks");
+	});
+});
+
 describe("syncClaudeConfig() warns on missing sources", () => {
 	let tmpDir;
 	let configsDir;
@@ -181,5 +187,21 @@ describe("syncClaudeConfig() replaces MANAGED_DIRS (stale entries do not linger)
 		const liveManaged = path.join(claudeDir, managed);
 		expect(fs.existsSync(path.join(liveManaged, "stale.md"))).toBe(false);
 		expect(fs.existsSync(path.join(liveManaged, "keep.md"))).toBe(true);
+	});
+
+	it("wipe-replaces hooks/ specifically", async () => {
+		const bundledHooks = path.join(configsDir, "hooks");
+		const liveHooks = path.join(claudeDir, "hooks");
+
+		fs.mkdirSync(bundledHooks, { recursive: true });
+		fs.writeFileSync(path.join(bundledHooks, "keep.sh"), "keep\n");
+
+		fs.mkdirSync(liveHooks, { recursive: true });
+		fs.writeFileSync(path.join(liveHooks, "stale.sh"), "stale\n");
+
+		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
+
+		expect(fs.existsSync(path.join(liveHooks, "stale.sh"))).toBe(false);
+		expect(fs.existsSync(path.join(liveHooks, "keep.sh"))).toBe(true);
 	});
 });
