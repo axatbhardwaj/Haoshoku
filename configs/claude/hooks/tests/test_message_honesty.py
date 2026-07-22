@@ -11,6 +11,8 @@ from tests.harness import (
     HookResult,
     dispatch_exchange,
     pristine_hook_copy,
+    tool_result_record,
+    tool_use_record,
     write_exchange,
 )
 
@@ -74,6 +76,21 @@ class MessageHonestyTests(unittest.TestCase):
                 write_exchange(missing, timestamp=FUTURE_WRITE_TS),
             )
         self.assertEqual(listing_lines(current), [f"  - {missing}{NOT_FOUND_SUFFIX}"])
+
+    def test_mcp_pseudo_target_is_rendered_bare(self) -> None:
+        target = "<mcp__notion__update-page>"
+        records = [
+            tool_use_record(
+                "mcp-1",
+                "mcp__notion__update-page",
+                {"value": "fixture"},
+                timestamp=FUTURE_WRITE_TS,
+            ),
+            tool_result_record("mcp-1"),
+        ]
+        with GateFixture() as fixture:
+            current = fixture.run(records=records)
+        self.assertEqual(listing_lines(current), [f"  - {target}"])
 
     def test_mixed_targets_render_existing_bare_and_missing_annotated(self) -> None:
         existing = str(HOOK)

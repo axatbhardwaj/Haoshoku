@@ -714,7 +714,7 @@ listing = "\n".join(
     "  - " + target
     + (
         ""
-        if os.path.exists(target)
+        if target.startswith("<mcp__") or os.path.exists(target)
         else "  (not found on disk — deleted, or a relative path resolved against an uncertain directory)"
     )
     for target in shown
