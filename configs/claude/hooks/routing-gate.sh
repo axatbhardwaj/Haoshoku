@@ -710,7 +710,15 @@ if not uncovered:
         print(json.dumps({"decision": "block", "reason": stale_reason}))
     sys.exit(0)
 shown = uncovered[:8]
-listing = "\n".join("  - " + target for target in shown)
+listing = "\n".join(
+    "  - " + target
+    + (
+        ""
+        if os.path.exists(target)
+        else "  (not found on disk — deleted, or a relative path resolved against an uncertain directory)"
+    )
+    for target in shown
+)
 if len(uncovered) > len(shown):
     listing += f"\n  ... and {len(uncovered) - len(shown)} more"
 reason = (
