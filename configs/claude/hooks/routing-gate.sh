@@ -807,7 +807,7 @@ try:
     suppress = matched
 except Exception:
     pass
-if suppress:
+if suppress and not suspected_stale:
     sys.exit(0)
 shown = uncovered[:8]
 listing = "\n".join(

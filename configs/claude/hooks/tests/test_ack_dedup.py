@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import unittest
 
@@ -16,6 +17,11 @@ from tests.harness import (
 SESSION_ID = "ack-dedup-session"
 FIRST_TARGET = "/home/test/first.txt"
 SECOND_TARGET = "/home/test/second.txt"
+STALE_REASON = (
+    "ROUTING GATE — cannot verify this turn: transcript appears stale "
+    "(final assistant text not flushed after re-poll). Writes made this turn may be unreviewed. "
+    "Ensure coverage or state the carve-out for the ledger before stopping again."
+)
 
 
 def runtime_env(fixture: GateFixture) -> tuple[Path, dict[str, str]]:
@@ -245,6 +251,68 @@ class AckDedupTests(unittest.TestCase):
         assert_block(self, result, [FIRST_TARGET])
         self.assertEqual(result.returncode, 0)
         self.assertEqual(result.stderr, "")
+
+    def test_10_stale_matching_ack_still_blocks_uncovered_writes(self) -> None:
+        with GateFixture() as fixture:
+            _, env = runtime_env(fixture)
+            records = write_exchange(FIRST_TARGET)
+            first = fixture.run(
+                records=records,
+                hook_input=fixture.hook_input(session_id=SESSION_ID),
+                env_overrides=env,
+            )
+            stale = fixture.run(
+                records=records,
+                hook_input=fixture.hook_input(
+                    session_id=SESSION_ID,
+                    last_assistant_message="new text absent from transcript",
+                ),
+                env_overrides={**env, "ROUTING_GATE_POLL_MS": "0"},
+            )
+
+        assert_block(self, first, [FIRST_TARGET])
+        assert_block(self, stale, [FIRST_TARGET])
+        self.assertTrue(
+            stale.output_json["reason"].startswith(
+                "ROUTING GATE — durable writes with no covering review."
+            )
+        )
+
+    def test_11_non_stale_matching_ack_remains_silent(self) -> None:
+        with GateFixture() as fixture:
+            _, env = runtime_env(fixture)
+            records = write_exchange(FIRST_TARGET)
+            hook_input = fixture.hook_input(session_id=SESSION_ID)
+            first = fixture.run(
+                records=records,
+                hook_input=hook_input,
+                env_overrides=env,
+            )
+            repeated = fixture.run(
+                records=records,
+                hook_input=hook_input,
+                env_overrides=env,
+            )
+
+        assert_block(self, first, [FIRST_TARGET])
+        assert_allow(self, repeated)
+
+    def test_12_stale_without_uncovered_writes_uses_stale_reason(self) -> None:
+        with GateFixture() as fixture:
+            result = fixture.run(
+                records=[],
+                hook_input=fixture.hook_input(
+                    session_id=SESSION_ID,
+                    last_assistant_message="new text absent from transcript",
+                ),
+                env_overrides={"ROUTING_GATE_POLL_MS": "0"},
+            )
+
+        assert_block(self, result)
+        self.assertEqual(
+            result.stdout,
+            json.dumps({"decision": "block", "reason": STALE_REASON}) + "\n",
+        )
 
 
 if __name__ == "__main__":
