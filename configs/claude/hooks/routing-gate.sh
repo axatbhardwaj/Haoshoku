@@ -709,6 +709,106 @@ if not uncovered:
     if suspected_stale:
         print(json.dumps({"decision": "block", "reason": stale_reason}))
     sys.exit(0)
+suppress = False
+try:
+    session_id = hook.get("session_id")
+    if (not isinstance(session_id, str) or not session_id
+            or "/" in session_id or ".." in session_id):
+        raise ValueError("invalid session id for routing-gate acknowledgement")
+    state_key = {
+        "transcript_path": os.path.realpath(path),
+        "uncovered_writes": [
+            [target, latest_by_target[target][0], latest_by_target[target][1]]
+            for target in uncovered
+        ],
+    }
+    runtime_dir = os.environ.get("XDG_RUNTIME_DIR") or "/tmp"
+    if not os.path.isabs(runtime_dir):
+        raise ValueError("routing-gate runtime directory must be absolute")
+    directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    runtime_fd = os.open(runtime_dir, directory_flags)
+    try:
+        try:
+            os.mkdir("claude-routing-gate", mode=0o700, dir_fd=runtime_fd)
+        except FileExistsError:
+            pass
+        state_dir_fd = os.open(
+            "claude-routing-gate",
+            directory_flags,
+            dir_fd=runtime_fd,
+        )
+    finally:
+        os.close(runtime_fd)
+    matched = False
+    try:
+        state_dir_stat = os.fstat(state_dir_fd)
+        if (not stat.S_ISDIR(state_dir_stat.st_mode)
+                or stat.S_IMODE(state_dir_stat.st_mode) != 0o700):
+            raise PermissionError("routing-gate state directory is not mode 0700")
+        state_name = f"{session_id}.ack"
+        try:
+            state_fd = os.open(
+                state_name,
+                os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW,
+                dir_fd=state_dir_fd,
+            )
+        except FileNotFoundError:
+            stored_state = None
+        else:
+            if not stat.S_ISREG(os.fstat(state_fd).st_mode):
+                os.close(state_fd)
+                raise ValueError("routing-gate acknowledgement is not a regular file")
+            with os.fdopen(state_fd, "r", encoding="utf-8") as state_file:
+                stored_state = json.load(state_file)
+            if (not isinstance(stored_state, dict)
+                    or set(stored_state) != {"version", "state_key"}
+                    or stored_state.get("version") != 1):
+                raise ValueError("malformed routing-gate acknowledgement")
+        matched = (
+            stored_state is not None
+            and stored_state["state_key"] == state_key
+        )
+        state_payload = (
+            json.dumps(
+                {"version": 1, "state_key": state_key},
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+            + "\n"
+        ).encode("utf-8")
+        temporary_name = (
+            f".{state_name}.{os.getpid()}.{os.urandom(8).hex()}.tmp"
+        )
+        temporary_fd = os.open(
+            temporary_name,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+            0o600,
+            dir_fd=state_dir_fd,
+        )
+        try:
+            os.fchmod(temporary_fd, 0o600)
+            if not matched:
+                if os.write(temporary_fd, state_payload) != len(state_payload):
+                    raise OSError("short routing-gate acknowledgement write")
+                os.fsync(temporary_fd)
+        finally:
+            os.close(temporary_fd)
+        if matched:
+            os.unlink(temporary_name, dir_fd=state_dir_fd)
+        else:
+            os.replace(
+                temporary_name,
+                state_name,
+                src_dir_fd=state_dir_fd,
+                dst_dir_fd=state_dir_fd,
+            )
+    finally:
+        os.close(state_dir_fd)
+    suppress = matched
+except Exception:
+    pass
+if suppress:
+    sys.exit(0)
 shown = uncovered[:8]
 listing = "\n".join(
     "  - " + target
