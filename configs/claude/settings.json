@@ -116,7 +116,6 @@
     ],
     "defaultMode": "bypassPermissions"
   },
-  "model": "opus",
   "hooks": {
     "PreToolUse": [
       {
@@ -226,6 +225,7 @@
     }
   },
   "effortLevel": "xhigh",
+  "outputStyle": "Direct",
   "tui": "fullscreen",
   "skipDangerousModePermissionPrompt": true,
   "editorMode": "normal",
