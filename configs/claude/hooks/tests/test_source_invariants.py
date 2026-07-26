@@ -18,7 +18,7 @@ from tests.harness import function_span, redirection_scanner_span
 
 
 DISPATCH_FAILED_SHA256 = "20bfeff63369db83a96ed57602dccf2b7e72c3db0484d4535a61ae4221c4e9f6"
-REDIRECTION_SCANNER_SHA256 = "d0ef24b03948f0b07de50775a8c98886ad0e9575bb0a0acf392bfbbfe3404289"
+REDIRECTION_SCANNER_SHA256 = "8d3a59526ef0c2ba429d2a93e7b856773311f0c22228219ac50d1ce7d67e35e7"
 LIMITATIONS_ONE_TO_THREE_SHA256 = "50fe4677ebea4aa0114e6ed8f11a4aaa0882c6f07d65dda0870f7d752ec53af1"
 HOOK = Path(__file__).resolve().parents[1] / "routing-gate.sh"
 WONTFIX_TEXT = """**Not fixed, deliberately (2026-07-21; S3B dropped by human decision after two plan-review

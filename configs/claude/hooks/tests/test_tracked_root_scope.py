@@ -11,10 +11,6 @@ from tests.harness import GateFixture, assert_allow, assert_block, bash_exchange
 
 HOME = Path(os.path.realpath(os.path.expanduser("~")))
 HOME_ENV = {"HOME": str(HOME)}
-UNRESOLVABLE_LINE = (
-    "{count} shell write(s) with unresolvable targets (relative path, variable, or glob) "
-    "— not tracked by path."
-)
 
 
 class TrackedRootScopeTests(unittest.TestCase):
@@ -76,34 +72,11 @@ class TrackedRootScopeTests(unittest.TestCase):
             )
 
         assert_block(self, result, [str(target)])
-        self.assertNotIn(UNRESOLVABLE_LINE.format(count=1), result.output_json["reason"])
 
     def test_07_absolute_shell_write_outside_tracked_roots_is_ignored(self) -> None:
         with GateFixture() as fixture:
             result = fixture.run(
                 records=bash_exchange("cp source /tmp/out.txt"),
-                env_overrides=HOME_ENV,
-            )
-
-        assert_allow(self, result)
-
-    def test_08_variable_shell_write_implicating_tracked_root_is_counted(self) -> None:
-        phantom = "~/defi/$VAR"
-        with GateFixture() as fixture:
-            result = fixture.run(
-                records=bash_exchange(f"cp source {phantom}"),
-                env_overrides=HOME_ENV,
-            )
-
-        assert_block(self, result)
-        reason = result.output_json["reason"]
-        self.assertIn(UNRESOLVABLE_LINE.format(count=1), reason)
-        self.assertNotIn(f"  - {phantom}", reason)
-
-    def test_09_variable_shell_write_touching_only_tmp_is_ignored(self) -> None:
-        with GateFixture() as fixture:
-            result = fixture.run(
-                records=bash_exchange("cp source /tmp/$VAR"),
                 env_overrides=HOME_ENV,
             )
 

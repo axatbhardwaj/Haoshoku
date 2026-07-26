@@ -339,7 +339,6 @@ def load_bash_write_targets(hook_path: Path = HOOK, *, cwd: str = "/home/fuzz"):
         "bash_verb_targets",
         "bash_write_targets",
         "path_is_tracked",
-        "command_implicates_tracked_root",
     }
     assignment_names = {"AMBIGUOUS_BASH", "SHELL_ASSIGNMENT", "SHELL_TARGET_META"}
     selected: list[ast.stmt] = []
@@ -377,7 +376,6 @@ def load_bash_write_targets(hook_path: Path = HOOK, *, cwd: str = "/home/fuzz"):
         "shlex": __import__("shlex"),
         "hook_cwd": real_cwd,
         "TRACKED_ROOTS": (real_cwd,),
-        "TRACKED_ROOT_MENTION": re.compile(re.escape(real_cwd)),
     }
     exec(compile(module, str(hook_path), "exec"), namespace)
     return namespace["bash_write_targets"]

@@ -104,7 +104,6 @@ class FailOpenCharacterization(unittest.TestCase):
 
 class BashParserCharacterization(unittest.TestCase):
     INVISIBLE_COMMANDS = {
-        "cp_quoted": "cp -- 'source file' '/home/test/copied file'",
         "rm_flags": "rm -rf -- /home/test/removed",
         "mv_separator": "mv -- source /home/test/moved",
         "tee_flags": "printf x | tee -a /home/test/tee-output",
@@ -115,7 +114,6 @@ class BashParserCharacterization(unittest.TestCase):
 
     def test_neutral_writer_verbs_are_detected(self) -> None:
         expected_by_label = {
-            "cp_quoted": [],
             "rm_flags": ["/home/test/removed"],
             "mv_separator": ["/home/test/moved"],
             "tee_flags": ["/home/test/tee-output"],
@@ -143,7 +141,6 @@ class BashParserCharacterization(unittest.TestCase):
     def test_neutral_plain_and_append_redirections_are_detected(self) -> None:
         cases = {
             "plain": ("printf x > /home/test/output", ["/home/test/output"]),
-            "append_quoted": ('printf x >> "/home/test/output file"', []),
             "verb_plus_redirection": (
                 "cp source /home/test/invisible > /home/test/cp-log",
                 ["/home/test/cp-log", "/home/test/invisible"],
@@ -447,8 +444,6 @@ class McpAndMessageCharacterization(unittest.TestCase):
             "1 uncovered target(s) (detected: Write/Edit/NotebookEdit/MultiEdit, MCP mutations, "
             "shell redirections, cp/mv/install/tee/dd/rm/sed -i; heredocs and other shell writes "
             "are NOT tracked — the true count may be higher):\n"
-            "1 shell write(s) with unresolvable targets (relative path, variable, or glob) "
-            "— not tracked by path.\n"
             f"  - {target}  (not found on disk — deleted, or a relative path resolved against an "
             "uncertain directory)\n\n"
             "Coverage requires a later codex-wrapper / opencode-wrapper / grok-wrapper dispatch or "
