@@ -123,7 +123,7 @@ class BashParserCharacterization(unittest.TestCase):
             "install_flags": ["/home/test/installed"],
             "sed_in_place": ["/home/test/edited"],
         }
-        parser = load_bash_write_targets()
+        parser = load_bash_write_targets(cwd="/home/test")
         for label, command in self.INVISIBLE_COMMANDS.items():
             with self.subTest(label=label):
                 expected = expected_by_label[label]
@@ -134,7 +134,7 @@ class BashParserCharacterization(unittest.TestCase):
 
     def test_under_block_python_heredoc_remains_invisible(self) -> None:
         command = "python3 - <<'PY'\nopen('/home/test/heredoc', 'w').write('x')\nPY"
-        parser = load_bash_write_targets()
+        parser = load_bash_write_targets(cwd="/home/test")
         self.assertEqual(parser(command), [])
         with GateFixture() as fixture:
             result = fixture.run(records=bash_exchange(command))
@@ -149,7 +149,7 @@ class BashParserCharacterization(unittest.TestCase):
                 ["/home/test/cp-log", "/home/test/invisible"],
             ),
         }
-        parser = load_bash_write_targets()
+        parser = load_bash_write_targets(cwd="/home/test")
         for label, (command, targets) in cases.items():
             with self.subTest(label=label):
                 self.assertEqual(parser(command), targets)
@@ -159,7 +159,7 @@ class BashParserCharacterization(unittest.TestCase):
 
     def test_neutral_command_substitution_does_not_hide_literal_redirection(self) -> None:
         command = "echo $(printf x) > /home/test/otherwise-visible"
-        parser = load_bash_write_targets()
+        parser = load_bash_write_targets(cwd="/home/test")
         self.assertEqual(parser(command), ["/home/test/otherwise-visible"])
         with GateFixture() as fixture:
             result = fixture.run(records=bash_exchange(command))
@@ -190,16 +190,16 @@ class DurablePathCharacterization(unittest.TestCase):
     def test_neutral_relative_path_resolves_against_hook_cwd(self) -> None:
         with GateFixture() as fixture:
             fixture.write_transcript(write_exchange("nested/../relative.txt"))
-            result = fixture.run(hook_input=fixture.hook_input(cwd="/home/project"))
-        assert_block(self, result, ["/home/project/relative.txt"])
+            result = fixture.run(hook_input=fixture.hook_input(cwd="/home/test/project"))
+        assert_block(self, result, ["/home/test/project/relative.txt"])
 
     def test_neutral_tilde_expansion_uses_home(self) -> None:
         with GateFixture() as fixture:
             result = fixture.run(
-                records=write_exchange("~/expanded.txt"),
+                records=write_exchange("~/personal/expanded.txt"),
                 env_overrides={"HOME": "/home/fixture-user"},
             )
-        assert_block(self, result, ["/home/fixture-user/expanded.txt"])
+        assert_block(self, result, ["/home/fixture-user/personal/expanded.txt"])
 
     def test_neutral_symlink_is_resolved_before_durability_filter(self) -> None:
         with GateFixture() as fixture:
@@ -463,7 +463,10 @@ class McpAndMessageCharacterization(unittest.TestCase):
             result = fixture.run(
                 records=[
                     *write_exchange(target),
-                    *bash_exchange("cp source relative/unresolvable", tool_id="bash-2"),
+                    *bash_exchange(
+                        "cp source relative/unresolvable; printf %s /home/test",
+                        tool_id="bash-2",
+                    ),
                 ]
             )
         self.assertEqual(result.returncode, 0)

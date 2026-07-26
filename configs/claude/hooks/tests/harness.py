@@ -175,6 +175,9 @@ class GateFixture:
     def __init__(self) -> None:
         self._temporary = tempfile.TemporaryDirectory(prefix="routing-gate-tests-")
         self.root = Path(self._temporary.name)
+        self.test_home = self.root / "home"
+        self.test_home.mkdir()
+        (self.test_home / "personal").symlink_to("/home/test", target_is_directory=True)
         self.receipt_root = self.root / "receipts"
         assert_safe_fixture_path(self.receipt_root)
         self.receipt_root.mkdir()
@@ -255,6 +258,7 @@ class GateFixture:
         else:
             env.pop("ROUTING_GATE_REPORT_GLOB_ROOTS", None)
             env.pop("ROUTING_GATE_POLL_MS", None)
+        env["HOME"] = str(self.test_home)
         if env_overrides:
             env.update(env_overrides)
         completed = subprocess.run(
@@ -334,6 +338,8 @@ def load_bash_write_targets(hook_path: Path = HOOK, *, cwd: str = "/home/fuzz"):
         "verb_segment_targets",
         "bash_verb_targets",
         "bash_write_targets",
+        "path_is_tracked",
+        "command_implicates_tracked_root",
     }
     assignment_names = {"AMBIGUOUS_BASH", "SHELL_ASSIGNMENT", "SHELL_TARGET_META"}
     selected: list[ast.stmt] = []
@@ -364,7 +370,15 @@ def load_bash_write_targets(hook_path: Path = HOOK, *, cwd: str = "/home/fuzz"):
     if not required.issubset(selected_names):
         raise ValueError("missing bash_write_targets dependency while extracting hook logic")
     module = ast.fix_missing_locations(ast.Module(body=selected, type_ignores=[]))
-    namespace: dict[str, Any] = {"os": os, "re": re, "shlex": __import__("shlex"), "hook_cwd": cwd}
+    real_cwd = os.path.realpath(cwd)
+    namespace: dict[str, Any] = {
+        "os": os,
+        "re": re,
+        "shlex": __import__("shlex"),
+        "hook_cwd": real_cwd,
+        "TRACKED_ROOTS": (real_cwd,),
+        "TRACKED_ROOT_MENTION": re.compile(re.escape(real_cwd)),
+    }
     exec(compile(module, str(hook_path), "exec"), namespace)
     return namespace["bash_write_targets"]
 

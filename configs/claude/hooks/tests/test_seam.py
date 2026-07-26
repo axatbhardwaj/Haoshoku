@@ -19,6 +19,7 @@ from tests.harness import assert_safe_fixture_path
 
 ROOT = Path(__file__).resolve().parents[1]
 HOOK = ROOT / "routing-gate.sh"
+TRACKED_WORKSPACE = Path(os.path.realpath(os.path.expanduser("~/personal/routing-gate-seam")))
 REAL_RECEIPT_ROOTS = {
     Path("/tmp/codex-wrapper"),
     Path("/tmp/opencode-wrapper"),
@@ -50,7 +51,7 @@ class ReportRootSeamTest(unittest.TestCase):
                         "mode": "review",
                         "launcher_status": "ok",
                         "completed_at": receipt_timestamp,
-                        "workspace": "/home/test",
+                        "workspace": str(TRACKED_WORKSPACE),
                     }
                 ),
                 encoding="utf-8",
@@ -69,7 +70,10 @@ class ReportRootSeamTest(unittest.TestCase):
                                 "type": "tool_use",
                                 "id": "write-1",
                                 "name": "Write",
-                                "input": {"file_path": "/home/test/seam.txt", "content": "x"},
+                                "input": {
+                                    "file_path": str(TRACKED_WORKSPACE / "seam.txt"),
+                                    "content": "x",
+                                },
                             }
                         ],
                     },
@@ -98,7 +102,7 @@ class ReportRootSeamTest(unittest.TestCase):
             hook_input = {
                 "session_id": "seam-test",
                 "transcript_path": str(transcript),
-                "cwd": "/home/test",
+                "cwd": str(TRACKED_WORKSPACE),
                 "stop_hook_active": False,
                 "last_assistant_message": "",
                 "background_tasks": [],
@@ -137,7 +141,7 @@ class ReportRootSeamTest(unittest.TestCase):
                         "mode": "review",
                         "launcher_status": "ok",
                         "completed_at": receipt_timestamp,
-                        "workspace": "/home/test",
+                        "workspace": str(TRACKED_WORKSPACE),
                     }
                 ),
                 encoding="utf-8",
@@ -156,7 +160,11 @@ class ReportRootSeamTest(unittest.TestCase):
                                         "type": "tool_use",
                                         "id": "write-1",
                                         "name": "Write",
-                                        "input": {"file_path": "/home/test/multiple-roots"},
+                                        "input": {
+                                            "file_path": str(
+                                                TRACKED_WORKSPACE / "multiple-roots"
+                                            )
+                                        },
                                     }
                                 ]
                             },
@@ -189,7 +197,7 @@ class ReportRootSeamTest(unittest.TestCase):
                     {
                         "session_id": "seam-test",
                         "transcript_path": str(transcript),
-                        "cwd": "/home/test",
+                        "cwd": str(TRACKED_WORKSPACE),
                         "stop_hook_active": False,
                     }
                 ),

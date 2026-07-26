@@ -95,7 +95,7 @@ class ShellTargetResolutionTests(unittest.TestCase):
         assumed = f"/home/wrong-stop-cwd/{relative}"
         with GateFixture() as fixture:
             result = fixture.run(
-                records=bash_exchange(f"cp source {relative}"),
+                records=bash_exchange(f"cp source {relative}; printf %s /home/test"),
                 hook_input=fixture.hook_input(cwd="/home/wrong-stop-cwd"),
             )
 
@@ -107,7 +107,9 @@ class ShellTargetResolutionTests(unittest.TestCase):
 
     def test_07_unresolvable_count_only_still_blocks(self) -> None:
         with GateFixture() as fixture:
-            result = fixture.run(records=bash_exchange("cp source relative/only"))
+            result = fixture.run(
+                records=bash_exchange("cp source relative/only; printf %s /home/test")
+            )
 
         assert_block(self, result)
         reason = result.output_json["reason"]
@@ -116,11 +118,11 @@ class ShellTargetResolutionTests(unittest.TestCase):
         self.assertNotIn("  - ", reason)
 
     def test_08_new_unresolvable_write_reblocks_after_acknowledgement(self) -> None:
-        first_records = bash_exchange("cp source relative/same")
+        first_records = bash_exchange("cp source relative/same; printf %s /home/test")
         expanded_records = [
             *first_records,
             *bash_exchange(
-                "cp source relative/same",
+                "cp source relative/same; printf %s /home/test",
                 tool_id="bash-2",
                 timestamp="2026-01-01T00:00:12Z",
             ),

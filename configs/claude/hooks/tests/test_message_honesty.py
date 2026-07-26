@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import unittest
 from typing import Any
 
@@ -25,6 +26,7 @@ MISSING_TARGET = HOOK.parent / "tests" / "__routing_gate_message_honesty_missing
 # Keep ambient receipts from discharging these controlled writes in either implementation.
 FUTURE_WRITE_TS = "2099-01-01T00:00:10Z"
 FUTURE_DISPATCH_TS = "2099-01-01T00:00:20Z"
+REAL_HOME_ENV = {"HOME": os.path.realpath(os.path.expanduser("~"))}
 
 
 def listing_lines(result: HookResult) -> list[str]:
@@ -51,8 +53,12 @@ class MessageHonestyTests(unittest.TestCase):
         records: list[dict[str, Any]],
     ) -> tuple[HookResult, HookResult]:
         pristine = pristine_hook_copy(fixture.root / "routing-gate.pristine.sh")
-        current_result = fixture.run(records=records)
-        pristine_result = fixture.run(records=records, hook_path=pristine)
+        current_result = fixture.run(records=records, env_overrides=REAL_HOME_ENV)
+        pristine_result = fixture.run(
+            records=records,
+            hook_path=pristine,
+            env_overrides=REAL_HOME_ENV,
+        )
         return current_result, pristine_result
 
     def test_existing_target_preserves_listing_line_byte_for_byte(self) -> None:
@@ -89,7 +95,7 @@ class MessageHonestyTests(unittest.TestCase):
             tool_result_record("mcp-1"),
         ]
         with GateFixture() as fixture:
-            current = fixture.run(records=records)
+            current = fixture.run(records=records, env_overrides=REAL_HOME_ENV)
         self.assertEqual(listing_lines(current), [f"  - {target}"])
 
     def test_mixed_targets_render_existing_bare_and_missing_annotated(self) -> None:

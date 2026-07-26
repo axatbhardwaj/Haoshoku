@@ -106,6 +106,33 @@ MCP_MUTATION = re.compile(
     r"save|publish|post|send|append|insert|upsert|set|add|replace)(?:_|$)",
     re.IGNORECASE,
 )
+HOME_DIR = os.path.realpath(os.path.expanduser("~"))
+TRACKED_ROOT_NAMES = ("personal", "defi", ".claude", ".codex")
+# This deliberately reduces the gate's filesystem coverage to locations that can carry review debt.
+# Coverage outside these roots is intentionally abandoned because nothing
+# durable lives there.
+TRACKED_ROOTS = tuple(
+    os.path.realpath(os.path.join(HOME_DIR, name))
+    for name in TRACKED_ROOT_NAMES
+)
+TRACKED_ROOT_REFERENCES = (
+    *TRACKED_ROOTS,
+    *(f"~/{name}" for name in TRACKED_ROOT_NAMES),
+    *(f"$HOME/{name}" for name in TRACKED_ROOT_NAMES),
+    *(f"${{HOME}}/{name}" for name in TRACKED_ROOT_NAMES),
+)
+TRACKED_ROOT_MENTION = re.compile(
+    r"(?<![\w./~-])(?:"
+    + "|".join(re.escape(reference) for reference in TRACKED_ROOT_REFERENCES)
+    + r")(?=$|[/\s'\"`$*?{}\[\]()|&;<>])"
+)
+def path_is_tracked(value):
+    if not isinstance(value, str) or not value:
+        return False
+    value = os.path.realpath(value)
+    return any(value == root or value.startswith(root + os.sep) for root in TRACKED_ROOTS)
+def command_implicates_tracked_root(command):
+    return isinstance(command, str) and bool(TRACKED_ROOT_MENTION.search(command))
 hook_cwd = hook.get("cwd")
 if not (isinstance(hook_cwd, str) and os.path.isabs(hook_cwd)):
     hook_cwd = os.getcwd()
@@ -142,6 +169,9 @@ def path_values(value):
 #
 # Known Bash-write blind spots:
 # - heredocs/here-strings are skipped because their > tokens are not reliably writes;
+# - a relative-path write whose command text never mentions a tracked root is neither named nor
+#   counted (for example, `cp x y` after an earlier `cd ~/defi`); tracking cwd per command is
+#   intentionally not attempted because it previously produced phantom paths;
 # - other shell syntax is parsed conservatively, and unresolvable targets are counted;
 # - variables, globs, eval/wrappers, and runtime-computed targets are not resolved;
 # - the explicit cp/mv/install/tee/dd/rm/sed -i grammar below is intentionally bounded;
@@ -441,6 +471,9 @@ def bash_write_targets(command, include_unresolvable=False):
     if quote or word_quote:
         raise ValueError("unterminated shell quote")
     targets += [target for target in verb_targets if target not in targets]
+    targets = [target for target in targets if path_is_tracked(target)]
+    if unresolvable and not command_implicates_tracked_root(command):
+        unresolvable = 0
     return (targets, unresolvable) if include_unresolvable else targets
 # A dispatch only discharges the gate if it actually reviewed something. Any terminal
 # state short of success means no review happened, so the writes stay uncovered.
@@ -566,7 +599,10 @@ def receipt_workspace_covers(workspace, target):
     return target == workspace or target.startswith(workspace + os.sep)
 def classify_tool(name, inp):
     if name in WRITE_TOOLS:
-        targets = [p for p in map(durable_path, path_values(inp)) if p]
+        targets = [
+            p for p in map(durable_path, path_values(inp))
+            if p and path_is_tracked(p)
+        ]
         return ("write", targets) if targets else None
     if name == "Bash":
         targets, unresolvable = bash_write_targets(
@@ -579,7 +615,10 @@ def classify_tool(name, inp):
         if not MCP_MUTATION.search(operation.replace("-", "_")):
             return None
         raw_paths = path_values(inp)
-        targets = [p for p in map(durable_path, raw_paths) if p]
+        targets = [
+            p for p in map(durable_path, raw_paths)
+            if p and path_is_tracked(p)
+        ]
         if raw_paths and not targets:
             return None
         return ("write", targets or [f"<{name}>"])

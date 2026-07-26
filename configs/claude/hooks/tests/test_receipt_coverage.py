@@ -51,18 +51,18 @@ class CoversUnitMatrix(unittest.TestCase):
         self.assertIsNotNone(covers, "CH5 receipt_workspace_covers is absent")
         with tempfile.TemporaryDirectory(prefix="routing-gate-covers-") as raw_tmp:
             workspace = Path(raw_tmp) / "workspace-link"
-            workspace.symlink_to("/home/repo")
-            self.assertTrue(covers(str(workspace), "/home/repo/sub/file"))
+            workspace.symlink_to("/home/test/repo")
+            self.assertTrue(covers(str(workspace), "/home/test/repo/sub/file"))
 
 
 class PerTargetReceiptCoverageTests(unittest.TestCase):
     def test_neutral_invalid_workspace_shapes_and_prefixes_do_not_cover(self) -> None:
         cases = (
-            ("/home/repo", "/home/repository/file"),
-            ("/home/repo/sub", "/home/repo"),
-            ("/", "/home/repo/file"),
-            (None, "/home/repo/file"),
-            ("relative/repo", "/home/repo/file"),
+            ("/home/test/repo", "/home/test/repository/file"),
+            ("/home/test/repo/sub", "/home/test/repo"),
+            ("/", "/home/test/repo/file"),
+            (None, "/home/test/repo/file"),
+            ("relative/repo", "/home/test/repo/file"),
         )
         for workspace, target in cases:
             with self.subTest(workspace=workspace, target=target), GateFixture() as fixture:
@@ -72,8 +72,8 @@ class PerTargetReceiptCoverageTests(unittest.TestCase):
 
     def test_neutral_equality_ancestry_and_symlinked_workspace_cover(self) -> None:
         cases = (
-            ("/home/repo", "/home/repo"),
-            ("/home/repo", "/home/repo/sub/file"),
+            ("/home/test/repo", "/home/test/repo"),
+            ("/home/test/repo", "/home/test/repo/sub/file"),
         )
         for workspace, target in cases:
             with self.subTest(workspace=workspace, target=target), GateFixture() as fixture:
@@ -83,9 +83,9 @@ class PerTargetReceiptCoverageTests(unittest.TestCase):
 
         with GateFixture() as fixture:
             workspace = fixture.root / "workspace-link"
-            workspace.symlink_to("/home/repo")
+            workspace.symlink_to("/home/test/repo")
             fixture.write_receipt(receipt(str(workspace)))
-            result = fixture.run(records=write_exchange("/home/repo/sub/file"))
+            result = fixture.run(records=write_exchange("/home/test/repo/sub/file"))
             assert_allow(self, result)
 
     def test_neutral_mcp_pseudo_target_is_never_receipt_coverable(self) -> None:
@@ -94,41 +94,63 @@ class PerTargetReceiptCoverageTests(unittest.TestCase):
             tool_result_record("mcp-1"),
         ]
         with GateFixture() as fixture:
-            fixture.write_receipt(receipt("/home/repo"))
+            fixture.write_receipt(receipt("/home/test/repo"))
             result = fixture.run(records=records)
         assert_block(self, result, ["<mcp__files__create_item>"])
 
     def test_neutral_disjoint_receipts_cover_only_their_own_target_subsets(self) -> None:
         records = [
-            *write_exchange("/home/repo-a/one", tool_id="write-a", timestamp="2026-01-01T00:00:10Z"),
-            *write_exchange("/home/repo-b/two", tool_id="write-b", timestamp="2026-01-01T00:00:20Z"),
-            *write_exchange("/home/repo-c/three", tool_id="write-c", timestamp="2026-01-01T00:00:25Z"),
+            *write_exchange(
+                "/home/test/repo-a/one",
+                tool_id="write-a",
+                timestamp="2026-01-01T00:00:10Z",
+            ),
+            *write_exchange(
+                "/home/test/repo-b/two",
+                tool_id="write-b",
+                timestamp="2026-01-01T00:00:20Z",
+            ),
+            *write_exchange(
+                "/home/test/repo-c/three",
+                tool_id="write-c",
+                timestamp="2026-01-01T00:00:25Z",
+            ),
         ]
         with GateFixture() as fixture:
-            fixture.write_receipt(receipt("/home/repo-a"), run_name="run-a")
-            fixture.write_receipt(receipt("/home/repo-b"), run_name="run-b")
+            fixture.write_receipt(receipt("/home/test/repo-a"), run_name="run-a")
+            fixture.write_receipt(receipt("/home/test/repo-b"), run_name="run-b")
             result = fixture.run(records=records)
-        assert_block(self, result, ["/home/repo-c/three"])
+        assert_block(self, result, ["/home/test/repo-c/three"])
         reason = result.output_json["reason"]
-        self.assertNotIn("  - /home/repo-a/one", reason)
-        self.assertNotIn("  - /home/repo-b/two", reason)
+        self.assertNotIn("  - /home/test/repo-a/one", reason)
+        self.assertNotIn("  - /home/test/repo-b/two", reason)
 
     def test_neutral_receipt_timestamp_is_compared_to_each_targets_latest_write(self) -> None:
         records = [
-            *write_exchange("/home/repo/early", tool_id="write-early", timestamp="2026-01-01T00:00:10Z"),
-            *write_exchange("/home/repo/late", tool_id="write-late", timestamp="2026-01-01T00:00:20Z"),
+            *write_exchange(
+                "/home/test/repo/early",
+                tool_id="write-early",
+                timestamp="2026-01-01T00:00:10Z",
+            ),
+            *write_exchange(
+                "/home/test/repo/late",
+                tool_id="write-late",
+                timestamp="2026-01-01T00:00:20Z",
+            ),
         ]
         with GateFixture() as fixture:
-            fixture.write_receipt(receipt("/home/repo", "2026-01-01T00:00:15Z"))
+            fixture.write_receipt(receipt("/home/test/repo", "2026-01-01T00:00:15Z"))
             result = fixture.run(records=records)
-        assert_block(self, result, ["/home/repo/late"])
-        self.assertNotIn("  - /home/repo/early", result.output_json["reason"])
+        assert_block(self, result, ["/home/test/repo/late"])
+        self.assertNotIn("  - /home/test/repo/early", result.output_json["reason"])
 
     def test_neutral_missing_write_timestamp_is_never_receipt_coverable(self) -> None:
         with GateFixture() as fixture:
-            fixture.write_receipt(receipt("/home/repo"))
-            result = fixture.run(records=write_exchange("/home/repo/no-timestamp", timestamp=None))
-        assert_block(self, result, ["/home/repo/no-timestamp"])
+            fixture.write_receipt(receipt("/home/test/repo"))
+            result = fixture.run(
+                records=write_exchange("/home/test/repo/no-timestamp", timestamp=None)
+            )
+        assert_block(self, result, ["/home/test/repo/no-timestamp"])
 
 
 if __name__ == "__main__":
