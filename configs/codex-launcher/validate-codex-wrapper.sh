@@ -242,7 +242,7 @@ ARG='[A-Za-z0-9._/~=^@:+-]+'
 # Valueless flags are listed BEFORE the valued group so --resume-from-pointer is matched
 # whole, not shadowed by the --resume alternative. --resume-source is deliberately absent:
 # it is internal to the launcher's own detached self-reinvocation, never wrapper-issued.
-LAUNCHER_ARGS_RE="^( --resume-from-pointer| --detach| --persist| --(mode|model|workspace|prompt-file|effort|tier|wait|wait-seconds|resume) ${ARG})+$"
+LAUNCHER_ARGS_RE="^( --resume-from-pointer| --detach| --persist| --(mode|model|workspace|prompt-file|effort-justification|effort|tier|wait|wait-seconds|resume) ${ARG})+$" # Convention, not necessity: POSIX ERE is leftmost-longest, so this ordering is not required; it matches this file's existing style.
 
 trusted_home_for_uid() {
   local name password entry_uid gid gecos entry_home shell

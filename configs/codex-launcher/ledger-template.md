@@ -15,9 +15,9 @@ response and cannot confirm this table was presented. Removing the phantom file 
 defect but relocated the burden to an unaudited instruction — do not mistake it for a gate.
 The auditable half is the evidence column: run dirs are inspectable on disk after the fact.
 
-| # | Task (verbatim request) | Lane | Carve-out | Durable writes | Review evidence | State |
-|---|-------------------------|------|-----------|----------------|-----------------|-------|
-| 1 | | prativadi \| rupakara \| vadi | — \| (a) needs Claude-side MCP tools \| (b) live back-and-forth with the human *is* the work \| (c) the final taste pass on user-facing output \| (d) recovery after an external-lane failure this stream \| (e) trivial mechanical edits | paths, or "none" | `/tmp/codex-wrapper/run-*` \| named human/model reviewer + what it checked (`no run dir`) | reviewed \| batched-pending \| **debt** |
+| # | Task (verbatim request) | Lane | Effort escalation | Carve-out | Durable writes | Review evidence | State |
+|---|-------------------------|------|-------------------|-----------|----------------|-----------------|-------|
+| 1 | | prativadi \| rupakara \| vadi | `none` \| `<value> · <justification-token> · <run_dir>` | — \| (a) needs Claude-side MCP tools \| (b) live back-and-forth with the human *is* the work \| (c) the final taste pass on user-facing output \| (d) recovery after an external-lane failure this stream \| (e) trivial mechanical edits | paths, or "none" | `/tmp/codex-wrapper/run-*` \| named human/model reviewer + what it checked (`no run dir`) | reviewed \| batched-pending \| **debt** |
 
 The evidence column accepts two forms: a Codex-lane `/tmp/codex-wrapper/run-*` directory, or a
 named human/model reviewer plus what it checked when there is `no run dir` (for example, a plain

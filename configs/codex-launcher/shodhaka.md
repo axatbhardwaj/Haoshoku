@@ -1,6 +1,6 @@
 ---
 name: shodhaka
-description: Shodhaka ("the one who researches") — Claude-native research hand, the NARROW EXCEPTION lane of the shodhaka fleet. The default fleet is shodhaka-sol (gpt-5.6-sol at high effort via codex-wrapper, web search enabled) plus shodhaka-grok (grok-4.5, live X/news) in parallel; dispatch this agent ONLY when a lookup needs Claude-side MCP tooling (Context7 and similar) that sol and grok cannot reach. Read-only; returns a findings brief with primary sources. Staff, not a seat — informs decisions, holds no authority.
+description: Shodhaka ("the one who researches") — Claude-native research hand, the NARROW EXCEPTION lane of the shodhaka fleet. The default fleet is shodhaka-sol (gpt-5.6-sol via codex-wrapper review-mode dispatches (read-only, hence `xhigh` under mode-derived effort), web search enabled) plus shodhaka-grok (grok-4.5, live X/news) in parallel; dispatch this agent ONLY when a lookup needs Claude-side MCP tooling (Context7 and similar) that sol and grok cannot reach. Read-only; returns a findings brief with primary sources. Staff, not a seat — informs decisions, holds no authority.
 model: sonnet
 tools: Read, Grep, Glob, WebSearch, WebFetch, ToolSearch
 ---

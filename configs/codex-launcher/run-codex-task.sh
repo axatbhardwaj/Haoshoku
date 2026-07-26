@@ -5,7 +5,7 @@
 # snapshots, and a machine-readable report.
 #
 # Modes of invocation:
-#   Foreground:  run-codex-task.sh --mode M --model X --workspace D --prompt-file F [--effort E]
+#   Foreground:  run-codex-task.sh --mode M --model X --workspace D --prompt-file F [--effort E --effort-justification J]
 #   Detached:    ... same args plus --detach   -> prints {launcher_status:"detached", run_dir}
 #                and runs the codex+report flow in a setsid child that survives
 #                the caller's 10-minute Bash-tool cap.
@@ -23,16 +23,18 @@ set -u
 
 command -v jq >/dev/null 2>&1 || { echo "run-codex-task.sh requires jq (pacman -S jq / apt install jq)" >&2; exit 69; }
 
-usage() { echo "usage: run-codex-task.sh --mode implementation|review --model sol --workspace <dir> --prompt-file <path> [--effort xhigh] [--tier default|fast|priority|flex] [--persist] [--resume <session_id>] [--resume-from-pointer] [--detach] | --wait <run_dir> [--wait-seconds <n>]  (--persist/--resume/--resume-from-pointer work in both modes; implementation needs a clean tree per run)" >&2; exit 64; }
+usage() { echo "usage: run-codex-task.sh --mode implementation|review --model sol --workspace <dir> --prompt-file <path> [--effort xhigh|max --effort-justification <token>] [--tier default|fast|priority|flex] [--persist] [--resume <session_id>] [--resume-from-pointer] [--detach] | --wait <run_dir> [--wait-seconds <n>]  (--persist/--resume/--resume-from-pointer work in both modes; implementation needs a clean tree per run; effort derives from --mode: implementation=high, review=xhigh; --effort escalates upward only)" >&2; exit 64; }
 
-MODE="" MODEL="" WORKSPACE="" PROMPT_FILE="" EFFORT="xhigh" TIER="" DETACH=0 RUN_DIR_ARG="" WAIT_DIR="" WAIT_SECS=540 PERSIST=0 RESUME_ID="" RESUME_REQUESTED=0 RESUME_FROM_POINTER=0 RESUME_SOURCE_ARG="" RESUME_SOURCE="" CODEX_SESSION_ID="" SESSION_POINTER=""
+# bare fallback: fail toward more thinking
+MODE="" MODEL="" WORKSPACE="" PROMPT_FILE="" EFFORT="xhigh" EFFORT_ARG="" EFFORT_JUSTIFICATION="" EFFORT_SOURCE="" TIER="" DETACH=0 RUN_DIR_ARG="" WAIT_DIR="" WAIT_SECS=540 PERSIST=0 RESUME_ID="" RESUME_REQUESTED=0 RESUME_FROM_POINTER=0 RESUME_SOURCE_ARG="" RESUME_SOURCE="" CODEX_SESSION_ID="" SESSION_POINTER=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --mode) MODE="${2:-}"; shift 2 || usage ;;
     --model) MODEL="${2:-}"; shift 2 || usage ;;
     --workspace) WORKSPACE="${2:-}"; shift 2 || usage ;;
     --prompt-file) PROMPT_FILE="${2:-}"; shift 2 || usage ;;
-    --effort) EFFORT="${2:-}"; shift 2 || usage ;;
+    --effort) EFFORT_ARG="${2:-}"; shift 2 || usage ;;
+    --effort-justification) EFFORT_JUSTIFICATION="${2:-}"; shift 2 || usage ;;
     --tier) TIER="${2:-}"; shift 2 || usage ;;   # service_tier: the codex /fast equivalent ("priority")
     --persist) PERSIST=1; shift ;;
     --resume) RESUME_ID="${2:-}"; RESUME_REQUESTED=1; shift 2 || usage ;;
@@ -71,10 +73,11 @@ fi
 
 [ -n "$MODE" ] && [ -n "$MODEL" ] && [ -n "$WORKSPACE" ] && [ -n "$PROMPT_FILE" ] || usage
 
-# Mode -> sandbox is decided HERE, in code. Review is always read-only.
+# Mode -> sandbox AND mode -> effort are decided HERE, together, in code.
+# Review is read-only and thinks at xhigh; implementation writes and thinks at high.
 case "$MODE" in
-  implementation) SANDBOX="workspace-write" ;;
-  review)         SANDBOX="read-only" ;;
+  implementation) SANDBOX="workspace-write"; MODE_EFFORT="high" ;;
+  review)         SANDBOX="read-only";       MODE_EFFORT="xhigh" ;;
   *) echo "invalid --mode: $MODE" >&2; exit 64 ;;
 esac
 
@@ -102,7 +105,21 @@ case "$MODEL" in
   *) echo "model not in allowlist: $MODEL" >&2; exit 64 ;;
 esac
 
-case "$EFFORT" in xhigh) ;; *) echo "effort not in allowlist: $EFFORT" >&2; exit 64 ;; esac
+# Effort derives from mode; there is NO downward dial (retired 2026-07-20).
+# --effort is upward-only escalation and requires a format-valid justification.
+JUST_RE='^[a-z0-9][a-z0-9-]*:[A-Za-z0-9._/~=^@:+-]+$'   # <reason-slug>:<context>
+EFFORT_SOURCE="mode_default"
+if [ -n "$EFFORT_ARG" ]; then
+  case "$MODE:$EFFORT_ARG" in
+    implementation:xhigh|implementation:max|review:max) ;;
+    *) echo "effort not allowed: mode=$MODE derives $MODE_EFFORT; --effort escalates upward only (implementation: xhigh|max, review: max)" >&2; exit 64 ;;
+  esac
+  [[ "$EFFORT_JUSTIFICATION" =~ $JUST_RE ]] || { echo "--effort requires --effort-justification <reason-slug>:<context> (e.g. inadequate-result:/tmp/codex-wrapper/run-abc)" >&2; exit 64; }
+  EFFORT="$EFFORT_ARG"; EFFORT_SOURCE="escalated"
+else
+  [ -z "$EFFORT_JUSTIFICATION" ] || { echo "--effort-justification without --effort" >&2; exit 64; }
+  EFFORT="$MODE_EFFORT"
+fi
 case "$TIER" in
   fast) TIER="priority" ;;  # Config's display spelling; overrides require the API tier id.
   ""|default|priority|flex) ;;
@@ -145,7 +162,8 @@ report() {  # report <status> <codex_exit> <result_valid>
   git_list ls-files --others --exclude-standard > "$untracked_file" || :
   if jq -n \
     --arg run_dir "$RUN_DIR" --arg mode "$MODE" --arg model "$MODEL_ID" \
-    --arg sandbox "$SANDBOX" --arg workspace "$WORKSPACE" \
+    --arg sandbox "$SANDBOX" --arg effort "$EFFORT" --arg effort_source "${EFFORT_SOURCE:-}" --arg effort_justification "${EFFORT_JUSTIFICATION:-}" \
+    --arg workspace "$WORKSPACE" \
     --arg started "$STARTED_AT" --arg completed "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     --arg launcher_status "$1" --argjson codex_exit "${2:-null}" --argjson result_valid "${3:-false}" \
     --arg baseline "${BASELINE:-}" --arg session_id "${CODEX_SESSION_ID:-}" \
@@ -176,7 +194,11 @@ report() {  # report <status> <codex_exit> <result_valid>
           + (if $untracked_paths.truncated then {untracked:truncation($untracked_paths)} else {} end)
         ) as $truncations
       | ({launcher_status:$launcher_status, run_dir:$run_dir, mode:$mode, model:$model,
-      sandbox:$sandbox, workspace:$workspace, baseline_commit:$baseline,
+      sandbox:$sandbox,
+      effort:$effort,
+      effort_source:($effort_source | if . == "" then null else . end),
+      effort_justification:($effort_justification | if . == "" then null else . end),
+      workspace:$workspace, baseline_commit:$baseline,
       codex_exit_code:$codex_exit, result_file_valid:$result_valid,
       codex_session_id:($session_id | if . == "" then null else . end),
       session_pointer:($session_pointer | if . == "" then null else . end),
@@ -247,8 +269,11 @@ fi
 # then return the run dir immediately. Poll with --wait. ----
 if [ "$DETACH" -eq 1 ]; then
   PERSIST_OPT=""; [ "$PERSIST" -eq 1 ] && PERSIST_OPT="--persist"
+  # The child re-derives effort from --mode; forwarding the derived value self-rejects.
   setsid "$0" --mode "$MODE" --model "$MODEL" --workspace "$WORKSPACE" \
-    --prompt-file "$RUN_DIR/prompt.md" --effort "$EFFORT" ${TIER:+--tier "$TIER"} \
+    --prompt-file "$RUN_DIR/prompt.md" \
+    ${EFFORT_ARG:+--effort "$EFFORT_ARG"} ${EFFORT_ARG:+--effort-justification "$EFFORT_JUSTIFICATION"} \
+    ${TIER:+--tier "$TIER"} \
     ${PERSIST_OPT:+$PERSIST_OPT} ${RESUME_ID:+--resume "$RESUME_ID"} \
     --resume-source "$RESUME_SOURCE" --run-dir "$RUN_DIR" \
     >/dev/null 2>>"$RUN_DIR/detach.log" </dev/null &
