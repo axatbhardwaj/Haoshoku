@@ -96,7 +96,6 @@ path = hook.get("transcript_path") or ""
 if not isinstance(path, str) or not path or not os.path.exists(path):
     sys.exit(0)                                  # fail open
 WRITE_TOOLS = {"Write", "Edit", "NotebookEdit", "MultiEdit"}
-WORKER_AGENTS = {"codex-wrapper", "opencode-wrapper", "grok-wrapper"}
 PATH_KEYS = {
     "destination", "destination_path", "file", "file_path", "filename",
     "notebook_path", "output", "output_file", "output_path", "path", "target",
@@ -142,8 +141,8 @@ def path_values(value):
 # targets so the hook keeps its fail-open posture.
 #
 # Known Bash-write blind spots:
-# - heredocs/here-strings, [[ tests, arithmetic, function definitions, and command
-#   substitutions are skipped because their > tokens are not reliably writes;
+# - heredocs/here-strings are skipped because their > tokens are not reliably writes;
+# - other shell syntax is parsed conservatively, and unresolvable targets are counted;
 # - variables, globs, eval/wrappers, and runtime-computed targets are not resolved;
 # - the explicit cp/mv/install/tee/dd/rm/sed -i grammar below is intentionally bounded;
 #   other writer commands and runtime-computed operands remain invisible.
@@ -152,11 +151,17 @@ def path_values(value):
 # - only structured objects and complete JSON strings are inspected. Unrecognized
 #   payloads still count as successful dispatches so uncertain data cannot turn
 #   this deliberately fail-open hook into a trap.
-AMBIGUOUS_BASH = re.compile(
-    r"<<|\[\[|\(\(|\$\(|`|(?:^|[;|&\n])\s*(?:function\s+)?"
-    r"[A-Za-z_][A-Za-z0-9_]*(?:\s*\(\s*\))?\s*\{"
-)
+AMBIGUOUS_BASH = re.compile(r"<<")
 SHELL_ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
+SHELL_TARGET_META = re.compile(r"""[$`*?~{}[\]<>()|&;'"\\\s]""")
+def shell_target_is_resolvable(value):
+    return (
+        isinstance(value, str)
+        and os.path.isabs(value)
+        and not SHELL_TARGET_META.search(value)
+    )
+def shell_value_is_quoted(segment, value):
+    return f"'{value}'" in segment or f'"{value}"' in segment
 def shell_segments(command):
     segments = []
     segment = []
@@ -339,21 +344,26 @@ def verb_segment_targets(segment):
             return operands
         return operands[1:] if len(operands) >= 2 else []
     return []
-def bash_verb_targets(command):
+def bash_verb_targets(command, include_unresolvable=False):
     targets = []
+    unresolvable = 0
     for segment in shell_segments(command):
         for value in verb_segment_targets(segment):
+            if shell_value_is_quoted(segment, value) or not shell_target_is_resolvable(value):
+                unresolvable += 1
+                continue
             target = durable_path(value)
             if target and target not in targets:
                 targets.append(target)
-    return targets
-def bash_write_targets(command):
+    return (targets, unresolvable) if include_unresolvable else targets
+def bash_write_targets(command, include_unresolvable=False):
     if not isinstance(command, str) or AMBIGUOUS_BASH.search(command):
-        return []
+        return ([], 0) if include_unresolvable else []
     try:
-        verb_targets = bash_verb_targets(command)
+        verb_targets, unresolvable = bash_verb_targets(command, include_unresolvable=True)
     except Exception:
         verb_targets = []
+        unresolvable = 0
     targets = []
     index = 0
     quote = None
@@ -391,6 +401,7 @@ def bash_write_targets(command):
             index += 1
         word = []
         word_quote = None
+        word_has_shell_syntax = False
         while index < len(command):
             char = command[index]
             if word_quote:
@@ -405,9 +416,11 @@ def bash_write_targets(command):
                 continue
             if char in {"'", '"'}:
                 word_quote = char
+                word_has_shell_syntax = True
                 index += 1
                 continue
             if char == "\\" and index + 1 < len(command):
+                word_has_shell_syntax = True
                 index += 1
                 word.append(command[index])
                 index += 1
@@ -417,14 +430,18 @@ def bash_write_targets(command):
             word.append(char)
             index += 1
         target = "".join(word)
-        if target and not target.startswith("(") and "$" not in target and "`" not in target:
+        if target and not target.startswith("("):
             if not (operator.endswith(">&") and (target.isdigit() or target == "-")):
-                target = durable_path(target)
-                if target:
-                    targets.append(target)
+                if not word_has_shell_syntax and shell_target_is_resolvable(target):
+                    target = durable_path(target)
+                    if target:
+                        targets.append(target)
+                else:
+                    unresolvable += 1
     if quote or word_quote:
         raise ValueError("unterminated shell quote")
-    return targets + [target for target in verb_targets if target not in targets]
+    targets += [target for target in verb_targets if target not in targets]
+    return (targets, unresolvable) if include_unresolvable else targets
 # A dispatch only discharges the gate if it actually reviewed something. Any terminal
 # state short of success means no review happened, so the writes stay uncovered.
 # The launcher_status/exit-code arm matters most in practice: blocked_dirty_tree is a
@@ -552,10 +569,11 @@ def classify_tool(name, inp):
         targets = [p for p in map(durable_path, path_values(inp)) if p]
         return ("write", targets) if targets else None
     if name == "Bash":
-        targets = bash_write_targets(inp.get("command") or "")
-        return ("write", targets) if targets else None
-    if name in {"Task", "Agent"}:
-        return ("dispatch", []) if inp.get("subagent_type") in WORKER_AGENTS else None
+        targets, unresolvable = bash_write_targets(
+            inp.get("command") or "",
+            include_unresolvable=True,
+        )
+        return ("shell_write", (targets, unresolvable)) if targets or unresolvable else None
     if name.startswith("mcp__"):
         operation = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", name.rsplit("__", 1)[-1])
         if not MCP_MUTATION.search(operation.replace("-", "_")):
@@ -571,7 +589,7 @@ def normalized_text(value):
 def parse_transcript():
     pending = {}
     written = []
-    dispatches = []
+    unresolvable_shell_writes = []
     sequence = 0
     session_started_at = None
     last_assistant_text = ""
@@ -633,9 +651,16 @@ def parse_transcript():
                         event_sequence, kind, targets, event_timestamp = pending.pop(tool_id)
                         if is_error:
                             continue
-                        if kind == "dispatch":
-                            if not dispatch_failed(block.get("content")):
-                                dispatches.append(event_sequence)
+                        if kind == "shell_write":
+                            shell_targets, unresolvable = targets
+                            written.extend(
+                                (event_sequence, target, event_timestamp)
+                                for target in shell_targets
+                            )
+                            if unresolvable:
+                                unresolvable_shell_writes.append(
+                                    (event_sequence, unresolvable, event_timestamp)
+                                )
                         else:
                             written.extend((event_sequence, target, event_timestamp) for target in targets)
     except Exception:
@@ -645,29 +670,31 @@ def parse_transcript():
         expected_suffix = normalized_text(expected)[-200:]
         if expected_suffix not in normalized_text(last_assistant_text):
             suspected_stale = True
-    return written, dispatches, session_started_at, suspected_stale
-def transcript_uncovered(written, dispatches):
-    last_dispatch = max(dispatches, default=-1)
-    return [event for event in written if event[0] > last_dispatch]
+    return written, unresolvable_shell_writes, session_started_at, suspected_stale
+def transcript_uncovered(written):
+    return list(written)
 try:
     poll_ms = int(os.environ.get("ROUTING_GATE_POLL_MS", "500"))
     if poll_ms < 0:
         raise ValueError
 except (TypeError, ValueError):
     poll_ms = 500
-written, dispatches, session_started_at, suspected_stale = parse_transcript()
-observed_uncovered = list(transcript_uncovered(written, dispatches))
+written, unresolvable_shell_writes, session_started_at, suspected_stale = parse_transcript()
+observed_uncovered = list(transcript_uncovered(written))
+observed_unresolvable = list(unresolvable_shell_writes)
 if suspected_stale:
     for _ in range(5):
         time.sleep(poll_ms / 1000)
-        written, dispatches, session_started_at, suspected_stale = parse_transcript()
-        for event in transcript_uncovered(written, dispatches):
+        written, unresolvable_shell_writes, session_started_at, suspected_stale = parse_transcript()
+        for event in transcript_uncovered(written):
             if event not in observed_uncovered:
                 observed_uncovered.append(event)
+        for event in unresolvable_shell_writes:
+            if event not in observed_unresolvable:
+                observed_unresolvable.append(event)
         if not suspected_stale:
             break
-last_dispatch = max(dispatches, default=-1)
-uncovered_writes = [event for event in written if event[0] > last_dispatch]
+uncovered_writes = list(written)
 latest_by_target = {}
 for event_sequence, target, event_timestamp in uncovered_writes:
     if target not in latest_by_target or event_sequence > latest_by_target[target][0]:
@@ -675,9 +702,6 @@ for event_sequence, target, event_timestamp in uncovered_writes:
 final_written = written
 current_uncovered = uncovered_writes
 for event_sequence, target, event_timestamp in observed_uncovered:
-    if ((event_sequence, target, event_timestamp) in final_written
-            and event_sequence <= last_dispatch):
-        continue
     if (event_sequence, target, event_timestamp) in current_uncovered:
         continue
     if target not in latest_by_target:
@@ -691,6 +715,11 @@ for event_sequence, target, event_timestamp in observed_uncovered:
     else:
         conservative_timestamp = event_timestamp if observed_epoch > current_epoch else current_timestamp
     latest_by_target[target] = (max(event_sequence, current_sequence), conservative_timestamp)
+unresolvable_events = list(unresolvable_shell_writes)
+for event in observed_unresolvable:
+    if event not in unresolvable_events:
+        unresolvable_events.append(event)
+unresolvable_count = sum(event[1] for event in unresolvable_events)
 receipts = eligible_review_receipts(session_started_at) if latest_by_target else []
 uncovered = []
 for target, (_, write_timestamp) in latest_by_target.items():
@@ -705,7 +734,7 @@ stale_reason = (
     "(final assistant text not flushed after re-poll). Writes made this turn may be unreviewed. "
     "Ensure coverage or state the carve-out for the ledger before stopping again."
 )
-if not uncovered:
+if not uncovered and not unresolvable_count:
     if suspected_stale:
         print(json.dumps({"decision": "block", "reason": stale_reason}))
     sys.exit(0)
@@ -721,6 +750,7 @@ try:
             [target, latest_by_target[target][0], latest_by_target[target][1]]
             for target in uncovered
         ],
+        "unresolvable_shell_writes": unresolvable_count,
     }
     runtime_dir = os.environ.get("XDG_RUNTIME_DIR") or "/tmp"
     if not os.path.isabs(runtime_dir):
@@ -821,11 +851,18 @@ listing = "\n".join(
 )
 if len(uncovered) > len(shown):
     listing += f"\n  ... and {len(uncovered) - len(shown)} more"
+unresolvable_line = (
+    f"{unresolvable_count} shell write(s) with unresolvable targets "
+    "(relative path, variable, or glob) — not tracked by path.\n"
+    if unresolvable_count
+    else ""
+)
 reason = (
     "ROUTING GATE — durable writes with no covering review.\n\n"
     f"{len(uncovered)} uncovered target(s) (detected: Write/Edit/NotebookEdit/MultiEdit, MCP "
     "mutations, shell redirections, cp/mv/install/tee/dd/rm/sed -i; heredocs and other shell "
     "writes are NOT tracked — the true count may be higher):\n"
+    f"{unresolvable_line}"
     f"{listing}\n\n"
     "Coverage requires a later codex-wrapper / opencode-wrapper / grok-wrapper dispatch or a "
     "review receipt whose workspace contains the target.\n\n"

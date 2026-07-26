@@ -115,7 +115,7 @@ class BashParserCharacterization(unittest.TestCase):
 
     def test_neutral_writer_verbs_are_detected(self) -> None:
         expected_by_label = {
-            "cp_quoted": ["/home/test/copied file"],
+            "cp_quoted": [],
             "rm_flags": ["/home/test/removed"],
             "mv_separator": ["/home/test/moved"],
             "tee_flags": ["/home/test/tee-output"],
@@ -143,7 +143,7 @@ class BashParserCharacterization(unittest.TestCase):
     def test_neutral_plain_and_append_redirections_are_detected(self) -> None:
         cases = {
             "plain": ("printf x > /home/test/output", ["/home/test/output"]),
-            "append_quoted": ('printf x >> "/home/test/output file"', ["/home/test/output file"]),
+            "append_quoted": ('printf x >> "/home/test/output file"', []),
             "verb_plus_redirection": (
                 "cp source /home/test/invisible > /home/test/cp-log",
                 ["/home/test/cp-log", "/home/test/invisible"],
@@ -157,13 +157,13 @@ class BashParserCharacterization(unittest.TestCase):
                     result = fixture.run(records=bash_exchange(command))
                 assert_block(self, result, targets)
 
-    def test_under_block_ambiguous_construct_suppresses_all_redirection_detection(self) -> None:
+    def test_neutral_command_substitution_does_not_hide_literal_redirection(self) -> None:
         command = "echo $(printf x) > /home/test/otherwise-visible"
         parser = load_bash_write_targets()
-        self.assertEqual(parser(command), [])
+        self.assertEqual(parser(command), ["/home/test/otherwise-visible"])
         with GateFixture() as fixture:
             result = fixture.run(records=bash_exchange(command))
-        assert_allow(self, result)
+        assert_block(self, result, ["/home/test/otherwise-visible"])
 
     def test_under_block_unterminated_quote_exception_fails_entire_hook_open(self) -> None:
         command = "printf x > '/home/test/unclosed"
@@ -228,13 +228,13 @@ class LauncherStatusCharacterization(unittest.TestCase):
                 result = fixture.run(records=write_exchange())
                 assert_block(self, result, ["/home/test/file.txt"])
 
-    def test_under_block_dispatch_arm_missing_null_or_non_string_launcher_status_succeeds(self) -> None:
+    def test_neutral_dispatch_payload_without_failure_still_does_not_cover(self) -> None:
         payloads = (None, {}, {"launcher_status": None}, {"launcher_status": 0})
         for payload in payloads:
             with self.subTest(payload=payload), GateFixture() as fixture:
                 records = write_exchange() + dispatch_exchange("codex-wrapper", content=payload)
                 result = fixture.run(records=records)
-                assert_allow(self, result)
+                assert_block(self, result, ["/home/test/file.txt"])
 
     def test_neutral_dispatch_arm_rejects_every_named_non_ok_launcher_status(self) -> None:
         for status in self.NON_OK_STATUSES:
@@ -344,7 +344,7 @@ class SessionAndDispatchCharacterization(unittest.TestCase):
             result = fixture.run(records=records)
         assert_allow(self, result)
 
-    def test_neutral_only_three_worker_subagent_types_are_dispatches(self) -> None:
+    def test_neutral_task_and_agent_calls_do_not_cover_writes(self) -> None:
         recognized = ("codex-wrapper", "opencode-wrapper", "grok-wrapper")
         for tool_name in ("Task", "Agent"):
             for subagent_type in recognized:
@@ -355,7 +355,7 @@ class SessionAndDispatchCharacterization(unittest.TestCase):
                         content={"launcher_status": "ok"},
                     )
                     result = fixture.run(records=records)
-                    assert_allow(self, result)
+                    assert_block(self, result, ["/home/test/file.txt"])
 
         for subagent_type in ("general-purpose", "review", "codex_wrapper", None):
             with self.subTest(unrecognized=subagent_type), GateFixture() as fixture:
@@ -366,7 +366,7 @@ class SessionAndDispatchCharacterization(unittest.TestCase):
                 result = fixture.run(records=records)
                 assert_block(self, result)
 
-    def test_under_block_write_invoked_before_dispatch_is_covered_even_if_write_finishes_last(self) -> None:
+    def test_neutral_write_invoked_before_dispatch_remains_uncovered(self) -> None:
         records = [
             tool_use_record("write-1", "Write", {"file_path": "/home/test/interleaved"}),
             tool_use_record("dispatch-1", "Task", {"subagent_type": "codex-wrapper"}),
@@ -375,7 +375,7 @@ class SessionAndDispatchCharacterization(unittest.TestCase):
         ]
         with GateFixture() as fixture:
             result = fixture.run(records=records)
-        assert_allow(self, result)
+        assert_block(self, result, ["/home/test/interleaved"])
 
     def test_neutral_dispatch_invoked_before_write_does_not_cover_write(self) -> None:
         records = [
@@ -398,7 +398,7 @@ class SessionAndDispatchCharacterization(unittest.TestCase):
             result = fixture.run(records=write_exchange() + dispatch_exchange("codex-wrapper", content=payload))
         assert_block(self, result)
 
-    def test_neutral_failure_json_with_surrounding_prose_does_not_mark_dispatch_failed(self) -> None:
+    def test_neutral_successful_dispatch_narrative_does_not_cover_write(self) -> None:
         payload = {
             "status": "completed",
             "launcher_status": "ok",
@@ -406,7 +406,7 @@ class SessionAndDispatchCharacterization(unittest.TestCase):
         }
         with GateFixture() as fixture:
             result = fixture.run(records=write_exchange() + dispatch_exchange("codex-wrapper", content=payload))
-        assert_allow(self, result)
+        assert_block(self, result, ["/home/test/file.txt"])
 
 
 class McpAndMessageCharacterization(unittest.TestCase):
@@ -447,6 +447,8 @@ class McpAndMessageCharacterization(unittest.TestCase):
             "1 uncovered target(s) (detected: Write/Edit/NotebookEdit/MultiEdit, MCP mutations, "
             "shell redirections, cp/mv/install/tee/dd/rm/sed -i; heredocs and other shell writes "
             "are NOT tracked — the true count may be higher):\n"
+            "1 shell write(s) with unresolvable targets (relative path, variable, or glob) "
+            "— not tracked by path.\n"
             f"  - {target}  (not found on disk — deleted, or a relative path resolved against an "
             "uncertain directory)\n\n"
             "Coverage requires a later codex-wrapper / opencode-wrapper / grok-wrapper dispatch or "
@@ -458,7 +460,12 @@ class McpAndMessageCharacterization(unittest.TestCase):
         )
         expected = json.dumps({"decision": "block", "reason": reason}) + "\n"
         with GateFixture() as fixture:
-            result = fixture.run(records=write_exchange(target))
+            result = fixture.run(
+                records=[
+                    *write_exchange(target),
+                    *bash_exchange("cp source relative/unresolvable", tool_id="bash-2"),
+                ]
+            )
         self.assertEqual(result.returncode, 0)
         self.assertEqual(result.stderr, "")
         self.assertEqual(result.stdout, expected)

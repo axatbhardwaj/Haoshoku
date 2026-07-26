@@ -140,7 +140,7 @@ class StalenessDetectorTests(unittest.TestCase):
         self.assertGreaterEqual(elapsed, 0.09, elapsed)
         self.assertLess(elapsed, 1.0, elapsed)
 
-    def test_neutral_repoll_exits_early_after_text_becomes_fresh(self) -> None:
+    def test_neutral_repoll_keeps_write_after_text_becomes_fresh(self) -> None:
         with GateFixture() as fixture:
             fixture.write_transcript([
                 *write_exchange("/home/test/pre-poll-write"),
@@ -164,7 +164,7 @@ class StalenessDetectorTests(unittest.TestCase):
             )
             updater.join()
 
-        assert_allow(self, result)
+        assert_block(self, result, ["/home/test/pre-poll-write"])
 
 
 if __name__ == "__main__":

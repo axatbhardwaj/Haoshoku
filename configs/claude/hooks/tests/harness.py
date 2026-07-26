@@ -327,13 +327,15 @@ def load_bash_write_targets(hook_path: Path = HOOK, *, cwd: str = "/home/fuzz"):
     tree = ast.parse(source)
     helper_names = {
         "durable_path",
+        "shell_target_is_resolvable",
+        "shell_value_is_quoted",
         "shell_segments",
         "option_operands",
         "verb_segment_targets",
         "bash_verb_targets",
         "bash_write_targets",
     }
-    assignment_names = {"AMBIGUOUS_BASH", "SHELL_ASSIGNMENT"}
+    assignment_names = {"AMBIGUOUS_BASH", "SHELL_ASSIGNMENT", "SHELL_TARGET_META"}
     selected: list[ast.stmt] = []
     for node in tree.body:
         if isinstance(node, ast.Assign) and any(
@@ -351,7 +353,14 @@ def load_bash_write_targets(hook_path: Path = HOOK, *, cwd: str = "/home/fuzz"):
             )
         elif isinstance(node, ast.FunctionDef):
             selected_names.add(node.name)
-    required = {"AMBIGUOUS_BASH", "durable_path", "bash_write_targets"}
+    required = {
+        "AMBIGUOUS_BASH",
+        "SHELL_TARGET_META",
+        "durable_path",
+        "shell_target_is_resolvable",
+        "shell_value_is_quoted",
+        "bash_write_targets",
+    }
     if not required.issubset(selected_names):
         raise ValueError("missing bash_write_targets dependency while extracting hook logic")
     module = ast.fix_missing_locations(ast.Module(body=selected, type_ignores=[]))

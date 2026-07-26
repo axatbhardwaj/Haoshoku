@@ -138,6 +138,12 @@ class MessageHonestyTests(unittest.TestCase):
             with self.subTest(label=label), GateFixture() as fixture:
                 current, pristine = self.run_current_and_pristine(fixture, records)
                 self.assertEqual(current.returncode, pristine.returncode)
+                if label == "allowed_after_dispatch":
+                    self.assertTrue(current.blocked)
+                    self.assertFalse(pristine.blocked)
+                    self.assertEqual(listed_target_paths(current), {missing})
+                    self.assertEqual(listed_target_paths(pristine), set())
+                    continue
                 self.assertEqual(current.blocked, pristine.blocked)
                 self.assertEqual(listed_target_paths(current), listed_target_paths(pristine))
 
