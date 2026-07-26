@@ -13,9 +13,10 @@ Template configuration files copied to user's `~/.config/` during setup.
 | Directory       | What                                | When to read                              |
 | --------------- | ----------------------------------- | ----------------------------------------- |
 | `alacritty/`    | Alacritty terminal config           | Modifying Alacritty settings              |
+| `ghostty/`      | Ghostty config (the primary terminal) + the OSC-palette regeneration tool | Modifying terminal colours/font, re-syncing the Caelestia palette |
 | `fastfetch/`    | Fastfetch system info config        | Modifying system info display             |
 | `fish/`         | Fish shell config                   | Modifying shell behavior, aliases         |
-| `warp/`         | Warp tab config + theme activation  | Modifying Warp agents tab config or theme |
+| `warp/`         | Warp tab config + theme activation. No longer wired to any keybind — Super+T, Super+A and ws 7 moved to Ghostty; kept because Warp is still installed | Modifying Warp tab config or theme |
 | `vencord/`      | Vencord Discord theme               | Modifying Discord appearance              |
 | `claude/`       | Claude Code personal config (copied)    | Modifying settings, backup/restore        |
 | `kde/`          | KDE Ocean theme bundle (5 components)   | Modifying KDE theme deployment            |

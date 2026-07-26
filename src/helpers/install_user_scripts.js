@@ -13,6 +13,8 @@ const RETIRED_LOCAL_BIN_ENTRIES = [
   "crunchyroll-hd",
   "jiohotstar-hd",
   "ai-webapps-toggle",
+  // Superseded by ghostty-workspace-7 when the primary terminal moved off Warp.
+  "warp-workspace-7",
   "CLAUDE.md",
   "CLAUDE.md.bak",
 ];

@@ -144,6 +144,7 @@ describe("installUserScripts — deployment", () => {
 			"crunchyroll-hd",
 			"jiohotstar-hd",
 			"ai-webapps-toggle",
+			"warp-workspace-7",
 		]) {
 			fs.writeFileSync(path.join(localBin, script), "# stale\n");
 		}
@@ -161,6 +162,7 @@ describe("installUserScripts — deployment", () => {
 			"crunchyroll-hd",
 			"jiohotstar-hd",
 			"ai-webapps-toggle",
+			"warp-workspace-7",
 		]) {
 			expect(fs.existsSync(path.join(localBin, script))).toBe(false);
 		}
@@ -201,22 +203,32 @@ describe("installUserScripts — deployment", () => {
 		expect(script).not.toContain("sed -i");
 	});
 
-	it("ships warp-workspace-7 as a plain home Warp launcher", () => {
+	it("ships ghostty-workspace-7 as a plain home terminal launcher", () => {
 		const script = fs.readFileSync(
-			path.join(process.cwd(), "configs", "scripts", "warp-workspace-7"),
+			path.join(process.cwd(), "configs", "scripts", "ghostty-workspace-7"),
 			"utf8",
 		);
 
 		expect(script).toContain("WS=7");
 		expect(script).toContain(
-			String.raw`cd \"\$HOME\" && exec warp-terminal`,
+			"ghostty --class=$CLASS --working-directory=$HOME",
 		);
-		expect(script).toContain("dev.warp.Warp");
+		// Occupancy is checked against the whole class family so a Super+T window
+		// already counts; only the window this script spawns carries the suffix.
+		expect(script).toContain("CLASS_FAMILY=com.mitchellh.ghostty");
+		expect(script).toContain("CLASS=com.mitchellh.ghostty.ws7");
 		expect(script).toContain("movetoworkspacesilent");
 		expect(script).toContain('hyprctl dispatch workspace "$WS"');
-		expect(script).not.toContain("tab_config");
-		expect(script).not.toContain("warp://");
+		expect(script).not.toContain("warp");
 		expect(script).not.toContain("agents");
+	});
+
+	it("no longer ships the retired warp-workspace-7", () => {
+		expect(
+			fs.existsSync(
+				path.join(process.cwd(), "configs", "scripts", "warp-workspace-7"),
+			),
+		).toBe(false);
 	});
 
 	it("ships mic-toggle for the default audio source with a notification", () => {

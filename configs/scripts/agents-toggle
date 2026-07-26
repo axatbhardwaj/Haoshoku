@@ -1,16 +1,22 @@
 #!/usr/bin/env sh
-# Super+A: toggle the Warp "agents" split on its dedicated special:agents workspace.
+# Super+A: toggle the Ghostty "agents" window on its dedicated special:agents
+# workspace.
 #
-# Warp is a single multi-window process with no stable per-window identity (every
-# window is class dev.warp.Warp; the title drifts off "agents" once a pane exits).
-# Hyprland's [workspace special:agents] execrule only places the window when Warp is
-# COLD — it matches the PID it launched. When Warp is already running, the new window
-# is created by the existing process under a different PID, so the execrule misses and
-# the window lands on the active workspace; the occupancy guard then never finds it on
-# special:agents and respawns on every press. So we place the window ourselves.
-# Launch warp-terminal directly so the warp:// scheme handler (the GNOME "Warp" app,
-# app.drey.Warp) cannot intercept it.
+# Ghostty opens one process per window and accepts --class, so this window
+# carries a Wayland app_id nothing else uses. That is what collapsed the old Warp
+# version of this script: Warp was a single warm multi-window process where every
+# window was class dev.warp.Warp, so Hyprland's [workspace special:agents]
+# execrule (which matches the PID it launched) missed whenever Warp was already
+# running, and placement needed an address diff against a pre-spawn snapshot.
+# A unique class removes both problems — the execrule lands, and identifying the
+# window afterwards is a single lookup.
+#
+# One pane, running Claude. The Codex half was dropped back when this was a Warp
+# tab config: Codex is started by hand when it is actually wanted. Ghostty has no
+# declarative session or split format, so restoring a two-pane layout would mean
+# running tmux or zellij inside the window.
 WS=special:agents
+CLASS=com.mitchellh.ghostty.agents
 LOCK_DIR="${XDG_RUNTIME_DIR:-/tmp}/haoshoku-agents-toggle.lock"
 
 # Hyprland can run duplicate binds close enough together that both instances see no
@@ -26,26 +32,24 @@ if hyprctl clients -j | jq -e --arg ws "$WS" 'any(.[]; .workspace.name == $ws)' 
 	exit 0
 fi
 
-# 2. An "agents" window stranded on another workspace (e.g. from a prior warm-spawn) ->
-#    reclaim it instead of spawning a duplicate.
-stray=$(hyprctl clients -j | jq -r 'first(.[] | select(.class == "dev.warp.Warp" and (.title | ascii_downcase | contains("agents"))) | .address) // empty')
+# 2. An agents window stranded on another workspace -> reclaim it instead of
+#    spawning a duplicate.
+stray=$(hyprctl clients -j | jq -r --arg c "$CLASS" 'first(.[] | select(.class == $c) | .address) // empty')
 if [ -n "$stray" ]; then
 	hyprctl dispatch movetoworkspacesilent "$WS,address:$stray"
 	hyprctl dispatch togglespecialworkspace agents
 	exit 0
 fi
 
-# 3. Nothing to reuse -> spawn, then move the newly-created Warp window onto
-#    special:agents ourselves (works whether Warp was cold or warm) and reveal it.
-#    The execrule still helps in the cold case; the explicit move covers the warm one.
-before=$(hyprctl clients -j | jq -c '[.[] | select(.class == "dev.warp.Warp") | .address]')
-hyprctl dispatch exec "[workspace $WS silent] warp-terminal warp://tab_config/agents?new_window=true"
+# 3. Nothing to reuse -> spawn. The execrule normally places it; the explicit
+#    move below covers the window appearing after the rule was evaluated.
+hyprctl dispatch exec "[workspace $WS silent] ghostty --class=$CLASS --title=agents -e fish -C 'claude -r io'"
 
 i=0
 while [ "$i" -lt 60 ]; do
-	new=$(hyprctl clients -j | jq -r --argjson before "$before" 'first(.[] | select(.class == "dev.warp.Warp" and ((.address) as $a | ($before | index($a)) | not)) | .address) // empty')
-	if [ -n "$new" ]; then
-		hyprctl dispatch movetoworkspacesilent "$WS,address:$new"
+	addr=$(hyprctl clients -j | jq -r --arg c "$CLASS" 'first(.[] | select(.class == $c) | .address) // empty')
+	if [ -n "$addr" ]; then
+		hyprctl dispatch movetoworkspacesilent "$WS,address:$addr"
 		hyprctl dispatch togglespecialworkspace agents
 		exit 0
 	fi

@@ -1,0 +1,45 @@
+#!/usr/bin/env sh
+# Super+7: open workspace 7 and ensure it has one plain Ghostty window from $HOME.
+#
+# Occupancy is checked against the whole com.mitchellh.ghostty class family, so a
+# terminal opened there by Super+T already satisfies it and no second window is
+# spawned. The window this script creates gets its own class suffix purely so it
+# can be found again in one lookup — the old Warp version had to diff the client
+# list against a pre-spawn snapshot because every Warp window shared one class
+# and one warm PID, which also made Hyprland's [workspace 7] execrule miss.
+# Ghostty is the process that opens its own window, so the execrule lands and the
+# wait loop below is only a fallback.
+WS=7
+CLASS_FAMILY=com.mitchellh.ghostty
+CLASS=com.mitchellh.ghostty.ws7
+
+if hyprctl clients -j | jq -e --arg ws "$WS" --arg c "$CLASS_FAMILY" \
+	'any(.[]; (.class | startswith($c)) and .workspace.name == $ws)' >/dev/null 2>&1; then
+	hyprctl dispatch workspace "$WS"
+	exit 0
+fi
+
+# A window from a previous run stranded elsewhere -> reclaim it.
+stray=$(hyprctl clients -j | jq -r --arg c "$CLASS" 'first(.[] | select(.class == $c) | .address) // empty')
+if [ -n "$stray" ]; then
+	hyprctl dispatch movetoworkspacesilent "$WS,address:$stray"
+	hyprctl dispatch workspace "$WS"
+	exit 0
+fi
+
+hyprctl dispatch exec "[workspace $WS silent] ghostty --class=$CLASS --working-directory=$HOME"
+
+i=0
+while [ "$i" -lt 60 ]; do
+	addr=$(hyprctl clients -j | jq -r --arg c "$CLASS" 'first(.[] | select(.class == $c) | .address) // empty')
+	if [ -n "$addr" ]; then
+		hyprctl dispatch movetoworkspacesilent "$WS,address:$addr"
+		hyprctl dispatch workspace "$WS"
+		exit 0
+	fi
+	i=$((i + 1))
+	sleep 0.1
+done
+
+hyprctl dispatch workspace "$WS"
+exit 0

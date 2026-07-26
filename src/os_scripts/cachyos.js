@@ -45,6 +45,7 @@ const FISH_CONFIG_DIR = path.join(HOME, ".config", "fish");
 const PYENV_ROOT = path.join(HOME, ".pyenv");
 const FASTFETCH_CONFIG_DIR = path.join(HOME, ".config", "fastfetch");
 const ALACRITTY_CONFIG_DIR = path.join(HOME, ".config", "alacritty");
+const GHOSTTY_CONFIG_DIR = path.join(HOME, ".config", "ghostty");
 // Project paths (resolved from script location, works from any cwd)
 const PROJECT_ROOT = path.resolve(__dirname, "..", "..");
 const COMMON_DIR = path.join(PROJECT_ROOT, "common");
@@ -63,6 +64,11 @@ const CUSTOM_ALACRITTY_CONFIG_PATH = path.join(
   CONFIGS_DIR,
   "alacritty",
   "alacritty.toml",
+);
+const CUSTOM_GHOSTTY_CONFIG_PATH = path.join(
+  CONFIGS_DIR,
+  "ghostty",
+  "config.ghostty",
 );
 const WALLPAPERS_SRC = path.join(PROJECT_ROOT, "deskback");
 const WALLPAPERS_DST = path.join(HOME, "Pictures", "Wallpapers");
@@ -318,6 +324,23 @@ async function configureTerminals() {
   } else {
     log.warning(
       `Custom Alacritty config not found at ${CUSTOM_ALACRITTY_CONFIG_PATH}`,
+    );
+  }
+
+  // Ghostty is the primary terminal (Super+T, Caelestia's apps.terminal).
+  // Only config.ghostty is deployed — gen-sequences.py alongside it is a
+  // maintenance tool run by hand, not part of the live config.
+  log.info("Configuring Ghostty terminal...");
+  fs.mkdirSync(GHOSTTY_CONFIG_DIR, { recursive: true });
+  if (fs.existsSync(CUSTOM_GHOSTTY_CONFIG_PATH)) {
+    safeCopyFile(
+      CUSTOM_GHOSTTY_CONFIG_PATH,
+      path.join(GHOSTTY_CONFIG_DIR, "config.ghostty"),
+    );
+    log.info("Copied custom Ghostty config.");
+  } else {
+    log.warning(
+      `Custom Ghostty config not found at ${CUSTOM_GHOSTTY_CONFIG_PATH}`,
     );
   }
 }
