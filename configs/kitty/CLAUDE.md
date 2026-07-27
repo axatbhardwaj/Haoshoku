@@ -10,6 +10,18 @@ kitty is the primary terminal: `Super+T`, Caelestia's `apps.terminal`, the
 | `kitty.conf`       | The live config, deployed to `~/.config/kitty/kitty.conf` by `configureTerminals()` in `src/os_scripts/cachyos.js`. It intentionally carries no colours because the shell applies them at runtime. | Changing terminal font, padding, opacity, blur, decorations, or keybinds |
 | `gen-sequences.py` | Maintenance tool, **not deployed**. Rewrites `~/.local/state/caelestia/sequences.txt` from the Zed theme. | Re-syncing the OSC palette after a Caelestia scheme change |
 
+## Blur under Hyprland
+
+Hyprland already applies blur globally via `ignore_opacity` in
+`hypr/hyprland/decoration.conf`. As with Ghostty's `background-blur`, kitty's
+own `background_blur` is therefore likely inert on this compositor.
+
+`background_blur 1` remains because it matches the kitty config verified clean
+in practice on this hardware, not because it is known to have any visible
+effect. This does not contradict Ghostty's earlier `background-blur = false`
+decision: that setting was inert for the same reason, and the two configs simply
+made different, equally defensible choices about an inert knob.
+
 ## Why the OSC palette matters
 
 `~/.config/fish/config.fish` cats `~/.local/state/caelestia/sequences.txt` at

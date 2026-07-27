@@ -82,6 +82,25 @@ describe("configureUserApps step ordering", () => {
 });
 
 describe("configureTerminals kitty deployment", () => {
+  const KITTY_COLOUR_DIRECTIVE =
+    /^\s*(?:(?:palette|foreground|background|cursor|color\d+)\b|[a-z0-9_]*(?:_color\b|_(?:foreground|background)[a-z0-9_]*\b))/im;
+
+  it("catches qualified kitty background colour directives", () => {
+    expect("active_tab_background #222").toMatch(KITTY_COLOUR_DIRECTIVE);
+  });
+
+  it("catches kitty directives whose keys end in _color", () => {
+    expect("url_color #24bd5c").toMatch(KITTY_COLOUR_DIRECTIVE);
+  });
+
+  it("allows background_opacity as a non-colour directive", () => {
+    expect("background_opacity 0.85").not.toMatch(KITTY_COLOUR_DIRECTIVE);
+  });
+
+  it("allows background_blur as a non-colour directive", () => {
+    expect("background_blur 1").not.toMatch(KITTY_COLOUR_DIRECTIVE);
+  });
+
   it("ships the primary kitty config without terminal colour directives", () => {
     const kittyConfigPath = path.join(CONFIGS_DIR, "kitty", "kitty.conf");
     expect(fs.existsSync(kittyConfigPath)).toBe(true);
@@ -91,12 +110,11 @@ describe("configureTerminals kitty deployment", () => {
     expect(config).toContain("font_size        11");
     expect(config).toContain("background_opacity   0.85");
     expect(config).toContain("background_blur      1");
+    expect(config).toContain("confirm_os_window_close 0");
     expect(config).toContain("window_padding_width 4");
     expect(config).toContain("hide_window_decorations yes");
     expect(config).toContain("map shift+enter send_text all \\x1b\\r");
-    expect(config).not.toMatch(
-      /^\s*(?:palette|foreground|background|cursor|selection_(?:foreground|background)|color\d+)\b/im,
-    );
+    expect(config).not.toMatch(KITTY_COLOUR_DIRECTIVE);
   });
 
   it("deploys only configs/kitty/kitty.conf to ~/.config/kitty/kitty.conf", () => {
