@@ -22,7 +22,7 @@ Both variants share the portable bits (keybinds, special-workspace toggles, app 
 
 ## Notes
 
-- Both variants launch **Ghostty** for `Super+T`, `Super+A` (the agents window) and `Super+7`. Each carries a `windowrule = workspace special:agents, match:class com\.mitchellh\.ghostty\.agents`; the matching helper scripts live in `configs/scripts/`, and the terminal config in `configs/ghostty/`.
-- `shell.json`'s `general.apps.terminal` must be `["ghostty", "-e"]`, not `["ghostty"]`. Caelestia appends a command to that array (`Apps.qml`, `CalcItem.qml`), and Ghostty needs `-e` before one. That file is not deployed from this repo — `configureCaelestiaShell()` only merges the clock setting and preserves the rest.
+- Both variants launch **kitty** for `Super+T`, `Super+A` (the agents window) and `Super+7`. Each carries a `windowrule = workspace special:agents, match:class kitty-agents`; the matching helper scripts live in `configs/scripts/`, and the terminal config in `configs/kitty/`.
+- `shell.json`'s `general.apps.terminal` must be `["kitty"]` with no `-e` entry. Caelestia appends a command to that array (`Apps.qml`, `CalcItem.qml`), and kitty accepts the program as trailing arguments; `["kitty", "-e"]` would silently break Caelestia terminal launches. That file is not deployed from this repo — `configureCaelestiaShell()` only merges the clock setting and preserves the rest.
 - Hypr-user variants contain machine-specific `monitor = ...` lines keyed by connector name. Edit those if monitor topology changes (e.g. you connect a new external).
 - The catch-all `monitor = , preferred, auto, 1` in both variants handles unexpected outputs (occasional TV/projector on the laptop, hot-plug on the PC).

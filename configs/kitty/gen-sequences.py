@@ -3,7 +3,7 @@
 
 fish's config.fish cats ~/.local/state/caelestia/sequences.txt at every shell
 start, so whatever it holds wins over any terminal's own config. Deriving it
-from the Zed theme is what keeps Ghostty/kitty and Zed on one palette.
+from the Zed theme is what keeps terminal emulators and Zed on one palette.
 
 Caelestia builds two palettes from the same wallpaper scheme: `term0`-`term15`
 for terminals, and Catppuccin-named roles for the Zed theme. All sixteen ANSI

@@ -81,6 +81,41 @@ describe("configureUserApps step ordering", () => {
   });
 });
 
+describe("configureTerminals kitty deployment", () => {
+  it("ships the primary kitty config without terminal colour directives", () => {
+    const kittyConfigPath = path.join(CONFIGS_DIR, "kitty", "kitty.conf");
+    expect(fs.existsSync(kittyConfigPath)).toBe(true);
+
+    const config = fs.readFileSync(kittyConfigPath, "utf8");
+    expect(config).toContain("font_family      0xProto Nerd Font Mono");
+    expect(config).toContain("font_size        11");
+    expect(config).toContain("background_opacity   0.85");
+    expect(config).toContain("background_blur      1");
+    expect(config).toContain("window_padding_width 4");
+    expect(config).toContain("hide_window_decorations yes");
+    expect(config).toContain("map shift+enter send_text all \\x1b\\r");
+    expect(config).not.toMatch(
+      /^\s*(?:palette|foreground|background|cursor|selection_(?:foreground|background)|color\d+)\b/im,
+    );
+  });
+
+  it("deploys only configs/kitty/kitty.conf to ~/.config/kitty/kitty.conf", () => {
+    expect(CACHYOS_SRC).toContain(
+      'const KITTY_CONFIG_DIR = path.join(HOME, ".config", "kitty");',
+    );
+    expect(CACHYOS_SRC).toMatch(
+      /const CUSTOM_KITTY_CONFIG_PATH = path\.join\(\s*CONFIGS_DIR,\s*"kitty",\s*"kitty\.conf",\s*\);/s,
+    );
+    expect(CACHYOS_SRC).toContain(
+      'path.join(KITTY_CONFIG_DIR, "kitty.conf")',
+    );
+    expect(CACHYOS_SRC).toContain(
+      "gen-sequences.py beside it is a maintenance tool, not deployed",
+    );
+    expect(CACHYOS_SRC).not.toMatch(/ghostty/i);
+  });
+});
+
 describe("configureHyprland default-flow UX", () => {
   // Regression: pre-5.2.6 the default cachyos flow's Hyprland prompt was
   // hardcoded "(parallel to KDE)" and never asked DE / device type. Laptops

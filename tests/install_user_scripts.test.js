@@ -145,6 +145,7 @@ describe("installUserScripts — deployment", () => {
 			"jiohotstar-hd",
 			"ai-webapps-toggle",
 			"warp-workspace-7",
+			"ghostty-workspace-7",
 		]) {
 			fs.writeFileSync(path.join(localBin, script), "# stale\n");
 		}
@@ -163,6 +164,7 @@ describe("installUserScripts — deployment", () => {
 			"jiohotstar-hd",
 			"ai-webapps-toggle",
 			"warp-workspace-7",
+			"ghostty-workspace-7",
 		]) {
 			expect(fs.existsSync(path.join(localBin, script))).toBe(false);
 		}
@@ -203,24 +205,32 @@ describe("installUserScripts — deployment", () => {
 		expect(script).not.toContain("sed -i");
 	});
 
-	it("ships ghostty-workspace-7 as a plain home terminal launcher", () => {
+	it("ships kitty-workspace-7 as a plain home terminal launcher", () => {
 		const script = fs.readFileSync(
-			path.join(process.cwd(), "configs", "scripts", "ghostty-workspace-7"),
+			path.join(process.cwd(), "configs", "scripts", "kitty-workspace-7"),
 			"utf8",
 		);
 
 		expect(script).toContain("WS=7");
 		expect(script).toContain(
-			"ghostty --class=$CLASS --working-directory=$HOME",
+			"kitty --class=$CLASS --directory=$HOME",
 		);
 		// Occupancy is checked against the whole class family so a Super+T window
 		// already counts; only the window this script spawns carries the suffix.
-		expect(script).toContain("CLASS_FAMILY=com.mitchellh.ghostty");
-		expect(script).toContain("CLASS=com.mitchellh.ghostty.ws7");
+		expect(script).toContain("CLASS_FAMILY=kitty");
+		expect(script).toContain("CLASS=kitty-workspace-7");
 		expect(script).toContain("movetoworkspacesilent");
 		expect(script).toContain('hyprctl dispatch workspace "$WS"');
 		expect(script).not.toContain("warp");
 		expect(script).not.toContain("agents");
+	});
+
+	it("no longer ships the retired ghostty-workspace-7", () => {
+		expect(
+			fs.existsSync(
+				path.join(process.cwd(), "configs", "scripts", "ghostty-workspace-7"),
+			),
+		).toBe(false);
 	});
 
 	it("no longer ships the retired warp-workspace-7", () => {

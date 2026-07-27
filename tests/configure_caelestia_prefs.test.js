@@ -534,9 +534,11 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		// there is no second pane and therefore no root split to declare.
 		expect(directives).not.toContain("codex");
 		expect(directives).not.toContain("split =");
-		expect(fs.existsSync(path.join(PROJECT_ROOT, "configs", "kitty"))).toBe(
-			false,
-		);
+		expect(
+			fs.existsSync(
+				path.join(PROJECT_ROOT, "configs", "kitty", "kitty.conf"),
+			),
+		).toBe(true);
 	});
 
 	it("maps special-workspace toggles to the expected apps", () => {
@@ -727,7 +729,7 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		);
 		expect(conf).toContain("unbind = $kbGoToWs, 7");
 		expect(conf).toContain(
-			"bind = $kbGoToWs, 7, exec, hyprctl dispatch focusmonitor DP-2 && /home/xzat/.local/bin/ghostty-workspace-7",
+			"bind = $kbGoToWs, 7, exec, hyprctl dispatch focusmonitor DP-2 && /home/xzat/.local/bin/kitty-workspace-7",
 		);
 	});
 
@@ -831,6 +833,7 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		);
 		const sharedMarkers = [
 			"bind = $kbEditor, exec, app2unit -- $editor",
+			"bind = $kbTerminal, exec, app2unit -- kitty",
 			"bind = $kbBrowser, exec, caelestia toggle brave-work",
 			"workspace = 10, default:true, persistent:true",
 			"workspace = 1, default:true, persistent:true",
@@ -840,13 +843,14 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 			"workspace = 5, default:true, persistent:true",
 			"workspace = 6, persistent:true",
 			"workspace = 7, persistent:true",
+			"windowrule = workspace special:agents, match:class kitty-agents",
 			"windowrule = workspace 2 silent, match:class ^[Ss]team$",
 			"windowrule = workspace 4 silent, match:class discord",
 			"windowrule = workspace 5 silent, match:class (teams-for-linux|TelegramDesktop|org\\.telegram\\.desktop)",
 			"hyprctl dispatch exec \"[workspace 2 silent] app2unit -- steam\"",
 			"hyprctl dispatch exec \"[workspace 4 silent] app2unit -- discord\"",
 			"bind = $kbGoToWs, 6, exec, hyprctl dispatch workspace 6",
-			"bind = $kbGoToWs, 7, exec, /home/xzat/.local/bin/ghostty-workspace-7",
+			"bind = $kbGoToWs, 7, exec, /home/xzat/.local/bin/kitty-workspace-7",
 			"hyprshot -m output -m active",
 		];
 
@@ -981,7 +985,7 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		}
 	});
 
-	it("rebinds Super+T (default terminal) to ghostty in both hypr-user variants", () => {
+	it("rebinds Super+T (default terminal) to kitty in both hypr-user variants", () => {
 		for (const file of ["hypr-user-pc.conf", "hypr-user-laptop.conf"]) {
 			const conf = fs.readFileSync(
 				path.join(CONFIGS_CAELESTIA_DIR, file),
@@ -989,7 +993,7 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 			);
 
 			expect(conf).toContain("unbind = $kbTerminal");
-			expect(conf).toContain("bind = $kbTerminal, exec, app2unit -- ghostty");
+			expect(conf).toContain("bind = $kbTerminal, exec, app2unit -- kitty");
 		}
 	});
 
@@ -1016,7 +1020,7 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		expect(s).toContain("special:agents");
 		expect(s).toContain("togglespecialworkspace agents");
 		expect(s).toContain(
-			"ghostty --class=$CLASS --title=agents -e fish -C 'claude -r io'",
+			"kitty --class=$CLASS --title=agents fish -C 'claude -r io'",
 		);
 		expect(s).toContain("haoshoku-agents-toggle.lock");
 		expect(s).toContain('mkdir "$LOCK_DIR"');
@@ -1034,9 +1038,18 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		// windowrule in hypr-user-*.conf all find it. The predecessor matched on
 		// dev.warp.Warp plus a title substring and had to diff the client list,
 		// because every Warp window shared one class and one warm PID.
-		expect(s).toContain("CLASS=com.mitchellh.ghostty.agents");
+		expect(s).toContain("CLASS=kitty-agents");
 		expect(s).toContain("select(.class == $c)");
 		expect(s).toContain("movetoworkspacesilent");
+		for (const file of ["hypr-user-pc.conf", "hypr-user-laptop.conf"]) {
+			const conf = fs.readFileSync(
+				path.join(CONFIGS_CAELESTIA_DIR, file),
+				"utf8",
+			);
+			expect(conf).toContain(
+				"windowrule = workspace special:agents, match:class kitty-agents",
+			);
+		}
 		// The old script's title-substring match is gone with the class; asserting
 		// on the launch command rather than on `dev.warp.Warp`, which still appears
 		// in the comment explaining why the rewrite was possible.

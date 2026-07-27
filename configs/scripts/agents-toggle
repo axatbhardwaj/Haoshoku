@@ -1,22 +1,14 @@
 #!/usr/bin/env sh
-# Super+A: toggle the Ghostty "agents" window on its dedicated special:agents
+# Super+A: toggle the kitty "agents" window on its dedicated special:agents
 # workspace.
 #
-# Ghostty opens one process per window and accepts --class, so this window
-# carries a Wayland app_id nothing else uses. That is what collapsed the old Warp
-# version of this script: Warp was a single warm multi-window process where every
-# window was class dev.warp.Warp, so Hyprland's [workspace special:agents]
-# execrule (which matches the PID it launched) missed whenever Warp was already
-# running, and placement needed an address diff against a pre-spawn snapshot.
-# A unique class removes both problems — the execrule lands, and identifying the
-# window afterwards is a single lookup.
+# kitty accepts --class, so this window carries a Wayland app_id nothing else
+# uses. The same class drives the Hyprland windowrule, stray-window lookup, and
+# post-spawn placement fallback.
 #
-# One pane, running Claude. The Codex half was dropped back when this was a Warp
-# tab config: Codex is started by hand when it is actually wanted. Ghostty has no
-# declarative session or split format, so restoring a two-pane layout would mean
-# running tmux or zellij inside the window.
+# One pane, running Claude. Codex is started by hand when it is wanted.
 WS=special:agents
-CLASS=com.mitchellh.ghostty.agents
+CLASS=kitty-agents
 LOCK_DIR="${XDG_RUNTIME_DIR:-/tmp}/haoshoku-agents-toggle.lock"
 
 # Hyprland can run duplicate binds close enough together that both instances see no
@@ -43,7 +35,7 @@ fi
 
 # 3. Nothing to reuse -> spawn. The execrule normally places it; the explicit
 #    move below covers the window appearing after the rule was evaluated.
-hyprctl dispatch exec "[workspace $WS silent] ghostty --class=$CLASS --title=agents -e fish -C 'claude -r io'"
+hyprctl dispatch exec "[workspace $WS silent] kitty --class=$CLASS --title=agents fish -C 'claude -r io'"
 
 i=0
 while [ "$i" -lt 60 ]; do

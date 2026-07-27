@@ -348,7 +348,7 @@ _launch=Meta+G
 [services][chrome-gdfaincndogidkdcdkhapmbffkckdkhn-Profile_5.desktop]
 _launch=Meta+G
 
-[services][com.mitchellh.ghostty.desktop]
+[services][kitty.desktop]
 _launch=Meta+Return
 
 [services][cursor-cursor.desktop]
