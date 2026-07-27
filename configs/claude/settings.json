@@ -140,18 +140,6 @@
         ]
       }
     ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash /home/xzat/.claude/hooks/routing-gate.sh",
-            "timeout": 15,
-            "statusMessage": "Checking routing gate..."
-          }
-        ]
-      }
-    ],
     "SubagentStart": [
       {
         "matcher": "tldraw-offline",
@@ -224,8 +212,8 @@
       }
     }
   },
-  "effortLevel": "xhigh",
   "outputStyle": "Direct",
+  "effortLevel": "xhigh",
   "tui": "fullscreen",
   "skipDangerousModePermissionPrompt": true,
   "editorMode": "normal",
