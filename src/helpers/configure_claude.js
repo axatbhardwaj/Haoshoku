@@ -32,7 +32,13 @@ export const PERSONAL_FILES = [
 ];
 
 // Directories fully owned by haoshoku (replaced on sync)
-export const MANAGED_DIRS = ["conventions", "output-styles", "hooks"];
+export const MANAGED_DIRS = [
+  "conventions",
+  "output-styles",
+  "hooks",
+  "agents",
+  "workflows",
+];
 
 /** Resolve where a PERSONAL_FILES entry lives on a given $HOME (inside ~/.claude/). */
 function claudeFilePath(src, home = HOME) {

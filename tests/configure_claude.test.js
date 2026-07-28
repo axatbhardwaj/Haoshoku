@@ -29,6 +29,14 @@ describe("MANAGED_DIRS manifest", () => {
 	it("includes hooks (regression — must not be silently dropped)", () => {
 		expect(MANAGED_DIRS).toContain("hooks");
 	});
+
+	it("includes agents (regression — must not be silently dropped)", () => {
+		expect(MANAGED_DIRS).toContain("agents");
+	});
+
+	it("includes workflows (regression — must not be silently dropped)", () => {
+		expect(MANAGED_DIRS).toContain("workflows");
+	});
 });
 
 describe("syncClaudeConfig() warns on missing sources", () => {
