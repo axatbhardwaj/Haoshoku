@@ -148,7 +148,12 @@ export async function backupClaudeConfig(options = {}) {
     const src = path.join(claudeDir, dir);
     const dest = path.join(srcDir, dir);
     if (fs.existsSync(src)) {
-      copyDirRecursive(src, dest);
+      copyDirRecursive(src, dest, {
+        skipSymlinks: true,
+        onSkipSymlink: (srcPath) => {
+          log.warning(`Skipping symlink during Claude backup (${srcPath})`);
+        },
+      });
       log.info(`Backed up ${dir}/`);
     }
   }

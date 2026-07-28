@@ -137,13 +137,22 @@ export function safeCopyFile(src, dest) {
 	return true;
 }
 
-/** Recursively copy a directory tree (files, nested dirs, and symlinks). */
-export function copyDirRecursive(src, dest) {
+/**
+ * Recursively copy a directory tree (files, nested dirs, and symlinks).
+ * Set skipSymlinks to omit links while preserving the default copy behavior.
+ */
+export function copyDirRecursive(src, dest, options = {}) {
+	const { skipSymlinks = false, onSkipSymlink } = options;
 	fs.mkdirSync(dest, { recursive: true });
 	for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
 		const srcPath = path.join(src, entry.name);
 		const destPath = path.join(dest, entry.name);
 		if (entry.isSymbolicLink()) {
+			if (skipSymlinks) {
+				fs.rmSync(destPath, { recursive: true, force: true });
+				onSkipSymlink?.(srcPath);
+				continue;
+			}
 			// Recreate the link verbatim instead of dereferencing it: a symlink
 			// to a directory would crash copyFileSync with EISDIR, and a file
 			// symlink would be silently dereferenced. lstat (not existsSync,
@@ -154,7 +163,7 @@ export function copyDirRecursive(src, dest) {
 			}
 			fs.symlinkSync(fs.readlinkSync(srcPath), destPath);
 		} else if (entry.isDirectory()) {
-			copyDirRecursive(srcPath, destPath);
+			copyDirRecursive(srcPath, destPath, options);
 		} else {
 			fs.copyFileSync(srcPath, destPath);
 		}

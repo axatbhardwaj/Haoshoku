@@ -6,6 +6,7 @@ import path from "node:path";
 import {
 	MANAGED_DIRS,
 	PERSONAL_FILES,
+	backupClaudeConfig,
 	syncClaudeConfig,
 } from "../src/helpers/configure_claude.js";
 
@@ -36,6 +37,68 @@ describe("MANAGED_DIRS manifest", () => {
 
 	it("includes workflows (regression — must not be silently dropped)", () => {
 		expect(MANAGED_DIRS).toContain("workflows");
+	});
+});
+
+describe("backupClaudeConfig() skips symlinked entries", () => {
+	let tmpDir;
+	let configsDir;
+	let claudeHome;
+	let warnings;
+	let warnOrig;
+
+	beforeEach(() => {
+		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-backup-"));
+		configsDir = path.join(tmpDir, "configs", "claude");
+		claudeHome = path.join(tmpDir, "claude-home");
+		warnings = [];
+		const utils = require("../src/common/utils.js");
+		warnOrig = utils.log.warning;
+		utils.log.warning = (msg) => warnings.push(msg);
+	});
+
+	afterEach(() => {
+		fs.rmSync(tmpDir, { recursive: true, force: true });
+		const utils = require("../src/common/utils.js");
+		utils.log.warning = warnOrig;
+	});
+
+	it("backs up real files but omits top-level and nested symlinks with warnings", async () => {
+		const liveAgents = path.join(claudeHome, ".claude", "agents");
+		const nestedDir = path.join(liveAgents, "nested");
+		const externalFile = path.join(tmpDir, "external-agent.md");
+		fs.mkdirSync(nestedDir, { recursive: true });
+		fs.writeFileSync(path.join(liveAgents, "local-agent.md"), "local\n");
+		fs.writeFileSync(path.join(nestedDir, "local-nested.md"), "nested\n");
+		fs.writeFileSync(externalFile, "external\n");
+		fs.symlinkSync(externalFile, path.join(liveAgents, "external-agent.md"));
+		fs.symlinkSync(externalFile, path.join(nestedDir, "external-nested.md"));
+
+		await backupClaudeConfig({ srcDir: configsDir, claudeHome });
+
+		const backedUpAgents = path.join(configsDir, "agents");
+		expect(
+			fs.readFileSync(path.join(backedUpAgents, "local-agent.md"), "utf-8"),
+		).toBe("local\n");
+		expect(
+			fs.readFileSync(
+				path.join(backedUpAgents, "nested", "local-nested.md"),
+				"utf-8",
+			),
+		).toBe("nested\n");
+		expect(
+			fs.lstatSync(path.join(backedUpAgents, "external-agent.md"), {
+				throwIfNoEntry: false,
+			}),
+		).toBeUndefined();
+		expect(
+			fs.lstatSync(path.join(backedUpAgents, "nested", "external-nested.md"), {
+				throwIfNoEntry: false,
+			}),
+		).toBeUndefined();
+		const merged = warnings.join("\n");
+		expect(merged).toContain(path.join(liveAgents, "external-agent.md"));
+		expect(merged).toContain(path.join(nestedDir, "external-nested.md"));
 	});
 });
 
