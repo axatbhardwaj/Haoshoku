@@ -3,8 +3,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
+import * as claudeConfig from "../src/helpers/configure_claude.js";
 import {
-	MERGE_DIRS,
 	PERSONAL_FILES,
 	WIPE_DIRS,
 	backupClaudeConfig,
@@ -28,16 +28,88 @@ describe("PERSONAL_FILES manifest", () => {
 });
 
 describe("Claude directory ownership manifests", () => {
-	it("keeps hooks in WIPE_DIRS (regression — must stay wipe-replace)", () => {
-		expect(WIPE_DIRS).toContain("hooks");
+	it("keeps exactly the pre-batch wipe-replace directories", () => {
+		expect(WIPE_DIRS).toEqual(["conventions", "output-styles", "hooks"]);
 	});
 
-	it("includes agents in MERGE_DIRS", () => {
-		expect(MERGE_DIRS).toContain("agents");
+	it("keeps agents and workflows backup-only", () => {
+		expect(claudeConfig.BACKUP_ONLY_DIRS).toEqual(["agents", "workflows"]);
 	});
 
-	it("includes workflows in MERGE_DIRS", () => {
-		expect(MERGE_DIRS).toContain("workflows");
+	it("does not expose a merge-deploy directory manifest", () => {
+		expect("MERGE_DIRS" in claudeConfig).toBe(false);
+	});
+});
+
+describe("backupClaudeConfig() captures backup-only directories", () => {
+	let tmpDir;
+	let configsDir;
+	let claudeHome;
+
+	beforeEach(() => {
+		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-backup-only-"));
+		configsDir = path.join(tmpDir, "configs", "claude");
+		claudeHome = path.join(tmpDir, "claude-home");
+	});
+
+	afterEach(() => {
+		fs.rmSync(tmpDir, { recursive: true, force: true });
+	});
+
+	it("backs up files from live agents and workflows directories", async () => {
+		const liveClaudeDir = path.join(claudeHome, ".claude");
+		const liveAgent = path.join(liveClaudeDir, "agents", "local-agent.md");
+		const liveWorkflow = path.join(
+			liveClaudeDir,
+			"workflows",
+			"local-workflow.md",
+		);
+		fs.mkdirSync(path.dirname(liveAgent), { recursive: true });
+		fs.mkdirSync(path.dirname(liveWorkflow), { recursive: true });
+		fs.writeFileSync(liveAgent, "local agent\n");
+		fs.writeFileSync(liveWorkflow, "local workflow\n");
+
+		await backupClaudeConfig({ srcDir: configsDir, claudeHome });
+
+		expect(
+			fs.readFileSync(path.join(configsDir, "agents", "local-agent.md"), "utf-8"),
+		).toBe("local agent\n");
+		expect(
+			fs.readFileSync(
+				path.join(configsDir, "workflows", "local-workflow.md"),
+				"utf-8",
+			),
+		).toBe("local workflow\n");
+	});
+
+	it("does not copy symlinks from live agents or workflows", async () => {
+		const liveClaudeDir = path.join(claudeHome, ".claude");
+		const externalFile = path.join(tmpDir, "external.md");
+		const agentLink = path.join(liveClaudeDir, "agents", "external-agent.md");
+		const workflowLink = path.join(
+			liveClaudeDir,
+			"workflows",
+			"external-workflow.md",
+		);
+		fs.mkdirSync(path.dirname(agentLink), { recursive: true });
+		fs.mkdirSync(path.dirname(workflowLink), { recursive: true });
+		fs.writeFileSync(externalFile, "external\n");
+		fs.symlinkSync(externalFile, agentLink);
+		fs.symlinkSync(externalFile, workflowLink);
+
+		await backupClaudeConfig({ srcDir: configsDir, claudeHome });
+
+		expect(
+			fs.lstatSync(path.join(configsDir, "agents", "external-agent.md"), {
+				throwIfNoEntry: false,
+			}),
+		).toBeUndefined();
+		expect(
+			fs.lstatSync(
+				path.join(configsDir, "workflows", "external-workflow.md"),
+				{ throwIfNoEntry: false },
+			),
+		).toBeUndefined();
 	});
 });
 
@@ -276,6 +348,24 @@ describe("syncClaudeConfig() replaces WIPE_DIRS (stale entries do not linger)", 
 		expect(fs.existsSync(path.join(liveHooks, "stale.sh"))).toBe(false);
 		expect(fs.existsSync(path.join(liveHooks, "keep.sh"))).toBe(true);
 	});
+
+	it("deploys bundled conventions and removes live-only conventions", async () => {
+		const bundledConventions = path.join(configsDir, "conventions");
+		const liveConventions = path.join(claudeDir, "conventions");
+		const bundledFile = path.join(bundledConventions, "bundled.md");
+		const liveOnlyFile = path.join(liveConventions, "live-only.md");
+		fs.mkdirSync(bundledConventions, { recursive: true });
+		fs.mkdirSync(liveConventions, { recursive: true });
+		fs.writeFileSync(bundledFile, "bundled convention\n");
+		fs.writeFileSync(liveOnlyFile, "live-only convention\n");
+
+		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
+
+		expect(
+			fs.readFileSync(path.join(liveConventions, "bundled.md"), "utf-8"),
+		).toBe("bundled convention\n");
+		expect(fs.existsSync(liveOnlyFile)).toBe(false);
+	});
 });
 
 describe("syncClaudeConfig() applies directory ownership semantics", () => {
@@ -300,52 +390,47 @@ describe("syncClaudeConfig() applies directory ownership semantics", () => {
 		fs.rmSync(tmpDir, { recursive: true, force: true });
 	});
 
-	it("MERGE dir preserves an untracked live file", async () => {
+	it("does not create, modify, or delete files or symlinks in agents and workflows", async () => {
 		const bundledAgents = path.join(configsDir, "agents");
+		const bundledWorkflows = path.join(configsDir, "workflows");
 		const liveAgents = path.join(claudeDir, "agents");
+		const liveWorkflows = path.join(claudeDir, "workflows");
+		const externalFile = path.join(tmpDir, "skill-manager-agent.md");
+		const externalLink = path.join(liveAgents, "skill-manager-agent.md");
 		fs.mkdirSync(bundledAgents, { recursive: true });
+		fs.mkdirSync(bundledWorkflows, { recursive: true });
 		fs.mkdirSync(liveAgents, { recursive: true });
-		fs.writeFileSync(path.join(bundledAgents, "bundled.md"), "bundled\n");
-		const liveOnly = path.join(liveAgents, "external-agent.md");
-		fs.writeFileSync(liveOnly, "external\n");
+		fs.mkdirSync(liveWorkflows, { recursive: true });
+		fs.writeFileSync(path.join(bundledAgents, "existing.md"), "bundled agent\n");
+		fs.writeFileSync(path.join(bundledAgents, "bundled-only.md"), "new agent\n");
+		fs.writeFileSync(
+			path.join(bundledWorkflows, "existing.md"),
+			"bundled workflow\n",
+		);
+		fs.writeFileSync(
+			path.join(bundledWorkflows, "bundled-only.md"),
+			"new workflow\n",
+		);
+		const liveAgent = path.join(liveAgents, "existing.md");
+		const liveWorkflow = path.join(liveWorkflows, "existing.md");
+		fs.writeFileSync(liveAgent, "live agent\n");
+		fs.writeFileSync(liveWorkflow, "live workflow\n");
+		fs.writeFileSync(externalFile, "external agent\n");
+		fs.symlinkSync(externalFile, externalLink);
+
+		const agentBefore = fs.readFileSync(liveAgent);
+		const workflowBefore = fs.readFileSync(liveWorkflow);
 
 		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
 
-		expect(fs.existsSync(liveOnly)).toBe(true);
-		expect(fs.readFileSync(liveOnly, "utf-8")).toBe("external\n");
-	});
-
-	it("MERGE dir preserves an external symlink and its target", async () => {
-		const bundledAgents = path.join(configsDir, "agents");
-		const liveAgents = path.join(claudeDir, "agents");
-		const externalDir = path.join(tmpDir, "skill-manager-cache");
-		const externalLink = path.join(liveAgents, "skill-manager-agent");
-		fs.mkdirSync(bundledAgents, { recursive: true });
-		fs.mkdirSync(liveAgents, { recursive: true });
-		fs.mkdirSync(externalDir, { recursive: true });
-		fs.symlinkSync(externalDir, externalLink);
-
-		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
-
-		expect(
-			fs.lstatSync(externalLink, { throwIfNoEntry: false })?.isSymbolicLink(),
-		).toBe(true);
-		expect(fs.realpathSync(externalLink)).toBe(fs.realpathSync(externalDir));
-	});
-
-	it("MERGE dir deploys and overwrites bundle-owned files", async () => {
-		const bundledAgents = path.join(configsDir, "agents");
-		const liveAgents = path.join(claudeDir, "agents");
-		const bundledFile = path.join(bundledAgents, "codex-wrapper.md");
-		const liveFile = path.join(liveAgents, "codex-wrapper.md");
-		fs.mkdirSync(bundledAgents, { recursive: true });
-		fs.mkdirSync(liveAgents, { recursive: true });
-		fs.writeFileSync(bundledFile, "current bundle content\n");
-		fs.writeFileSync(liveFile, "stale live content\n");
-
-		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
-
-		expect(fs.readFileSync(liveFile, "utf-8")).toBe("current bundle content\n");
+		expect(fs.readFileSync(liveAgent)).toEqual(agentBefore);
+		expect(fs.readFileSync(liveWorkflow)).toEqual(workflowBefore);
+		expect(fs.existsSync(path.join(liveAgents, "bundled-only.md"))).toBe(false);
+		expect(fs.existsSync(path.join(liveWorkflows, "bundled-only.md"))).toBe(
+			false,
+		);
+		expect(fs.lstatSync(externalLink).isSymbolicLink()).toBe(true);
+		expect(fs.readFileSync(externalFile, "utf-8")).toBe("external agent\n");
 	});
 
 	it("WIPE dir removes an untracked live file", async () => {
