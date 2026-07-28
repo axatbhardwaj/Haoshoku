@@ -213,7 +213,7 @@
     }
   },
   "outputStyle": "Direct",
-  "effortLevel": "xhigh",
+  "effortLevel": "high",
   "tui": "fullscreen",
   "skipDangerousModePermissionPrompt": true,
   "editorMode": "normal",
