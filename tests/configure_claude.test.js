@@ -4,8 +4,9 @@ import os from "node:os";
 import path from "node:path";
 
 import {
-	MANAGED_DIRS,
+	MERGE_DIRS,
 	PERSONAL_FILES,
+	WIPE_DIRS,
 	backupClaudeConfig,
 	syncClaudeConfig,
 } from "../src/helpers/configure_claude.js";
@@ -26,17 +27,17 @@ describe("PERSONAL_FILES manifest", () => {
 	});
 });
 
-describe("MANAGED_DIRS manifest", () => {
-	it("includes hooks (regression — must not be silently dropped)", () => {
-		expect(MANAGED_DIRS).toContain("hooks");
+describe("Claude directory ownership manifests", () => {
+	it("keeps hooks in WIPE_DIRS (regression — must stay wipe-replace)", () => {
+		expect(WIPE_DIRS).toContain("hooks");
 	});
 
-	it("includes agents (regression — must not be silently dropped)", () => {
-		expect(MANAGED_DIRS).toContain("agents");
+	it("includes agents in MERGE_DIRS", () => {
+		expect(MERGE_DIRS).toContain("agents");
 	});
 
-	it("includes workflows (regression — must not be silently dropped)", () => {
-		expect(MANAGED_DIRS).toContain("workflows");
+	it("includes workflows in MERGE_DIRS", () => {
+		expect(MERGE_DIRS).toContain("workflows");
 	});
 });
 
@@ -219,7 +220,7 @@ describe("syncClaudeConfig() preserves the user's live settings.json via .bak", 
 	});
 });
 
-describe("syncClaudeConfig() replaces MANAGED_DIRS (stale entries do not linger)", () => {
+describe("syncClaudeConfig() replaces WIPE_DIRS (stale entries do not linger)", () => {
 	let tmpDir;
 	let configsDir;
 	let claudeHome;
@@ -242,8 +243,8 @@ describe("syncClaudeConfig() replaces MANAGED_DIRS (stale entries do not linger)
 		fs.rmSync(tmpDir, { recursive: true, force: true });
 	});
 
-	it("removes a stale file inside a MANAGED_DIR that the new bundle no longer ships", async () => {
-		const managed = MANAGED_DIRS[0];
+	it("removes a stale file inside a WIPE_DIR that the new bundle no longer ships", async () => {
+		const managed = WIPE_DIRS[0];
 
 		// Bundle ships only keep.md.
 		fs.mkdirSync(path.join(configsDir, managed), { recursive: true });
@@ -274,5 +275,90 @@ describe("syncClaudeConfig() replaces MANAGED_DIRS (stale entries do not linger)
 
 		expect(fs.existsSync(path.join(liveHooks, "stale.sh"))).toBe(false);
 		expect(fs.existsSync(path.join(liveHooks, "keep.sh"))).toBe(true);
+	});
+});
+
+describe("syncClaudeConfig() applies directory ownership semantics", () => {
+	let tmpDir;
+	let configsDir;
+	let claudeHome;
+	let claudeDir;
+
+	beforeEach(() => {
+		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-claudeownership-"));
+		configsDir = path.join(tmpDir, "configs", "claude");
+		claudeHome = path.join(tmpDir, "claude-home");
+		claudeDir = path.join(claudeHome, ".claude");
+		fs.mkdirSync(configsDir, { recursive: true });
+		fs.mkdirSync(claudeDir, { recursive: true });
+		for (const f of PERSONAL_FILES) {
+			fs.writeFileSync(path.join(configsDir, f.src), "x");
+		}
+	});
+
+	afterEach(() => {
+		fs.rmSync(tmpDir, { recursive: true, force: true });
+	});
+
+	it("MERGE dir preserves an untracked live file", async () => {
+		const bundledAgents = path.join(configsDir, "agents");
+		const liveAgents = path.join(claudeDir, "agents");
+		fs.mkdirSync(bundledAgents, { recursive: true });
+		fs.mkdirSync(liveAgents, { recursive: true });
+		fs.writeFileSync(path.join(bundledAgents, "bundled.md"), "bundled\n");
+		const liveOnly = path.join(liveAgents, "external-agent.md");
+		fs.writeFileSync(liveOnly, "external\n");
+
+		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
+
+		expect(fs.existsSync(liveOnly)).toBe(true);
+		expect(fs.readFileSync(liveOnly, "utf-8")).toBe("external\n");
+	});
+
+	it("MERGE dir preserves an external symlink and its target", async () => {
+		const bundledAgents = path.join(configsDir, "agents");
+		const liveAgents = path.join(claudeDir, "agents");
+		const externalDir = path.join(tmpDir, "skill-manager-cache");
+		const externalLink = path.join(liveAgents, "skill-manager-agent");
+		fs.mkdirSync(bundledAgents, { recursive: true });
+		fs.mkdirSync(liveAgents, { recursive: true });
+		fs.mkdirSync(externalDir, { recursive: true });
+		fs.symlinkSync(externalDir, externalLink);
+
+		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
+
+		expect(
+			fs.lstatSync(externalLink, { throwIfNoEntry: false })?.isSymbolicLink(),
+		).toBe(true);
+		expect(fs.realpathSync(externalLink)).toBe(fs.realpathSync(externalDir));
+	});
+
+	it("MERGE dir deploys and overwrites bundle-owned files", async () => {
+		const bundledAgents = path.join(configsDir, "agents");
+		const liveAgents = path.join(claudeDir, "agents");
+		const bundledFile = path.join(bundledAgents, "codex-wrapper.md");
+		const liveFile = path.join(liveAgents, "codex-wrapper.md");
+		fs.mkdirSync(bundledAgents, { recursive: true });
+		fs.mkdirSync(liveAgents, { recursive: true });
+		fs.writeFileSync(bundledFile, "current bundle content\n");
+		fs.writeFileSync(liveFile, "stale live content\n");
+
+		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
+
+		expect(fs.readFileSync(liveFile, "utf-8")).toBe("current bundle content\n");
+	});
+
+	it("WIPE dir removes an untracked live file", async () => {
+		const bundledConventions = path.join(configsDir, "conventions");
+		const liveConventions = path.join(claudeDir, "conventions");
+		const liveOnly = path.join(liveConventions, "stale.md");
+		fs.mkdirSync(bundledConventions, { recursive: true });
+		fs.mkdirSync(liveConventions, { recursive: true });
+		fs.writeFileSync(path.join(bundledConventions, "current.md"), "current\n");
+		fs.writeFileSync(liveOnly, "stale\n");
+
+		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
+
+		expect(fs.existsSync(liveOnly)).toBe(false);
 	});
 });

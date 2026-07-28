@@ -31,14 +31,15 @@ export const PERSONAL_FILES = [
   { src: "statusline-command.sh" },
 ];
 
-// Directories fully owned by haoshoku (replaced on sync)
-export const MANAGED_DIRS = [
-  "conventions",
-  "output-styles",
-  "hooks",
-  "agents",
-  "workflows",
-];
+// Exclusively owned by haoshoku, so stale bundled files can be removed safely.
+export const WIPE_DIRS = ["conventions", "output-styles", "hooks"];
+
+// Jointly owned: skill_manager merges symlinks into agents/ outside haoshoku's
+// control, and both directories ship to strangers in the npm tarball. Merge
+// deployment makes apply structurally incapable of deleting data it did not
+// create. Accepted tradeoff: a file removed from a future bundle will linger
+// in the live directory; lingering is safer than deleting someone else's data.
+export const MERGE_DIRS = ["agents", "workflows"];
 
 /** Resolve where a PERSONAL_FILES entry lives on a given $HOME (inside ~/.claude/). */
 function claudeFilePath(src, home = HOME) {
@@ -105,15 +106,26 @@ export async function syncClaudeConfig(options = {}) {
     }
   }
 
-  for (const dir of MANAGED_DIRS) {
+  for (const dir of WIPE_DIRS) {
     const src = path.join(srcDir, dir);
     const dest = path.join(claudeDir, dir);
     if (fs.existsSync(src)) {
-      // MANAGED_DIRS are fully owned by haoshoku ("replaced on sync"), but
+      // WIPE_DIRS are fully owned by haoshoku ("replaced on sync"), but
       // copyDirRecursive only merges — so a convention deleted from the bundle
       // would linger in ~/.claude/ forever. Wipe the dest first so the live
       // tree exactly mirrors the bundle.
       fs.rmSync(dest, { recursive: true, force: true });
+      copyDirRecursive(src, dest);
+      log.info(`Synced ${dir}/`);
+    } else {
+      log.warning(`Missing ${dir}/ in source bundle (${src}) — skipped`);
+    }
+  }
+
+  for (const dir of MERGE_DIRS) {
+    const src = path.join(srcDir, dir);
+    const dest = path.join(claudeDir, dir);
+    if (fs.existsSync(src)) {
       copyDirRecursive(src, dest);
       log.info(`Synced ${dir}/`);
     } else {
@@ -144,7 +156,7 @@ export async function backupClaudeConfig(options = {}) {
     }
   }
 
-  for (const dir of MANAGED_DIRS) {
+  for (const dir of [...WIPE_DIRS, ...MERGE_DIRS]) {
     const src = path.join(claudeDir, dir);
     const dest = path.join(srcDir, dir);
     if (fs.existsSync(src)) {
