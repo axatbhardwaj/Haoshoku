@@ -79,6 +79,28 @@ allow() {
 }
 
 allow_with_gateway_marker() {
+  if [[ "$2" == *" --wait "* ]]; then
+    input | /usr/bin/jq \
+      --arg reason "$1" \
+      --arg command "CODEX_WRAPPER_GATEWAY=validate-codex-wrapper $2" \
+      '
+        ($command |
+          if test(" --wait-seconds ") then
+            gsub(" --wait-seconds [^ ]+"; " --wait-seconds 540")
+          else
+            . + " --wait-seconds 540"
+          end
+        ) as $command |
+        {hookSpecificOutput:{
+          hookEventName:"PreToolUse",
+          permissionDecision:"allow",
+          permissionDecisionReason:$reason,
+          updatedInput:(.tool_input * {command:$command,timeout:600000})
+        }}
+      '
+    exit 0
+  fi
+
   /usr/bin/jq -n \
     --arg reason "$1" \
     --arg command "CODEX_WRAPPER_GATEWAY=validate-codex-wrapper $2" \
