@@ -23,10 +23,10 @@ set -u
 
 command -v jq >/dev/null 2>&1 || { echo "run-codex-task.sh requires jq (pacman -S jq / apt install jq)" >&2; exit 69; }
 
-usage() { echo "usage: run-codex-task.sh --mode implementation|review --model sol --workspace <dir> --prompt-file <path> [--effort xhigh|max --effort-justification <token>] [--tier default|fast|priority|flex] [--persist] [--resume <session_id>] [--resume-from-pointer] [--detach] | --wait <run_dir> [--wait-seconds <n>]  (--persist/--resume/--resume-from-pointer work in both modes; implementation needs a clean tree per run; effort derives from --mode: implementation=high, review=xhigh; --effort escalates upward only)" >&2; exit 64; }
+usage() { echo "usage: run-codex-task.sh --mode implementation|review --model sol --workspace <dir> --prompt-file <path> [--effort xhigh|max --effort-justification <token>] [--tier default|fast|priority|flex] [--persist] [--resume <session_id>] [--resume-from-pointer] [--detach] [--worktree-on-contention] | --wait <run_dir> [--wait-seconds <n>]  (--persist/--resume/--resume-from-pointer work in both modes; --worktree-on-contention is implementation-only and incompatible with --resume-from-pointer; implementation needs a clean tree per run; effort derives from --mode: implementation=high, review=xhigh; --effort escalates upward only)" >&2; exit 64; }
 
 # bare fallback: fail toward more thinking
-MODE="" MODEL="" WORKSPACE="" PROMPT_FILE="" EFFORT="xhigh" EFFORT_ARG="" EFFORT_JUSTIFICATION="" EFFORT_SOURCE="" TIER="" DETACH=0 RUN_DIR_ARG="" WAIT_DIR="" WAIT_SECS=540 PERSIST=0 RESUME_ID="" RESUME_REQUESTED=0 RESUME_FROM_POINTER=0 RESUME_SOURCE_ARG="" RESUME_SOURCE="" CODEX_SESSION_ID="" SESSION_POINTER=""
+MODE="" MODEL="" WORKSPACE="" PROMPT_FILE="" EFFORT="xhigh" EFFORT_ARG="" EFFORT_JUSTIFICATION="" EFFORT_SOURCE="" TIER="" DETACH=0 RUN_DIR_ARG="" WAIT_DIR="" WAIT_SECS=540 PERSIST=0 RESUME_ID="" RESUME_REQUESTED=0 RESUME_FROM_POINTER=0 RESUME_SOURCE_ARG="" RESUME_SOURCE="" CODEX_SESSION_ID="" SESSION_POINTER="" WORKTREE_ON_CONTENTION=0 WORKTREE_PATH="" WORKTREE_ORIGIN=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --mode) MODE="${2:-}"; shift 2 || usage ;;
@@ -41,6 +41,7 @@ while [ $# -gt 0 ]; do
     --resume-from-pointer) RESUME_FROM_POINTER=1; shift ;;
     --resume-source) RESUME_SOURCE_ARG="${2:-}"; shift 2 || usage ;;   # internal: detached resolution result
     --detach) DETACH=1; shift ;;
+    --worktree-on-contention) WORKTREE_ON_CONTENTION=1; shift ;;   # opt-in: run in an isolated worktree instead of exit 4
     --run-dir) RUN_DIR_ARG="${2:-}"; shift 2 || usage ;;   # internal: detached self-reinvocation
     --wait) WAIT_DIR="${2:-}"; shift 2 || usage ;;
     --wait-seconds) WAIT_SECS="${2:-}"; shift 2 || usage ;;
@@ -80,6 +81,16 @@ case "$MODE" in
   review)         SANDBOX="read-only";       MODE_EFFORT="xhigh" ;;
   *) echo "invalid --mode: $MODE" >&2; exit 64 ;;
 esac
+
+# --worktree-on-contention only means anything where a lock is taken, so review mode
+# would silently ignore it. And the durable session pointer is keyed by workspace slug:
+# a worktree lives at a different realpath and therefore hashes to a different slug, so
+# resuming from a pointer inside one would read the wrong namespace. Refuse both
+# combinations rather than no-op or resume the wrong session.
+if [ "$WORKTREE_ON_CONTENTION" -eq 1 ]; then
+  [ "$MODE" = "implementation" ] || { echo "--worktree-on-contention requires --mode implementation (review takes no lock)" >&2; exit 64; }
+  [ "$RESUME_FROM_POINTER" -eq 0 ] || { echo "--worktree-on-contention cannot be combined with --resume-from-pointer (pointer is keyed by workspace slug)" >&2; exit 64; }
+fi
 
 case "$RESUME_SOURCE_ARG" in ""|explicit|pointer|pointer_missing_fell_back_to_persist|pointer_invalid_fell_back_to_persist) ;; *) usage ;; esac
 
@@ -291,12 +302,15 @@ fi
 # then return the run dir immediately. Poll with --wait. ----
 if [ "$DETACH" -eq 1 ]; then
   PERSIST_OPT=""; [ "$PERSIST" -eq 1 ] && PERSIST_OPT="--persist"
+  # The lock is taken in the child, not here, so the child needs this flag too.
+  WORKTREE_OPT=""; [ "$WORKTREE_ON_CONTENTION" -eq 1 ] && WORKTREE_OPT="--worktree-on-contention"
   # The child re-derives effort from --mode; forwarding the derived value self-rejects.
   setsid "$0" --mode "$MODE" --model "$MODEL" --workspace "$WORKSPACE" \
     --prompt-file "$RUN_DIR/prompt.md" \
     ${EFFORT_ARG:+--effort "$EFFORT_ARG"} ${EFFORT_ARG:+--effort-justification "$EFFORT_JUSTIFICATION"} \
     ${TIER:+--tier "$TIER"} \
     ${PERSIST_OPT:+$PERSIST_OPT} ${RESUME_ID:+--resume "$RESUME_ID"} \
+    ${WORKTREE_OPT:+$WORKTREE_OPT} \
     --resume-source "$RESUME_SOURCE" --run-dir "$RUN_DIR" \
     >/dev/null 2>>"$RUN_DIR/detach.log" </dev/null &
   jq -n --arg run_dir "$RUN_DIR" --arg pid "$!" \
@@ -321,8 +335,56 @@ if [ "$MODE" = "implementation" ]; then
     exit 73
   }
   if ! flock -n 9; then
-    report "blocked_concurrent_dispatch" null false
-    exit 4
+    if [ "$WORKTREE_ON_CONTENTION" -ne 1 ]; then
+      report "blocked_concurrent_dispatch" null false
+      exit 4
+    fi
+    # Opt-in isolation. Another writer holds this workspace, so run in a worktree of
+    # HEAD rather than losing the dispatch. A worktree lives at a different realpath and
+    # therefore hashes to a different lock slug, so it contends with nothing. BASELINE
+    # was already resolved from HEAD further up, so it stays correct across the switch.
+    WORKTREE_BASE="/tmp/codex-wrapper/worktrees"
+    WORKTREE_PATH="$WORKTREE_BASE/$(basename "$RUN_DIR")"
+    # No HEAD to branch from (unborn/empty repo, or not a repo) is not an anomaly worth
+    # its own status — isolation simply is not available, so report the ordinary refusal.
+    if ! git_list rev-parse --verify HEAD >/dev/null 2>&1; then
+      report "blocked_concurrent_dispatch" null false
+      exit 4
+    fi
+    # Run dirs are unique, so a pre-existing path here means something is wrong. Never
+    # reuse or delete it — it may hold another run's only copy of its work.
+    if [ -e "$WORKTREE_PATH" ] || ! mkdir -p "$WORKTREE_BASE"; then
+      report "worktree_setup_failed" null false
+      exit 75
+    fi
+    if ! git -C "$WORKSPACE" worktree add --detach "$WORKTREE_PATH" HEAD >>"$RUN_DIR/worktree.log" 2>&1; then
+      rm -rf "$WORKTREE_PATH" 2>/dev/null
+      git -C "$WORKSPACE" worktree prune >/dev/null 2>&1 || :   # drop the half-registration
+      report "worktree_setup_failed" null false
+      exit 75
+    fi
+    WORKTREE_ORIGIN="$WORKSPACE"
+    WORKSPACE="$WORKTREE_PATH"   # git_list, report() and the codex -C all follow this
+    WORKSPACE_LOCK_SLUG=$(derive_workspace_slug "$WORKSPACE") || {
+      report "lock_setup_failed" null false
+      exit 66
+    }
+    exec 9>"$WORKSPACE_LOCK_DIR/$WORKSPACE_LOCK_SLUG.lock" || {
+      report "lock_setup_failed" null false
+      exit 73
+    }
+    # A fresh path cannot legitimately be contended; if it is, stop rather than loop.
+    if ! flock -n 9; then
+      report "worktree_setup_failed" null false
+      exit 75
+    fi
+    printf '%s\n' \
+      "NOTICE: lock contention — this dispatch ran in an isolated worktree, not $WORKTREE_ORIGIN." \
+      "  worktree: $WORKTREE_PATH" \
+      "  Its work is left UNCOMMITTED and this directory is the ONLY copy; the launcher" \
+      "  does not remove it. Merge it back, then RE-RUN THE FULL TEST GATE on the merged" \
+      "  tree. Two isolated dispatches never see each other's work, so a conflict-free" \
+      "  merge can still produce a broken tree — per-worktree green is not sufficient." >&2
   fi
   if [ -n "$(git_list status --porcelain)" ]; then
     report "blocked_dirty_tree" null false
