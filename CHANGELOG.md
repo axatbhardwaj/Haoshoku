@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased - 2026-07-29
+
+- Carry the deny-first `~/.claude/.gitignore` in the bundle as `configs/claude/gitignore.template`, deployed and backed up through a new optional `dest` field on `PERSONAL_FILES` entries. That ignore file is what makes a tracked `~/.claude` safe, and it was the one thing the separate private policy repository held that this bundle did not. It is stored under a `.template` name deliberately: a real `.gitignore` at that path is honoured by both git and npm-packlist inside this repository, and its `/*` deny-first rule would silently drop `statusline-command.sh` and `README.md` from the published tarball — the exact failure the existing statusline regression test exists to prevent. A new test asserts no `.gitignore` is ever added there.
+
 ## 5.15.1 - 2026-07-29
 
 - Lower the bundled Claude session reasoning effort from `xhigh` to `high` in `configs/claude/settings.json`, mirroring the live `~/.claude/settings.json`. Because `settings.json` is a `PERSONAL_FILES` entry and `safeCopyFile` lets the bundle win whenever the two files differ, leaving the bundle at `xhigh` would have made the next `haoshoku --claude` apply overwrite the live setting back — visible only as a generic backup line that names no value. The rationale for the value itself is in the commit message. The Codex lane is unaffected: `run-codex-task.sh` derives effort from `--mode` independently of this key.

@@ -17,13 +17,72 @@ describe("PERSONAL_FILES manifest", () => {
 		expect(srcs).toContain("statusline-command.sh");
 	});
 
-	it("includes the three expected personal files in stable order", () => {
+	it("includes the four expected personal files in stable order", () => {
 		const srcs = PERSONAL_FILES.map((f) => f.src);
 		expect(srcs).toEqual([
 			"settings.json",
 			"CLAUDE.md",
 			"statusline-command.sh",
+			"gitignore.template",
 		]);
+	});
+
+	it("does not contain a real .gitignore that could filter the bundle", () => {
+		const bundledGitignore = path.resolve(
+			import.meta.dir,
+			"..",
+			"configs",
+			"claude",
+			".gitignore",
+		);
+		expect(fs.existsSync(bundledGitignore)).toBe(false);
+	});
+});
+
+describe("PERSONAL_FILES dest mapping", () => {
+	let tmpDir;
+	let configsDir;
+	let claudeHome;
+	const mappedFile = {
+		src: "mapped-file.template",
+		dest: ".mapped-file",
+	};
+
+	beforeEach(() => {
+		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-mapped-file-"));
+		configsDir = path.join(tmpDir, "configs", "claude");
+		claudeHome = path.join(tmpDir, "claude-home");
+		fs.mkdirSync(configsDir, { recursive: true });
+		PERSONAL_FILES.push(mappedFile);
+	});
+
+	afterEach(() => {
+		PERSONAL_FILES.splice(PERSONAL_FILES.indexOf(mappedFile), 1);
+		fs.rmSync(tmpDir, { recursive: true, force: true });
+	});
+
+	it("deploys to dest and backs up from dest while keeping src as the bundle path", async () => {
+		const bundledPath = path.join(configsDir, mappedFile.src);
+		const liveDestPath = path.join(
+			claudeHome,
+			".claude",
+			mappedFile.dest,
+		);
+		const liveSrcPath = path.join(claudeHome, ".claude", mappedFile.src);
+		fs.writeFileSync(bundledPath, "bundled\n");
+
+		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
+
+		expect(fs.existsSync(liveDestPath)).toBe(true);
+		expect(fs.existsSync(liveSrcPath)).toBe(false);
+
+		fs.writeFileSync(liveDestPath, "live\n");
+		await backupClaudeConfig({ srcDir: configsDir, claudeHome });
+
+		expect(fs.readFileSync(bundledPath, "utf-8")).toBe("live\n");
+		expect(
+			fs.existsSync(path.join(configsDir, mappedFile.dest)),
+		).toBe(false);
 	});
 });
 

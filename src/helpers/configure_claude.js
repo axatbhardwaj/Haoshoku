@@ -29,6 +29,10 @@ export const PERSONAL_FILES = [
   { src: "settings.json" },
   { src: "CLAUDE.md" },
   { src: "statusline-command.sh" },
+  // The deny-first ignore makes a tracked ~/.claude safe. It is stored under a
+  // .template name because a real .gitignore here would be honoured by git and
+  // npm-packlist, silently dropping bundle files from the published package.
+  { src: "gitignore.template", dest: ".gitignore" },
 ];
 
 // Exclusively owned by haoshoku, so stale bundled files can be removed safely.
@@ -40,8 +44,8 @@ export const WIPE_DIRS = ["conventions", "output-styles", "hooks"];
 export const BACKUP_ONLY_DIRS = ["agents", "workflows"];
 
 /** Resolve where a PERSONAL_FILES entry lives on a given $HOME (inside ~/.claude/). */
-function claudeFilePath(src, home = HOME) {
-  return path.join(home, ".claude", src);
+function claudeFilePath(filePath, home = HOME) {
+  return path.join(home, ".claude", filePath);
 }
 
 /** Check if a command exists in PATH (Bun.which — no external `which` binary). */
@@ -92,13 +96,14 @@ export async function syncClaudeConfig(options = {}) {
 
   for (const file of PERSONAL_FILES) {
     const srcPath = path.join(srcDir, file.src);
-    const destPath = claudeFilePath(file.src, claudeHome);
+    const liveFile = file.dest ?? file.src;
+    const destPath = claudeFilePath(liveFile, claudeHome);
     if (fs.existsSync(srcPath)) {
       // safeCopyFile preserves a differing live file (e.g. settings.json, which
       // Claude Code and --superpowers mutate at runtime) as ${dest}.bak before
       // overwriting. Identical content is a no-op so re-runs don't churn .bak.
       safeCopyFile(srcPath, destPath);
-      log.info(`Copied ${file.src}`);
+      log.info(`Copied ${file.src} to ${liveFile}`);
     } else {
       log.warning(`Missing ${file.src} in source bundle (${srcPath}) — skipped`);
     }
@@ -136,10 +141,11 @@ export async function backupClaudeConfig(options = {}) {
   fs.mkdirSync(srcDir, { recursive: true });
 
   for (const file of PERSONAL_FILES) {
-    const livePath = claudeFilePath(file.src, claudeHome);
+    const liveFile = file.dest ?? file.src;
+    const livePath = claudeFilePath(liveFile, claudeHome);
     if (fs.existsSync(livePath)) {
       fs.copyFileSync(livePath, path.join(srcDir, file.src));
-      log.info(`Backed up ${file.src}`);
+      log.info(`Backed up ${liveFile} to ${file.src}`);
     }
   }
 
