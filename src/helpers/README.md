@@ -5,8 +5,7 @@
 The Claude configuration uses a hybrid sync pattern:
 
 **Copied from haoshoku template (`configs/claude/`):**
-- `settings.json`, `CLAUDE.md`, `statusline-command.sh`, `.gitignore` — personal config
-- `conventions/`, `output-styles/`, `hooks/` — managed directories (replaced on sync)
+- `CLAUDE.md`, `statusline-command.sh`, `.gitignore` — personal config
 - `agents/`, `workflows/` — co-owned directories (bundle-listed paths are merge-deployed; unrelated live paths are preserved)
 - Updates via `--claude-backup` (capture) and `--claude` (deploy)
 
@@ -18,8 +17,8 @@ The Claude configuration uses a hybrid sync pattern:
 
 | Function                 | Purpose                                      |
 | ------------------------ | -------------------------------------------- |
-| `syncClaudeConfig()`     | Copy personal files + managed dirs from template |
-| `backupClaudeConfig()`   | Copy ~/.claude/ personal files + managed dirs to template |
+| `syncClaudeConfig()`     | Copy personal files and merge-deploy co-owned dirs |
+| `backupClaudeConfig()`   | Copy personal files and co-owned dirs to template |
 | `updateClaudeConfig()`   | Pull latest from cached repos                |
 | `installClaude()`        | Install Claude Code CLI if not present       |
 | `installSuperpowers()`   | Enable Superpowers plugin in settings.json   |
@@ -27,8 +26,8 @@ The Claude configuration uses a hybrid sync pattern:
 
 ## CLI Flags
 
-- `--claude` - deploy personal config, replace managed directories, and merge-deploy bundled agents/workflows
-- `--claude-backup` - backup personal config and managed/co-owned directories while skipping symlinks
+- `--claude` - deploy personal config and merge-deploy bundled agents/workflows
+- `--claude-backup` - backup personal config and co-owned agents/workflows while skipping symlinks
 - `--claude-update` - update cache + sync
 - `--superpowers` - enable Superpowers plugin in settings.json
 
@@ -36,7 +35,7 @@ The Claude configuration uses a hybrid sync pattern:
 
 Runtime git cloning for Claude skills and agents.
 
-**Separation**: skill_manager.js handles skill/agent fetching and syncing; configure_claude.js handles personal config and managed directories. Different responsibilities enable independent testing and maintenance.
+**Separation**: skill_manager.js handles skill/agent fetching and syncing; configure_claude.js handles personal config and merge-deployed bundle entries. Different responsibilities enable independent testing and maintenance.
 
 **Cache Location**: XDG_CACHE_HOME/haoshoku/ follows XDG Base Directory spec, prevents home directory pollution.
 

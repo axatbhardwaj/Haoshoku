@@ -48,10 +48,10 @@ Haoshoku provides command-line options for non-interactive use or specific tasks
 haoshoku --os cachyos
 haoshoku --os debian-server
 
-# Deploy Claude Code config (personal files, conventions, output-styles)
+# Deploy Claude Code config (personal files, agents, workflows)
 haoshoku --claude
 
-# Backup personal Claude config to configs/claude/
+# Backup personal Claude files, agents, and workflows to configs/claude/
 haoshoku --claude-backup
 
 # Update cached config and sync Claude config
@@ -108,8 +108,8 @@ haoshoku --hyprland
     -   **KDE Glass Blur**: Optional installation of glass blur effect for KDE Plasma 6 (reinstall easily after KDE updates with `--kde-glass`).
     -   Sets up gaming tools (Steam, Lutris) and media players (mpv).
 -   **AI Configuration**:
-    -   **Claude Code Config**: Deploys personal config and managed directories, and merge-deploys bundled agents/workflows without removing unrelated live entries (`haoshoku --claude`).
-    -   **Claude Backup**: Backs up personal config and managed/co-owned directories to `configs/claude/`, skipping symlinks (`haoshoku --claude-backup`).
+    -   **Claude Code Config**: Deploys `CLAUDE.md`, the statusline, and `.gitignore`, and merge-deploys bundled agents/workflows without removing unrelated live entries (`haoshoku --claude`).
+    -   **Claude Backup**: Backs up those personal files plus agents/workflows to `configs/claude/`, skipping symlinks (`haoshoku --claude-backup`).
     -   **Skill Management**: Runtime git cloning of Claude skills and agents (`haoshoku --skills`).
     -   **Superpowers**: Idempotently enables the Superpowers plugin in `~/.claude/settings.json` (`haoshoku --superpowers`).
 

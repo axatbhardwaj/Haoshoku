@@ -48,8 +48,18 @@ describe("installSuperpowers()", () => {
 	});
 
 	it("does not throw or create a stub when settings.json is missing", async () => {
-		await expect(installSuperpowers(settingsPath)).resolves.toBeUndefined();
+		const messages = [];
+		const originalError = console.error;
+		console.error = (...args) => messages.push(args.join(" "));
+		try {
+			await expect(installSuperpowers(settingsPath)).resolves.toBeUndefined();
+		} finally {
+			console.error = originalError;
+		}
+
 		expect(fs.existsSync(settingsPath)).toBe(false);
+		expect(messages.join("\n")).toMatch(/Run Claude Code once/i);
+		expect(messages.join("\n")).not.toMatch(/haoshoku --claude/);
 	});
 
 	it("returns without throwing when settings.json is not valid JSON", async () => {
@@ -71,6 +81,6 @@ describe("installSuperpowers()", () => {
 		expect(fs.readFileSync(settingsPath, "utf-8")).toBe(malformed);
 		// A clear, actionable error was logged.
 		expect(messages.join("\n")).toMatch(/settings\.json is not valid JSON/i);
-		expect(messages.join("\n")).toMatch(/haoshoku --claude/);
+		expect(messages.join("\n")).not.toMatch(/haoshoku --claude/);
 	});
 });

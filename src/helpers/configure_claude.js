@@ -26,7 +26,6 @@ const CLAUDE_INSTALL_URL = "https://claude.ai/install.sh";
 // state (caches, usage stats, per-project session metadata, oauthAccount),
 // not reproducible config — backing it up would leak account metadata.
 export const PERSONAL_FILES = [
-  { src: "settings.json" },
   { src: "CLAUDE.md" },
   { src: "statusline-command.sh" },
   // The deny-first ignore makes a tracked ~/.claude safe. It is stored under a
@@ -34,9 +33,6 @@ export const PERSONAL_FILES = [
   // npm-packlist, silently dropping bundle files from the published package.
   { src: "gitignore.template", dest: ".gitignore" },
 ];
-
-// Exclusively owned by haoshoku, so stale bundled files can be removed safely.
-export const WIPE_DIRS = ["conventions", "output-styles", "hooks"];
 
 // Co-owned directories: deploy only bundle-listed paths and preserve everything
 // else. The same manifest is used by backupClaudeConfig().
@@ -318,29 +314,12 @@ export async function syncClaudeConfig(options = {}) {
     const liveFile = file.dest ?? file.src;
     const destPath = claudeFilePath(liveFile, claudeHome);
     if (fs.existsSync(srcPath)) {
-      // safeCopyFile preserves a differing live file (e.g. settings.json, which
-      // Claude Code and --superpowers mutate at runtime) as ${dest}.bak before
+      // safeCopyFile preserves a differing live file as ${dest}.bak before
       // overwriting. Identical content is a no-op so re-runs don't churn .bak.
       safeCopyFile(srcPath, destPath);
       log.info(`Copied ${file.src} to ${liveFile}`);
     } else {
       log.warning(`Missing ${file.src} in source bundle (${srcPath}) — skipped`);
-    }
-  }
-
-  for (const dir of WIPE_DIRS) {
-    const src = path.join(srcDir, dir);
-    const dest = path.join(claudeDir, dir);
-    if (fs.existsSync(src)) {
-      // WIPE_DIRS are fully owned by haoshoku ("replaced on sync"), but
-      // copyDirRecursive only merges — so a convention deleted from the bundle
-      // would linger in ~/.claude/ forever. Wipe the dest first so the live
-      // tree exactly mirrors the bundle.
-      fs.rmSync(dest, { recursive: true, force: true });
-      copyDirRecursive(src, dest);
-      log.info(`Synced ${dir}/`);
-    } else {
-      log.warning(`Missing ${dir}/ in source bundle (${src}) — skipped`);
     }
   }
 
@@ -406,7 +385,7 @@ export async function backupClaudeConfig(options = {}) {
     }
   }
 
-  for (const dir of [...WIPE_DIRS, ...MERGE_DEPLOY_DIRS]) {
+  for (const dir of MERGE_DEPLOY_DIRS) {
     const src = path.join(claudeDir, dir);
     const dest = path.join(srcDir, dir);
     if (fs.existsSync(src)) {
@@ -427,7 +406,7 @@ export async function backupClaudeConfig(options = {}) {
 export async function installSuperpowers(settingsPath = SETTINGS_PATH) {
   if (!fs.existsSync(settingsPath)) {
     log.error(
-      `${settingsPath} not found. Run 'haoshoku --claude' first to deploy the config bundle.`,
+      `${settingsPath} not found. Run Claude Code once to create it, then retry.`,
     );
     return;
   }
@@ -438,7 +417,7 @@ export async function installSuperpowers(settingsPath = SETTINGS_PATH) {
     settings = JSON.parse(fs.readFileSync(settingsPath, "utf-8"));
   } catch (err) {
     log.error(
-      `settings.json is not valid JSON (${err?.message ?? err}) — fix it or re-run haoshoku --claude`,
+      `settings.json is not valid JSON (${err?.message ?? err}) — fix it before retrying`,
     );
     return;
   }

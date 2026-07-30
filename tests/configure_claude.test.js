@@ -6,7 +6,6 @@ import path from "node:path";
 import * as claudeConfig from "../src/helpers/configure_claude.js";
 import {
 	PERSONAL_FILES,
-	WIPE_DIRS,
 	backupClaudeConfig,
 	syncClaudeConfig,
 } from "../src/helpers/configure_claude.js";
@@ -18,10 +17,9 @@ describe("PERSONAL_FILES manifest", () => {
 		expect(srcs).toContain("statusline-command.sh");
 	});
 
-	it("includes the four expected personal files in stable order", () => {
+	it("includes the three expected personal files in stable order", () => {
 		const srcs = PERSONAL_FILES.map((f) => f.src);
 		expect(srcs).toEqual([
-			"settings.json",
 			"CLAUDE.md",
 			"statusline-command.sh",
 			"gitignore.template",
@@ -88,8 +86,8 @@ describe("PERSONAL_FILES dest mapping", () => {
 });
 
 describe("Claude directory ownership manifests", () => {
-	it("keeps exactly the pre-batch wipe-replace directories", () => {
-		expect(WIPE_DIRS).toEqual(["conventions", "output-styles", "hooks"]);
+	it("does not expose a wipe-replace directory manifest", () => {
+		expect("WIPE_DIRS" in claudeConfig).toBe(false);
 	});
 
 	it("merge-deploys the co-owned agents and workflows directories", () => {
@@ -261,8 +259,7 @@ describe("syncClaudeConfig() warns on missing sources", () => {
 	});
 
 	it("emits a warning when statusline-command.sh is missing from the source bundle", async () => {
-		// Bundle two of the three PERSONAL_FILES (statusline absent).
-		fs.writeFileSync(path.join(configsDir, "settings.json"), "{}");
+		// Bundle CLAUDE.md only (statusline absent).
 		fs.writeFileSync(path.join(configsDir, "CLAUDE.md"), "# test\n");
 
 		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
@@ -273,7 +270,6 @@ describe("syncClaudeConfig() warns on missing sources", () => {
 
 	it("copies statusline-command.sh to ~/.claude/ when present in bundle", async () => {
 		const STATUSLINE_BODY = "#!/usr/bin/env bash\necho 'haoshoku statusline'\n";
-		fs.writeFileSync(path.join(configsDir, "settings.json"), "{}");
 		fs.writeFileSync(path.join(configsDir, "CLAUDE.md"), "# test\n");
 		fs.writeFileSync(
 			path.join(configsDir, "statusline-command.sh"),
@@ -291,7 +287,7 @@ describe("syncClaudeConfig() warns on missing sources", () => {
 	});
 });
 
-describe("syncClaudeConfig() preserves the user's live settings.json via .bak", () => {
+describe("Claude settings.json remains unmanaged", () => {
 	let tmpDir;
 	let configsDir;
 	let claudeHome;
@@ -310,49 +306,33 @@ describe("syncClaudeConfig() preserves the user's live settings.json via .bak", 
 		fs.rmSync(tmpDir, { recursive: true, force: true });
 	});
 
-	it("backs up a differing live settings.json to settings.json.bak before overwriting", async () => {
-		// User's live settings.json carries runtime-mutated state (e.g. enabled
-		// plugins) that differs from the bundled template.
+	it("does not deploy a stale bundled settings.json or create a backup", async () => {
 		const liveSettings = `${JSON.stringify({ enabledPlugins: { "x@y": true } }, null, 2)}\n`;
 		fs.writeFileSync(path.join(claudeDir, "settings.json"), liveSettings);
 
-		const bundledSettings = `${JSON.stringify({ permissions: { allow: [] } }, null, 2)}\n`;
+		const bundledSettings = `${JSON.stringify({ stale: true }, null, 2)}\n`;
 		fs.writeFileSync(path.join(configsDir, "settings.json"), bundledSettings);
 		fs.writeFileSync(path.join(configsDir, "CLAUDE.md"), "# test\n");
 		fs.writeFileSync(path.join(configsDir, "statusline-command.sh"), "#!/bin/sh\n");
 
 		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
 
-		// Original live config preserved in .bak; bundled config now live.
-		expect(
-			fs.readFileSync(path.join(claudeDir, "settings.json.bak"), "utf-8"),
-		).toBe(liveSettings);
 		expect(fs.readFileSync(path.join(claudeDir, "settings.json"), "utf-8")).toBe(
-			bundledSettings,
+			liveSettings,
 		);
+		expect(fs.existsSync(path.join(claudeDir, "settings.json.bak"))).toBe(false);
 	});
 
-	it("does not clobber the original .bak when settings.json is synced a second time", async () => {
-		const originalLive = `${JSON.stringify({ original: true }, null, 2)}\n`;
-		fs.writeFileSync(path.join(claudeDir, "settings.json"), originalLive);
+	it("does not back up live settings.json into the bundle", async () => {
+		fs.writeFileSync(path.join(claudeDir, "settings.json"), '{"live":true}\n');
 
-		const bundledSettings = `${JSON.stringify({ bundled: true }, null, 2)}\n`;
-		fs.writeFileSync(path.join(configsDir, "settings.json"), bundledSettings);
-		fs.writeFileSync(path.join(configsDir, "CLAUDE.md"), "# test\n");
-		fs.writeFileSync(path.join(configsDir, "statusline-command.sh"), "#!/bin/sh\n");
+		await backupClaudeConfig({ srcDir: configsDir, claudeHome });
 
-		// First sync: original → .bak, bundled → live.
-		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
-		// Second sync: live already equals bundled → no-op, .bak must stay pristine.
-		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
-
-		expect(
-			fs.readFileSync(path.join(claudeDir, "settings.json.bak"), "utf-8"),
-		).toBe(originalLive);
+		expect(fs.existsSync(path.join(configsDir, "settings.json"))).toBe(false);
 	});
 });
 
-describe("syncClaudeConfig() replaces WIPE_DIRS (stale entries do not linger)", () => {
+describe("dropped Claude directories remain unmanaged", () => {
 	let tmpDir;
 	let configsDir;
 	let claudeHome;
@@ -375,56 +355,40 @@ describe("syncClaudeConfig() replaces WIPE_DIRS (stale entries do not linger)", 
 		fs.rmSync(tmpDir, { recursive: true, force: true });
 	});
 
-	it("removes a stale file inside a WIPE_DIR that the new bundle no longer ships", async () => {
-		const managed = WIPE_DIRS[0];
-
-		// Bundle ships only keep.md.
-		fs.mkdirSync(path.join(configsDir, managed), { recursive: true });
-		fs.writeFileSync(path.join(configsDir, managed, "keep.md"), "keep\n");
-
-		// Live dir has a leftover from a previous bundle that was since deleted.
-		fs.mkdirSync(path.join(claudeDir, managed), { recursive: true });
-		fs.writeFileSync(path.join(claudeDir, managed, "stale.md"), "stale\n");
+	it("does not deploy or remove files in dropped directories", async () => {
+		const droppedDirs = ["conventions", "output-styles", "hooks"];
+		for (const directory of droppedDirs) {
+			const bundledDir = path.join(configsDir, directory);
+			const liveDir = path.join(claudeDir, directory);
+			fs.mkdirSync(bundledDir, { recursive: true });
+			fs.mkdirSync(liveDir, { recursive: true });
+			fs.writeFileSync(path.join(bundledDir, "bundled.txt"), "bundled\n");
+			fs.writeFileSync(path.join(liveDir, "live.txt"), "live\n");
+		}
 
 		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
 
-		const liveManaged = path.join(claudeDir, managed);
-		expect(fs.existsSync(path.join(liveManaged, "stale.md"))).toBe(false);
-		expect(fs.existsSync(path.join(liveManaged, "keep.md"))).toBe(true);
+		for (const directory of droppedDirs) {
+			const liveDir = path.join(claudeDir, directory);
+			expect(fs.readFileSync(path.join(liveDir, "live.txt"), "utf-8")).toBe(
+				"live\n",
+			);
+			expect(fs.existsSync(path.join(liveDir, "bundled.txt"))).toBe(false);
+		}
 	});
 
-	it("wipe-replaces hooks/ specifically", async () => {
-		const bundledHooks = path.join(configsDir, "hooks");
-		const liveHooks = path.join(claudeDir, "hooks");
+	it("does not back up live files from dropped directories", async () => {
+		for (const directory of ["conventions", "output-styles", "hooks"]) {
+			const liveDir = path.join(claudeDir, directory);
+			fs.mkdirSync(liveDir, { recursive: true });
+			fs.writeFileSync(path.join(liveDir, "live.txt"), "live\n");
+		}
 
-		fs.mkdirSync(bundledHooks, { recursive: true });
-		fs.writeFileSync(path.join(bundledHooks, "keep.sh"), "keep\n");
+		await backupClaudeConfig({ srcDir: configsDir, claudeHome });
 
-		fs.mkdirSync(liveHooks, { recursive: true });
-		fs.writeFileSync(path.join(liveHooks, "stale.sh"), "stale\n");
-
-		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
-
-		expect(fs.existsSync(path.join(liveHooks, "stale.sh"))).toBe(false);
-		expect(fs.existsSync(path.join(liveHooks, "keep.sh"))).toBe(true);
-	});
-
-	it("deploys bundled conventions and removes live-only conventions", async () => {
-		const bundledConventions = path.join(configsDir, "conventions");
-		const liveConventions = path.join(claudeDir, "conventions");
-		const bundledFile = path.join(bundledConventions, "bundled.md");
-		const liveOnlyFile = path.join(liveConventions, "live-only.md");
-		fs.mkdirSync(bundledConventions, { recursive: true });
-		fs.mkdirSync(liveConventions, { recursive: true });
-		fs.writeFileSync(bundledFile, "bundled convention\n");
-		fs.writeFileSync(liveOnlyFile, "live-only convention\n");
-
-		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
-
-		expect(
-			fs.readFileSync(path.join(liveConventions, "bundled.md"), "utf-8"),
-		).toBe("bundled convention\n");
-		expect(fs.existsSync(liveOnlyFile)).toBe(false);
+		for (const directory of ["conventions", "output-styles", "hooks"]) {
+			expect(fs.existsSync(path.join(configsDir, directory))).toBe(false);
+		}
 	});
 });
 
@@ -950,10 +914,11 @@ describe("syncClaudeConfig() merge-deploys co-owned directories", () => {
 		).toBe(true);
 	});
 
-	it("WIPE dir removes an untracked live file", async () => {
+	it("T15 leaves unowned conventions content untouched", async () => {
 		const bundledConventions = path.join(configsDir, "conventions");
 		const liveConventions = path.join(claudeDir, "conventions");
 		const liveOnly = path.join(liveConventions, "stale.md");
+		const bundledOnly = path.join(liveConventions, "current.md");
 		fs.mkdirSync(bundledConventions, { recursive: true });
 		fs.mkdirSync(liveConventions, { recursive: true });
 		fs.writeFileSync(path.join(bundledConventions, "current.md"), "current\n");
@@ -961,6 +926,7 @@ describe("syncClaudeConfig() merge-deploys co-owned directories", () => {
 
 		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
 
-		expect(fs.existsSync(liveOnly)).toBe(false);
+		expect(fs.readFileSync(liveOnly, "utf-8")).toBe("stale\n");
+		expect(fs.existsSync(bundledOnly)).toBe(false);
 	});
 });
