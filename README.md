@@ -108,8 +108,8 @@ haoshoku --hyprland
     -   **KDE Glass Blur**: Optional installation of glass blur effect for KDE Plasma 6 (reinstall easily after KDE updates with `--kde-glass`).
     -   Sets up gaming tools (Steam, Lutris) and media players (mpv).
 -   **AI Configuration**:
-    -   **Claude Code Config**: Deploys personal config, conventions, and output-styles (`haoshoku --claude`).
-    -   **Claude Backup**: Backs up personal config to `configs/claude/` (`haoshoku --claude-backup`).
+    -   **Claude Code Config**: Deploys personal config and managed directories, and merge-deploys bundled agents/workflows without removing unrelated live entries (`haoshoku --claude`).
+    -   **Claude Backup**: Backs up personal config and managed/co-owned directories to `configs/claude/`, skipping symlinks (`haoshoku --claude-backup`).
     -   **Skill Management**: Runtime git cloning of Claude skills and agents (`haoshoku --skills`).
     -   **Superpowers**: Idempotently enables the Superpowers plugin in `~/.claude/settings.json` (`haoshoku --superpowers`).
 
@@ -176,7 +176,7 @@ Haoshoku manages Claude Code config via runtime git cloning to enable global npm
 
 ## Configuration
 
-All configuration templates are stored in the `configs/` directory. Terminal configs (fish, warp, starship, fastfetch) are copied during setup. Claude skills and agents are symlinked:
+All configuration templates are stored in the `configs/` directory. Terminal configs (fish, warp, starship, fastfetch) are copied during setup. Claude skills are symlinked; bundled agents/workflows are merge-deployed, while skill-source agents are symlinked unless shadowed by a real local file:
 
 -   `configs/fish/`: Fish shell configuration and functions.
 -   `configs/warp/`: Warp terminal tab config (theme is activated in `settings.toml`).

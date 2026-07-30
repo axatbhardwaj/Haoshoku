@@ -10,6 +10,7 @@ import {
 	backupClaudeConfig,
 	syncClaudeConfig,
 } from "../src/helpers/configure_claude.js";
+import { mergeAgents } from "../src/helpers/skill_manager.js";
 
 describe("PERSONAL_FILES manifest", () => {
 	it("includes statusline-command.sh (regression — must not be silently dropped)", () => {
@@ -91,22 +92,22 @@ describe("Claude directory ownership manifests", () => {
 		expect(WIPE_DIRS).toEqual(["conventions", "output-styles", "hooks"]);
 	});
 
-	it("keeps agents and workflows backup-only", () => {
-		expect(claudeConfig.BACKUP_ONLY_DIRS).toEqual(["agents", "workflows"]);
+	it("merge-deploys the co-owned agents and workflows directories", () => {
+		expect(claudeConfig.MERGE_DEPLOY_DIRS).toEqual(["agents", "workflows"]);
 	});
 
-	it("does not expose a merge-deploy directory manifest", () => {
-		expect("MERGE_DIRS" in claudeConfig).toBe(false);
+	it("retires the backup-only manifest in favor of merge-deploy ownership", () => {
+		expect("BACKUP_ONLY_DIRS" in claudeConfig).toBe(false);
 	});
 });
 
-describe("backupClaudeConfig() captures backup-only directories", () => {
+describe("backupClaudeConfig() captures co-owned directories", () => {
 	let tmpDir;
 	let configsDir;
 	let claudeHome;
 
 	beforeEach(() => {
-		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-backup-only-"));
+		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-co-owned-"));
 		configsDir = path.join(tmpDir, "configs", "claude");
 		claudeHome = path.join(tmpDir, "claude-home");
 	});
@@ -427,11 +428,13 @@ describe("syncClaudeConfig() replaces WIPE_DIRS (stale entries do not linger)", 
 	});
 });
 
-describe("syncClaudeConfig() applies directory ownership semantics", () => {
+describe("syncClaudeConfig() merge-deploys co-owned directories", () => {
 	let tmpDir;
 	let configsDir;
 	let claudeHome;
 	let claudeDir;
+	let logs;
+	let originalLog;
 
 	beforeEach(() => {
 		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-claudeownership-"));
@@ -443,53 +446,508 @@ describe("syncClaudeConfig() applies directory ownership semantics", () => {
 		for (const f of PERSONAL_FILES) {
 			fs.writeFileSync(path.join(configsDir, f.src), "x");
 		}
+		logs = {
+			info: [],
+			success: [],
+			warning: [],
+			error: [],
+		};
+		const utils = require("../src/common/utils.js");
+		originalLog = {
+			info: utils.log.info,
+			success: utils.log.success,
+			warning: utils.log.warning,
+			error: utils.log.error,
+		};
+		for (const level of Object.keys(logs)) {
+			utils.log[level] = (message) => logs[level].push(message);
+		}
 	});
 
 	afterEach(() => {
+		const utils = require("../src/common/utils.js");
+		Object.assign(utils.log, originalLog);
 		fs.rmSync(tmpDir, { recursive: true, force: true });
 	});
 
-	it("does not create, modify, or delete files or symlinks in agents and workflows", async () => {
-		const bundledAgents = path.join(configsDir, "agents");
-		const bundledWorkflows = path.join(configsDir, "workflows");
-		const liveAgents = path.join(claudeDir, "agents");
-		const liveWorkflows = path.join(claudeDir, "workflows");
-		const externalFile = path.join(tmpDir, "skill-manager-agent.md");
-		const externalLink = path.join(liveAgents, "skill-manager-agent.md");
-		fs.mkdirSync(bundledAgents, { recursive: true });
-		fs.mkdirSync(bundledWorkflows, { recursive: true });
-		fs.mkdirSync(liveAgents, { recursive: true });
-		fs.mkdirSync(liveWorkflows, { recursive: true });
-		fs.writeFileSync(path.join(bundledAgents, "existing.md"), "bundled agent\n");
-		fs.writeFileSync(path.join(bundledAgents, "bundled-only.md"), "new agent\n");
-		fs.writeFileSync(
-			path.join(bundledWorkflows, "existing.md"),
-			"bundled workflow\n",
-		);
-		fs.writeFileSync(
-			path.join(bundledWorkflows, "bundled-only.md"),
-			"new workflow\n",
-		);
-		const liveAgent = path.join(liveAgents, "existing.md");
-		const liveWorkflow = path.join(liveWorkflows, "existing.md");
-		fs.writeFileSync(liveAgent, "live agent\n");
-		fs.writeFileSync(liveWorkflow, "live workflow\n");
-		fs.writeFileSync(externalFile, "external agent\n");
-		fs.symlinkSync(externalFile, externalLink);
+	function bundlePath(directory, relativePath) {
+		return path.join(configsDir, directory, relativePath);
+	}
 
-		const agentBefore = fs.readFileSync(liveAgent);
-		const workflowBefore = fs.readFileSync(liveWorkflow);
+	function livePath(directory, relativePath) {
+		return path.join(claudeDir, directory, relativePath);
+	}
+
+	function writeBundle(directory, relativePath, content, mode) {
+		const filePath = bundlePath(directory, relativePath);
+		fs.mkdirSync(path.dirname(filePath), { recursive: true });
+		fs.writeFileSync(filePath, content);
+		if (mode !== undefined) {
+			fs.chmodSync(filePath, mode);
+		}
+		return filePath;
+	}
+
+	function listTree(root) {
+		if (!fs.existsSync(root)) return [];
+		const entries = [];
+		const walk = (current, relative = "") => {
+			for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+				const entryRelative = path.join(relative, entry.name);
+				const entryPath = path.join(current, entry.name);
+				const stat = fs.lstatSync(entryPath);
+				entries.push({
+					path: entryRelative,
+					type: stat.isSymbolicLink()
+						? "symlink"
+						: stat.isDirectory()
+							? "directory"
+							: "file",
+				});
+				if (stat.isDirectory()) {
+					walk(entryPath, entryRelative);
+				}
+			}
+		};
+		walk(root);
+		return entries.sort((a, b) => a.path.localeCompare(b.path));
+	}
+
+	function backupBase() {
+		return path.join(
+			claudeHome,
+			".local",
+			"state",
+			"haoshoku",
+			"backups",
+		);
+	}
+
+	it("T1 basic deploy copies agents and workflows byte-exact and preserves executable mode", async () => {
+		const agentBody = Buffer.from("# bundled agent\n");
+		const workflowBody = Buffer.from("# bundled workflow\n");
+		const executableBody = Buffer.from("#!/bin/sh\necho task\n");
+		writeBundle("agents", "bundled.md", agentBody);
+		writeBundle("workflows", "review.md", workflowBody);
+		writeBundle("agents", "run-codex-task.sh", executableBody, 0o755);
 
 		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
 
-		expect(fs.readFileSync(liveAgent)).toEqual(agentBefore);
-		expect(fs.readFileSync(liveWorkflow)).toEqual(workflowBefore);
-		expect(fs.existsSync(path.join(liveAgents, "bundled-only.md"))).toBe(false);
-		expect(fs.existsSync(path.join(liveWorkflows, "bundled-only.md"))).toBe(
+		expect(fs.existsSync(livePath("agents", "bundled.md"))).toBe(true);
+		expect(fs.existsSync(livePath("workflows", "review.md"))).toBe(true);
+		expect(fs.existsSync(livePath("agents", "run-codex-task.sh"))).toBe(true);
+		expect(fs.readFileSync(livePath("agents", "bundled.md"))).toEqual(agentBody);
+		expect(fs.readFileSync(livePath("workflows", "review.md"))).toEqual(
+			workflowBody,
+		);
+		const executable = livePath("agents", "run-codex-task.sh");
+		expect(fs.readFileSync(executable)).toEqual(executableBody);
+		expect(fs.statSync(executable).mode & 0o111).toBe(0o111);
+		expect(logs.info.some((message) => message.includes("deployed agents/"))).toBe(
+			true,
+		);
+		expect(
+			logs.success.some(
+				(message) =>
+					message.includes("deployed=3") &&
+					message.includes("unchanged=0") &&
+					message.includes("backed-up=0") &&
+					message.includes("refused=0"),
+			),
+		).toBe(true);
+	});
+
+	it("T2 preserves every foreign path absent from the bundle", async () => {
+		writeBundle("agents", "owned.md", "bundled agent\n");
+		writeBundle("workflows", "owned.js", "bundled workflow\n");
+		const foreignFile = livePath("agents", "foreign.md");
+		const foreignTarget = path.join(tmpDir, "foreign-target.md");
+		const foreignLink = livePath("agents", "foreign-link.md");
+		const foreignNested = livePath("workflows", "user", "script.sh");
+		fs.mkdirSync(path.dirname(foreignFile), { recursive: true });
+		fs.mkdirSync(path.dirname(foreignNested), { recursive: true });
+		fs.writeFileSync(foreignFile, "foreign real\n");
+		fs.writeFileSync(foreignTarget, "foreign target\n");
+		fs.symlinkSync(foreignTarget, foreignLink);
+		fs.writeFileSync(foreignNested, "foreign nested\n");
+		const fileTypeBefore = fs.lstatSync(foreignFile).mode & 0o170000;
+		const nestedTypeBefore =
+			fs.lstatSync(path.dirname(foreignNested)).mode & 0o170000;
+		const linkTargetBefore = fs.readlinkSync(foreignLink);
+
+		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
+
+		expect(fs.lstatSync(foreignFile).mode & 0o170000).toBe(fileTypeBefore);
+		expect(fs.readFileSync(foreignFile, "utf-8")).toBe("foreign real\n");
+		expect(fs.lstatSync(foreignLink).isSymbolicLink()).toBe(true);
+		expect(fs.readlinkSync(foreignLink)).toBe(linkTargetBefore);
+		expect(fs.readFileSync(foreignTarget, "utf-8")).toBe("foreign target\n");
+		expect(
+			fs.lstatSync(path.dirname(foreignNested)).mode & 0o170000,
+		).toBe(nestedTypeBefore);
+		expect(fs.readFileSync(foreignNested, "utf-8")).toBe("foreign nested\n");
+		expect(fs.existsSync(livePath("agents", "owned.md"))).toBe(true);
+		expect(fs.existsSync(livePath("workflows", "owned.js"))).toBe(true);
+		expect(fs.readFileSync(livePath("agents", "owned.md"), "utf-8")).toBe(
+			"bundled agent\n",
+		);
+		expect(fs.readFileSync(livePath("workflows", "owned.js"), "utf-8")).toBe(
+			"bundled workflow\n",
+		);
+	});
+
+	it("T3 replaces a bundle-owned foreign symlink without writing through it", async () => {
+		const bundled = Buffer.from("bundled replacement\n");
+		const externalOriginal = Buffer.from("skills repository content\n");
+		writeBundle("agents", "collision.md", bundled);
+		const externalTarget = path.join(tmpDir, "skills-repo-agent.md");
+		const collision = livePath("agents", "collision.md");
+		fs.mkdirSync(path.dirname(collision), { recursive: true });
+		fs.writeFileSync(externalTarget, externalOriginal);
+		fs.symlinkSync(externalTarget, collision);
+
+		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
+
+		expect(fs.readFileSync(externalTarget)).toEqual(externalOriginal);
+		expect(fs.lstatSync(collision).isSymbolicLink()).toBe(false);
+		expect(fs.readFileSync(collision)).toEqual(bundled);
+	});
+
+	it("T4 creates no in-tree backup artifacts or copies of foreign target content", async () => {
+		const bundledAgent = "bundled agent\n";
+		const bundledWorkflow = "bundled workflow\n";
+		const foreignOriginal = "unique foreign target bytes\n";
+		writeBundle("agents", "collision.md", bundledAgent);
+		writeBundle("workflows", "review.js", bundledWorkflow);
+		const externalTarget = path.join(tmpDir, "external-workflow.js");
+		const collision = livePath("agents", "collision.md");
+		fs.mkdirSync(path.dirname(collision), { recursive: true });
+		fs.writeFileSync(externalTarget, foreignOriginal);
+		fs.symlinkSync(externalTarget, collision);
+
+		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
+
+		const agentsTree = listTree(path.join(claudeDir, "agents"));
+		const workflowsTree = listTree(path.join(claudeDir, "workflows"));
+		expect(agentsTree).toEqual([{ path: "collision.md", type: "file" }]);
+		expect(workflowsTree).toEqual([{ path: "review.js", type: "file" }]);
+		expect(
+			[...agentsTree, ...workflowsTree].some((entry) =>
+				entry.path.endsWith(".bak"),
+			),
+		).toBe(false);
+		for (const directory of ["agents", "workflows"]) {
+			for (const entry of listTree(path.join(claudeDir, directory))) {
+				if (entry.type === "file") {
+					expect(
+						fs.readFileSync(path.join(claudeDir, directory, entry.path), "utf-8"),
+					).not.toBe(foreignOriginal);
+				}
+			}
+		}
+		expect(fs.readFileSync(externalTarget, "utf-8")).toBe(foreignOriginal);
+	});
+
+	it("T5 externally backs up a differing real file byte-exact before overwrite", async () => {
+		const original = Buffer.from([0x00, 0xff, 0x10, 0x0a, 0x42]);
+		const bundled = Buffer.from([0x42, 0x0a, 0x10, 0xff, 0x00]);
+		writeBundle("agents", path.join("nested", "collision.bin"), bundled);
+		const collision = livePath("agents", path.join("nested", "collision.bin"));
+		fs.mkdirSync(path.dirname(collision), { recursive: true });
+		fs.writeFileSync(collision, original);
+
+		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
+
+		expect(fs.existsSync(backupBase())).toBe(true);
+		const backupRoots = fs.readdirSync(backupBase());
+		expect(backupRoots).toHaveLength(1);
+		const backupRoot = path.join(backupBase(), backupRoots[0]);
+		const backedUpFile = path.join(
+			backupRoot,
+			"agents",
+			"nested",
+			"collision.bin",
+		);
+		expect(path.relative(path.join(claudeDir, "agents"), backupRoot).startsWith("..")).toBe(
+			true,
+		);
+		expect(
+			path.relative(path.join(claudeDir, "workflows"), backupRoot).startsWith(
+				"..",
+			),
+		).toBe(true);
+		expect(fs.readFileSync(backedUpFile)).toEqual(original);
+		expect(fs.readFileSync(collision)).toEqual(bundled);
+		fs.copyFileSync(backedUpFile, collision);
+		expect(fs.readFileSync(collision)).toEqual(original);
+		expect(
+			logs.success.some(
+				(message) =>
+					message.includes(backupRoot) &&
+					message.includes("deployed=1") &&
+					message.includes("backed-up=1"),
+			),
+		).toBe(true);
+	});
+
+	it("T6 replaces a dangling bundle-owned symlink without materializing its target", async () => {
+		writeBundle("agents", "dangling.md", "bundled\n");
+		const missingTarget = path.join(tmpDir, "missing", "target.md");
+		const dangling = livePath("agents", "dangling.md");
+		fs.mkdirSync(path.dirname(dangling), { recursive: true });
+		fs.symlinkSync(missingTarget, dangling);
+		expect(fs.existsSync(dangling)).toBe(false);
+		expect(fs.lstatSync(dangling).isSymbolicLink()).toBe(true);
+
+		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
+
+		expect(fs.existsSync(missingTarget)).toBe(false);
+		expect(fs.lstatSync(dangling).isSymbolicLink()).toBe(false);
+		expect(fs.readFileSync(dangling, "utf-8")).toBe("bundled\n");
+		const backupRoots = fs.readdirSync(backupBase());
+		expect(backupRoots).toHaveLength(1);
+		const backedUpLink = path.join(
+			backupBase(),
+			backupRoots[0],
+			"agents",
+			"dangling.md",
+		);
+		expect(fs.lstatSync(backedUpLink).isSymbolicLink()).toBe(true);
+		expect(fs.readlinkSync(backedUpLink)).toBe(missingTarget);
+	});
+
+	it("T7 refuses a live directory where the bundle has a file and continues", async () => {
+		writeBundle("agents", "collision.md", "bundle file\n");
+		writeBundle("agents", "sibling.md", "bundle sibling\n");
+		const collision = livePath("agents", "collision.md");
+		const nested = path.join(collision, "user-file.md");
+		fs.mkdirSync(collision, { recursive: true });
+		fs.writeFileSync(nested, "user bytes\n");
+
+		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
+
+		expect(fs.lstatSync(collision).isDirectory()).toBe(true);
+		expect(fs.readFileSync(nested, "utf-8")).toBe("user bytes\n");
+		expect(fs.existsSync(livePath("agents", "sibling.md"))).toBe(true);
+		expect(fs.readFileSync(livePath("agents", "sibling.md"), "utf-8")).toBe(
+			"bundle sibling\n",
+		);
+		expect(
+			logs.error.some(
+				(message) =>
+					message.includes("refused") && message.includes("agents/collision.md"),
+			),
+		).toBe(true);
+		expect(
+			logs.success.some(
+				(message) =>
+					message.includes("deployed=1") && message.includes("refused=1"),
+			),
+		).toBe(true);
+	});
+
+	it("refuses a live file where the bundle has a directory and continues", async () => {
+		writeBundle("workflows", path.join("nested", "bundle.js"), "bundle nested\n");
+		writeBundle("workflows", "sibling.js", "bundle sibling\n");
+		const collision = livePath("workflows", "nested");
+		fs.mkdirSync(path.dirname(collision), { recursive: true });
+		fs.writeFileSync(collision, "user file\n");
+
+		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
+
+		expect(fs.lstatSync(collision).isFile()).toBe(true);
+		expect(fs.readFileSync(collision, "utf-8")).toBe("user file\n");
+		expect(fs.existsSync(livePath("workflows", "sibling.js"))).toBe(true);
+		expect(fs.readFileSync(livePath("workflows", "sibling.js"), "utf-8")).toBe(
+			"bundle sibling\n",
+		);
+		expect(
+			logs.error.some(
+				(message) =>
+					message.includes("refused") && message.includes("workflows/nested"),
+			),
+		).toBe(true);
+	});
+
+	it("T8 makes an identical second deploy a write-free no-op with no new backup root", async () => {
+		writeBundle("agents", "stable.md", "stable bytes\n");
+
+		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
+
+		const deployed = livePath("agents", "stable.md");
+		expect(fs.existsSync(deployed)).toBe(true);
+		const oldTime = new Date("2000-01-01T00:00:00.000Z");
+		fs.utimesSync(deployed, oldTime, oldTime);
+		const beforeMtime = fs.statSync(deployed).mtimeMs;
+		const beforeBackupCount = fs.existsSync(backupBase())
+			? fs.readdirSync(backupBase()).length
+			: 0;
+		for (const level of Object.keys(logs)) logs[level].length = 0;
+
+		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
+
+		const afterBackupCount = fs.existsSync(backupBase())
+			? fs.readdirSync(backupBase()).length
+			: 0;
+		expect(fs.readFileSync(deployed, "utf-8")).toBe("stable bytes\n");
+		expect(fs.statSync(deployed).mtimeMs).toBe(beforeMtime);
+		expect(afterBackupCount).toBe(beforeBackupCount);
+		expect(
+			logs.info.some(
+				(message) =>
+					message.includes("unchanged") && message.includes("agents/stable.md"),
+			),
+		).toBe(true);
+		expect(
+			logs.success.some(
+				(message) =>
+					message.includes("unchanged=1") && message.includes("backed-up=0"),
+			),
+		).toBe(true);
+	});
+
+	it("T9 converges regardless of whether mergeAgents or config deploy runs first", async () => {
+		async function runOrder(order, rootName) {
+			const root = path.join(tmpDir, rootName);
+			const treeConfigs = path.join(root, "configs", "claude");
+			const treeHome = path.join(root, "home");
+			const treeAgents = path.join(treeHome, ".claude", "agents");
+			const skillsRoot = path.join(root, "skills-source");
+			const skillsAgents = path.join(skillsRoot, "agents");
+			fs.mkdirSync(treeConfigs, { recursive: true });
+			for (const file of PERSONAL_FILES) {
+				fs.writeFileSync(path.join(treeConfigs, file.src), "x");
+			}
+			fs.mkdirSync(path.join(treeConfigs, "agents"), { recursive: true });
+			fs.writeFileSync(
+				path.join(treeConfigs, "agents", "collision.md"),
+				"bundle wins\n",
+			);
+			fs.mkdirSync(skillsAgents, { recursive: true });
+			fs.writeFileSync(
+				path.join(skillsAgents, "collision.md"),
+				"skills collision\n",
+			);
+			fs.writeFileSync(
+				path.join(skillsAgents, "skills-only.md"),
+				"skills only\n",
+			);
+			const source = {
+				name: "fake-skills",
+				cachePath: skillsRoot,
+			};
+			const deploy = () =>
+				syncClaudeConfig({ srcDir: treeConfigs, claudeHome: treeHome });
+			const merge = () => mergeAgents([source], { agentsDir: treeAgents });
+			if (order === "merge-first") {
+				merge();
+				await deploy();
+			} else {
+				await deploy();
+				merge();
+			}
+			return treeAgents;
+		}
+
+		const mergeFirst = await runOrder("merge-first", "merge-first");
+		const deployFirst = await runOrder("deploy-first", "deploy-first");
+
+		for (const agentsDir of [mergeFirst, deployFirst]) {
+			const collision = path.join(agentsDir, "collision.md");
+			const skillsOnly = path.join(agentsDir, "skills-only.md");
+			expect(fs.lstatSync(collision).isSymbolicLink()).toBe(false);
+			expect(fs.readFileSync(collision, "utf-8")).toBe("bundle wins\n");
+			expect(fs.lstatSync(skillsOnly).isSymbolicLink()).toBe(true);
+		}
+		expect(listTree(mergeFirst)).toEqual(listTree(deployFirst));
+		expect(logs.error).toEqual([]);
+	});
+
+	it("T12 refuses backup placement inside a co-owned live directory and continues", async () => {
+		writeBundle("agents", "collision.md", "bundle collision\n");
+		writeBundle("agents", "sibling.md", "bundle sibling\n");
+		const collision = livePath("agents", "collision.md");
+		fs.mkdirSync(path.dirname(collision), { recursive: true });
+		fs.writeFileSync(collision, "local collision\n");
+		const stateHome = path.join(claudeDir, "agents");
+
+		await syncClaudeConfig({ srcDir: configsDir, claudeHome, stateHome });
+
+		expect(fs.readFileSync(collision, "utf-8")).toBe("local collision\n");
+		expect(fs.readFileSync(livePath("agents", "sibling.md"), "utf-8")).toBe(
+			"bundle sibling\n",
+		);
+		expect(fs.existsSync(path.join(stateHome, "haoshoku"))).toBe(false);
+		expect(
+			logs.error.some(
+				(message) =>
+					message.includes("refused") &&
+					message.includes("external backup root"),
+			),
+		).toBe(true);
+	});
+
+	it("T13 refuses a multiply-linked real file without mutating either alias and continues", async () => {
+		writeBundle("workflows", "collision.js", "bundle collision\n");
+		writeBundle("workflows", "sibling.js", "bundle sibling\n");
+		const collision = livePath("workflows", "collision.js");
+		const externalAlias = path.join(tmpDir, "external-workflow.js");
+		fs.mkdirSync(path.dirname(collision), { recursive: true });
+		fs.writeFileSync(collision, "shared local bytes\n");
+		fs.linkSync(collision, externalAlias);
+		expect(fs.lstatSync(collision).nlink).toBe(2);
+
+		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
+
+		expect(fs.readFileSync(collision, "utf-8")).toBe("shared local bytes\n");
+		expect(fs.readFileSync(externalAlias, "utf-8")).toBe("shared local bytes\n");
+		expect(fs.readFileSync(livePath("workflows", "sibling.js"), "utf-8")).toBe(
+			"bundle sibling\n",
+		);
+		expect(
+			logs.error.some(
+				(message) =>
+					message.includes("refused") &&
+					message.includes("multiple hard links"),
+			),
+		).toBe(true);
+		expect(fs.existsSync(backupBase())).toBe(false);
+		expect(
+			logs.success.some(
+				(message) =>
+					message.includes("deployed=1") &&
+					message.includes("backed-up=0") &&
+					message.includes("refused=1"),
+			),
+		).toBe(true);
+	});
+
+	it("T14 refuses a symlinked state root that resolves inside a co-owned directory", async () => {
+		writeBundle("agents", "collision.md", "bundle collision\n");
+		writeBundle("agents", "sibling.md", "bundle sibling\n");
+		const collision = livePath("agents", "collision.md");
+		fs.mkdirSync(path.dirname(collision), { recursive: true });
+		fs.writeFileSync(collision, "local collision\n");
+		const stateHome = path.join(tmpDir, "state-link");
+		fs.symlinkSync(path.join(claudeDir, "agents"), stateHome);
+
+		await syncClaudeConfig({ srcDir: configsDir, claudeHome, stateHome });
+
+		expect(fs.readFileSync(collision, "utf-8")).toBe("local collision\n");
+		expect(fs.readFileSync(livePath("agents", "sibling.md"), "utf-8")).toBe(
+			"bundle sibling\n",
+		);
+		expect(fs.existsSync(path.join(claudeDir, "agents", "haoshoku"))).toBe(
 			false,
 		);
-		expect(fs.lstatSync(externalLink).isSymbolicLink()).toBe(true);
-		expect(fs.readFileSync(externalFile, "utf-8")).toBe("external agent\n");
+		expect(fs.lstatSync(stateHome).isSymbolicLink()).toBe(true);
+		expect(
+			logs.error.some(
+				(message) =>
+					message.includes("refused") &&
+					message.includes("external backup root"),
+			),
+		).toBe(true);
 	});
 
 	it("WIPE dir removes an untracked live file", async () => {

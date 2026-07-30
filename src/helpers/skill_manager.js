@@ -566,9 +566,19 @@ export function mergeAgents(sources, opts = {}) {
 			const srcPath = path.join(srcAgentsDir, entry.name);
 			const destPath = path.join(agentsDir, entry.name);
 
-			if (pathExists(destPath) && updateSymlinkIfNeeded(destPath, srcPath)) {
-				seenAgents.add(entry.name);
-				continue;
+			if (pathExists(destPath)) {
+				const destStat = fs.lstatSync(destPath);
+				if (!destStat.isSymbolicLink()) {
+					log.warning(
+						`agent ${entry.name} shadowed by local file at ${destPath}`,
+					);
+					seenAgents.add(entry.name);
+					continue;
+				}
+				if (updateSymlinkIfNeeded(destPath, srcPath)) {
+					seenAgents.add(entry.name);
+					continue;
+				}
 			}
 
 			try {
@@ -582,6 +592,7 @@ export function mergeAgents(sources, opts = {}) {
 	}
 
 	log.success(`Merged ${seenAgents.size} agents to ${agentsDir}`);
+	return seenAgents;
 }
 
 /**

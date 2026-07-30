@@ -5,11 +5,12 @@
 The Claude configuration uses a hybrid sync pattern:
 
 **Copied from haoshoku template (`configs/claude/`):**
-- `claude.json`, `settings.json`, `CLAUDE.md` — personal config
-- `conventions/`, `output-styles/` — managed directories (replaced on sync)
+- `settings.json`, `CLAUDE.md`, `statusline-command.sh`, `.gitignore` — personal config
+- `conventions/`, `output-styles/`, `hooks/` — managed directories (replaced on sync)
+- `agents/`, `workflows/` — co-owned directories (bundle-listed paths are merge-deployed; unrelated live paths are preserved)
 - Updates via `--claude-backup` (capture) and `--claude` (deploy)
 
-**Symlinked from cache:** `agents/`, `skills/`
+**Symlinked from cache:** `skills/` and non-shadowed agent files
 - Source: `~/.cache/haoshoku/{owner}-{repo}/` (runtime git clone)
 - Updates via `--skills` or `--skills-update`
 
@@ -26,8 +27,8 @@ The Claude configuration uses a hybrid sync pattern:
 
 ## CLI Flags
 
-- `--claude` - deploy personal config + conventions + output-styles
-- `--claude-backup` - backup personal config + conventions + output-styles
+- `--claude` - deploy personal config, replace managed directories, and merge-deploy bundled agents/workflows
+- `--claude-backup` - backup personal config and managed/co-owned directories while skipping symlinks
 - `--claude-update` - update cache + sync
 - `--superpowers` - enable Superpowers plugin in settings.json
 
@@ -39,7 +40,7 @@ Runtime git cloning for Claude skills and agents.
 
 **Cache Location**: XDG_CACHE_HOME/haoshoku/ follows XDG Base Directory spec, prevents home directory pollution.
 
-**Symlinks**: Skills and agents symlinked (not copied) to ~/.claude/ for single source of truth — updates to cache immediately visible to Claude Code.
+**Symlinks**: Skills are symlinked to `~/.claude/skills/`. Agents are symlinked into `~/.claude/agents/` unless a real local or merge-deployed file with the same name shadows the cached agent.
 
 ### Cache Structure
 
@@ -52,14 +53,14 @@ $XDG_CACHE_HOME/haoshoku/          # Typically ~/.cache/haoshoku/
     │
     ▼
 ~/.claude/skills/ → symlinks merged from cache
-~/.claude/agents/ → symlinks merged from cache
+~/.claude/agents/ → merge-deployed/local files + non-shadowed cache symlinks
 ```
 
 ### Priority Rules
 
 - Sources processed in config array order (first wins)
 - First occurrence of skill/agent name wins (Set-based deduplication)
-- ~/.claude/skills/ and ~/.claude/agents/ contain only symlinks, never copies
+- ~/.claude/skills/ contains symlinks; ~/.claude/agents/ may also contain local or merge-deployed real files
 
 ### Design Decisions
 

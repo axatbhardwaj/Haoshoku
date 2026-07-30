@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 
 import {
+	mergeAgents,
 	mergeSkills,
 	resolveDefaultBranch,
 	syncSkills,
@@ -222,6 +223,75 @@ describe("mergeSkills() — symlinkSharedResource safe-backup", () => {
 		expect(destStat.isSymbolicLink()).toBe(true);
 		const srcScripts = path.join(source.cachePath, "skills", "scripts");
 		expect(fs.readlinkSync(destScripts)).toBe(srcScripts);
+	});
+});
+
+describe("mergeAgents() local-file shadowing", () => {
+	let tmpDir;
+	let agentsDir;
+	let source;
+	let warnings;
+	let errors;
+	let originalWarning;
+	let originalError;
+
+	beforeEach(() => {
+		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-agents-"));
+		agentsDir = path.join(tmpDir, "live-agents");
+		const cachePath = path.join(tmpDir, "skills-source");
+		const sourceAgents = path.join(cachePath, "agents");
+		fs.mkdirSync(sourceAgents, { recursive: true });
+		fs.writeFileSync(path.join(sourceAgents, "collision.md"), "skills agent\n");
+		source = { name: "fake-skills", cachePath };
+		warnings = [];
+		errors = [];
+		const utils = require("../src/common/utils.js");
+		originalWarning = utils.log.warning;
+		originalError = utils.log.error;
+		utils.log.warning = (message) => warnings.push(message);
+		utils.log.error = (message) => errors.push(message);
+	});
+
+	afterEach(() => {
+		const utils = require("../src/common/utils.js");
+		utils.log.warning = originalWarning;
+		utils.log.error = originalError;
+		fs.rmSync(tmpDir, { recursive: true, force: true });
+	});
+
+	it("T10 leaves a real agent file unchanged, warns, and counts it as seen", () => {
+		fs.mkdirSync(agentsDir, { recursive: true });
+		const collision = path.join(agentsDir, "collision.md");
+		const localBytes = Buffer.from("local agent\n");
+		fs.writeFileSync(collision, localBytes);
+
+		const seenAgents = mergeAgents([source], { agentsDir });
+
+		expect(fs.lstatSync(collision).isSymbolicLink()).toBe(false);
+		expect(fs.readFileSync(collision)).toEqual(localBytes);
+		expect(warnings).toHaveLength(1);
+		expect(warnings[0]).toContain("collision.md");
+		expect(warnings[0]).toContain(collision);
+		expect(errors).toEqual([]);
+		expect(seenAgents).toBeInstanceOf(Set);
+		expect(seenAgents.has("collision.md")).toBe(true);
+	});
+
+	it("T11 keeps an already-correct symlink unchanged and counted as seen", () => {
+		fs.mkdirSync(agentsDir, { recursive: true });
+		const sourceAgent = path.join(source.cachePath, "agents", "collision.md");
+		const collision = path.join(agentsDir, "collision.md");
+		fs.symlinkSync(sourceAgent, collision);
+		const linkBefore = fs.readlinkSync(collision);
+
+		const seenAgents = mergeAgents([source], { agentsDir });
+
+		expect(fs.lstatSync(collision).isSymbolicLink()).toBe(true);
+		expect(fs.readlinkSync(collision)).toBe(linkBefore);
+		expect(warnings).toEqual([]);
+		expect(errors).toEqual([]);
+		expect(seenAgents).toBeInstanceOf(Set);
+		expect(seenAgents.has("collision.md")).toBe(true);
 	});
 });
 
