@@ -1,34 +1,37 @@
 # configs/claude/
 
-Personal Claude Code configuration backed up from `~/.claude/`.
+Claude Code configuration deployed to `~/.claude/`.
 
-## What lives here vs. skills repo
+## Deploy surface
 
-| Content               | Source                     | Sync Method        | Deployed by        |
-| --------------------- | -------------------------- | ------------------ | ------------------ |
-| Personal config files | This directory             | Copied             | `--claude`         |
-| `conventions/`        | This directory             | Copied             | `--claude`         |
-| `output-styles/`      | This directory             | Copied             | `--claude`         |
-| Skills                | axatbhardwaj/claude-skills | Symlinked          | `--skills`         |
-| Agents                | axatbhardwaj/claude-skills | Symlinked          | `--skills`         |
-| Superpowers plugin    | claude-plugins-official    | Settings.json edit | `--superpowers`    |
+| Source                    | Destination                       | Deployment |
+| ------------------------- | --------------------------------- | ---------- |
+| `CLAUDE.md`               | `~/.claude/CLAUDE.md`             | Copied     |
+| `statusline-command.sh`   | `~/.claude/statusline-command.sh` | Copied     |
+| `gitignore.template`      | `~/.claude/.gitignore`            | Copied     |
+| `agents/`                 | `~/.claude/agents/`               | Merged     |
+| `workflows/`              | `~/.claude/workflows/`            | Merged     |
 
-## Files
+`haoshoku --claude` copies the three files and merge-deploys only the
+bundle-listed entries under `agents/` and `workflows/`. Unrelated live entries
+in those directories are preserved.
 
-| File            | Destination             | Contains                              |
-| --------------- | ----------------------- | ------------------------------------- |
-| `claude.json`   | `~/.claude.json`        | Preferences, OAuth, feature flags     |
-| `settings.json` | `~/.claude/settings.json`| Plugins, hooks, statusline config    |
-| `CLAUDE.md`     | `~/.claude/CLAUDE.md`   | Personal rules and workflow instructions |
+Skills are managed separately from this bundle. Use `haoshoku --skills` to
+sync configured skill sources and link their skills and non-shadowed agents
+from the cache.
 
 ## Workflow
 
 ```bash
-# Deploy config to ~/.claude/
+# Deploy the bundled Claude configuration
 haoshoku --claude
 
-# Backup changes from ~/.claude/ to this directory
+# Back up the same files and merge-managed directories
 haoshoku --claude-backup
+
+# Sync skills and externally sourced agents separately
+haoshoku --skills
 ```
 
-The `CLAUDE.md` in this directory is your personal rules file that Claude Code loads globally. It is NOT a navigation index for this directory.
+Backups skip symlinks and refuse files that contain literal absolute home paths,
+preventing private machine paths from entering the public bundle.

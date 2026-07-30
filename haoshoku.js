@@ -80,7 +80,7 @@ program
   .option("--os <type>", "Specify the target OS (cachyos, debian-server)")
   .option(
     "--claude",
-    "Deploy Claude Code config (personal files, conventions, agents)",
+    "Deploy Claude Code config (personal files, agents, workflows)",
   )
   .option("--claude-backup", "Backup personal Claude config to configs/claude/")
   .option("--claude-update", "Update cached config and sync Claude config")

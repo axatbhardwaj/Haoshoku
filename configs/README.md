@@ -7,18 +7,18 @@ This directory contains template configuration files that are deployed to the us
 Haoshoku uses a hybrid approach for configuration management:
 
 - **Regular configs** (fish, warp, alacritty, zed): Copied to destination. Ensures the system remains functional even if the source repository is moved or deleted, though changes to the local repo won't be reflected until setup runs again.
-- **Claude skills/agents** (from runtime git clone): Symlinked from cache to destination. Allows updates to skills without re-running setup.
-- **Claude personal config** (claude.json, settings.json): Copied to destination for user-specific customization.
+- **Claude bundled config** (`CLAUDE.md`, `statusline-command.sh`, `gitignore.template`, `agents/`, `workflows/`): The files are copied and the two directories are merge-deployed by `--claude`; the template is deployed as `~/.claude/.gitignore`.
+- **Claude skills and external agents** (from runtime git clones): Synced separately with `--skills` and symlinked from the cache; real bundled or local agents with the same name take priority.
 
 ## Architecture
 
 - **Isolation**: Each application has its own subdirectory (e.g., `fish/`, `warp/`).
 - **Standardization**: Configs are pre-configured with sensible defaults, nerd fonts, and color schemes (often matching the Haoshoku theme).
-- **Runtime Cloning**: Claude config (agents, conventions, skills) is fetched via git clone to `~/.cache/haoshoku/` at runtime, enabling npm global installs.
+- **Runtime Cloning**: Claude skills and external agents are fetched from configured sources to `~/.cache/haoshoku/` by `--skills`, enabling npm global installs without bundling those repositories.
 
 ## Design Decisions
 
-- **Copy vs Symlink**: Hybrid approach balances robustness and flexibility. Copying used for user-modifiable configs (terminal, editor), symlinks for shared resources (Claude skills) that benefit from synchronized updates.
+- **Copy vs Symlink**: Hybrid approach balances robustness and flexibility. User-modifiable configs are copied, bundled Claude agents/workflows are merge-deployed, and externally sourced Claude skills and non-shadowed agents are symlinked.
 - **Subdirectory Structure**: Mirrors the standard `~/.config/` structure for easier mental mapping.
 
 ## Invariants

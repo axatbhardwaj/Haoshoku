@@ -2,7 +2,6 @@ import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import {
-  copyDirRecursive,
   log,
   runCommand,
   safeCopyFile,
@@ -368,9 +367,58 @@ export async function syncClaudeConfig(options = {}) {
  * Copy personal files from ~/.claude/ to configs/claude/ for version control.
  * Same options as syncClaudeConfig, in reverse direction.
  */
+function findAbsoluteHomePath(content) {
+  const lines = content.toString("utf-8").split(/\r?\n/);
+  for (const [index, line] of lines.entries()) {
+    const matchedPath = line.match(/\/(?:home|Users)\/[^\s"'`<>)]*/)?.[0];
+    if (matchedPath) {
+      return {
+        line: line.trim(),
+        lineNumber: index + 1,
+        matchedPath,
+      };
+    }
+  }
+  return null;
+}
+
+function backupClaudeFile(srcPath, destPath, summary) {
+  const content = fs.readFileSync(srcPath);
+  const absoluteHomePath = findAbsoluteHomePath(content);
+  if (absoluteHomePath) {
+    summary.refused += 1;
+    log.warning(
+      `REFUSED Claude backup for ${srcPath}: ${absoluteHomePath.matchedPath} on line ${absoluteHomePath.lineNumber}: ${absoluteHomePath.line}`,
+    );
+    return false;
+  }
+
+  fs.mkdirSync(path.dirname(destPath), { recursive: true });
+  fs.copyFileSync(srcPath, destPath);
+  summary.backedUp += 1;
+  return true;
+}
+
+function backupClaudeDirectory(srcDir, destDir, summary) {
+  fs.mkdirSync(destDir, { recursive: true });
+  for (const entry of fs.readdirSync(srcDir, { withFileTypes: true })) {
+    const srcPath = path.join(srcDir, entry.name);
+    const destPath = path.join(destDir, entry.name);
+    if (entry.isSymbolicLink()) {
+      fs.rmSync(destPath, { recursive: true, force: true });
+      log.warning(`Skipping symlink during Claude backup (${srcPath})`);
+    } else if (entry.isDirectory()) {
+      backupClaudeDirectory(srcPath, destPath, summary);
+    } else {
+      backupClaudeFile(srcPath, destPath, summary);
+    }
+  }
+}
+
 export async function backupClaudeConfig(options = {}) {
   const { srcDir = CUSTOM_CLAUDE_DIR, claudeHome = HOME } = options;
   const claudeDir = path.join(claudeHome, ".claude");
+  const summary = { backedUp: 0, refused: 0 };
 
   log.info("Backing up Claude Code config...");
 
@@ -380,8 +428,9 @@ export async function backupClaudeConfig(options = {}) {
     const liveFile = file.dest ?? file.src;
     const livePath = claudeFilePath(liveFile, claudeHome);
     if (fs.existsSync(livePath)) {
-      fs.copyFileSync(livePath, path.join(srcDir, file.src));
-      log.info(`Backed up ${liveFile} to ${file.src}`);
+      if (backupClaudeFile(livePath, path.join(srcDir, file.src), summary)) {
+        log.info(`Backed up ${liveFile} to ${file.src}`);
+      }
     }
   }
 
@@ -389,17 +438,16 @@ export async function backupClaudeConfig(options = {}) {
     const src = path.join(claudeDir, dir);
     const dest = path.join(srcDir, dir);
     if (fs.existsSync(src)) {
-      copyDirRecursive(src, dest, {
-        skipSymlinks: true,
-        onSkipSymlink: (srcPath) => {
-          log.warning(`Skipping symlink during Claude backup (${srcPath})`);
-        },
-      });
+      backupClaudeDirectory(src, dest, summary);
       log.info(`Backed up ${dir}/`);
     }
   }
 
+  log.success(
+    `Claude backup summary: backed-up=${summary.backedUp}, refused=${summary.refused}`,
+  );
   log.success("Claude Code config backed up to configs/claude/");
+  return summary;
 }
 
 /** Idempotently enable the Superpowers plugin in ~/.claude/settings.json. */

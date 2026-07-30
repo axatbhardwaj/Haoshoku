@@ -287,6 +287,42 @@ describe("syncClaudeConfig() warns on missing sources", () => {
 	});
 });
 
+describe("syncClaudeConfig() preserves differing live personal files via .bak", () => {
+	let tmpDir;
+	let configsDir;
+	let claudeHome;
+	let claudeDir;
+
+	beforeEach(() => {
+		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-claudebak-"));
+		configsDir = path.join(tmpDir, "configs", "claude");
+		claudeHome = path.join(tmpDir, "claude-home");
+		claudeDir = path.join(claudeHome, ".claude");
+		fs.mkdirSync(configsDir, { recursive: true });
+		fs.mkdirSync(claudeDir, { recursive: true });
+	});
+
+	afterEach(() => {
+		fs.rmSync(tmpDir, { recursive: true, force: true });
+	});
+
+	it("backs up a differing live CLAUDE.md before overwriting it", async () => {
+		const liveClaudeMd = "# Live personal policy\n";
+		const bundledClaudeMd = "# Bundled policy\n";
+		fs.writeFileSync(path.join(claudeDir, "CLAUDE.md"), liveClaudeMd);
+		fs.writeFileSync(path.join(configsDir, "CLAUDE.md"), bundledClaudeMd);
+
+		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
+
+		expect(
+			fs.readFileSync(path.join(claudeDir, "CLAUDE.md.bak"), "utf-8"),
+		).toBe(liveClaudeMd);
+		expect(fs.readFileSync(path.join(claudeDir, "CLAUDE.md"), "utf-8")).toBe(
+			bundledClaudeMd,
+		);
+	});
+});
+
 describe("Claude settings.json remains unmanaged", () => {
 	let tmpDir;
 	let configsDir;
