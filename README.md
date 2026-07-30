@@ -110,30 +110,11 @@ haoshoku --hyprland
 -   **AI Configuration**:
     -   **Claude Code Config**: Deploys exactly `CLAUDE.md`, the statusline, and `.gitignore` (`haoshoku --claude`).
     -   **Claude Backup**: Backs up exactly those three personal files to `configs/claude/`, refusing literal absolute home-path leaks (`haoshoku --claude-backup`).
-    -   **Executable Policy**: Deliberately not bundled. Bootstrap a private policy repository you own in place inside the existing `~/.claude/` directory; this public installer does not deploy or capture `agents/` or `workflows/`.
+    -   **Executable Policy**: Deliberately not bundled. Bootstrap a private policy repository you own in place at `~/.claude/`; this public installer does not deploy or capture `agents/` or `workflows/`.
     -   **Skill Management**: Runtime git cloning of Claude skills and agents (`haoshoku --skills`).
     -   **Superpowers**: Idempotently enables the Superpowers plugin in `~/.claude/settings.json` (`haoshoku --superpowers`).
 
-#### Executable policy bootstrap
-
-On a fresh machine, bootstrap a private policy repository the user owns inside
-the existing `~/.claude/` directory with the following in-place sequence.
-Because the forced checkout overwrites any existing live file whose path is
-tracked by the private repository, copy or review anything you need before
-running these commands.
-
-```bash
-policy_repo='REPLACE_WITH_PRIVATE_POLICY_REPOSITORY_CLONE_URL'
-git -C ~/.claude init
-git -C ~/.claude remote add origin "$policy_repo"
-git -C ~/.claude fetch origin
-git -C ~/.claude remote set-head origin --auto
-policy_branch="$(git -C ~/.claude symbolic-ref --short refs/remotes/origin/HEAD)"
-git -C ~/.claude checkout -f -B "${policy_branch#origin/}" "$policy_branch"
-```
-
-Haoshoku deliberately cannot discover or fetch that private repository, so the
-three-file deploy does not produce a complete policy checkout by itself.
+Executable policy comes from a private policy repository the user owns; follow the [canonical in-place bootstrap procedure](configs/claude/README.md#executable-policy-bootstrap).
 
 ## Hyprland (parallel to KDE)
 
@@ -170,7 +151,7 @@ Haoshoku deliberately does not delete `~/.config/hypr/`; Caelestia owns that sym
 
 ## Skill Management
 
-Haoshoku manages Claude Code config via runtime git cloning to enable global npm installations.
+Haoshoku manages Claude Code skills and cache-backed agents via runtime git cloning to enable global npm installations.
 
 **Configuration**: Edit `~/.haoshoku.json` to add custom skill sources.
 
@@ -198,7 +179,7 @@ Haoshoku manages Claude Code config via runtime git cloning to enable global npm
 
 ## Configuration
 
-All configuration templates are stored in the `configs/` directory. Terminal configs (fish, warp, starship, fastfetch) are copied during setup. The public Claude bundle contains only three personal files. Claude skills and non-shadowed cache-backed agents are symlinked, while executable policy comes from a separate private repository cloned into `~/.claude/`:
+All configuration templates are stored in the `configs/` directory. Terminal configs (fish, warp, starship, fastfetch) are copied during setup. The public Claude bundle contains only three personal files. Claude skills and non-shadowed cache-backed agents are symlinked, while executable policy comes from a private policy repository the user bootstraps in place at `~/.claude/`:
 
 -   `configs/fish/`: Fish shell configuration and functions.
 -   `configs/warp/`: Warp terminal tab config (theme is activated in `settings.toml`).

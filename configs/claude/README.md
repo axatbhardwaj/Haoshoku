@@ -25,29 +25,39 @@ counts.
 This public package deliberately carries no `agents/` or `workflows/` policy
 surface and neither Claude command reads or writes those directories.
 
-On a fresh machine, bootstrap a private policy repository the user owns inside
-the existing `~/.claude/` directory with the following in-place sequence.
-Because the forced checkout overwrites any existing live file whose path is
-tracked by the private repository, copy or review anything you need before
-running these commands.
+On a fresh machine, bootstrap a private policy repository the user owns in
+place at `~/.claude/` with the following sequence. It creates the directory
+when absent and updates an existing `origin` URL, so rerunning it with a changed
+repository URL cannot silently use the stale remote. The forced checkout
+replaces files at paths tracked by the private repository; copy or review
+colliding files first. Non-colliding local-only files remain in place.
 
 ```bash
-policy_repo='REPLACE_WITH_PRIVATE_POLICY_REPOSITORY_CLONE_URL'
-git -C ~/.claude init
-git -C ~/.claude remote add origin "$policy_repo"
-git -C ~/.claude fetch origin
-git -C ~/.claude remote set-head origin --auto
-policy_branch="$(git -C ~/.claude symbolic-ref --short refs/remotes/origin/HEAD)"
+policy_repo='REPLACE_WITH_PRIVATE_POLICY_REPOSITORY_URL'
+mkdir -p ~/.claude &&
+git -C ~/.claude init &&
+if git -C ~/.claude remote get-url origin >/dev/null 2>&1; then
+  git -C ~/.claude remote set-url origin "$policy_repo"
+else
+  git -C ~/.claude remote add origin "$policy_repo"
+fi &&
+git -C ~/.claude fetch --prune origin &&
+git -C ~/.claude remote set-head origin --auto &&
+policy_branch="$(git -C ~/.claude symbolic-ref --short refs/remotes/origin/HEAD)" &&
 git -C ~/.claude checkout -f -B "${policy_branch#origin/}" "$policy_branch"
 ```
 
 Haoshoku deliberately cannot discover or fetch that private repository, so the
 three-file deploy does not produce a complete policy checkout by itself.
 
-After the checkout, every differing `haoshoku --claude` deploy overwrites the
-tracked `CLAUDE.md` and `.gitignore`, preserving their previous live contents as
-`CLAUDE.md.bak` and `.gitignore.bak`; reconcile each file individually instead
-of committing the bundled text wholesale.
+After the checkout, do not run a differing `haoshoku --claude` deploy without
+first reconciling the co-owned `CLAUDE.md` and `.gitignore`. A deploy replaces
+each differing live file and unconditionally overwrites its `.bak`; a second
+deploy carrying changed bundle content can therefore destroy both the user's
+edits and the backup that held the previous content. The deny-first
+`.gitignore` excludes those root-level `.bak` files from git, so this is a
+genuine, unrecoverable data-loss window rather than merely a dirty-tree or
+diff-noise problem.
 
 `haoshoku --skills` remains a separate system: it may create
 `~/.claude/agents/` and link non-shadowed agent definitions from configured

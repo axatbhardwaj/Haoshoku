@@ -18,26 +18,7 @@ The Claude configuration has deliberately separate ownership paths:
 - This public installer deliberately cannot discover or fetch it
 - A fresh machine therefore needs that separate bootstrap after the three-file deploy
 
-### Executable policy bootstrap
-
-On a fresh machine, bootstrap a private policy repository the user owns inside
-the existing `~/.claude/` directory with the following in-place sequence.
-Because the forced checkout overwrites any existing live file whose path is
-tracked by the private repository, copy or review anything you need before
-running these commands.
-
-```bash
-policy_repo='REPLACE_WITH_PRIVATE_POLICY_REPOSITORY_CLONE_URL'
-git -C ~/.claude init
-git -C ~/.claude remote add origin "$policy_repo"
-git -C ~/.claude fetch origin
-git -C ~/.claude remote set-head origin --auto
-policy_branch="$(git -C ~/.claude symbolic-ref --short refs/remotes/origin/HEAD)"
-git -C ~/.claude checkout -f -B "${policy_branch#origin/}" "$policy_branch"
-```
-
-Haoshoku deliberately cannot discover or fetch that private repository, so the
-three-file deploy does not produce a complete policy checkout by itself.
+Executable policy comes from a private policy repository the user owns; follow the [canonical in-place bootstrap procedure](../../configs/claude/README.md#executable-policy-bootstrap).
 
 ## Functions
 
@@ -61,7 +42,7 @@ three-file deploy does not produce a complete policy checkout by itself.
 
 Runtime git cloning for Claude skills and agents.
 
-**Separation**: `skill_manager.js` handles cache-backed skill/agent fetching and syncing; `configure_claude.js` handles only the three personal files. The separately cloned private policy repository owns executable policy.
+**Separation**: `skill_manager.js` handles cache-backed skill/agent fetching and syncing; `configure_claude.js` handles only the three personal files. The private policy repository bootstrapped in place at `~/.claude/` owns executable policy.
 
 **Cache Location**: XDG_CACHE_HOME/haoshoku/ follows XDG Base Directory spec, prevents home directory pollution.
 

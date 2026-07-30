@@ -428,12 +428,13 @@ describe("Claude policy directories remain unmanaged", () => {
 		).toBe(false);
 	});
 
-	it("treats an unknown stateHome option as inert", async () => {
-		const stateHome = path.join(tmpDir, "state-home");
+	it("leaves unrelated top-level Claude files untouched", async () => {
+		const liveFile = path.join(claudeDir, "local-only.md");
+		fs.writeFileSync(liveFile, "local-only content\n");
 
-		await syncClaudeConfig({ srcDir: configsDir, claudeHome, stateHome });
+		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
 
-		expect(fs.existsSync(stateHome)).toBe(false);
+		expect(fs.readFileSync(liveFile, "utf-8")).toBe("local-only content\n");
 	});
 
 	it("does not create bundled policy directories from live files", async () => {
