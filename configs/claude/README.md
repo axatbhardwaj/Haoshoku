@@ -52,15 +52,26 @@ three-file deploy does not produce a complete policy checkout by itself.
 
 Reconcile the co-owned `CLAUDE.md` and `.gitignore` before deploying a differing
 bundle: the bundle still replaces the live file. Before that replacement,
-Haoshoku writes the live content once to `.orig` when that slot does not yet
-exist, and rolls the same live content into `.bak`; an identical deploy touches
-neither backup. On a fresh machine, `.orig` therefore holds the user file that
-predated the first differing deploy. On an already-installed machine that has
-an old `.bak` but no `.orig`, the next differing deploy captures whatever is
-live at upgrade time — not the pristine original that an older Haoshoku run may
-already have destroyed. `.bak` holds only the immediately previous live
-version, so a later differing deploy replaces it; hand-edits made after the
-`.orig` capture are not retained indefinitely.
+Haoshoku writes the live content once to `.haoshoku-first-capture` and also
+writes it to a timestamped `.bak.<milliseconds>` file; the historical fixed
+`.bak` path is populated only when absent for caller compatibility and is never
+replaced. A numeric suffix keeps same-millisecond timestamped backups distinct,
+and an identical deploy touches no backup. Existing `.orig` first captures are
+migrated into the new slot. On a fresh machine,
+`.haoshoku-first-capture` therefore holds the user file that predated the first
+differing deploy. On an already-installed machine that has an old `.bak` but no
+first capture, the next differing deploy captures whatever is live at upgrade
+time — not the pristine original that an older Haoshoku run may already have
+destroyed. Timestamped backups are not pruned, so later hand-edits remain
+recoverable across subsequent differing deploys.
+
+At the root of the private `~/.claude` repository,
+`.haoshoku-first-capture` files are explicitly allowed by the deny-first
+`.gitignore`, so they appear in `git status` and can be committed instead of
+remaining invisible cleanup fodder. Timestamped `.bak.<milliseconds>` files
+and the compatibility `.bak` file remain excluded at that root: they do not
+appear in `git status`, and `git clean -x` removes them. Review and preserve any
+needed backups before cleaning.
 
 `haoshoku --skills` remains a separate system: it may create
 `~/.claude/agents/` and link non-shadowed agent definitions from configured

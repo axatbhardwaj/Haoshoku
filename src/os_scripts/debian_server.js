@@ -177,8 +177,7 @@ async function configureFishShell() {
 	);
 
 	if (fs.existsSync(CUSTOM_FISH_CONFIG_PATH)) {
-		// safeCopyFile backs up any existing live config.fish to .bak before
-		// overwriting (and no-ops when already in sync).
+		// Overwrite semantics come from safeCopyFile.
 		safeCopyFile(
 			CUSTOM_FISH_CONFIG_PATH,
 			path.join(FISH_CONFIG_DIR, "config.fish"),

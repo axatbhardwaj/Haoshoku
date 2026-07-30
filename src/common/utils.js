@@ -113,34 +113,51 @@ export async function promptUser(message, initial = false, opts = {}) {
 }
 
 /**
- * Copy `src` to `dest` with separate first-capture and rolling backup slots.
+ * Copy `src` to `dest` with separate first-capture and versioned backup slots.
  *
  * If `dest` already has bytes identical to `src`, this is a no-op and neither
- * backup is touched. Before replacing a differing `dest`, `${dest}.orig` captures
- * the live bytes once if that slot is absent; safeCopyFile never replaces it.
- * `${dest}.bak` remains a rolling slot and is replaced with the immediately
- * previous live bytes on every differing deploy.
+ * backup is touched. Before replacing a differing `dest`,
+ * `${dest}.haoshoku-first-capture` captures the original live bytes once;
+ * safeCopyFile never replaces it. Existing `.orig` captures are migrated into
+ * the new slot. The historical `${dest}.bak` path is also populated only when
+ * absent for caller compatibility. Every differing deploy preserves the
+ * immediately previous live bytes in `${dest}.bak.<timestamp>`, adding a
+ * numeric suffix on collision.
  *
- * On a fresh install with a pre-existing user file, `.orig` captures that file.
- * On an upgraded install that already has an old-code `.bak` but no `.orig`, the
- * next differing deploy still captures whatever is live then; it cannot recover
- * an earlier original already destroyed by old releases. Later hand-edits are
- * preserved in rolling `.bak` when replaced, but not indefinitely: another
- * differing deploy replaces `.bak`, while `.orig` retains only its first capture.
+ * On an upgraded install that already has an old-code `.bak` but no first
+ * capture, the next differing deploy captures whatever is live then; it cannot
+ * recover an earlier original already destroyed by old releases. Backups are
+ * intentionally not pruned, so later hand-edits remain recoverable.
  *
  * @returns {boolean} true if `dest` was written, false if it was already in sync
  */
-export function safeCopyFile(src, dest) {
+export function safeCopyFile(src, dest, { now = Date.now } = {}) {
 	if (fs.existsSync(dest)) {
 		if (fs.readFileSync(dest).equals(fs.readFileSync(src))) {
 			log.dim(`${path.basename(dest)} unchanged — skipping`);
 			return false;
 		}
-		if (!fs.existsSync(`${dest}.orig`)) {
-			fs.copyFileSync(dest, `${dest}.orig`);
+		const firstCapture = `${dest}.haoshoku-first-capture`;
+		if (!fs.existsSync(firstCapture)) {
+			const legacyFirstCapture = `${dest}.orig`;
+			fs.copyFileSync(
+				fs.existsSync(legacyFirstCapture) ? legacyFirstCapture : dest,
+				firstCapture,
+			);
 		}
-		fs.copyFileSync(dest, `${dest}.bak`);
-		log.info(`Backed up existing ${path.basename(dest)} to ${dest}.bak`);
+		const legacyBackup = `${dest}.bak`;
+		if (!fs.existsSync(legacyBackup)) {
+			fs.copyFileSync(dest, legacyBackup);
+		}
+		const backupBase = `${dest}.bak.${now()}`;
+		let backup = backupBase;
+		let collision = 1;
+		while (fs.existsSync(backup)) {
+			backup = `${backupBase}.${collision}`;
+			collision += 1;
+		}
+		fs.copyFileSync(dest, backup);
+		log.info(`Backed up existing ${path.basename(dest)} to ${backup}`);
 	}
 	fs.copyFileSync(src, dest);
 	return true;

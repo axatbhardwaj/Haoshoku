@@ -61,19 +61,30 @@ describe("safeCopyFile", () => {
 		fs.rmSync(tmpDir, { recursive: true, force: true });
 	});
 
-	it("preserves existing dest as <dest>.bak before overwriting", () => {
+	function versionedBackupPaths(dest) {
+		const basename = path.basename(dest);
+		return fs
+			.readdirSync(path.dirname(dest))
+			.filter((candidate) => candidate.startsWith(`${basename}.bak.`))
+			.sort()
+			.map((candidate) => path.join(path.dirname(dest), candidate));
+	}
+
+	it("preserves existing dest as a versioned .bak before overwriting", () => {
 		const src = path.join(tmpDir, "new.conf");
 		const dest = path.join(tmpDir, "live.conf");
 		fs.writeFileSync(src, "new content");
 		fs.writeFileSync(dest, "previous content");
 
-		safeCopyFile(src, dest);
+		safeCopyFile(src, dest, { now: () => 1234567890 });
 
 		expect(fs.readFileSync(dest, "utf-8")).toBe("new content");
-		expect(fs.readFileSync(`${dest}.bak`, "utf-8")).toBe("previous content");
+		expect(fs.readFileSync(`${dest}.bak.1234567890`, "utf-8")).toBe(
+			"previous content",
+		);
 	});
 
-	it("does not create a .bak when dest does not pre-exist", () => {
+	it("does not create a versioned .bak when dest does not pre-exist", () => {
 		const src = path.join(tmpDir, "new.conf");
 		const dest = path.join(tmpDir, "fresh.conf");
 		fs.writeFileSync(src, "new content");
@@ -81,7 +92,35 @@ describe("safeCopyFile", () => {
 		safeCopyFile(src, dest);
 
 		expect(fs.readFileSync(dest, "utf-8")).toBe("new content");
-		expect(fs.existsSync(`${dest}.bak`)).toBe(false);
+		expect(versionedBackupPaths(dest)).toEqual([]);
+	});
+
+	it("stores the first capture in a cleanup-safe Haoshoku slot", () => {
+		const src = path.join(tmpDir, "new.conf");
+		const dest = path.join(tmpDir, "live.conf");
+		fs.writeFileSync(src, "new content");
+		fs.writeFileSync(dest, "user original content");
+
+		safeCopyFile(src, dest);
+
+		expect(fs.readFileSync(`${dest}.haoshoku-first-capture`, "utf-8")).toBe(
+			"user original content",
+		);
+		expect(fs.existsSync(`${dest}.orig`)).toBe(false);
+	});
+
+	it("migrates a legacy .orig into the cleanup-safe first-capture slot", () => {
+		const src = path.join(tmpDir, "new.conf");
+		const dest = path.join(tmpDir, "live.conf");
+		fs.writeFileSync(src, "bundle v2");
+		fs.writeFileSync(dest, "bundle v1");
+		fs.writeFileSync(`${dest}.orig`, "user original content");
+
+		safeCopyFile(src, dest);
+
+		expect(fs.readFileSync(`${dest}.haoshoku-first-capture`, "utf-8")).toBe(
+			"user original content",
+		);
 	});
 
 	it("returns true and the new content lands when overwriting differing dest", () => {
@@ -104,7 +143,7 @@ describe("safeCopyFile", () => {
 		expect(safeCopyFile(src, dest)).toBe(true);
 	});
 
-	it("no-ops (no .bak, returns false) when dest already matches src", () => {
+	it("no-ops (no versioned .bak, returns false) when dest matches src", () => {
 		const src = path.join(tmpDir, "new.conf");
 		const dest = path.join(tmpDir, "live.conf");
 		fs.writeFileSync(src, "identical content");
@@ -114,27 +153,28 @@ describe("safeCopyFile", () => {
 
 		expect(result).toBe(false);
 		expect(fs.readFileSync(dest, "utf-8")).toBe("identical content");
-		expect(fs.existsSync(`${dest}.bak`)).toBe(false);
+		expect(versionedBackupPaths(dest)).toEqual([]);
 	});
 
-	it("a second run preserves the user's ORIGINAL content in .bak", () => {
+	it("a second run preserves the user's original versioned backup", () => {
 		const src = path.join(tmpDir, "new.conf");
 		const dest = path.join(tmpDir, "live.conf");
 		fs.writeFileSync(src, "managed content");
 		fs.writeFileSync(dest, "user original content");
 
 		// First run: backs up the user's original, installs managed content.
-		expect(safeCopyFile(src, dest)).toBe(true);
-		expect(fs.readFileSync(`${dest}.bak`, "utf-8")).toBe(
+		expect(safeCopyFile(src, dest, { now: () => 1234567890 })).toBe(true);
+		expect(fs.readFileSync(`${dest}.bak.1234567890`, "utf-8")).toBe(
 			"user original content",
 		);
 
 		// Second run: dest now equals src → must be a no-op and must NOT
-		// clobber the .bak with the previously-synced managed content.
-		expect(safeCopyFile(src, dest)).toBe(false);
-		expect(fs.readFileSync(`${dest}.bak`, "utf-8")).toBe(
+		// create a backup of the previously-synced managed content.
+		expect(safeCopyFile(src, dest, { now: () => 1234567890 })).toBe(false);
+		expect(fs.readFileSync(`${dest}.bak.1234567890`, "utf-8")).toBe(
 			"user original content",
 		);
+		expect(versionedBackupPaths(dest)).toHaveLength(1);
 	});
 
 	it("keeps the user's original retrievable across changed bundle deploys", () => {
@@ -147,7 +187,11 @@ describe("safeCopyFile", () => {
 			safeCopyFile(src, dest);
 		}
 
-		const recoverableContents = [dest, `${dest}.bak`, `${dest}.orig`]
+		const recoverableContents = [
+			dest,
+			`${dest}.haoshoku-first-capture`,
+			...versionedBackupPaths(dest),
+		]
 			.filter((candidate) => fs.existsSync(candidate))
 			.map((candidate) => fs.readFileSync(candidate, "utf-8"));
 		expect(recoverableContents).toContain("user original content");
@@ -157,15 +201,16 @@ describe("safeCopyFile", () => {
 		const src = path.join(tmpDir, "new.conf");
 		const dest = path.join(tmpDir, "live.conf");
 		fs.writeFileSync(src, "bundle v2");
-		fs.writeFileSync(dest, "[includeIf \"gitdir:~/work/\"]");
+		fs.writeFileSync(dest, '[includeIf "gitdir:~/work/"]');
 		fs.writeFileSync(`${dest}.bak`, "old managed bundle");
 
-		safeCopyFile(src, dest);
+		safeCopyFile(src, dest, { now: () => 1234567890 });
 
-		expect(fs.existsSync(`${dest}.orig`)).toBe(true);
-		expect(fs.readFileSync(`${dest}.orig`, "utf-8")).toBe(
-			"[includeIf \"gitdir:~/work/\"]",
+		expect(fs.existsSync(`${dest}.haoshoku-first-capture`)).toBe(true);
+		expect(fs.readFileSync(`${dest}.haoshoku-first-capture`, "utf-8")).toBe(
+			'[includeIf "gitdir:~/work/"]',
 		);
+		expect(fs.readFileSync(`${dest}.bak`, "utf-8")).toBe("old managed bundle");
 	});
 
 	it("captures the live file when the pre-existing .bak is zero bytes", () => {
@@ -175,10 +220,15 @@ describe("safeCopyFile", () => {
 		fs.writeFileSync(dest, "live user content");
 		fs.writeFileSync(`${dest}.bak`, "");
 
-		safeCopyFile(src, dest);
+		safeCopyFile(src, dest, { now: () => 1234567890 });
 
-		expect(fs.readFileSync(`${dest}.orig`, "utf-8")).toBe("live user content");
-		expect(fs.readFileSync(`${dest}.bak`, "utf-8")).toBe("live user content");
+		expect(fs.readFileSync(`${dest}.haoshoku-first-capture`, "utf-8")).toBe(
+			"live user content",
+		);
+		expect(fs.readFileSync(`${dest}.bak`, "utf-8")).toBe("");
+		expect(fs.readFileSync(`${dest}.bak.1234567890`, "utf-8")).toBe(
+			"live user content",
+		);
 	});
 
 	it("keeps a hand-edit recoverable when the next bundle is deployed", () => {
@@ -186,33 +236,91 @@ describe("safeCopyFile", () => {
 		const dest = path.join(tmpDir, "live.conf");
 		fs.writeFileSync(src, "bundle v1");
 		fs.writeFileSync(dest, "user original content");
-		safeCopyFile(src, dest);
+		safeCopyFile(src, dest, { now: () => 1234567890 });
 
 		fs.writeFileSync(dest, "user hand-edit after v1");
 		fs.writeFileSync(src, "bundle v2");
-		safeCopyFile(src, dest);
+		safeCopyFile(src, dest, { now: () => 1234567890 });
 
-		expect(fs.readFileSync(`${dest}.orig`, "utf-8")).toBe(
+		expect(fs.readFileSync(`${dest}.haoshoku-first-capture`, "utf-8")).toBe(
 			"user original content",
 		);
-		expect(fs.readFileSync(`${dest}.bak`, "utf-8")).toBe(
-			"user hand-edit after v1",
-		);
+		expect(
+			versionedBackupPaths(dest).map((candidate) =>
+				fs.readFileSync(candidate, "utf-8"),
+			),
+		).toEqual(["user original content", "user hand-edit after v1"]);
 	});
 
-	it("keeps the first capture while rolling .bak through a bundle revert", () => {
+	it("keeps a hand-edit recoverable across multiple later bundle deploys", () => {
+		const src = path.join(tmpDir, "new.conf");
+		const dest = path.join(tmpDir, "live.conf");
+		fs.writeFileSync(dest, "user original content");
+
+		fs.writeFileSync(src, "bundle v1");
+		safeCopyFile(src, dest);
+		fs.writeFileSync(dest, "user hand-edit after v1");
+		for (const bundle of ["bundle v2", "bundle v3"]) {
+			fs.writeFileSync(src, bundle);
+			safeCopyFile(src, dest);
+		}
+
+		const recoverableContents = fs
+			.readdirSync(tmpDir)
+			.filter(
+				(candidate) =>
+					candidate === path.basename(dest) ||
+					candidate.startsWith(`${path.basename(dest)}.`),
+			)
+			.map((candidate) =>
+				fs.readFileSync(path.join(tmpDir, candidate), "utf-8"),
+			);
+		expect(recoverableContents).toContain("user hand-edit after v1");
+	});
+
+	it("keeps rapid-succession backups distinct when timestamps collide", () => {
+		const src = path.join(tmpDir, "new.conf");
+		const dest = path.join(tmpDir, "live.conf");
+		const now = () => 1234567890;
+		fs.writeFileSync(dest, "user original content");
+
+		fs.writeFileSync(src, "bundle v1");
+		safeCopyFile(src, dest, { now });
+		fs.writeFileSync(src, "bundle v2");
+		safeCopyFile(src, dest, { now });
+
+		const backups = fs
+			.readdirSync(tmpDir)
+			.filter((candidate) => candidate.startsWith("live.conf.bak."))
+			.sort();
+		expect(backups).toEqual([
+			"live.conf.bak.1234567890",
+			"live.conf.bak.1234567890.1",
+		]);
+		expect(
+			backups.map((candidate) =>
+				fs.readFileSync(path.join(tmpDir, candidate), "utf-8"),
+			),
+		).toEqual(["user original content", "bundle v1"]);
+	});
+
+	it("keeps the first capture and every .bak through a bundle revert", () => {
 		const src = path.join(tmpDir, "new.conf");
 		const dest = path.join(tmpDir, "live.conf");
 		fs.writeFileSync(dest, "user original content");
 
 		for (const bundle of ["bundle v1", "bundle v2", "bundle v1"]) {
 			fs.writeFileSync(src, bundle);
-			safeCopyFile(src, dest);
+			safeCopyFile(src, dest, { now: () => 1234567890 });
 		}
 
 		expect(fs.readFileSync(dest, "utf-8")).toBe("bundle v1");
-		expect(fs.readFileSync(`${dest}.bak`, "utf-8")).toBe("bundle v2");
-		expect(fs.readFileSync(`${dest}.orig`, "utf-8")).toBe(
+		expect(
+			versionedBackupPaths(dest).map((candidate) =>
+				fs.readFileSync(candidate, "utf-8"),
+			),
+		).toEqual(["user original content", "bundle v1", "bundle v2"]);
+		expect(fs.readFileSync(`${dest}.haoshoku-first-capture`, "utf-8")).toBe(
 			"user original content",
 		);
 	});

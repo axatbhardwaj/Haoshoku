@@ -14,6 +14,7 @@
 !workflows/
 !output-styles/
 !conventions/
+!*.haoshoku-first-capture
 
 # Belt and braces: never track credentials even if a rule above widens by accident.
 .credentials.json
