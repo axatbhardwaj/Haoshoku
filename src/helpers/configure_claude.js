@@ -89,8 +89,6 @@ export async function syncClaudeConfig(options = {}) {
     const liveFile = file.dest ?? file.src;
     const destPath = claudeFilePath(liveFile, claudeHome);
     if (fs.existsSync(srcPath)) {
-      // safeCopyFile preserves a differing live file as ${dest}.bak before
-      // overwriting. Identical content is a no-op so re-runs don't churn .bak.
       safeCopyFile(srcPath, destPath);
       log.info(`Copied ${file.src} to ${liveFile}`);
     } else {

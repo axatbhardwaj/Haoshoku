@@ -327,8 +327,6 @@ export async function syncZedTheme(opts = {}) {
     for (const theme of themes) {
       const src = path.join(themesDir, theme);
       const dest = path.join(zedConfigDir, "themes", theme);
-      // safeCopyFile backs up a diverging live theme to .bak first and skips
-      // identical content (so a second run never clobbers the original .bak).
       safeCopyFile(src, dest);
       log.info(`Synced themes/${theme}`);
     }
@@ -351,8 +349,6 @@ export async function syncZedConfig(opts = {}) {
 
   const settingsPath = path.join(backupDir, "settings.json");
   if (fs.existsSync(settingsPath)) {
-    // safeCopyFile preserves the user's live settings.json as .bak before
-    // overwriting, and no-ops on identical content.
     safeCopyFile(settingsPath, path.join(zedConfigDir, "settings.json"));
     log.info("Synced settings.json");
   }

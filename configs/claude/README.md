@@ -50,14 +50,17 @@ git -C ~/.claude checkout -f -B "${policy_branch#origin/}" "$policy_branch"
 Haoshoku deliberately cannot discover or fetch that private repository, so the
 three-file deploy does not produce a complete policy checkout by itself.
 
-After the checkout, do not run a differing `haoshoku --claude` deploy without
-first reconciling the co-owned `CLAUDE.md` and `.gitignore`. A deploy replaces
-each differing live file and unconditionally overwrites its `.bak`; a second
-deploy carrying changed bundle content can therefore destroy both the user's
-edits and the backup that held the previous content. The deny-first
-`.gitignore` excludes those root-level `.bak` files from git, so this is a
-genuine, unrecoverable data-loss window rather than merely a dirty-tree or
-diff-noise problem.
+Reconcile the co-owned `CLAUDE.md` and `.gitignore` before deploying a differing
+bundle: the bundle still replaces the live file. Before that replacement,
+Haoshoku writes the live content once to `.orig` when that slot does not yet
+exist, and rolls the same live content into `.bak`; an identical deploy touches
+neither backup. On a fresh machine, `.orig` therefore holds the user file that
+predated the first differing deploy. On an already-installed machine that has
+an old `.bak` but no `.orig`, the next differing deploy captures whatever is
+live at upgrade time — not the pristine original that an older Haoshoku run may
+already have destroyed. `.bak` holds only the immediately previous live
+version, so a later differing deploy replaces it; hand-edits made after the
+`.orig` capture are not retained indefinitely.
 
 `haoshoku --skills` remains a separate system: it may create
 `~/.claude/agents/` and link non-shadowed agent definitions from configured

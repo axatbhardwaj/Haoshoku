@@ -50,8 +50,6 @@ export async function syncCaelestiaPrefs(opts = {}) {
   const variantSrc = path.join(caelestiaBackupDir, variantFilename(deviceType));
   const hyprUserDest = path.join(caelestiaConfigDir, "hypr-user.conf");
   if (fs.existsSync(variantSrc)) {
-    // safeCopyFile preserves the user-owned live hypr-user.conf (their monitor
-    // config) as .bak instead of letting it vanish under the repo variant.
     safeCopyFile(variantSrc, hyprUserDest);
     log.info(`Synced ${variantFilename(deviceType)} → hypr-user.conf`);
   } else {

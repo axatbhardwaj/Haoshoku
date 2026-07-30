@@ -113,14 +113,20 @@ export async function promptUser(message, initial = false, opts = {}) {
 }
 
 /**
- * Copy `src` to `dest`, preserving any existing `dest` as `${dest}.bak` first.
+ * Copy `src` to `dest` with separate first-capture and rolling backup slots.
  *
- * Content-aware: if `dest` already exists with bytes identical to `src` it's a
- * no-op — no copy, no .bak touched, returns false. This protects the user's
- * ORIGINAL backup: without the check, a second run would copy the
- * already-synced file over `.bak`, destroying the pristine original captured on
- * the first run. Otherwise back up an existing `dest` to `${dest}.bak`, copy
- * `src` over `dest`, and return true.
+ * If `dest` already has bytes identical to `src`, this is a no-op and neither
+ * backup is touched. Before replacing a differing `dest`, `${dest}.orig` captures
+ * the live bytes once if that slot is absent; safeCopyFile never replaces it.
+ * `${dest}.bak` remains a rolling slot and is replaced with the immediately
+ * previous live bytes on every differing deploy.
+ *
+ * On a fresh install with a pre-existing user file, `.orig` captures that file.
+ * On an upgraded install that already has an old-code `.bak` but no `.orig`, the
+ * next differing deploy still captures whatever is live then; it cannot recover
+ * an earlier original already destroyed by old releases. Later hand-edits are
+ * preserved in rolling `.bak` when replaced, but not indefinitely: another
+ * differing deploy replaces `.bak`, while `.orig` retains only its first capture.
  *
  * @returns {boolean} true if `dest` was written, false if it was already in sync
  */
@@ -129,6 +135,9 @@ export function safeCopyFile(src, dest) {
 		if (fs.readFileSync(dest).equals(fs.readFileSync(src))) {
 			log.dim(`${path.basename(dest)} unchanged — skipping`);
 			return false;
+		}
+		if (!fs.existsSync(`${dest}.orig`)) {
+			fs.copyFileSync(dest, `${dest}.orig`);
 		}
 		fs.copyFileSync(dest, `${dest}.bak`);
 		log.info(`Backed up existing ${path.basename(dest)} to ${dest}.bak`);

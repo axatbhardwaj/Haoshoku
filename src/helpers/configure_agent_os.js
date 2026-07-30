@@ -48,8 +48,7 @@ export async function installAgentOs(options = {}) {
 
 /**
  * Overlay the customized shape-spec.md onto the clone and seed standards into the
- * installer-readable profile path. safeCopyFile keeps a .bak of the upstream
- * original on first overlay.
+ * installer-readable profile path. Overwrite semantics come from safeCopyFile.
  */
 export function overlayCustomizations(options = {}) {
   const { assetsDir = ASSETS_DIR, agentOsDir = AGENT_OS_DIR } = options;

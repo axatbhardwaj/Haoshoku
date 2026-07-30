@@ -166,10 +166,7 @@ async function createProfile(profileType, { home, sshDir, promptFn, runner }) {
 /**
  * Configure Git profiles + the global ~/.gitconfig includeIf routing.
  *
- * The global ~/.gitconfig is overwrite-safe: if a differing one already exists
- * it's backed up to ~/.gitconfig.bak first; if the generated content is
- * byte-identical to what's already there the write is skipped entirely (and no
- * stale .bak is touched). Both behaviors come from utils.safeCopyFile.
+ * Global-config overwrite semantics come from utils.safeCopyFile.
  *
  * Every collaborator is injectable for tests (defaults preserve production
  * behavior): `home`, `sshDir`, `promptFn` (the prompts() multi-question lib),
@@ -223,11 +220,8 @@ export async function configureGit(opts = {}) {
 
 	const globalGitConfigPath = path.join(home, ".gitconfig");
 
-	// safeCopyFile is content-aware: identical content → no write, no .bak;
-	// differing content → back up the user's existing ~/.gitconfig to
-	// ~/.gitconfig.bak, then write ours. Stage the generated content in a
-	// throwaway temp file so we can route the overwrite through that helper
-	// (staged outside the home tree so it never pollutes ~/.ssh).
+	// safeCopyFile takes a source path, so stage the generated content outside
+	// the home tree where it cannot pollute ~/.ssh.
 	const stagePath = path.join(
 		fs.mkdtempSync(path.join(tmpdir(), "haoshoku-gitcfg-")),
 		"gitconfig",

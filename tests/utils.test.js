@@ -136,6 +136,86 @@ describe("safeCopyFile", () => {
 			"user original content",
 		);
 	});
+
+	it("keeps the user's original retrievable across changed bundle deploys", () => {
+		const src = path.join(tmpDir, "new.conf");
+		const dest = path.join(tmpDir, "live.conf");
+		fs.writeFileSync(dest, "user original content");
+
+		for (const bundle of ["bundle v1", "bundle v2"]) {
+			fs.writeFileSync(src, bundle);
+			safeCopyFile(src, dest);
+		}
+
+		const recoverableContents = [dest, `${dest}.bak`, `${dest}.orig`]
+			.filter((candidate) => fs.existsSync(candidate))
+			.map((candidate) => fs.readFileSync(candidate, "utf-8"));
+		expect(recoverableContents).toContain("user original content");
+	});
+
+	it("captures the live file when migrating an install with an existing .bak", () => {
+		const src = path.join(tmpDir, "new.conf");
+		const dest = path.join(tmpDir, "live.conf");
+		fs.writeFileSync(src, "bundle v2");
+		fs.writeFileSync(dest, "[includeIf \"gitdir:~/work/\"]");
+		fs.writeFileSync(`${dest}.bak`, "old managed bundle");
+
+		safeCopyFile(src, dest);
+
+		expect(fs.existsSync(`${dest}.orig`)).toBe(true);
+		expect(fs.readFileSync(`${dest}.orig`, "utf-8")).toBe(
+			"[includeIf \"gitdir:~/work/\"]",
+		);
+	});
+
+	it("captures the live file when the pre-existing .bak is zero bytes", () => {
+		const src = path.join(tmpDir, "new.conf");
+		const dest = path.join(tmpDir, "live.conf");
+		fs.writeFileSync(src, "bundle v2");
+		fs.writeFileSync(dest, "live user content");
+		fs.writeFileSync(`${dest}.bak`, "");
+
+		safeCopyFile(src, dest);
+
+		expect(fs.readFileSync(`${dest}.orig`, "utf-8")).toBe("live user content");
+		expect(fs.readFileSync(`${dest}.bak`, "utf-8")).toBe("live user content");
+	});
+
+	it("keeps a hand-edit recoverable when the next bundle is deployed", () => {
+		const src = path.join(tmpDir, "new.conf");
+		const dest = path.join(tmpDir, "live.conf");
+		fs.writeFileSync(src, "bundle v1");
+		fs.writeFileSync(dest, "user original content");
+		safeCopyFile(src, dest);
+
+		fs.writeFileSync(dest, "user hand-edit after v1");
+		fs.writeFileSync(src, "bundle v2");
+		safeCopyFile(src, dest);
+
+		expect(fs.readFileSync(`${dest}.orig`, "utf-8")).toBe(
+			"user original content",
+		);
+		expect(fs.readFileSync(`${dest}.bak`, "utf-8")).toBe(
+			"user hand-edit after v1",
+		);
+	});
+
+	it("keeps the first capture while rolling .bak through a bundle revert", () => {
+		const src = path.join(tmpDir, "new.conf");
+		const dest = path.join(tmpDir, "live.conf");
+		fs.writeFileSync(dest, "user original content");
+
+		for (const bundle of ["bundle v1", "bundle v2", "bundle v1"]) {
+			fs.writeFileSync(src, bundle);
+			safeCopyFile(src, dest);
+		}
+
+		expect(fs.readFileSync(dest, "utf-8")).toBe("bundle v1");
+		expect(fs.readFileSync(`${dest}.bak`, "utf-8")).toBe("bundle v2");
+		expect(fs.readFileSync(`${dest}.orig`, "utf-8")).toBe(
+			"user original content",
+		);
+	});
 });
 
 describe("copyDirRecursive symlink handling", () => {

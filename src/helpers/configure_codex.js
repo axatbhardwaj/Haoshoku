@@ -35,11 +35,7 @@ export async function installCodex({
   await run(`bun install -g ${CODEX_NPM_PACKAGE}`);
 }
 
-/**
- * Deploy config to ~/.codex/ (copy personal files from haoshoku template).
- * Mirrors syncClaudeConfig: safeCopyFile preserves a differing live file as
- * ${dest}.bak before overwriting; identical content is a no-op.
- */
+/** Deploy personal config from the Haoshoku template to ~/.codex/. */
 export async function syncCodexConfig(options = {}) {
   const { srcDir = CUSTOM_CODEX_DIR, codexHome = HOME } = options;
   const codexDir = path.join(codexHome, ".codex");
