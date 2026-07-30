@@ -43,6 +43,42 @@ function commandExists(cmd) {
   return Bun.which(cmd) !== null;
 }
 
+/** Fail-open check for a destination tracked by a repo rooted at claudeDir. */
+function isTrackedByClaudeRepository(claudeDir, filePath) {
+  try {
+    const rootQuery = Bun.spawnSync(
+      ["git", "-C", claudeDir, "rev-parse", "--show-toplevel"],
+      {
+        stderr: "ignore",
+        stdout: "pipe",
+      },
+    );
+    if (rootQuery.exitCode !== 0) return false;
+
+    const repoRoot = new TextDecoder().decode(rootQuery.stdout).trim();
+    if (fs.realpathSync(repoRoot) !== fs.realpathSync(claudeDir)) return false;
+
+    const trackedQuery = Bun.spawnSync(
+      [
+        "git",
+        "-C",
+        claudeDir,
+        "ls-files",
+        "--error-unmatch",
+        "--",
+        filePath,
+      ],
+      {
+        stderr: "ignore",
+        stdout: "ignore",
+      },
+    );
+    return trackedQuery.exitCode === 0;
+  } catch {
+    return false;
+  }
+}
+
 /** Install Claude Code CLI if not already present. */
 export async function installClaude() {
   if (commandExists("claude")) {
@@ -89,8 +125,14 @@ export async function syncClaudeConfig(options = {}) {
     const liveFile = file.dest ?? file.src;
     const destPath = claudeFilePath(liveFile, claudeHome);
     if (fs.existsSync(srcPath)) {
-      safeCopyFile(srcPath, destPath);
-      log.info(`Copied ${file.src} to ${liveFile}`);
+      if (isTrackedByClaudeRepository(claudeDir, liveFile)) {
+        log.info(
+          `Skipped ${liveFile}: tracked by the git repository at the Claude home`,
+        );
+      } else {
+        safeCopyFile(srcPath, destPath);
+        log.info(`Copied ${file.src} to ${liveFile}`);
+      }
     } else {
       log.warning(`Missing ${file.src} in source bundle (${srcPath}) — skipped`);
     }

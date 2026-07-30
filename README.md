@@ -48,7 +48,7 @@ Haoshoku provides command-line options for non-interactive use or specific tasks
 haoshoku --os cachyos
 haoshoku --os debian-server
 
-# Deploy Claude Code personal config (CLAUDE.md, statusline, .gitignore)
+# Deploy untracked Claude Code personal config (CLAUDE.md, statusline, .gitignore)
 haoshoku --claude
 
 # Back up the same three personal files to configs/claude/
@@ -108,7 +108,7 @@ haoshoku --hyprland
     -   **KDE Glass Blur**: Optional installation of glass blur effect for KDE Plasma 6 (reinstall easily after KDE updates with `--kde-glass`).
     -   Sets up gaming tools (Steam, Lutris) and media players (mpv).
 -   **AI Configuration**:
-    -   **Claude Code Config**: Deploys exactly `CLAUDE.md`, the statusline, and `.gitignore` (`haoshoku --claude`).
+    -   **Claude Code Config**: Considers exactly `CLAUDE.md`, the statusline, and `.gitignore`, skipping any destination tracked by a git repository rooted at `~/.claude` (`haoshoku --claude`).
     -   **Claude Backup**: Backs up exactly those three personal files to `configs/claude/`, refusing literal absolute home-path leaks (`haoshoku --claude-backup`).
     -   **Executable Policy**: Deliberately not bundled. Bootstrap a private policy repository you own in place at `~/.claude/`; this public installer does not deploy or capture `agents/` or `workflows/`.
     -   **Skill Management**: Runtime git cloning of Claude skills and agents (`haoshoku --skills`).

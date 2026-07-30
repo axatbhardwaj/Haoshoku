@@ -37,6 +37,228 @@ describe("PERSONAL_FILES manifest", () => {
 	});
 });
 
+describe("Claude deny-first ignore template", () => {
+	let tmpDir;
+
+	afterEach(() => {
+		fs.rmSync(tmpDir, { recursive: true, force: true });
+	});
+
+	it("keeps root first-capture backups visible to the policy repository", () => {
+		tmpDir = fs.mkdtempSync(
+			path.join(os.tmpdir(), "haoshoku-claude-ignore-"),
+		);
+		const init = Bun.spawnSync(["git", "init"], {
+			cwd: tmpDir,
+			stderr: "pipe",
+			stdout: "pipe",
+		});
+		expect(init.exitCode).toBe(0);
+		fs.copyFileSync(
+			path.resolve(
+				import.meta.dir,
+				"..",
+				"configs",
+				"claude",
+				"gitignore.template",
+			),
+			path.join(tmpDir, ".gitignore"),
+		);
+		const firstCapture = "CLAUDE.md.haoshoku-first-capture";
+		fs.writeFileSync(path.join(tmpDir, firstCapture), "# Original policy\n");
+
+		const checkIgnore = Bun.spawnSync(
+			["git", "check-ignore", "--quiet", "--", firstCapture],
+			{
+				cwd: tmpDir,
+				stderr: "pipe",
+				stdout: "pipe",
+			},
+		);
+
+		expect(checkIgnore.exitCode).toBe(1);
+	});
+});
+
+describe("syncClaudeConfig() respects the Claude home git index", () => {
+	let tmpDir;
+	let configsDir;
+	let claudeHome;
+	let claudeDir;
+
+	beforeEach(() => {
+		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-claude-git-"));
+		configsDir = path.join(tmpDir, "configs", "claude");
+		claudeHome = path.join(tmpDir, "claude-home");
+		claudeDir = path.join(claudeHome, ".claude");
+		fs.mkdirSync(configsDir, { recursive: true });
+		fs.mkdirSync(claudeDir, { recursive: true });
+		const init = Bun.spawnSync(["git", "init"], {
+			cwd: claudeDir,
+			stderr: "pipe",
+			stdout: "pipe",
+		});
+		expect(init.exitCode).toBe(0);
+	});
+
+	afterEach(() => {
+		fs.rmSync(tmpDir, { recursive: true, force: true });
+	});
+
+	function seedBundle() {
+		for (const file of PERSONAL_FILES) {
+			fs.writeFileSync(
+				path.join(configsDir, file.src),
+				`Bundled ${file.src}\n`,
+			);
+		}
+	}
+
+	function expectAllBundleFilesDeployed() {
+		for (const file of PERSONAL_FILES) {
+			const liveFile = file.dest ?? file.src;
+			expect(
+				fs.readFileSync(path.join(claudeDir, liveFile), "utf-8"),
+			).toBe(`Bundled ${file.src}\n`);
+		}
+	}
+
+	it("does not overwrite tracked CLAUDE.md", async () => {
+		const livePath = path.join(claudeDir, "CLAUDE.md");
+		fs.writeFileSync(livePath, "# Private policy\n");
+		fs.writeFileSync(path.join(configsDir, "CLAUDE.md"), "# Public bundle\n");
+		const add = Bun.spawnSync(["git", "add", "--", "CLAUDE.md"], {
+			cwd: claudeDir,
+			stderr: "pipe",
+			stdout: "pipe",
+		});
+		expect(add.exitCode).toBe(0);
+
+		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
+
+		expect(fs.readFileSync(livePath, "utf-8")).toBe("# Private policy\n");
+	});
+
+	it("uses the destination path when deciding whether .gitignore is tracked", async () => {
+		const livePath = path.join(claudeDir, ".gitignore");
+		fs.writeFileSync(livePath, "# Private ignore policy\n");
+		fs.writeFileSync(
+			path.join(configsDir, "gitignore.template"),
+			"# Public ignore template\n",
+		);
+		const add = Bun.spawnSync(["git", "add", "--", ".gitignore"], {
+			cwd: claudeDir,
+			stderr: "pipe",
+			stdout: "pipe",
+		});
+		expect(add.exitCode).toBe(0);
+
+		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
+
+		expect(fs.readFileSync(livePath, "utf-8")).toBe(
+			"# Private ignore policy\n",
+		);
+	});
+
+	it("still skips a tracked CLAUDE.md with uncommitted modifications", async () => {
+		const livePath = path.join(claudeDir, "CLAUDE.md");
+		fs.writeFileSync(livePath, "# Indexed policy\n");
+		const add = Bun.spawnSync(["git", "add", "--", "CLAUDE.md"], {
+			cwd: claudeDir,
+			stderr: "pipe",
+			stdout: "pipe",
+		});
+		expect(add.exitCode).toBe(0);
+		fs.writeFileSync(livePath, "# Uncommitted private policy\n");
+		fs.writeFileSync(path.join(configsDir, "CLAUDE.md"), "# Public bundle\n");
+
+		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
+
+		expect(fs.readFileSync(livePath, "utf-8")).toBe(
+			"# Uncommitted private policy\n",
+		);
+	});
+
+	it("logs the tracked destination and policy-repository reason when skipping", async () => {
+		const livePath = path.join(claudeDir, "CLAUDE.md");
+		fs.writeFileSync(livePath, "# Private policy\n");
+		fs.writeFileSync(path.join(configsDir, "CLAUDE.md"), "# Public bundle\n");
+		const add = Bun.spawnSync(["git", "add", "--", "CLAUDE.md"], {
+			cwd: claudeDir,
+			stderr: "pipe",
+			stdout: "pipe",
+		});
+		expect(add.exitCode).toBe(0);
+		const utils = require("../src/common/utils.js");
+		const originalInfo = utils.log.info;
+		const infoLogs = [];
+		utils.log.info = (message) => {
+			infoLogs.push(message);
+			originalInfo(message);
+		};
+
+		try {
+			await syncClaudeConfig({ srcDir: configsDir, claudeHome });
+		} finally {
+			utils.log.info = originalInfo;
+		}
+
+		expect(infoLogs.join("\n")).toContain(
+			"Skipped CLAUDE.md: tracked by the git repository at the Claude home",
+		);
+	});
+
+	it("fails open and deploys all files when the Claude home is not a git repository", async () => {
+		fs.rmSync(path.join(claudeDir, ".git"), {
+			recursive: true,
+			force: true,
+		});
+		seedBundle();
+
+		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
+
+		expectAllBundleFilesDeployed();
+	});
+
+	it("fails open and deploys all files when the Claude repository tracks nothing", async () => {
+		seedBundle();
+
+		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
+
+		expectAllBundleFilesDeployed();
+	});
+
+	it("fails open and deploys all files when the git query errors", async () => {
+		fs.rmSync(path.join(claudeDir, ".git"), {
+			recursive: true,
+			force: true,
+		});
+		fs.writeFileSync(
+			path.join(claudeDir, ".git"),
+			"gitdir: /tmp/haoshoku-missing-git-dir\n",
+		);
+		seedBundle();
+
+		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
+
+		expectAllBundleFilesDeployed();
+	});
+
+	it("fails open and deploys all files when git is not installed", async () => {
+		seedBundle();
+		const originalPath = process.env.PATH;
+		process.env.PATH = path.join(tmpDir, "missing-bin");
+
+		try {
+			await syncClaudeConfig({ srcDir: configsDir, claudeHome });
+		} finally {
+			process.env.PATH = originalPath;
+		}
+
+		expectAllBundleFilesDeployed();
+	});
+});
+
 describe("PERSONAL_FILES dest mapping", () => {
 	let tmpDir;
 	let configsDir;
