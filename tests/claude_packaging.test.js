@@ -34,6 +34,12 @@ it("keeps packed configs/claude files free of literal home-directory paths", () 
 			.map((file) => file.path)
 			.filter((filePath) => filePath.startsWith("configs/claude/"));
 		expect(claudeFiles.length).toBeGreaterThan(0);
+		const policyFiles = claudeFiles.filter(
+			(filePath) =>
+				filePath.startsWith("configs/claude/agents/") ||
+				filePath.startsWith("configs/claude/workflows/"),
+		);
+		expect(policyFiles).toEqual([]);
 
 		const leakingFiles = claudeFiles.filter((filePath) => {
 			const contents = fs.readFileSync(path.join(PROJECT_ROOT, filePath), "utf8");

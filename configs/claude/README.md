@@ -1,37 +1,48 @@
 # configs/claude/
 
-Claude Code configuration deployed to `~/.claude/`.
+Public Claude Code personal-file bundle deployed to `~/.claude/`.
 
-## Deploy surface
+## Managed surface
 
-| Source                    | Destination                       | Deployment |
-| ------------------------- | --------------------------------- | ---------- |
-| `CLAUDE.md`               | `~/.claude/CLAUDE.md`             | Copied     |
-| `statusline-command.sh`   | `~/.claude/statusline-command.sh` | Copied     |
-| `gitignore.template`      | `~/.claude/.gitignore`            | Copied     |
-| `agents/`                 | `~/.claude/agents/`               | Merged     |
-| `workflows/`              | `~/.claude/workflows/`            | Merged     |
+| Bundle source             | Live destination                    | Direction |
+| ------------------------- | ----------------------------------- | --------- |
+| `CLAUDE.md`               | `~/.claude/CLAUDE.md`               | Both      |
+| `statusline-command.sh`   | `~/.claude/statusline-command.sh`   | Both      |
+| `gitignore.template`      | `~/.claude/.gitignore`              | Both      |
 
-`haoshoku --claude` copies the three files and merge-deploys only the
-bundle-listed entries under `agents/` and `workflows/`. Unrelated live entries
-in those directories are preserved.
+`haoshoku --claude` copies exactly these three entries. The template name keeps
+the deny-first ignore file visible to git and npm-packlist inside this package;
+it is deployed as the real `~/.claude/.gitignore`.
 
-Skills are managed separately from this bundle. Use `haoshoku --skills` to
-sync configured skill sources and link their skills and non-shadowed agents
-from the cache.
+`haoshoku --claude-backup` captures exactly the same three entries in reverse.
+Every captured file passes through a refusal guard: content containing a literal
+absolute home-directory path is not written to this public bundle, the offending
+file is named in a warning, and the final summary reports backed-up and refused
+counts.
 
-## Workflow
+## Executable policy bootstrap
+
+This public package deliberately carries no `agents/` or `workflows/` policy
+surface and neither Claude command reads or writes those directories. On a fresh
+machine, executable policy must be bootstrapped separately by cloning a private
+policy repository the user owns directly into `~/.claude/`. Haoshoku cannot
+discover or fetch that private repository, so the three-file deploy does not
+produce a complete policy checkout by itself.
+
+`haoshoku --skills` remains a separate system: it may create
+`~/.claude/agents/` and link non-shadowed agent definitions from configured
+skill sources. That cache-backed behavior does not make this bundle an owner of
+private executable policy.
+
+## Commands
 
 ```bash
-# Deploy the bundled Claude configuration
+# Deploy the three bundled personal files
 haoshoku --claude
 
-# Back up the same files and merge-managed directories
+# Back up the same three personal files
 haoshoku --claude-backup
 
-# Sync skills and externally sourced agents separately
+# Sync skills and cache-backed agent definitions separately
 haoshoku --skills
 ```
-
-Backups skip symlinks and refuse files that contain literal absolute home paths,
-preventing private machine paths from entering the public bundle.

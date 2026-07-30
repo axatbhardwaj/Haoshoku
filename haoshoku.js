@@ -80,9 +80,12 @@ program
   .option("--os <type>", "Specify the target OS (cachyos, debian-server)")
   .option(
     "--claude",
-    "Deploy Claude Code config (personal files, agents, workflows)",
+    "Deploy Claude Code config (CLAUDE.md, statusline, .gitignore)",
   )
-  .option("--claude-backup", "Backup personal Claude config to configs/claude/")
+  .option(
+    "--claude-backup",
+    "Backup Claude Code personal files to configs/claude/",
+  )
   .option("--claude-update", "Update cached config and sync Claude config")
   .option("--codex", "Deploy Codex config (AGENTS.md) to ~/.codex/")
   .option("--codex-backup", "Backup ~/.codex/AGENTS.md to configs/codex/")
