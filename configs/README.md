@@ -8,8 +8,29 @@ Haoshoku uses a hybrid approach for configuration management:
 
 - **Regular configs** (fish, warp, alacritty, zed): Copied to destination. Ensures the system remains functional even if the source repository is moved or deleted, though changes to the local repo won't be reflected until setup runs again.
 - **Claude bundled config** (`CLAUDE.md`, `statusline-command.sh`, `gitignore.template`): Exactly these three files are copied by `--claude` and captured by `--claude-backup`; the template is mapped to `~/.claude/.gitignore`.
-- **Claude executable policy** (`~/.claude/agents/`, `~/.claude/workflows/`): Intentionally absent from this public bundle. A fresh machine must clone a private policy repository the user owns directly into `~/.claude/`; Haoshoku deliberately cannot fetch it.
+- **Claude executable policy** (`~/.claude/agents/`, `~/.claude/workflows/`): Intentionally absent from this public bundle. Bootstrap a private policy repository the user owns in place inside the existing `~/.claude/` directory.
 - **Claude skills and cache-backed agents** (from runtime git clones): Synced separately with `--skills` and symlinked from the cache; real local agents from the private policy checkout take priority.
+
+## Claude executable policy bootstrap
+
+On a fresh machine, bootstrap a private policy repository the user owns inside
+the existing `~/.claude/` directory with the following in-place sequence.
+Because the forced checkout overwrites any existing live file whose path is
+tracked by the private repository, copy or review anything you need before
+running these commands.
+
+```bash
+policy_repo='REPLACE_WITH_PRIVATE_POLICY_REPOSITORY_CLONE_URL'
+git -C ~/.claude init
+git -C ~/.claude remote add origin "$policy_repo"
+git -C ~/.claude fetch origin
+git -C ~/.claude remote set-head origin --auto
+policy_branch="$(git -C ~/.claude symbolic-ref --short refs/remotes/origin/HEAD)"
+git -C ~/.claude checkout -f -B "${policy_branch#origin/}" "$policy_branch"
+```
+
+Haoshoku deliberately cannot discover or fetch that private repository, so the
+three-file deploy does not produce a complete policy checkout by itself.
 
 ## Architecture
 

@@ -200,3 +200,63 @@ describe("backupClaudeConfig() guards dest-mapped PERSONAL_FILES", () => {
 		expect(result).toEqual({ backedUp: 1, refused: 1 });
 	});
 });
+
+describe("backupClaudeConfig() guards statusline-command.sh", () => {
+	it("refuses a leaking statusline while backing up its clean sibling", async () => {
+		const tmpDir = fs.mkdtempSync(
+			path.join(os.tmpdir(), "haoshoku-claude-statusline-refusal-"),
+		);
+		const configsDir = path.join(tmpDir, "configs", "claude");
+		const claudeHome = path.join(tmpDir, "claude-home");
+		const liveClaudeDir = path.join(claudeHome, ".claude");
+		const liveClaudeMdPath = path.join(liveClaudeDir, "CLAUDE.md");
+		const liveStatuslinePath = path.join(
+			liveClaudeDir,
+			"statusline-command.sh",
+		);
+		const bundledClaudeMdPath = path.join(configsDir, "CLAUDE.md");
+		const bundledStatuslinePath = path.join(
+			configsDir,
+			"statusline-command.sh",
+		);
+		const bundledStatuslineBefore = Buffer.from(
+			"#!/bin/sh\necho bundled statusline\n",
+		);
+
+		fs.mkdirSync(liveClaudeDir, { recursive: true });
+		fs.mkdirSync(configsDir, { recursive: true });
+		fs.writeFileSync(liveClaudeMdPath, "# Clean live policy\n");
+		fs.writeFileSync(
+			liveStatuslinePath,
+			"#!/bin/sh\nrepo=/home/someuser/private/policy\n",
+		);
+		fs.writeFileSync(bundledClaudeMdPath, "# Sanitised bundled policy\n");
+		fs.writeFileSync(bundledStatuslinePath, bundledStatuslineBefore);
+
+		const warnings = [];
+		const utils = require("../src/common/utils.js");
+		const warningOriginal = utils.log.warning;
+		utils.log.warning = (message) => warnings.push(message);
+
+		try {
+			const summary = await backupClaudeConfig({ srcDir: configsDir, claudeHome });
+
+			expect({
+				bundledClaudeMd: fs.readFileSync(bundledClaudeMdPath, "utf-8"),
+				bundledStatusline: fs.readFileSync(bundledStatuslinePath),
+				summary,
+				warnings,
+			}).toEqual({
+				bundledClaudeMd: "# Clean live policy\n",
+				bundledStatusline: bundledStatuslineBefore,
+				summary: { backedUp: 1, refused: 1 },
+				warnings: [
+					`REFUSED Claude backup for ${liveStatuslinePath}: /home/someuser/private/policy on line 2: repo=/home/someuser/private/policy`,
+				],
+			});
+		} finally {
+			utils.log.warning = warningOriginal;
+			fs.rmSync(tmpDir, { recursive: true, force: true });
+		}
+	});
+});

@@ -13,10 +13,31 @@ The Claude configuration has deliberately separate ownership paths:
 - Source: `~/.cache/haoshoku/{owner}-{repo}/` (runtime git clone)
 - Updates via `--skills` or `--skills-update`
 
-**Cloned separately into `~/.claude/`:** private executable policy
+**Bootstrapped separately inside `~/.claude/`:** private executable policy
 - A private policy repository the user owns supplies the live policy checkout
 - This public installer deliberately cannot discover or fetch it
 - A fresh machine therefore needs that separate bootstrap after the three-file deploy
+
+### Executable policy bootstrap
+
+On a fresh machine, bootstrap a private policy repository the user owns inside
+the existing `~/.claude/` directory with the following in-place sequence.
+Because the forced checkout overwrites any existing live file whose path is
+tracked by the private repository, copy or review anything you need before
+running these commands.
+
+```bash
+policy_repo='REPLACE_WITH_PRIVATE_POLICY_REPOSITORY_CLONE_URL'
+git -C ~/.claude init
+git -C ~/.claude remote add origin "$policy_repo"
+git -C ~/.claude fetch origin
+git -C ~/.claude remote set-head origin --auto
+policy_branch="$(git -C ~/.claude symbolic-ref --short refs/remotes/origin/HEAD)"
+git -C ~/.claude checkout -f -B "${policy_branch#origin/}" "$policy_branch"
+```
+
+Haoshoku deliberately cannot discover or fetch that private repository, so the
+three-file deploy does not produce a complete policy checkout by itself.
 
 ## Functions
 

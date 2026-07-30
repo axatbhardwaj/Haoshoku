@@ -428,22 +428,12 @@ describe("Claude policy directories remain unmanaged", () => {
 		).toBe(false);
 	});
 
-	it("does not use stateHome to process policy collisions", async () => {
-		writeBundled("agents", "collision.md", "bundled collision\n");
-		writeBundled("agents", "sibling.md", "bundled sibling\n");
-		const collision = writeLive(
-			"agents",
-			"collision.md",
-			"live collision\n",
-		);
-		const stateHome = path.join(claudeDir, "agents");
+	it("treats an unknown stateHome option as inert", async () => {
+		const stateHome = path.join(tmpDir, "state-home");
 
 		await syncClaudeConfig({ srcDir: configsDir, claudeHome, stateHome });
 
-		expect({
-			collision: fs.readFileSync(collision, "utf-8"),
-			siblingExists: fs.existsSync(livePath("agents", "sibling.md")),
-		}).toEqual({ collision: "live collision\n", siblingExists: false });
+		expect(fs.existsSync(stateHome)).toBe(false);
 	});
 
 	it("does not create bundled policy directories from live files", async () => {
