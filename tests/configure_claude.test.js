@@ -206,6 +206,54 @@ describe("syncClaudeConfig() respects the Claude home git index", () => {
 		expect(infoLogs.join("\n")).toContain(
 			"Skipped CLAUDE.md: tracked by the git repository at the Claude home",
 		);
+		expect(infoLogs.join("\n")).toContain(
+			`Recover a missing file with: git -C "${claudeDir}" restore -- "CLAUDE.md"`,
+		);
+	});
+
+	it("fails open when git environment overrides point at a foreign index", async () => {
+		const foreignRepo = path.join(tmpDir, "foreign-repo");
+		fs.mkdirSync(foreignRepo);
+		const init = Bun.spawnSync(["git", "init"], {
+			cwd: foreignRepo,
+			stderr: "pipe",
+			stdout: "pipe",
+		});
+		expect(init.exitCode).toBe(0);
+		fs.writeFileSync(path.join(foreignRepo, "CLAUDE.md"), "# Foreign policy\n");
+		const add = Bun.spawnSync(["git", "add", "--", "CLAUDE.md"], {
+			cwd: foreignRepo,
+			stderr: "pipe",
+			stdout: "pipe",
+		});
+		expect(add.exitCode).toBe(0);
+		seedBundle();
+		const configureModule = path.resolve(
+			import.meta.dir,
+			"..",
+			"src",
+			"helpers",
+			"configure_claude.js",
+		);
+		const child = Bun.spawnSync(
+			[
+				process.execPath,
+				"--eval",
+				`const { syncClaudeConfig } = await import(${JSON.stringify(configureModule)}); await syncClaudeConfig(${JSON.stringify({ srcDir: configsDir, claudeHome })});`,
+			],
+			{
+				env: {
+					...process.env,
+					GIT_DIR: path.join(foreignRepo, ".git"),
+					GIT_WORK_TREE: claudeDir,
+				},
+				stderr: "pipe",
+				stdout: "pipe",
+			},
+		);
+
+		expect(child.exitCode).toBe(0);
+		expectAllBundleFilesDeployed();
 	});
 
 	it("fails open and deploys all files when the Claude home is not a git repository", async () => {
@@ -213,6 +261,34 @@ describe("syncClaudeConfig() respects the Claude home git index", () => {
 			recursive: true,
 			force: true,
 		});
+		seedBundle();
+
+		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
+
+		expectAllBundleFilesDeployed();
+	});
+
+	it("fails open when a parent repository tracks the nested Claude home", async () => {
+		fs.rmSync(path.join(claudeDir, ".git"), {
+			recursive: true,
+			force: true,
+		});
+		const init = Bun.spawnSync(["git", "init"], {
+			cwd: claudeHome,
+			stderr: "pipe",
+			stdout: "pipe",
+		});
+		expect(init.exitCode).toBe(0);
+		fs.writeFileSync(path.join(claudeDir, "CLAUDE.md"), "# Parent-owned policy\n");
+		const add = Bun.spawnSync(
+			["git", "add", "--", path.join(".claude", "CLAUDE.md")],
+			{
+				cwd: claudeHome,
+				stderr: "pipe",
+				stdout: "pipe",
+			},
+		);
+		expect(add.exitCode).toBe(0);
 		seedBundle();
 
 		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
@@ -235,7 +311,7 @@ describe("syncClaudeConfig() respects the Claude home git index", () => {
 		});
 		fs.writeFileSync(
 			path.join(claudeDir, ".git"),
-			"gitdir: /tmp/haoshoku-missing-git-dir\n",
+			`gitdir: ${path.join(tmpDir, "missing-git-dir")}\n`,
 		);
 		seedBundle();
 

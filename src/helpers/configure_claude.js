@@ -17,6 +17,25 @@ const SETTINGS_PATH = path.join(CLAUDE_CONFIG_DIR, "settings.json");
 const SUPERPOWERS_PLUGIN_ID = "superpowers@claude-plugins-official";
 
 const CLAUDE_INSTALL_URL = "https://claude.ai/install.sh";
+const GIT_REPOSITORY_ENV_VARS = [
+  "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+  "GIT_CEILING_DIRECTORIES",
+  "GIT_COMMON_DIR",
+  "GIT_CONFIG",
+  "GIT_CONFIG_COUNT",
+  "GIT_CONFIG_PARAMETERS",
+  "GIT_DIR",
+  "GIT_DISCOVERY_ACROSS_FILESYSTEM",
+  "GIT_GRAFT_FILE",
+  "GIT_IMPLICIT_WORK_TREE",
+  "GIT_INDEX_FILE",
+  "GIT_NO_REPLACE_OBJECTS",
+  "GIT_OBJECT_DIRECTORY",
+  "GIT_PREFIX",
+  "GIT_REPLACE_REF_BASE",
+  "GIT_SHALLOW_FILE",
+  "GIT_WORK_TREE",
+];
 
 // Exported so tests can assert the manifest is complete (e.g. regression
 // guard that statusline-command.sh is never silently dropped).
@@ -43,12 +62,21 @@ function commandExists(cmd) {
   return Bun.which(cmd) !== null;
 }
 
+/** Copy the current process environment without Git repository overrides. */
+function gitQueryEnvironment() {
+  const env = { ...process.env };
+  for (const variable of GIT_REPOSITORY_ENV_VARS) delete env[variable];
+  return env;
+}
+
 /** Fail-open check for a destination tracked by a repo rooted at claudeDir. */
 function isTrackedByClaudeRepository(claudeDir, filePath) {
   try {
+    const env = gitQueryEnvironment();
     const rootQuery = Bun.spawnSync(
       ["git", "-C", claudeDir, "rev-parse", "--show-toplevel"],
       {
+        env,
         stderr: "ignore",
         stdout: "pipe",
       },
@@ -69,6 +97,7 @@ function isTrackedByClaudeRepository(claudeDir, filePath) {
         filePath,
       ],
       {
+        env,
         stderr: "ignore",
         stdout: "ignore",
       },
@@ -127,7 +156,7 @@ export async function syncClaudeConfig(options = {}) {
     if (fs.existsSync(srcPath)) {
       if (isTrackedByClaudeRepository(claudeDir, liveFile)) {
         log.info(
-          `Skipped ${liveFile}: tracked by the git repository at the Claude home`,
+          `Skipped ${liveFile}: tracked by the git repository at the Claude home. Recover a missing file with: git -C ${JSON.stringify(claudeDir)} restore -- ${JSON.stringify(liveFile)}`,
         );
       } else {
         safeCopyFile(srcPath, destPath);
