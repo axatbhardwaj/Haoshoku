@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased - 2026-07-31
+## 6.0.0 - 2026-07-31
 
 - Report a bundled agent shadowed by a same-named real local file as an informational skip rather than a warning or symlink failure, while keeping the local file authoritative. `mergeAgents()` now summarizes agents correctly linked after the run, local shadows, and genuine failures separately on one grammatical line, so an already-correct steady-state run still reports its installed agents; `mergeSkills()` uses the same in-place quantity and wording. Stale or foreign destination symlinks are still replaced, actual filesystem errors remain failures, and `mergeAgents()` still returns every seen agent name, including local shadows. Also scrub Git's four pathspec-mode environment variables (`GIT_LITERAL_PATHSPECS`, `GIT_GLOB_PATHSPECS`, `GIT_NOGLOB_PATHSPECS`, and `GIT_ICASE_PATHSPECS`) from Claude-home trackedness queries so inherited matching modes cannot suppress a deploy.
 - Harden the Claude-home index guard against inherited Git repository overrides: each query now derives an environment from the current `process.env` and removes Git's repository-local and discovery variables before spawning, preventing exported `GIT_DIR`/`GIT_WORK_TREE` values from substituting a foreign index while preserving runtime `PATH` changes and fail-open behavior when Git is absent. Add regression coverage for foreign-index injection and a parent dotfiles repository containing `.claude/`; make the broken-gitdir fixture per-test and include a concrete `git restore` recovery command in tracked-file skip logs.
