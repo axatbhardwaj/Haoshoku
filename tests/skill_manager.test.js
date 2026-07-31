@@ -224,6 +224,28 @@ describe("mergeSkills() — symlinkSharedResource safe-backup", () => {
 		const srcScripts = path.join(source.cachePath, "skills", "scripts");
 		expect(fs.readlinkSync(destScripts)).toBe(srcScripts);
 	});
+
+	it("reports skills already linked on a second run as in place", () => {
+		const source = buildFakeSource("repo-e");
+		const skillDir = path.join(source.cachePath, "skills", "solo");
+		fs.mkdirSync(skillDir, { recursive: true });
+		fs.writeFileSync(path.join(skillDir, "SKILL.md"), "# solo\n");
+		const utils = require("../src/common/utils.js");
+		const successSpy = spyOn(utils.log, "success").mockImplementation(() => {});
+
+		try {
+			mergeSkills([source], { skillsDir: skillsDestDir });
+			successSpy.mockClear();
+
+			mergeSkills([source], { skillsDir: skillsDestDir });
+
+			expect(successSpy).toHaveBeenCalledWith(
+				`1 skill in place at ${skillsDestDir}`,
+			);
+		} finally {
+			successSpy.mockRestore();
+		}
+	});
 });
 
 describe("mergeAgents() local-file shadowing", () => {
@@ -284,7 +306,7 @@ describe("mergeAgents() local-file shadowing", () => {
 		expect({ infos, successes, warnings, errors }).toEqual({
 			infos: [`Skipped agent collision.md: local file wins at ${collision}`],
 			successes: [
-				`Merged 0 agents to ${agentsDir}; skipped 1 local shadow; failed 0`,
+				`0 agents in place at ${agentsDir}; 1 local shadow skipped; 0 agents failed`,
 			],
 			warnings: [],
 			errors: [],
@@ -308,6 +330,10 @@ describe("mergeAgents() local-file shadowing", () => {
 		expect(errors.some((message) =>
 			message.startsWith("Failed to symlink agent collision.md:"),
 		)).toBe(true);
+		expect(successes).toEqual([]);
+		expect(warnings).toEqual([
+			`0 agents in place at ${agentsDir}; 0 local shadows skipped; 1 agent failed`,
+		]);
 		expect(seenAgents.has("collision.md")).toBe(false);
 	});
 
@@ -329,17 +355,20 @@ describe("mergeAgents() local-file shadowing", () => {
 		expect(seenAgents.has("collision.md")).toBe(true);
 	});
 
-	it("T11 keeps an already-correct symlink unchanged and counted as seen", () => {
-		fs.mkdirSync(agentsDir, { recursive: true });
-		const sourceAgent = path.join(source.cachePath, "agents", "collision.md");
+	it("reports an agent as in place on a steady-state second run", () => {
 		const collision = path.join(agentsDir, "collision.md");
-		fs.symlinkSync(sourceAgent, collision);
+
+		mergeAgents([source], { agentsDir });
 		const linkBefore = fs.readlinkSync(collision);
+		successes.length = 0;
 
 		const seenAgents = mergeAgents([source], { agentsDir });
 
 		expect(fs.lstatSync(collision).isSymbolicLink()).toBe(true);
 		expect(fs.readlinkSync(collision)).toBe(linkBefore);
+		expect(successes).toEqual([
+			`1 agent in place at ${agentsDir}; 0 local shadows skipped; 0 agents failed`,
+		]);
 		expect(warnings).toEqual([]);
 		expect(errors).toEqual([]);
 		expect(seenAgents).toBeInstanceOf(Set);

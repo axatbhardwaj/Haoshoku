@@ -527,7 +527,8 @@ export function mergeSkills(sources, opts = {}) {
 		}
 	}
 
-	log.success(`Merged ${seenSkills.size} skills to ${skillsDir}`);
+	const skillLabel = seenSkills.size === 1 ? "skill" : "skills";
+	log.success(`${seenSkills.size} ${skillLabel} in place at ${skillsDir}`);
 }
 
 /**
@@ -553,7 +554,7 @@ export function mergeAgents(sources, opts = {}) {
 	}
 
 	const seenAgents = new Set();
-	let mergedAgents = 0;
+	let inPlaceAgents = 0;
 	let shadowedAgents = 0;
 	let failedAgents = 0;
 
@@ -580,6 +581,7 @@ export function mergeAgents(sources, opts = {}) {
 					continue;
 				}
 				if (updateSymlinkIfNeeded(destPath, srcPath)) {
+					inPlaceAgents++;
 					seenAgents.add(entry.name);
 					continue;
 				}
@@ -588,7 +590,7 @@ export function mergeAgents(sources, opts = {}) {
 			try {
 				fs.symlinkSync(srcPath, destPath);
 				log.info(`Symlinked agent ${entry.name} from ${source.name}`);
-				mergedAgents++;
+				inPlaceAgents++;
 				seenAgents.add(entry.name);
 			} catch (error) {
 				failedAgents++;
@@ -597,8 +599,10 @@ export function mergeAgents(sources, opts = {}) {
 		}
 	}
 
+	const agentLabel = inPlaceAgents === 1 ? "agent" : "agents";
 	const shadowLabel = shadowedAgents === 1 ? "local shadow" : "local shadows";
-	const summary = `Merged ${mergedAgents} agents to ${agentsDir}; skipped ${shadowedAgents} ${shadowLabel}; failed ${failedAgents}`;
+	const failedLabel = failedAgents === 1 ? "agent" : "agents";
+	const summary = `${inPlaceAgents} ${agentLabel} in place at ${agentsDir}; ${shadowedAgents} ${shadowLabel} skipped; ${failedAgents} ${failedLabel} failed`;
 	if (failedAgents > 0) {
 		log.warning(summary);
 	} else {
