@@ -1,5 +1,9 @@
 # Changelog
 
+## 6.0.1 - 2026-08-01
+
+- Fix the npm publish gate's packaging guard timeout. Version 6.0.0 was tagged and released on GitHub but was never published to npm: `tests/claude_packaging.test.js` exceeded Bun's default 5000ms timeout on the CI runner while its cold-cache `npm pack --dry-run --json` operation took about 4 seconds, so the publish workflow stopped before `npm publish` ran. Version 6.0.1 is the first 6.x version actually published to npm.
+
 ## 6.0.0 - 2026-08-01
 
 **Breaking change.** The public bundle no longer ships the executable Claude policy surface. `--claude` and `--claude-backup` now manage exactly three files — `CLAUDE.md`, `statusline-command.sh`, and `gitignore.template` (deployed as `~/.claude/.gitignore`). `settings.json` is no longer a `PERSONAL_FILES` entry, so neither command writes or overwrites it; the bundled `settings.json`, `conventions/`, `output-styles/`, `agents/`, and `workflows/` are deleted. Executable policy now comes from a private policy repository you bootstrap in place at `~/.claude/`; see `configs/claude/README.md` for the procedure. This public installer deliberately cannot fetch that repository. The independent `--skills` path is unchanged: it still creates `~/.claude/agents/` and symlinks agents into it.

@@ -49,4 +49,4 @@ it("keeps packed configs/claude files free of literal home-directory paths", () 
 	} finally {
 		fs.rmSync(npmCache, { recursive: true, force: true });
 	}
-});
+}, 30_000);
