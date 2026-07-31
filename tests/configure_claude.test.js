@@ -256,6 +256,35 @@ describe("syncClaudeConfig() respects the Claude home git index", () => {
 		expectAllBundleFilesDeployed();
 	});
 
+	it("does not let case-insensitive pathspec matching suppress a deploy", async () => {
+		fs.writeFileSync(path.join(claudeDir, "claude.md"), "# Lowercase policy\n");
+		const add = Bun.spawnSync(["git", "add", "--", "claude.md"], {
+			cwd: claudeDir,
+			stderr: "pipe",
+			stdout: "pipe",
+		});
+		expect(add.exitCode).toBe(0);
+		seedBundle();
+		const originalIcasePathspecs = process.env.GIT_ICASE_PATHSPECS;
+		process.env.GIT_ICASE_PATHSPECS = "1";
+
+		try {
+			await syncClaudeConfig({ srcDir: configsDir, claudeHome });
+		} finally {
+			if (originalIcasePathspecs === undefined) {
+				delete process.env.GIT_ICASE_PATHSPECS;
+			} else {
+				process.env.GIT_ICASE_PATHSPECS = originalIcasePathspecs;
+			}
+		}
+
+		expect(fs.existsSync(path.join(claudeDir, "CLAUDE.md"))).toBe(true);
+		expectAllBundleFilesDeployed();
+		expect(fs.readFileSync(path.join(claudeDir, "claude.md"), "utf-8")).toBe(
+			"# Lowercase policy\n",
+		);
+	});
+
 	it("fails open and deploys all files when the Claude home is not a git repository", async () => {
 		fs.rmSync(path.join(claudeDir, ".git"), {
 			recursive: true,

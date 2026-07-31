@@ -230,8 +230,12 @@ describe("mergeAgents() local-file shadowing", () => {
 	let tmpDir;
 	let agentsDir;
 	let source;
+	let infos;
+	let successes;
 	let warnings;
 	let errors;
+	let originalInfo;
+	let originalSuccess;
 	let originalWarning;
 	let originalError;
 
@@ -243,23 +247,31 @@ describe("mergeAgents() local-file shadowing", () => {
 		fs.mkdirSync(sourceAgents, { recursive: true });
 		fs.writeFileSync(path.join(sourceAgents, "collision.md"), "skills agent\n");
 		source = { name: "fake-skills", cachePath };
+		infos = [];
+		successes = [];
 		warnings = [];
 		errors = [];
 		const utils = require("../src/common/utils.js");
+		originalInfo = utils.log.info;
+		originalSuccess = utils.log.success;
 		originalWarning = utils.log.warning;
 		originalError = utils.log.error;
+		utils.log.info = (message) => infos.push(message);
+		utils.log.success = (message) => successes.push(message);
 		utils.log.warning = (message) => warnings.push(message);
 		utils.log.error = (message) => errors.push(message);
 	});
 
 	afterEach(() => {
 		const utils = require("../src/common/utils.js");
+		utils.log.info = originalInfo;
+		utils.log.success = originalSuccess;
 		utils.log.warning = originalWarning;
 		utils.log.error = originalError;
 		fs.rmSync(tmpDir, { recursive: true, force: true });
 	});
 
-	it("T10 leaves a real agent file unchanged, warns, and counts it as seen", () => {
+	it("reports a real local agent shadow as skipped instead of merged or failed", () => {
 		fs.mkdirSync(agentsDir, { recursive: true });
 		const collision = path.join(agentsDir, "collision.md");
 		const localBytes = Buffer.from("local agent\n");
@@ -269,11 +281,51 @@ describe("mergeAgents() local-file shadowing", () => {
 
 		expect(fs.lstatSync(collision).isSymbolicLink()).toBe(false);
 		expect(fs.readFileSync(collision)).toEqual(localBytes);
-		expect(warnings).toHaveLength(1);
-		expect(warnings[0]).toContain("collision.md");
-		expect(warnings[0]).toContain(collision);
-		expect(errors).toEqual([]);
+		expect({ infos, successes, warnings, errors }).toEqual({
+			infos: [`Skipped agent collision.md: local file wins at ${collision}`],
+			successes: [
+				`Merged 0 agents to ${agentsDir}; skipped 1 local shadow; failed 0`,
+			],
+			warnings: [],
+			errors: [],
+		});
 		expect(seenAgents).toBeInstanceOf(Set);
+		expect(seenAgents.has("collision.md")).toBe(true);
+	});
+
+	it("still reports a genuine symlink failure as an error", () => {
+		fs.mkdirSync(agentsDir, { recursive: true });
+		fs.chmodSync(agentsDir, 0o555);
+
+		let seenAgents;
+		try {
+			seenAgents = mergeAgents([source], { agentsDir });
+		} finally {
+			fs.chmodSync(agentsDir, 0o755);
+		}
+
+		expect(fs.existsSync(path.join(agentsDir, "collision.md"))).toBe(false);
+		expect(errors.some((message) =>
+			message.startsWith("Failed to symlink agent collision.md:"),
+		)).toBe(true);
+		expect(seenAgents.has("collision.md")).toBe(false);
+	});
+
+	it("replaces a stale agent symlink instead of treating it as a local shadow", () => {
+		fs.mkdirSync(agentsDir, { recursive: true });
+		const sourceAgent = path.join(source.cachePath, "agents", "collision.md");
+		const foreignTarget = path.join(tmpDir, "foreign-agent.md");
+		const collision = path.join(agentsDir, "collision.md");
+		fs.writeFileSync(foreignTarget, "foreign agent\n");
+		fs.symlinkSync(foreignTarget, collision);
+
+		const seenAgents = mergeAgents([source], { agentsDir });
+
+		expect(fs.lstatSync(collision).isSymbolicLink()).toBe(true);
+		expect(fs.readlinkSync(collision)).toBe(sourceAgent);
+		expect(fs.readFileSync(foreignTarget, "utf-8")).toBe("foreign agent\n");
+		expect(warnings).toEqual([]);
+		expect(errors).toEqual([]);
 		expect(seenAgents.has("collision.md")).toBe(true);
 	});
 

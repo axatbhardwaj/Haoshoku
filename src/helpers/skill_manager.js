@@ -553,6 +553,9 @@ export function mergeAgents(sources, opts = {}) {
 	}
 
 	const seenAgents = new Set();
+	let mergedAgents = 0;
+	let shadowedAgents = 0;
+	let failedAgents = 0;
 
 	for (const source of sources) {
 		const srcAgentsDir = path.join(source.cachePath, "agents");
@@ -569,9 +572,10 @@ export function mergeAgents(sources, opts = {}) {
 			if (pathExists(destPath)) {
 				const destStat = fs.lstatSync(destPath);
 				if (!destStat.isSymbolicLink()) {
-					log.warning(
-						`agent ${entry.name} shadowed by local file at ${destPath}`,
+					log.info(
+						`Skipped agent ${entry.name}: local file wins at ${destPath}`,
 					);
+					shadowedAgents++;
 					seenAgents.add(entry.name);
 					continue;
 				}
@@ -584,14 +588,22 @@ export function mergeAgents(sources, opts = {}) {
 			try {
 				fs.symlinkSync(srcPath, destPath);
 				log.info(`Symlinked agent ${entry.name} from ${source.name}`);
+				mergedAgents++;
 				seenAgents.add(entry.name);
 			} catch (error) {
+				failedAgents++;
 				log.error(`Failed to symlink agent ${entry.name}: ${error.message}`);
 			}
 		}
 	}
 
-	log.success(`Merged ${seenAgents.size} agents to ${agentsDir}`);
+	const shadowLabel = shadowedAgents === 1 ? "local shadow" : "local shadows";
+	const summary = `Merged ${mergedAgents} agents to ${agentsDir}; skipped ${shadowedAgents} ${shadowLabel}; failed ${failedAgents}`;
+	if (failedAgents > 0) {
+		log.warning(summary);
+	} else {
+		log.success(summary);
+	}
 	return seenAgents;
 }
 
