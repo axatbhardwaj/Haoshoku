@@ -12,6 +12,12 @@ import {
 	safeCopyFile,
 } from "../src/common/utils.js";
 
+const SAFE_COPY_RACE_WORKER = path.join(
+	import.meta.dir,
+	"fixtures",
+	"safe-copy-race-worker.js",
+);
+
 describe("Utils", () => {
 	it("commandExists returns true for existing command", async () => {
 		// We assume 'ls' exists on linux/unix
@@ -63,10 +69,21 @@ describe("safeCopyFile", () => {
 
 	function versionedBackupPaths(dest) {
 		const basename = path.basename(dest);
+		const prefix = `${basename}.bak.`;
 		return fs
 			.readdirSync(path.dirname(dest))
-			.filter((candidate) => candidate.startsWith(`${basename}.bak.`))
-			.sort()
+			.filter((candidate) => candidate.startsWith(prefix))
+			.sort((candidateA, candidateB) => {
+				const [timestampA, collisionA = 0] = candidateA
+					.slice(prefix.length)
+					.split(".")
+					.map(Number);
+				const [timestampB, collisionB = 0] = candidateB
+					.slice(prefix.length)
+					.split(".")
+					.map(Number);
+				return timestampA - timestampB || collisionA - collisionB;
+			})
 			.map((candidate) => path.join(path.dirname(dest), candidate));
 	}
 
@@ -82,6 +99,18 @@ describe("safeCopyFile", () => {
 		expect(fs.readFileSync(`${dest}.bak.1234567890`, "utf-8")).toBe(
 			"previous content",
 		);
+	});
+
+	it("creates versioned backups with mode 0644", () => {
+		const src = path.join(tmpDir, "new.conf");
+		const dest = path.join(tmpDir, "live.conf");
+		fs.writeFileSync(src, "new content");
+		fs.writeFileSync(dest, "executable live content", { mode: 0o755 });
+
+		safeCopyFile(src, dest, { now: () => 1234567890 });
+
+		const backupMode = fs.statSync(`${dest}.bak.1234567890`).mode & 0o777;
+		expect(backupMode).toBe(0o644);
 	});
 
 	it("does not create a versioned .bak when dest does not pre-exist", () => {
@@ -302,6 +331,114 @@ describe("safeCopyFile", () => {
 				fs.readFileSync(path.join(tmpDir, candidate), "utf-8"),
 			),
 		).toEqual(["user original content", "bundle v1"]);
+	});
+
+	it("retries with an exclusive copy when a process wins the backup race", () => {
+		const src = path.join(tmpDir, "new.conf");
+		const dest = path.join(tmpDir, "live.conf");
+		const backupBase = `${dest}.bak.1234567890`;
+		fs.writeFileSync(src, "bundle content");
+		fs.writeFileSync(dest, "live user content");
+
+		const copyFileSync = fs.copyFileSync;
+		const versionedCopyFlags = [];
+		let injectedRace = false;
+		fs.copyFileSync = (source, target, flags) => {
+			if (target.startsWith(backupBase)) {
+				versionedCopyFlags.push(flags);
+			}
+			if (target === backupBase && !injectedRace) {
+				injectedRace = true;
+				fs.writeFileSync(target, "competing process backup");
+				const error = new Error("destination already exists");
+				error.code = "EEXIST";
+				throw error;
+			}
+			return copyFileSync(source, target, flags);
+		};
+
+		try {
+			expect(() =>
+				safeCopyFile(src, dest, { now: () => 1234567890 }),
+			).not.toThrow();
+		} finally {
+			fs.copyFileSync = copyFileSync;
+		}
+
+		expect(fs.readFileSync(backupBase, "utf-8")).toBe(
+			"competing process backup",
+		);
+		expect(fs.readFileSync(`${backupBase}.1`, "utf-8")).toBe(
+			"live user content",
+		);
+		expect(versionedCopyFlags).toEqual([
+			fs.constants.COPYFILE_EXCL,
+			fs.constants.COPYFILE_EXCL,
+		]);
+	});
+
+	it("keeps every versioned backup when processes share a timestamp", async () => {
+		const processCount = 8;
+		const dest = path.join(tmpDir, "live.conf");
+		const gate = path.join(tmpDir, "race-gate");
+		fs.writeFileSync(dest, "initial live content");
+		fs.writeFileSync(`${dest}.haoshoku-first-capture`, "first capture");
+		fs.writeFileSync(`${dest}.bak`, "compatibility capture");
+		fs.writeFileSync(gate, "closed");
+
+		const children = Array.from({ length: processCount }, (_, index) => {
+			const src = path.join(tmpDir, `source-${index}.conf`);
+			const ready = path.join(tmpDir, `ready-${index}`);
+			fs.writeFileSync(src, `bundle ${index}`);
+			return Bun.spawn(
+				[
+					process.execPath,
+					SAFE_COPY_RACE_WORKER,
+					src,
+					dest,
+					gate,
+					ready,
+					"1234567890",
+				],
+				{ stderr: "pipe", stdout: "ignore" },
+			);
+		});
+
+		const readyDeadline = Date.now() + 5000;
+		while (
+			fs.readdirSync(tmpDir).filter((candidate) => candidate.startsWith("ready-"))
+				.length < processCount
+		) {
+			if (Date.now() > readyDeadline) {
+				throw new Error("Timed out waiting for backup race workers");
+			}
+			await Bun.sleep(10);
+		}
+		fs.unlinkSync(gate);
+
+		const exitCodes = await Promise.all(children.map((child) => child.exited));
+		expect(exitCodes).toEqual(Array(processCount).fill(0));
+		expect(versionedBackupPaths(dest)).toHaveLength(processCount);
+	});
+
+	it("orders double-digit collision suffixes numerically", () => {
+		const src = path.join(tmpDir, "new.conf");
+		const dest = path.join(tmpDir, "live.conf");
+		fs.writeFileSync(dest, "initial live content");
+
+		for (let index = 0; index < 12; index += 1) {
+			fs.writeFileSync(src, `bundle ${index}`);
+			safeCopyFile(src, dest, { now: () => 1234567890 });
+		}
+
+		expect(
+			versionedBackupPaths(dest).map((candidate) =>
+				fs.readFileSync(candidate, "utf-8"),
+			),
+		).toEqual([
+			"initial live content",
+			...Array.from({ length: 11 }, (_, index) => `bundle ${index}`),
+		]);
 	});
 
 	it("keeps the first capture and every .bak through a bundle revert", () => {

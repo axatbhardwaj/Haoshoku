@@ -151,12 +151,18 @@ export function safeCopyFile(src, dest, { now = Date.now } = {}) {
 		}
 		const backupBase = `${dest}.bak.${now()}`;
 		let backup = backupBase;
-		let collision = 1;
-		while (fs.existsSync(backup)) {
-			backup = `${backupBase}.${collision}`;
-			collision += 1;
+		let collision = 0;
+		while (true) {
+			try {
+				fs.copyFileSync(dest, backup, fs.constants.COPYFILE_EXCL);
+				fs.chmodSync(backup, 0o644);
+				break;
+			} catch (error) {
+				if (error.code !== "EEXIST") throw error;
+				collision += 1;
+				backup = `${backupBase}.${collision}`;
+			}
 		}
-		fs.copyFileSync(dest, backup);
 		log.info(`Backed up existing ${path.basename(dest)} to ${backup}`);
 	}
 	fs.copyFileSync(src, dest);

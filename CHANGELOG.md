@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased - 2026-08-01
+
+- Harden timestamped `safeCopyFile` backups by claiming collision paths
+  atomically and forcing data-file mode `0644`, including beneath executable
+  destinations such as `~/.local/bin`. Backups remain intentionally unpruned:
+  automatic retention could discard the only copy of a later user edit, so
+  cleanup stays an explicit user decision. Add behavioral coverage for the
+  Claude first-capture gitignore allowlist, concurrent same-timestamp backups,
+  and double-digit collision ordering.
+
 ## 6.0.1 - 2026-08-01
 
 - Fix the npm publish gate's packaging guard timeout. Version 6.0.0 was tagged and released on GitHub but was never published to npm: `tests/claude_packaging.test.js` exceeded Bun's default 5000ms timeout on the CI runner while its cold-cache `npm pack --dry-run --json` operation took about 4 seconds, so the publish workflow stopped before `npm publish` ran. Version 6.0.1 is the first 6.x version actually published to npm.
