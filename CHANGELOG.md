@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Add the opt-in `--claude-bootstrap` mode for checking out the configured private
+  Claude policy repository, including pre-mutation authentication checks and
+  idempotent `origin` URL updates when `claudeBootstrapUrl` changes.
+
 ## 6.1.0 - 2026-08-01
 
 - Preserve locally authored skills and cache branches during skill updates. `mergeSkills()`

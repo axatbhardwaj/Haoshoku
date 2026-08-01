@@ -8,6 +8,7 @@ import { detectOS, findActiveModeFlags } from "./src/common/cli_utils.js";
 import { log, promptUser } from "./src/common/utils.js";
 import {
   backupClaudeConfig,
+  bootstrapClaudePolicy,
   installSuperpowers,
   syncClaudeConfig,
   updateClaudeConfig,
@@ -85,6 +86,10 @@ program
   .option(
     "--claude-backup",
     "Backup Claude Code personal files to configs/claude/",
+  )
+  .option(
+    "--claude-bootstrap",
+    "Bootstrap private policy repository at ~/.claude/",
   )
   .option("--claude-update", "Update cached config and sync Claude config")
   .option("--codex", "Deploy Codex config (AGENTS.md) to ~/.codex/")
@@ -187,7 +192,9 @@ async function runAction(options) {
     // chain silently ran only the first matching flag and ignored the rest.
     const activeFlags = [
       ...findActiveModeFlags(options),
-      ...["prWatch", "prWatchBackup"].filter((flag) => options[flag]),
+      ...["claudeBootstrap", "prWatch", "prWatchBackup"].filter(
+        (flag) => options[flag],
+      ),
     ];
     if (activeFlags.length >= 2) {
       log.error(
@@ -204,6 +211,11 @@ async function runAction(options) {
 
     if (options.claudeBackup) {
       await backupClaudeConfig();
+      return;
+    }
+
+    if (options.claudeBootstrap) {
+      await bootstrapClaudePolicy();
       return;
     }
 

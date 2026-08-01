@@ -30,32 +30,23 @@ counts.
 This public package deliberately carries no `agents/` or `workflows/` policy
 surface and neither Claude command reads or writes those directories.
 
-On a fresh machine, bootstrap a private policy repository the user owns in
-place at `~/.claude/` with the following sequence. It verifies that the remote
-is reachable before creating the directory or initializing git. It then creates
-the directory when absent and updates an existing `origin` URL, so rerunning it
-with a changed repository URL cannot silently use the stale remote. The forced
-checkout replaces files at paths tracked by the private repository; copy or
-review colliding files first. Non-colliding local-only files remain in place.
+On a fresh machine, first run the normal `haoshoku` setup, configure git, and add
+the required credentials through the web interface. Then bootstrap the private
+policy repository in place at `~/.claude/` with:
 
-```bash
-policy_repo='REPLACE_WITH_PRIVATE_POLICY_REPOSITORY_URL'
-git ls-remote "$policy_repo" >/dev/null &&
-mkdir -p ~/.claude &&
-git -C ~/.claude init &&
-if git -C ~/.claude remote get-url origin >/dev/null 2>&1; then
-  git -C ~/.claude remote set-url origin "$policy_repo"
-else
-  git -C ~/.claude remote add origin "$policy_repo"
-fi &&
-git -C ~/.claude fetch --prune origin &&
-git -C ~/.claude remote set-head origin --auto &&
-policy_branch="$(git -C ~/.claude symbolic-ref --short refs/remotes/origin/HEAD)" &&
-git -C ~/.claude checkout -f -B "${policy_branch#origin/}" "$policy_branch"
+```console
+haoshoku --claude-bootstrap
 ```
 
-Haoshoku deliberately cannot discover or fetch that private repository, so the
-three-file deploy does not produce a complete policy checkout by itself.
+The flag verifies remote reachability before changing the filesystem, creates
+and initializes `~/.claude/` when needed, updates an existing `origin`, resolves
+the remote's default branch, and force-checks it out. The repository URL is
+optional and defaults to the owner's private policy repository. Other users can
+set `claudeBootstrapUrl` alongside `skillSources` in `~/.haoshoku.json` to use
+their own repository. Run the flag only after credentials are configured; an
+authentication failure exits before `~/.claude/` is created. The forced checkout
+replaces files at paths tracked by the private repository, so copy or review
+colliding files first. Non-colliding local-only files remain in place.
 
 The private repository owns every destination it tracks, including a locally
 modified tracked file: `haoshoku --claude` skips that path instead of replacing

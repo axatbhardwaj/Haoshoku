@@ -14,9 +14,12 @@ const PROJECT_ROOT = path.resolve(__dirname, "..", "..");
 const CONFIGS_DIR = path.join(PROJECT_ROOT, "configs");
 const CUSTOM_CLAUDE_DIR = path.join(CONFIGS_DIR, "claude");
 const SETTINGS_PATH = path.join(CLAUDE_CONFIG_DIR, "settings.json");
+const HAOSHOKU_CONFIG_PATH = path.join(HOME, ".haoshoku.json");
 const SUPERPOWERS_PLUGIN_ID = "superpowers@claude-plugins-official";
 
 const CLAUDE_INSTALL_URL = "https://claude.ai/install.sh";
+export const DEFAULT_CLAUDE_BOOTSTRAP_URL =
+  "https://github.com/axatbhardwaj/claude-policy.git";
 const GIT_REPOSITORY_ENV_VARS = [
   "GIT_ALTERNATE_OBJECT_DIRECTORIES",
   "GIT_CEILING_DIRECTORIES",
@@ -110,6 +113,144 @@ function isTrackedByClaudeRepository(claudeDir, filePath) {
   } catch {
     return false;
   }
+}
+
+/** Run one git command without inherited repository overrides. */
+async function runBootstrapGit(args, options = {}) {
+  const stdoutMode = options.stdout ?? "ignore";
+  const proc = Bun.spawn(["git", ...args], {
+    env: gitQueryEnvironment(),
+    stderr: options.stderr ?? "ignore",
+    stdout: stdoutMode,
+  });
+  const stdout =
+    stdoutMode === "pipe"
+      ? new Response(proc.stdout).text()
+      : Promise.resolve("");
+  const exitCode = await proc.exited;
+  return {
+    exitCode,
+    stdout: (await stdout).trim(),
+  };
+}
+
+/** Read the optional private-policy URL without creating or changing config. */
+function readClaudeBootstrapUrl(configPath) {
+  if (!fs.existsSync(configPath)) return DEFAULT_CLAUDE_BOOTSTRAP_URL;
+
+  try {
+    const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+    return typeof config.claudeBootstrapUrl === "string" &&
+      config.claudeBootstrapUrl.trim()
+      ? config.claudeBootstrapUrl.trim()
+      : DEFAULT_CLAUDE_BOOTSTRAP_URL;
+  } catch (error) {
+    log.warning(
+      `Invalid JSON in ${configPath}, using the default Claude bootstrap URL (${error.message})`,
+    );
+    return DEFAULT_CLAUDE_BOOTSTRAP_URL;
+  }
+}
+
+/** Bootstrap the configured private policy repository in ~/.claude/. */
+export async function bootstrapClaudePolicy(options = {}) {
+  const {
+    claudeHome = HOME,
+    configPath = HAOSHOKU_CONFIG_PATH,
+  } = options;
+  const claudeDir = path.join(claudeHome, ".claude");
+  const url = readClaudeBootstrapUrl(configPath);
+
+  let reachable;
+  try {
+    reachable = await runBootstrapGit(["ls-remote", url]);
+  } catch {
+    reachable = { exitCode: 1 };
+  }
+  if (reachable.exitCode !== 0) {
+    log.error(
+      `Unable to reach the Claude policy repository. Authentication is the likely cause. Consider checking your git credentials and retrying.`,
+    );
+    process.exitCode = 1;
+    return false;
+  }
+
+  fs.mkdirSync(claudeDir, { recursive: true });
+
+  const init = await runBootstrapGit(["-C", claudeDir, "init"]);
+  if (init.exitCode !== 0) throw new Error("Failed to initialize ~/.claude as git");
+
+  const origin = await runBootstrapGit([
+    "-C",
+    claudeDir,
+    "remote",
+    "get-url",
+    "origin",
+  ]);
+  const remoteCommand = origin.exitCode === 0 ? "set-url" : "add";
+  const configuredOrigin = await runBootstrapGit([
+    "-C",
+    claudeDir,
+    "remote",
+    remoteCommand,
+    "origin",
+    url,
+  ]);
+  if (configuredOrigin.exitCode !== 0) {
+    throw new Error("Failed to configure the Claude policy origin remote");
+  }
+
+  const fetch = await runBootstrapGit([
+    "-C",
+    claudeDir,
+    "fetch",
+    "--prune",
+    "origin",
+  ]);
+  if (fetch.exitCode !== 0) throw new Error("Failed to fetch Claude policy");
+
+  const setHead = await runBootstrapGit([
+    "-C",
+    claudeDir,
+    "remote",
+    "set-head",
+    "origin",
+    "--auto",
+  ]);
+  if (setHead.exitCode !== 0) {
+    throw new Error("Failed to resolve the Claude policy default branch");
+  }
+
+  const defaultBranch = await runBootstrapGit(
+    [
+      "-C",
+      claudeDir,
+      "symbolic-ref",
+      "--short",
+      "refs/remotes/origin/HEAD",
+    ],
+    { stdout: "pipe" },
+  );
+  const branch = defaultBranch.stdout.replace(/^origin\//, "");
+  if (defaultBranch.exitCode !== 0 || !branch) {
+    throw new Error("Failed to read the Claude policy default branch");
+  }
+
+  const checkout = await runBootstrapGit([
+    "-C",
+    claudeDir,
+    "checkout",
+    "-f",
+    "-B",
+    branch,
+    `origin/${branch}`,
+  ]);
+  if (checkout.exitCode !== 0) {
+    throw new Error(`Failed to check out Claude policy branch ${branch}`);
+  }
+
+  log.success(`Claude policy bootstrapped from ${url} on branch ${branch}.`);
+  return true;
 }
 
 /** Install Claude Code CLI if not already present. */
