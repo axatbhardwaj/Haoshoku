@@ -235,6 +235,14 @@ function updateRepo(repoPath, url, repoName) {
 	log.info(`Updating ${repoName}...`);
 
 	const branch = resolveDefaultBranch(repoPath);
+	const checkoutResult = Bun.spawnSync(["git", "checkout", branch], {
+		cwd: repoPath,
+	});
+
+	if (checkoutResult.exitCode !== 0) {
+		log.warning(`Failed to checkout ${branch} in ${repoName}, keeping stale cache`);
+		return repoPath;
+	}
 
 	const fetchResult = Bun.spawnSync(["git", "fetch", "origin", branch], {
 		cwd: repoPath,
@@ -420,22 +428,38 @@ function createSymlinkForSkill(skill, source, destPath) {
  */
 function processSkill(skill, source, seenSkills, skillsDir = CLAUDE_SKILLS_DIR) {
 	if (seenSkills.has(skill.name)) {
-		return false;
+		return null;
 	}
 
 	const destPath = path.join(skillsDir, skill.name);
 
-	if (pathExists(destPath) && updateSymlinkIfNeeded(destPath, skill.path)) {
-		seenSkills.add(skill.name);
-		return true;
+	if (pathExists(destPath)) {
+		let destStat;
+		try {
+			destStat = fs.lstatSync(destPath);
+		} catch (error) {
+			if (error.code !== "ENOENT") {
+				throw error;
+			}
+		}
+
+		if (destStat && !destStat.isSymbolicLink()) {
+			log.info(`Skipped skill ${skill.name}: local skill wins at ${destPath}`);
+			seenSkills.add(skill.name);
+			return "shadowed";
+		}
+		if (destStat?.isSymbolicLink() && updateSymlinkIfNeeded(destPath, skill.path)) {
+			seenSkills.add(skill.name);
+			return "in-place";
+		}
 	}
 
 	if (createSymlinkForSkill(skill, source, destPath)) {
 		seenSkills.add(skill.name);
-		return true;
+		return "in-place";
 	}
 
-	return false;
+	return "failed";
 }
 
 /**
@@ -499,6 +523,9 @@ export function mergeSkills(sources, opts = {}) {
 	ensureSkillsDir(skillsDir);
 	const seenSkills = new Set();
 	const linked = { scripts: false, claudeMd: false, readmeMd: false };
+	let inPlaceSkills = 0;
+	let shadowedSkills = 0;
+	let failedSkills = 0;
 
 	for (const source of sources) {
 		const skillsRoot = path.join(source.cachePath, "skills");
@@ -523,12 +550,23 @@ export function mergeSkills(sources, opts = {}) {
 
 		const skills = listSkills(source.cachePath);
 		for (const skill of skills) {
-			processSkill(skill, source, seenSkills, skillsDir);
+			const result = processSkill(skill, source, seenSkills, skillsDir);
+			if (result === "in-place") inPlaceSkills++;
+			if (result === "shadowed") shadowedSkills++;
+			if (result === "failed") failedSkills++;
 		}
 	}
 
-	const skillLabel = seenSkills.size === 1 ? "skill" : "skills";
-	log.success(`${seenSkills.size} ${skillLabel} in place at ${skillsDir}`);
+	const skillLabel = inPlaceSkills === 1 ? "skill" : "skills";
+	const shadowLabel = shadowedSkills === 1 ? "local shadow" : "local shadows";
+	const failedLabel = failedSkills === 1 ? "skill" : "skills";
+	const summary = `${inPlaceSkills} ${skillLabel} in place at ${skillsDir}; ${shadowedSkills} ${shadowLabel} skipped; ${failedSkills} ${failedLabel} failed`;
+	if (failedSkills > 0) {
+		log.warning(summary);
+	} else {
+		log.success(summary);
+	}
+	return seenSkills;
 }
 
 /**

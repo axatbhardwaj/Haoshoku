@@ -2,6 +2,12 @@
 
 ## Unreleased - 2026-08-01
 
+- Preserve locally authored skills and cache branches during skill updates. `mergeSkills()`
+  now reports same-named real local entries as local-wins shadows, separately from
+  in-place and failed symlinks, while continuing to replace stale or foreign links.
+  Cached repositories now check out their resolved default branch before fetching and
+  hard-resetting; if checkout fails, the updater warns and keeps the stale cache rather
+  than resetting the current branch and risking its commits.
 - Harden every `safeCopyFile` backup slot by atomically claiming the write-once
   `.bak`, `.haoshoku-first-capture`, and versioned paths, and by stripping
   executable bits from every backup while preserving other permissions (so

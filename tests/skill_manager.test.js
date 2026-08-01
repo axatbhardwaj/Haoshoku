@@ -4,11 +4,13 @@ import os from "node:os";
 import path from "node:path";
 
 import {
+	cloneOrPullRepo,
 	mergeAgents,
 	mergeSkills,
 	resolveDefaultBranch,
 	syncSkills,
 } from "../src/helpers/skill_manager.js";
+import { log } from "../src/common/utils.js";
 
 describe("syncSkills()", () => {
 	let tmpDir;
@@ -240,11 +242,130 @@ describe("mergeSkills() — symlinkSharedResource safe-backup", () => {
 			mergeSkills([source], { skillsDir: skillsDestDir });
 
 			expect(successSpy).toHaveBeenCalledWith(
-				`1 skill in place at ${skillsDestDir}`,
+				`1 skill in place at ${skillsDestDir}; 0 local shadows skipped; 0 skills failed`,
 			);
 		} finally {
 			successSpy.mockRestore();
 		}
+	});
+});
+
+describe("mergeSkills() local-skill shadowing", () => {
+	let tmpDir;
+	let skillsDir;
+	let source;
+	let infos;
+	let successes;
+	let warnings;
+	let errors;
+	let originalInfo;
+	let originalSuccess;
+	let originalWarning;
+	let originalError;
+
+	beforeEach(() => {
+		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-skill-shadow-"));
+		skillsDir = path.join(tmpDir, "live-skills");
+		const cachePath = path.join(tmpDir, "skills-source");
+		const sourceSkill = path.join(cachePath, "skills", "collision");
+		fs.mkdirSync(sourceSkill, { recursive: true });
+		fs.writeFileSync(path.join(sourceSkill, "SKILL.md"), "# source skill\n");
+		source = {
+			name: "fake-skills",
+			url: "https://github.com/owner/fake-skills",
+			cachePath,
+		};
+		infos = [];
+		successes = [];
+		warnings = [];
+		errors = [];
+		const utils = require("../src/common/utils.js");
+		originalInfo = utils.log.info;
+		originalSuccess = utils.log.success;
+		originalWarning = utils.log.warning;
+		originalError = utils.log.error;
+		utils.log.info = (message) => infos.push(message);
+		utils.log.success = (message) => successes.push(message);
+		utils.log.warning = (message) => warnings.push(message);
+		utils.log.error = (message) => errors.push(message);
+	});
+
+	afterEach(() => {
+		const utils = require("../src/common/utils.js");
+		utils.log.info = originalInfo;
+		utils.log.success = originalSuccess;
+		utils.log.warning = originalWarning;
+		utils.log.error = originalError;
+		fs.rmSync(tmpDir, { recursive: true, force: true });
+	});
+
+	it("keeps a real local skill and reports it as a local shadow", () => {
+		const collision = path.join(skillsDir, "collision");
+		const localBytes = Buffer.from("# local skill\n");
+		fs.mkdirSync(skillsDir, { recursive: true });
+		fs.writeFileSync(collision, localBytes);
+
+		const seenSkills = mergeSkills([source], { skillsDir });
+
+		expect(fs.lstatSync(collision).isSymbolicLink()).toBe(false);
+		expect(fs.lstatSync(collision).isFile()).toBe(true);
+		expect(fs.readFileSync(collision)).toEqual(localBytes);
+		expect({ infos, successes, warnings, errors }).toEqual({
+			infos: [`Skipped skill collision: local skill wins at ${collision}`],
+			successes: [
+				`0 skills in place at ${skillsDir}; 1 local shadow skipped; 0 skills failed`,
+			],
+			warnings: [],
+			errors: [],
+		});
+		expect(seenSkills).toBeInstanceOf(Set);
+		expect(seenSkills.has("collision")).toBe(true);
+	});
+
+	it("replaces a stale foreign skill symlink and counts it as in place", () => {
+		fs.mkdirSync(skillsDir, { recursive: true });
+		const sourceSkill = path.join(source.cachePath, "skills", "collision");
+		const foreignTarget = path.join(tmpDir, "foreign-skill");
+		const collision = path.join(skillsDir, "collision");
+		fs.mkdirSync(foreignTarget);
+		fs.writeFileSync(path.join(foreignTarget, "SKILL.md"), "# foreign skill\n");
+		fs.symlinkSync(foreignTarget, collision);
+
+		const seenSkills = mergeSkills([source], { skillsDir });
+
+		expect(fs.lstatSync(collision).isSymbolicLink()).toBe(true);
+		expect(fs.readlinkSync(collision)).toBe(sourceSkill);
+		expect(fs.readFileSync(path.join(foreignTarget, "SKILL.md"), "utf-8")).toBe(
+			"# foreign skill\n",
+		);
+		expect(successes).toEqual([
+			`1 skill in place at ${skillsDir}; 0 local shadows skipped; 0 skills failed`,
+		]);
+		expect(warnings).toEqual([]);
+		expect(errors).toEqual([]);
+		expect(seenSkills.has("collision")).toBe(true);
+	});
+
+	it("reports a genuine permission-denied skill symlink creation as a failure", () => {
+		fs.mkdirSync(skillsDir, { recursive: true });
+		fs.chmodSync(skillsDir, 0o555);
+
+		let seenSkills;
+		try {
+			seenSkills = mergeSkills([source], { skillsDir });
+		} finally {
+			fs.chmodSync(skillsDir, 0o755);
+		}
+
+		expect(fs.existsSync(path.join(skillsDir, "collision"))).toBe(false);
+		expect(errors.some((message) =>
+			message.startsWith("Error creating symlink for collision:"),
+		)).toBe(true);
+		expect(successes).toEqual([]);
+		expect(warnings).toEqual([
+			`0 skills in place at ${skillsDir}; 0 local shadows skipped; 1 skill failed`,
+		]);
+		expect(seenSkills.has("collision")).toBe(false);
 	});
 });
 
@@ -442,5 +563,129 @@ describe("resolveDefaultBranch()", () => {
 
 		const branch = resolveDefaultBranch(nonRepo);
 		expect(branch).toBe("main");
+	});
+});
+
+// ---------------------------------------------------------------------------
+// cloneOrPullRepo update safety
+// ---------------------------------------------------------------------------
+describe("cloneOrPullRepo() cache updates", () => {
+	let tmpDir;
+
+	beforeEach(() => {
+		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-cache-update-"));
+	});
+
+	afterEach(() => {
+		fs.rmSync(tmpDir, { recursive: true, force: true });
+	});
+
+	function runGit(args, cwd) {
+		const result = Bun.spawnSync(["git", ...args], cwd ? { cwd } : {});
+		expect(result.exitCode).toBe(0);
+		return new TextDecoder().decode(result.stdout).trim();
+	}
+
+	function configureIdentity(repoPath) {
+		runGit(["config", "user.email", "test@example.com"], repoPath);
+		runGit(["config", "user.name", "Haoshoku Test"], repoPath);
+	}
+
+	function createOrigin() {
+		const originPath = path.join(tmpDir, "origin.git");
+		const publisherPath = path.join(tmpDir, "publisher");
+		runGit(["init", "--bare", originPath]);
+		runGit(["symbolic-ref", "HEAD", "refs/heads/main"], originPath);
+		runGit(["clone", originPath, publisherPath]);
+		configureIdentity(publisherPath);
+		fs.writeFileSync(path.join(publisherPath, "README.md"), "initial\n");
+		runGit(["add", "README.md"], publisherPath);
+		runGit(["commit", "-m", "initial"], publisherPath);
+		runGit(["push", "origin", "main"], publisherPath);
+		return { originPath, publisherPath };
+	}
+
+	function cloneCache(originPath, cacheDir) {
+		const repoPath = path.join(cacheDir, "owner-origin");
+		fs.mkdirSync(cacheDir, { recursive: true });
+		runGit(["clone", originPath, repoPath]);
+		return repoPath;
+	}
+
+	it("keeps a feature cache untouched when checkout of the default branch fails", () => {
+		const { originPath, publisherPath } = createOrigin();
+		const cacheDir = path.join(tmpDir, "cache");
+		const repoPath = cloneCache(originPath, cacheDir);
+		const url = "https://github.com/owner/origin";
+
+		configureIdentity(repoPath);
+		runGit(["checkout", "-b", "feature-x"], repoPath);
+		fs.writeFileSync(path.join(repoPath, "feature-only.txt"), "feature commit\n");
+		runGit(["add", "feature-only.txt"], repoPath);
+		runGit(["commit", "-m", "feature only"], repoPath);
+		const featureCommit = runGit(["rev-parse", "HEAD"], repoPath);
+		const featureBranchBefore = runGit(["rev-parse", "feature-x"], repoPath);
+
+		fs.writeFileSync(path.join(publisherPath, "origin-advanced.txt"), "from origin\n");
+		runGit(["add", "origin-advanced.txt"], publisherPath);
+		runGit(["commit", "-m", "advance origin"], publisherPath);
+		runGit(["push", "origin", "main"], publisherPath);
+		const cachedOriginMainBefore = runGit(["rev-parse", "origin/main"], repoPath);
+
+		runGit(["checkout", "main"], repoPath);
+		fs.writeFileSync(path.join(repoPath, "default-only.txt"), "from main\n");
+		runGit(["add", "default-only.txt"], repoPath);
+		runGit(["commit", "-m", "default-only"], repoPath);
+		runGit(["checkout", "feature-x"], repoPath);
+		fs.writeFileSync(path.join(repoPath, "default-only.txt"), "local untracked\n");
+
+		const warningSpy = spyOn(log, "warning").mockImplementation(() => {});
+		try {
+			const result = cloneOrPullRepo(url, true, cacheDir);
+
+			expect(result).toBe(repoPath);
+			expect(warningSpy).toHaveBeenCalledWith(
+				"Failed to checkout main in owner-origin, keeping stale cache",
+			);
+		} finally {
+			warningSpy.mockRestore();
+		}
+
+		expect(runGit(["rev-parse", "origin/main"], repoPath)).toBe(cachedOriginMainBefore);
+		expect(runGit(["branch", "--show-current"], repoPath)).toBe("feature-x");
+		expect(runGit(["rev-parse", "HEAD"], repoPath)).toBe(featureCommit);
+		expect(runGit(["rev-parse", "feature-x"], repoPath)).toBe(featureBranchBefore);
+		expect(runGit(["log", "-1", "--format=%H", "feature-x"], repoPath)).toBe(
+			featureCommit,
+		);
+	});
+
+	it("fetches and resets a default-branch cache when origin advances", () => {
+		const { originPath, publisherPath } = createOrigin();
+		const cacheDir = path.join(tmpDir, "cache");
+		const repoPath = cloneCache(originPath, cacheDir);
+		const url = "https://github.com/owner/origin";
+
+		fs.writeFileSync(path.join(publisherPath, "latest.txt"), "latest from origin\n");
+		runGit(["add", "latest.txt"], publisherPath);
+		runGit(["commit", "-m", "advance main"], publisherPath);
+		runGit(["push", "origin", "main"], publisherPath);
+		const latestCommit = runGit(["rev-parse", "HEAD"], publisherPath);
+
+		const warningSpy = spyOn(log, "warning").mockImplementation(() => {});
+		let result;
+		try {
+			result = cloneOrPullRepo(url, true, cacheDir);
+			expect(warningSpy).not.toHaveBeenCalled();
+		} finally {
+			warningSpy.mockRestore();
+		}
+
+		expect(result).toBe(repoPath);
+		expect(runGit(["branch", "--show-current"], repoPath)).toBe("main");
+		expect(runGit(["rev-parse", "HEAD"], repoPath)).toBe(latestCommit);
+		expect(fs.readFileSync(path.join(repoPath, "latest.txt"), "utf-8")).toBe(
+			"latest from origin\n",
+		);
 	});
 });
