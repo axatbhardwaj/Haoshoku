@@ -2,9 +2,10 @@
 
 ## Unreleased - 2026-08-01
 
-- Harden timestamped `safeCopyFile` backups by claiming collision paths
-  atomically and forcing data-file mode `0644`, including beneath executable
-  destinations such as `~/.local/bin`. Backups remain intentionally unpruned:
+- Harden every `safeCopyFile` backup slot by atomically claiming the write-once
+  `.bak`, `.haoshoku-first-capture`, and versioned paths, and by stripping
+  executable bits from every backup while preserving other permissions (so
+  `0600` stays `0600` and `0755` becomes `0644`). Backups remain intentionally unpruned:
   automatic retention could discard the only copy of a later user edit, so
   cleanup stays an explicit user decision. Add behavioral coverage for the
   Claude first-capture gitignore allowlist, concurrent same-timestamp backups,

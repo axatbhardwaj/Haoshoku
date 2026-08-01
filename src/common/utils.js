@@ -137,17 +137,29 @@ export function safeCopyFile(src, dest, { now = Date.now } = {}) {
 			log.dim(`${path.basename(dest)} unchanged — skipping`);
 			return false;
 		}
+		const backupMode = fs.statSync(dest).mode & 0o666;
 		const firstCapture = `${dest}.haoshoku-first-capture`;
 		if (!fs.existsSync(firstCapture)) {
 			const legacyFirstCapture = `${dest}.orig`;
-			fs.copyFileSync(
-				fs.existsSync(legacyFirstCapture) ? legacyFirstCapture : dest,
-				firstCapture,
-			);
+			try {
+				fs.copyFileSync(
+					fs.existsSync(legacyFirstCapture) ? legacyFirstCapture : dest,
+					firstCapture,
+					fs.constants.COPYFILE_EXCL,
+				);
+				fs.chmodSync(firstCapture, backupMode);
+			} catch (error) {
+				if (error.code !== "EEXIST") throw error;
+			}
 		}
 		const legacyBackup = `${dest}.bak`;
 		if (!fs.existsSync(legacyBackup)) {
-			fs.copyFileSync(dest, legacyBackup);
+			try {
+				fs.copyFileSync(dest, legacyBackup, fs.constants.COPYFILE_EXCL);
+				fs.chmodSync(legacyBackup, backupMode);
+			} catch (error) {
+				if (error.code !== "EEXIST") throw error;
+			}
 		}
 		const backupBase = `${dest}.bak.${now()}`;
 		let backup = backupBase;
@@ -155,7 +167,7 @@ export function safeCopyFile(src, dest, { now = Date.now } = {}) {
 		while (true) {
 			try {
 				fs.copyFileSync(dest, backup, fs.constants.COPYFILE_EXCL);
-				fs.chmodSync(backup, 0o644);
+				fs.chmodSync(backup, backupMode);
 				break;
 			} catch (error) {
 				if (error.code !== "EEXIST") throw error;

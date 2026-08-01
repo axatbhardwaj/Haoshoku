@@ -113,6 +113,43 @@ describe("safeCopyFile", () => {
 		expect(backupMode).toBe(0o644);
 	});
 
+	it("keeps every backup for a live file at 0600 private", () => {
+		const src = path.join(tmpDir, "new.conf");
+		const dest = path.join(tmpDir, "live.conf");
+		fs.writeFileSync(src, "new content");
+		fs.writeFileSync(dest, "private live content");
+		fs.chmodSync(dest, 0o600);
+
+		safeCopyFile(src, dest, { now: () => 1234567890 });
+
+		const backupModes = [
+			`${dest}.bak`,
+			`${dest}.haoshoku-first-capture`,
+			`${dest}.bak.1234567890`,
+		].map((backup) => fs.statSync(backup).mode & 0o777);
+		for (const backupMode of backupModes) {
+			expect(backupMode & 0o044).toBe(0);
+		}
+		expect(backupModes).toEqual([0o600, 0o600, 0o600]);
+	});
+
+	it("strips executable bits from every backup slot", () => {
+		const src = path.join(tmpDir, "new.conf");
+		const dest = path.join(tmpDir, "live.conf");
+		fs.writeFileSync(src, "new content");
+		fs.writeFileSync(dest, "executable live content");
+		fs.chmodSync(dest, 0o755);
+
+		safeCopyFile(src, dest, { now: () => 1234567890 });
+
+		const backupModes = [
+			`${dest}.bak`,
+			`${dest}.haoshoku-first-capture`,
+			`${dest}.bak.1234567890`,
+		].map((backup) => fs.statSync(backup).mode & 0o777);
+		expect(backupModes).toEqual([0o644, 0o644, 0o644]);
+	});
+
 	it("does not create a versioned .bak when dest does not pre-exist", () => {
 		const src = path.join(tmpDir, "new.conf");
 		const dest = path.join(tmpDir, "fresh.conf");
@@ -377,20 +414,95 @@ describe("safeCopyFile", () => {
 		]);
 	});
 
+	it("tolerates a process winning the first-capture write-once slot race", () => {
+		const src = path.join(tmpDir, "new.conf");
+		const dest = path.join(tmpDir, "live.conf");
+		const firstCapture = `${dest}.haoshoku-first-capture`;
+		fs.writeFileSync(src, "bundle content");
+		fs.writeFileSync(dest, "live user content");
+
+		const copyFileSync = fs.copyFileSync;
+		const firstCaptureCopyFlags = [];
+		let injectedRace = false;
+		fs.copyFileSync = (source, target, flags) => {
+			if (target === firstCapture) {
+				firstCaptureCopyFlags.push(flags);
+			}
+			if (target === firstCapture && !injectedRace) {
+				injectedRace = true;
+				fs.writeFileSync(target, "competing process first capture");
+				const error = new Error("destination already exists");
+				error.code = "EEXIST";
+				throw error;
+			}
+			return copyFileSync(source, target, flags);
+		};
+
+		try {
+			expect(() =>
+				safeCopyFile(src, dest, { now: () => 1234567890 }),
+			).not.toThrow();
+		} finally {
+			fs.copyFileSync = copyFileSync;
+		}
+
+		expect(fs.readFileSync(firstCapture, "utf-8")).toBe(
+			"competing process first capture",
+		);
+		expect(firstCaptureCopyFlags).toEqual([fs.constants.COPYFILE_EXCL]);
+	});
+
+	it("tolerates a process winning the legacy backup write-once slot race", () => {
+		const src = path.join(tmpDir, "new.conf");
+		const dest = path.join(tmpDir, "live.conf");
+		const legacyBackup = `${dest}.bak`;
+		fs.writeFileSync(src, "bundle content");
+		fs.writeFileSync(dest, "live user content");
+		fs.writeFileSync(`${dest}.haoshoku-first-capture`, "first capture");
+
+		const copyFileSync = fs.copyFileSync;
+		const legacyBackupCopyFlags = [];
+		let injectedRace = false;
+		fs.copyFileSync = (source, target, flags) => {
+			if (target === legacyBackup) {
+				legacyBackupCopyFlags.push(flags);
+			}
+			if (target === legacyBackup && !injectedRace) {
+				injectedRace = true;
+				fs.writeFileSync(target, "competing process compatibility capture");
+				const error = new Error("destination already exists");
+				error.code = "EEXIST";
+				throw error;
+			}
+			return copyFileSync(source, target, flags);
+		};
+
+		try {
+			expect(() =>
+				safeCopyFile(src, dest, { now: () => 1234567890 }),
+			).not.toThrow();
+		} finally {
+			fs.copyFileSync = copyFileSync;
+		}
+
+		expect(fs.readFileSync(legacyBackup, "utf-8")).toBe(
+			"competing process compatibility capture",
+		);
+		expect(legacyBackupCopyFlags).toEqual([fs.constants.COPYFILE_EXCL]);
+	});
+
 	it("keeps every versioned backup when processes share a timestamp", async () => {
 		const processCount = 8;
 		const dest = path.join(tmpDir, "live.conf");
 		const gate = path.join(tmpDir, "race-gate");
 		fs.writeFileSync(dest, "initial live content");
-		fs.writeFileSync(`${dest}.haoshoku-first-capture`, "first capture");
-		fs.writeFileSync(`${dest}.bak`, "compatibility capture");
 		fs.writeFileSync(gate, "closed");
 
 		const children = Array.from({ length: processCount }, (_, index) => {
 			const src = path.join(tmpDir, `source-${index}.conf`);
 			const ready = path.join(tmpDir, `ready-${index}`);
 			fs.writeFileSync(src, `bundle ${index}`);
-			return Bun.spawn(
+			const subprocess = Bun.spawn(
 				[
 					process.execPath,
 					SAFE_COPY_RACE_WORKER,
@@ -402,24 +514,54 @@ describe("safeCopyFile", () => {
 				],
 				{ stderr: "pipe", stdout: "ignore" },
 			);
+			return {
+				stderr: new Response(subprocess.stderr).text(),
+				subprocess,
+			};
 		});
 
-		const readyDeadline = Date.now() + 5000;
+		const readyDeadline = Date.now() + 3000;
 		while (
 			fs.readdirSync(tmpDir).filter((candidate) => candidate.startsWith("ready-"))
 				.length < processCount
 		) {
 			if (Date.now() > readyDeadline) {
+				for (const child of children) child.subprocess.kill();
+				await Promise.allSettled(
+					children.flatMap((child) => [child.subprocess.exited, child.stderr]),
+				);
 				throw new Error("Timed out waiting for backup race workers");
 			}
 			await Bun.sleep(10);
 		}
 		fs.unlinkSync(gate);
 
-		const exitCodes = await Promise.all(children.map((child) => child.exited));
+		const [exitCodes, stderrOutput] = await Promise.all([
+			Promise.all(children.map((child) => child.subprocess.exited)),
+			Promise.all(children.map((child) => child.stderr)),
+		]);
+		for (const child of children) {
+			if (child.subprocess.pid) child.subprocess.kill();
+		}
+		if (exitCodes.some((exitCode) => exitCode !== 0)) {
+			throw new Error(`Backup race worker failed:\n${stderrOutput.join("\n")}`);
+		}
 		expect(exitCodes).toEqual(Array(processCount).fill(0));
-		expect(versionedBackupPaths(dest)).toHaveLength(processCount);
-	});
+		expect(fs.existsSync(`${dest}.haoshoku-first-capture`)).toBe(true);
+		expect(fs.existsSync(`${dest}.bak`)).toBe(true);
+		const backups = versionedBackupPaths(dest);
+		const backupContents = backups.map((backup) =>
+			fs.readFileSync(backup, "utf-8"),
+		);
+		const writerContents = new Set([
+			"initial live content",
+			...Array.from({ length: processCount }, (_, index) => `bundle ${index}`),
+		]);
+		expect(
+			backupContents.every((content) => writerContents.has(content)),
+		).toBe(true);
+		expect(backups).toHaveLength(processCount);
+	}, 10000);
 
 	it("orders double-digit collision suffixes numerically", () => {
 		const src = path.join(tmpDir, "new.conf");
