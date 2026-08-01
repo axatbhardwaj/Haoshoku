@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased - 2026-08-01
+## 6.1.0 - 2026-08-01
 
 - Preserve locally authored skills and cache branches during skill updates. `mergeSkills()`
   now reports same-named real local entries as local-wins shadows, separately from
