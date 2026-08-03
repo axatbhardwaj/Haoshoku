@@ -78,10 +78,8 @@ haoshoku --zed-backup
 # Install/reinstall KDE Glass blur effect (CachyOS/Arch only)
 haoshoku --kde-glass
 
-# Install Hyprland + upstream Caelestia rice (CachyOS/Arch only).
-# Asks about your current DE and which device this is (PC / laptop);
-# persists the device answer to ~/.haoshoku.json for future per-host configs.
-haoshoku --hyprland
+# Merge portable Haoshoku settings and shortcuts into KDE Plasma.
+haoshoku --plasma
 ```
 
 ## Features
@@ -116,38 +114,22 @@ haoshoku --hyprland
 
 Executable policy comes from a private policy repository the user owns; follow the [canonical in-place bootstrap procedure](configs/claude/README.md#executable-policy-bootstrap).
 
-## Hyprland (parallel to KDE)
+## KDE Plasma migration
 
-Bootstraps upstream Caelestia rice. KDE Plasma stays installed; SDDM shows both sessions.
-
-```bash
-haoshoku --hyprland
-```
-
-The command:
-1. Asks for your current desktop environment (auto-detected via `$XDG_CURRENT_DESKTOP`; you can override). When the answer is `hyprland`, the Hyprland package install is skipped — Caelestia still gets cloned and installed.
-2. Asks which device this is (Main PC / Laptop / Other / Skip). Non-skip answers persist to `~/.haoshoku.json` as `deviceType`. The answer isn't consumed today — it's the seed for future per-host configuration (e.g., per-device monitor layouts).
-3. Installs Hyprland packages (when not skipped), clones [upstream Caelestia](https://github.com/caelestia-dots/caelestia), and runs `install.fish`. Recovers automatically when an AUR mirror failure leaves `caelestia-cli`/`caelestia-shell` uninstalled.
-
-After install, monitor configuration is your responsibility. Caelestia sources `~/.config/caelestia/hypr-user.conf` last from its `hyprland.conf`, so any `monitor = ...` directives you put in that file override Caelestia's catch-all without dirtying the symlinked Caelestia tree.
-
-Releases prior to 5.0.0 (`haoshoku <= 4.6.6`) shipped an opinionated "Ocean" overlay on top of Caelestia — KDE→Hyprland keybind translation, window rules, autostart, custom borders/blur, hyprlock/hypridle/hyprpaper/mako configs, plus monitor presets — under `--hyprland-keybinds` / `--hyprland-rules` / `--hyprland-backup`. 5.0.0 drops all of it. Pin `haoshoku@4.6.6` if you need it back.
-
-### Rollback
-
-If Hyprland breaks, log out and pick "Plasma" at SDDM. No haoshoku command required.
-
-### Manual uninstall
+Haoshoku uses KDE Plasma as its desktop environment. The migration is merge-only:
+existing unrelated Plasma settings are preserved and first-capture backups are
+written beside changed KDE configuration files.
 
 ```bash
-# Remove Caelestia itself
-rm -rf ~/.local/share/caelestia
-
-# Optional: clear your monitor / user overrides
-: > ~/.config/caelestia/hypr-user.conf
+haoshoku --plasma
 ```
 
-Haoshoku deliberately does not delete `~/.config/hypr/`; Caelestia owns that symlinked tree.
+The command installs portable launch shortcuts for Kitty, Dolphin, Zed, Claude,
+the agents terminal, and microphone mute, and unbinds the KDE/KWin defaults that
+would otherwise collide with them. Haoshoku does not manage virtual desktops or
+window placement. Hyprland-specific VRR mutation, Caelestia recovery, special
+workspaces, and the portrait lock-screen patch are deliberately not part of the
+Plasma path.
 
 ## Skill Management
 

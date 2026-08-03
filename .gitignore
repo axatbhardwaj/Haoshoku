@@ -143,6 +143,8 @@ dist
 
 # Local Superpowers planning/spec artifacts
 /superpowers/
+/agent-os/
+/BRANCH-NOTES.md
 
 ### Python ###
 # Byte-compiled / optimized / DLL files

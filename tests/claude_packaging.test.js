@@ -6,6 +6,7 @@ import path from "node:path";
 const PROJECT_ROOT = path.resolve(import.meta.dir, "..");
 
 it("keeps packed configs/claude files free of literal home-directory paths", () => {
+	if (!Bun.which("npm")) return;
 	const npmCache = fs.mkdtempSync(
 		path.join(os.tmpdir(), "haoshoku-npm-pack-cache-"),
 	);

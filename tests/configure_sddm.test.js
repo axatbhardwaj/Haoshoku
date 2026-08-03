@@ -1,10 +1,10 @@
-import { describe, it, expect } from "bun:test";
+import { describe, expect, it } from "bun:test";
 import fs from "node:fs";
 import path from "node:path";
 import {
-	sddmSudoersLine,
-	sddmSudoersInstallScript,
 	configureSddm,
+	sddmSudoersInstallScript,
+	sddmSudoersLine,
 } from "../src/helpers/configure_sddm.js";
 
 const PROJECT_ROOT = path.resolve(__dirname, "..");
@@ -226,7 +226,7 @@ describe("caelestia-sddm package wiring (gated by Caelestia install path)", () =
 	});
 });
 
-describe("cachyos.js wiring (configureSddm)", () => {
+describe.skip("retired cachyos.js wiring (configureSddm)", () => {
 	const readSrc = () =>
 		fs.readFileSync(
 			path.join(PROJECT_ROOT, "src", "os_scripts", "cachyos.js"),

@@ -27,4 +27,10 @@ describe("haoshoku CLI help", () => {
 			"Backup Claude Code personal files to configs/claude/",
 		);
 	});
+
+	it("--plasma advertises the KDE migration", () => {
+		expect(helpTextFor("--plasma")).toBe(
+			"Migrate portable Haoshoku desktop settings and shortcuts to KDE Plasma",
+		);
+	});
 });

@@ -9,23 +9,17 @@ import {
 	runCommand,
 	safeCopyFile,
 } from "../common/utils.js";
-import { configureCaelestiaPrefs } from "../helpers/configure_caelestia_prefs.js";
-import { configureSddm } from "../helpers/configure_sddm.js";
+import { configureAgentOs } from "../helpers/configure_agent_os.js";
 import { configureAudio } from "../helpers/configure_audio.js";
-import { configureMimeapps } from "../helpers/configure_mimeapps.js";
 import { configureClaude } from "../helpers/configure_claude.js";
 import { configureClaudeStayAwake } from "../helpers/configure_claude_stay_awake.js";
-import { configurePrWatch } from "../helpers/configure_pr_watch.js";
 import { configureCodex } from "../helpers/configure_codex.js";
-import { configureAgentOs } from "../helpers/configure_agent_os.js";
-import {
-	installCaelestia,
-	promptDesktopEnvironment,
-	promptDeviceType,
-} from "../helpers/configure_hyprland.js";
+import { syncKdePlasma } from "../helpers/configure_kde_plasma.js";
 import { configureKdeTheme } from "../helpers/configure_kde_theme.js";
-import { configureZed } from "../helpers/configure_zed.js";
+import { configureMimeapps } from "../helpers/configure_mimeapps.js";
+import { configurePrWatch } from "../helpers/configure_pr_watch.js";
 import { configureWarp } from "../helpers/configure_warp.js";
+import { configureZed } from "../helpers/configure_zed.js";
 import { installUserScripts } from "../helpers/install_user_scripts.js";
 
 // URLs
@@ -53,7 +47,6 @@ const CONFIGS_DIR = path.join(PROJECT_ROOT, "configs");
 
 const PARU_APPLIST_PATH = path.join(COMMON_DIR, "paru_applist.txt");
 const FLATPAK_APPLIST_PATH = path.join(COMMON_DIR, "flatpacks_arch.txt");
-const KDE_SHORTCUTS_PATH = path.join(CONFIGS_DIR, "kde_shortcuts.kksrc");
 const CUSTOM_FISH_CONFIG_PATH = path.join(CONFIGS_DIR, "fish", "config.fish");
 const CUSTOM_FASTFETCH_CONFIG_PATH = path.join(
 	CONFIGS_DIR,
@@ -389,20 +382,7 @@ async function configureFastfetch() {
 }
 
 async function configureKde() {
-	if (await promptUser("Apply custom KDE Shortcuts?", false)) {
-		log.info("Applying custom KDE shortcuts...");
-		if (fs.existsSync(KDE_SHORTCUTS_PATH)) {
-			const kglobalshortcutsrc = path.join(
-				HOME,
-				".config",
-				"kglobalshortcutsrc",
-			);
-			safeCopyFile(KDE_SHORTCUTS_PATH, kglobalshortcutsrc);
-			log.info("KDE shortcuts applied. Please log out and log back in.");
-		} else {
-			log.warning(`KDE shortcuts file not found at ${KDE_SHORTCUTS_PATH}`);
-		}
-	}
+	await syncKdePlasma();
 
 	log.info("Applying KDE Connect fix...");
 	await runCommand("sudo iptables -I INPUT -p tcp --dport 1714:1764 -j ACCEPT");
@@ -454,71 +434,15 @@ async function deployWallpapers() {
 	);
 }
 
-async function configureHyprland() {
-	// Detect existing DE so we can default the prompt smartly and skip the
-	// Hyprland package install when the user is already on Hyprland. Mirrors
-	// what `haoshoku --hyprland` does in haoshoku.js.
-	const xdg = (process.env.XDG_CURRENT_DESKTOP ?? "").toLowerCase();
-	const detectedHyprland = xdg.includes("hyprland");
-
-	const prompt = detectedHyprland
-		? "Install/refresh Caelestia rice on this Hyprland session?"
-		: "Install Hyprland + Caelestia rice alongside your current session?";
-
-	if (!(await promptUser(prompt, detectedHyprland))) return;
-
-	// Match the --hyprland flag flow: ask DE (to decide skipHyprlandPackages)
-	// and device type (persisted to ~/.haoshoku.json so syncCaelestiaPrefs
-	// routes to the right hypr-user variant — pc or laptop). Without these the
-	// default flow always deployed the PC variant, which carries NVIDIA +
-	// multi-monitor pins that are wrong on a laptop.
-	const de = await promptDesktopEnvironment();
-	if (de === null) {
-		log.warning("Desktop environment prompt cancelled — skipping Hyprland.");
-		return;
-	}
-	const device = await promptDeviceType();
-	if (device === null) {
-		log.info(
-			"Device type skipped (no entry written to ~/.haoshoku.json); device-specific audio/WirePlumber tuning will be skipped.",
-		);
-	} else {
-		log.info(`Recorded device type as '${device}' in ~/.haoshoku.json.`);
-	}
-
-	log.info("Bootstrapping Caelestia + Hyprland...");
-	await installCaelestia({ skipHyprlandPackages: de === "hyprland" });
-	// Deploy the user's saved Caelestia preferences (workspace pins, keybind
-	// rebinds, special-workspace toggle config) on top of Caelestia's upstream
-	// defaults. Mirrors how configureZed() runs after the editor is installed.
-	await configureCaelestiaPrefs();
-	await configureSddm();
-	// Install ~/.local/bin/ scripts (e.g. game-performance shadow wrapper).
-	// Must run after configureCaelestiaPrefs so the persistent vrr=0 baseline is
-	// present before the wrapper applies runtime-only game overrides.
-	await installUserScripts();
-	// Wallpapers ride along with the Hyprland rice — Caelestia's shell picks
-	// them up from ~/Pictures/Wallpapers/ via its wallpaper subcommand.
-	await deployWallpapers();
-
-	// Conditionalize the SDDM hint: Plasma fallback is only real when the
-	// user was on KDE before. On a Hyprland-edition CachyOS or fresh install,
-	// claiming "Plasma still available" misleads.
-	const sddmHint =
-		de === "kde"
-			? "Log out and select 'Hyprland' at SDDM. 'Plasma' remains available as fallback."
-			: "Log out and select 'Hyprland' at SDDM.";
-	log.success(`Caelestia installed. ${sddmHint}`);
-	log.info(
-		"Monitor configuration is your responsibility: edit ~/.config/caelestia/hypr-user.conf.",
-	);
-}
-
 export async function installKdeGlass() {
 	log.info("Installing prerequisites for KDE Glass blur effect...");
-	await runCommand(
-		"paru -S base-devel git extra-cmake-modules qt6-tools kwin --noconfirm",
+	const prerequisitesOk = await runCommand(
+		"paru -S --needed --noconfirm base-devel git extra-cmake-modules qt6-tools kwin vulkan-headers",
 	);
+	if (!prerequisitesOk) {
+		log.error("KDE Glass prerequisites failed to install; skipping build.");
+		return;
+	}
 
 	log.info("Cloning and building KDE Glass blur effect...");
 	const buildDir = "/tmp/kwin-effects-glass";
@@ -597,7 +521,8 @@ async function configureUserApps() {
 	await configureZed();
 	await configureMimeapps();
 	await configureKde();
-	await configureHyprland();
+	await installUserScripts();
+	await deployWallpapers();
 	try {
 		await configureAudio();
 	} catch (err) {
@@ -606,10 +531,6 @@ async function configureUserApps() {
 		);
 	}
 
-	// Fish + Fastfetch deploy AFTER configureHyprland because Caelestia's
-	// install.fish overwrites ~/.config/fish/config.fish,
-	// ~/.config/fish/functions/fish_greeting.fish, and
-	// ~/.config/fastfetch/config.jsonc. Running our copies last makes ours win.
 	await configureFishShell();
 	await configureFastfetch();
 

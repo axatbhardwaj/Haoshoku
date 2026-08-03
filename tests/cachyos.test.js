@@ -29,26 +29,27 @@ describe("configureUserApps step ordering", () => {
 		return { count: matches.length, index: matches[0]?.index ?? -1 };
 	};
 
-	it("calls configureHyprland exactly once", () => {
-		expect(callIndex("configureHyprland").count).toBe(1);
+	it("configures Plasma without invoking Hyprland", () => {
+		expect(callIndex("configureKde").count).toBe(1);
+		expect(callIndex("configureHyprland").count).toBe(0);
 	});
 
 	it("calls configureFishShell exactly once, after configureHyprland", () => {
-		const hyprland = callIndex("configureHyprland");
+		const hyprland = callIndex("configureKde");
 		const fish = callIndex("configureFishShell");
 		expect(fish.count).toBe(1);
 		expect(fish.index).toBeGreaterThan(hyprland.index);
 	});
 
 	it("calls configureFastfetch exactly once, after configureHyprland", () => {
-		const hyprland = callIndex("configureHyprland");
+		const hyprland = callIndex("configureKde");
 		const fastfetch = callIndex("configureFastfetch");
 		expect(fastfetch.count).toBe(1);
 		expect(fastfetch.index).toBeGreaterThan(hyprland.index);
 	});
 
 	it("calls configureAudio exactly once, after configureHyprland captures device type", () => {
-		const hyprland = callIndex("configureHyprland");
+		const hyprland = callIndex("configureKde");
 		const audio = callIndex("configureAudio");
 		expect(audio.count).toBe(1);
 		expect(audio.index).toBeGreaterThan(hyprland.index);
@@ -63,21 +64,18 @@ describe("configureUserApps step ordering", () => {
 		);
 	});
 
-	it("calls configureCaelestiaPrefs exactly once, after installCaelestia", () => {
+	it("does not run the retired Caelestia flow", () => {
 		// Regression: v5.1.0 added --caelestia-prefs but forgot to wire it into the
 		// default cachyos flow, so a fresh `haoshoku` install booted Hyprland with
 		// upstream Caelestia defaults instead of the user's saved overrides.
 		const installCaelestia = callIndex("installCaelestia");
 		const prefs = callIndex("configureCaelestiaPrefs");
-		expect(prefs.count).toBe(1);
-		expect(installCaelestia.count).toBe(1);
-		expect(prefs.index).toBeGreaterThan(installCaelestia.index);
+		expect(prefs.count).toBe(0);
+		expect(installCaelestia.count).toBe(0);
 	});
 
-	it("imports configureCaelestiaPrefs from src/helpers/configure_caelestia_prefs.js", () => {
-		expect(CACHYOS_SRC).toMatch(
-			/import\s*\{[^}]*configureCaelestiaPrefs[^}]*\}\s*from\s*["']\.\.\/helpers\/configure_caelestia_prefs\.js["']/,
-		);
+	it("imports the Plasma configurator", () => {
+		expect(CACHYOS_SRC).toContain("configure_kde_plasma.js");
 	});
 });
 
@@ -132,59 +130,62 @@ describe("configureTerminals kitty deployment", () => {
 	});
 });
 
-describe("configureHyprland default-flow UX", () => {
-	// Regression: pre-5.2.6 the default cachyos flow's Hyprland prompt was
-	// hardcoded "(parallel to KDE)" and never asked DE / device type. Laptops
-	// got the PC variant; Hyprland-edition CachyOS users got a misleading
-	// prompt + a redundant Hyprland package install + a "Plasma fallback"
-	// success line for a Plasma session that doesn't exist.
-	const callIndex = (needle) => {
-		const matches = [
-			...CACHYOS_SRC.matchAll(new RegExp(`await ${needle}\\(`, "g")),
-		];
-		return { count: matches.length, index: matches[0]?.index ?? -1 };
-	};
+/* Retired Hyprland flow coverage was removed with the KDE-first migration. */
+/*
+describe.skip("retired configureHyprland default-flow UX", () => {
+  // Regression: pre-5.2.6 the default cachyos flow's Hyprland prompt was
+  // hardcoded "(parallel to KDE)" and never asked DE / device type. Laptops
+  // got the PC variant; Hyprland-edition CachyOS users got a misleading
+  // prompt + a redundant Hyprland package install + a "Plasma fallback"
+  // success line for a Plasma session that doesn't exist.
+  const callIndex = (needle) => {
+    const matches = [
+      ...CACHYOS_SRC.matchAll(new RegExp(`await ${needle}\\(`, "g")),
+    ];
+    return { count: matches.length, index: matches[0]?.index ?? -1 };
+  };
 
-	it("no longer ships the misleading 'parallel to KDE' prompt copy", () => {
-		expect(CACHYOS_SRC).not.toMatch(/parallel to KDE/);
-	});
+  it("no longer ships the misleading 'parallel to KDE' prompt copy", () => {
+    expect(CACHYOS_SRC).not.toMatch(/parallel to KDE/);
+  });
 
-	it("imports promptDesktopEnvironment and promptDeviceType from configure_hyprland.js", () => {
-		expect(CACHYOS_SRC).toMatch(
-			/import\s*\{[^}]*promptDesktopEnvironment[^}]*\}\s*from\s*["']\.\.\/helpers\/configure_hyprland\.js["']/s,
-		);
-		expect(CACHYOS_SRC).toMatch(
-			/import\s*\{[^}]*promptDeviceType[^}]*\}\s*from\s*["']\.\.\/helpers\/configure_hyprland\.js["']/s,
-		);
-	});
+  it("imports promptDesktopEnvironment and promptDeviceType from configure_hyprland.js", () => {
+    expect(CACHYOS_SRC).toMatch(
+      /import\s*\{[^}]*promptDesktopEnvironment[^}]*\}\s*from\s*["']\.\.\/helpers\/configure_hyprland\.js["']/s,
+    );
+    expect(CACHYOS_SRC).toMatch(
+      /import\s*\{[^}]*promptDeviceType[^}]*\}\s*from\s*["']\.\.\/helpers\/configure_hyprland\.js["']/s,
+    );
+  });
 
-	it("calls promptDesktopEnvironment exactly once, before installCaelestia", () => {
-		const de = callIndex("promptDesktopEnvironment");
-		const install = callIndex("installCaelestia");
-		expect(de.count).toBe(1);
-		expect(install.count).toBe(1);
-		expect(de.index).toBeLessThan(install.index);
-	});
+  it("calls promptDesktopEnvironment exactly once, before installCaelestia", () => {
+    const de = callIndex("promptDesktopEnvironment");
+    const install = callIndex("installCaelestia");
+    expect(de.count).toBe(1);
+    expect(install.count).toBe(1);
+    expect(de.index).toBeLessThan(install.index);
+  });
 
-	it("calls promptDeviceType exactly once, before installCaelestia", () => {
-		const dev = callIndex("promptDeviceType");
-		const install = callIndex("installCaelestia");
-		expect(dev.count).toBe(1);
-		expect(dev.index).toBeLessThan(install.index);
-	});
+  it("calls promptDeviceType exactly once, before installCaelestia", () => {
+    const dev = callIndex("promptDeviceType");
+    const install = callIndex("installCaelestia");
+    expect(dev.count).toBe(1);
+    expect(dev.index).toBeLessThan(install.index);
+  });
 
-	it("forwards skipHyprlandPackages based on the DE answer to installCaelestia", () => {
-		expect(CACHYOS_SRC).toMatch(
-			/installCaelestia\(\{\s*skipHyprlandPackages:\s*de\s*===\s*["']hyprland["']/,
-		);
-	});
+  it("forwards skipHyprlandPackages based on the DE answer to installCaelestia", () => {
+    expect(CACHYOS_SRC).toMatch(
+      /installCaelestia\(\{\s*skipHyprlandPackages:\s*de\s*===\s*["']hyprland["']/,
+    );
+  });
 
-	it("tells skipped device-type users that device-specific audio tuning will be skipped", () => {
-		expect(CACHYOS_SRC).toMatch(
-			/Device type skipped[\s\S]{0,180}(audio|WirePlumber)/i,
-		);
-	});
+  it("tells skipped device-type users that device-specific audio tuning will be skipped", () => {
+    expect(CACHYOS_SRC).toMatch(
+      /Device type skipped[\s\S]{0,180}(audio|WirePlumber)/i,
+    );
+  });
 });
+*/
 
 describe("wallpaper deployment", () => {
 	it("ships a deskback/ directory with wallpaper files", () => {
@@ -197,9 +198,9 @@ describe("wallpaper deployment", () => {
 		expect(entries.length).toBeGreaterThan(0);
 	});
 
-	it("calls deployWallpapers exactly once, after installCaelestia", () => {
+	it("calls deployWallpapers exactly once, after KDE configuration", () => {
 		const deploy = [...CACHYOS_SRC.matchAll(/await deployWallpapers\(/g)];
-		const install = [...CACHYOS_SRC.matchAll(/await installCaelestia\(/g)];
+		const install = [...CACHYOS_SRC.matchAll(/await configureKde\(/g)];
 		expect(deploy.length).toBe(1);
 		expect(deploy[0].index).toBeGreaterThan(install[0].index);
 	});
@@ -358,6 +359,27 @@ describe("installBaseDependencies base-devel requirement", () => {
 });
 
 describe("installKdeGlass result gating", () => {
+	it("installs Vulkan headers required for CMake to resolve KWin", () => {
+		const fnStart = CACHYOS_SRC.indexOf(
+			"export async function installKdeGlass",
+		);
+		const fnBody = CACHYOS_SRC.slice(fnStart);
+		expect(fnBody).toMatch(
+			/paru -S --needed --noconfirm[^"'`]*\bvulkan-headers\b/,
+		);
+	});
+
+	it("does not build when prerequisite installation fails", () => {
+		const fnStart = CACHYOS_SRC.indexOf(
+			"export async function installKdeGlass",
+		);
+		const fnBody = CACHYOS_SRC.slice(fnStart);
+		expect(fnBody).toMatch(/if\s*\(!prerequisitesOk\)\s*\{/);
+		expect(fnBody).toMatch(
+			/KDE Glass prerequisites failed to install; skipping build/,
+		);
+	});
+
 	it("captures the result of the kwin-effects-glass build runCommand", () => {
 		const fnStart = CACHYOS_SRC.indexOf(
 			"export async function installKdeGlass",

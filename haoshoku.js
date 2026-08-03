@@ -3,9 +3,18 @@ import fs from "node:fs";
 
 import { Command } from "commander";
 import prompts from "prompts";
-import { getBanner, showBanner } from "./src/common/ui.js";
 import { detectOS, findActiveModeFlags } from "./src/common/cli_utils.js";
+import { getBanner, showBanner } from "./src/common/ui.js";
 import { log, promptUser } from "./src/common/utils.js";
+import { configureAgentOs } from "./src/helpers/configure_agent_os.js";
+import {
+	backupAudioConfig,
+	syncAudioConfig,
+} from "./src/helpers/configure_audio.js";
+import {
+	backupCaelestiaPrefs,
+	syncCaelestiaPrefs,
+} from "./src/helpers/configure_caelestia_prefs.js";
 import {
 	backupClaudeConfig,
 	bootstrapClaudePolicy,
@@ -14,56 +23,43 @@ import {
 	updateClaudeConfig,
 } from "./src/helpers/configure_claude.js";
 import {
+	backupClaudeStayAwake,
+	syncClaudeStayAwake,
+} from "./src/helpers/configure_claude_stay_awake.js";
+import {
 	backupCodexConfig,
 	syncCodexConfig,
 } from "./src/helpers/configure_codex.js";
-import { configureAgentOs } from "./src/helpers/configure_agent_os.js";
+import { syncKdePlasma } from "./src/helpers/configure_kde_plasma.js";
 import {
 	backupKdeTheme,
 	syncKdeTheme,
 } from "./src/helpers/configure_kde_theme.js";
-import {
-	installCaelestia,
-	promptDesktopEnvironment,
-	promptDeviceType,
-} from "./src/helpers/configure_hyprland.js";
-import {
-	backupZedConfig,
-	syncZedConfig,
-	syncZedTheme,
-} from "./src/helpers/configure_zed.js";
-import {
-	backupCaelestiaPrefs,
-	syncCaelestiaPrefs,
-} from "./src/helpers/configure_caelestia_prefs.js";
-import {
-	backupAudioConfig,
-	syncAudioConfig,
-} from "./src/helpers/configure_audio.js";
+import { backupLockfix, syncLockfix } from "./src/helpers/configure_lockfix.js";
 import {
 	backupMimeappsConfig,
 	syncMimeappsConfig,
 } from "./src/helpers/configure_mimeapps.js";
-import { backupLockfix, syncLockfix } from "./src/helpers/configure_lockfix.js";
-import {
-	backupWorktreeCleanup,
-	syncWorktreeCleanup,
-} from "./src/helpers/configure_worktree_cleanup.js";
-import {
-	backupClaudeStayAwake,
-	syncClaudeStayAwake,
-} from "./src/helpers/configure_claude_stay_awake.js";
 import {
 	backupPrWatch,
 	syncPrWatch,
 } from "./src/helpers/configure_pr_watch.js";
 import { configureSddm } from "./src/helpers/configure_sddm.js";
 import {
-	syncSkills,
-	printAvailableSkills,
+	backupWorktreeCleanup,
+	syncWorktreeCleanup,
+} from "./src/helpers/configure_worktree_cleanup.js";
+import {
+	backupZedConfig,
+	syncZedConfig,
+	syncZedTheme,
+} from "./src/helpers/configure_zed.js";
+import {
 	CACHE_DIR,
+	printAvailableSkills,
+	syncSkills,
 } from "./src/helpers/skill_manager.js";
-import { runCachyOSSetup, installKdeGlass } from "./src/os_scripts/cachyos.js";
+import { installKdeGlass, runCachyOSSetup } from "./src/os_scripts/cachyos.js";
 import { runDebianServerSetup } from "./src/os_scripts/debian_server.js";
 
 const program = new Command();
@@ -171,12 +167,12 @@ program
 		"Backup KDE Ocean theme from system to configs/kde/",
 	)
 	.option(
-		"--kde-glass",
-		"Install/reinstall KDE Glass blur effect (CachyOS/Arch only)",
+		"--plasma",
+		"Migrate portable Haoshoku desktop settings and shortcuts to KDE Plasma",
 	)
 	.option(
-		"--hyprland",
-		"Install Hyprland + upstream Caelestia rice (CachyOS/Arch only). Asks about your current DE and which device this is; persists the device answer to ~/.haoshoku.json for future per-host configs.",
+		"--kde-glass",
+		"Install/reinstall KDE Glass blur effect (CachyOS/Arch only)",
 	)
 	.action(async (options) => {
 		try {
@@ -379,32 +375,8 @@ async function runAction(options) {
 		return;
 	}
 
-	if (options.hyprland) {
-		const os = detectOS();
-		if (os !== "cachyos") {
-			log.error(
-				`--hyprland is gated to CachyOS/Arch (detected: ${os || "unknown"}). Run on an Arch-family system.`,
-			);
-			process.exit(1);
-		}
-		const de = await promptDesktopEnvironment();
-		if (de === null) {
-			log.warning("Desktop environment prompt cancelled — aborting.");
-			process.exit(0);
-		}
-		const device = await promptDeviceType();
-		if (device === null) {
-			log.info("Device type skipped (no entry written to ~/.haoshoku.json).");
-		} else {
-			log.info(`Recorded device type as '${device}' in ~/.haoshoku.json.`);
-		}
-		await installCaelestia({ skipHyprlandPackages: de === "hyprland" });
-		log.success(
-			"Caelestia installed. Log out and select 'Hyprland' at SDDM to use it.",
-		);
-		log.info(
-			"Monitor configuration is your responsibility: edit ~/.config/caelestia/hypr-user.conf.",
-		);
+	if (options.plasma) {
+		await syncKdePlasma();
 		return;
 	}
 

@@ -16,6 +16,11 @@ const RETIRED_LOCAL_BIN_ENTRIES = [
 	// Superseded workspace-7 launchers from earlier primary terminals.
 	"warp-workspace-7",
 	"ghostty-workspace-7",
+	"game-performance",
+	"caelestia-restart",
+	"agents-toggle",
+	"claude-desktop-toggle",
+	"kitty-workspace-7",
 	"CLAUDE.md",
 	"CLAUDE.md.bak",
 ];
