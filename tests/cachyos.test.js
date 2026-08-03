@@ -122,7 +122,7 @@ describe("configureTerminals kitty deployment", () => {
       'const KITTY_CONFIG_DIR = path.join(HOME, ".config", "kitty");',
     );
     expect(CACHYOS_SRC).toMatch(
-      /const CUSTOM_KITTY_CONFIG_PATH = path\.join\(\s*CONFIGS_DIR,\s*"kitty",\s*"kitty\.conf",\s*\);/s,
+      /const CUSTOM_KITTY_CONFIG_PATH = path\.join\(\s*CONFIGS_DIR,\s*"kitty",\s*"kitty\.conf",?\s*\);/s,
     );
     expect(CACHYOS_SRC).toContain(
       'path.join(KITTY_CONFIG_DIR, "kitty.conf")',
