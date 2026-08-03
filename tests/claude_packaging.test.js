@@ -42,7 +42,10 @@ it("keeps packed configs/claude files free of literal home-directory paths", () 
 		expect(policyFiles).toEqual([]);
 
 		const leakingFiles = claudeFiles.filter((filePath) => {
-			const contents = fs.readFileSync(path.join(PROJECT_ROOT, filePath), "utf8");
+			const contents = fs.readFileSync(
+				path.join(PROJECT_ROOT, filePath),
+				"utf8",
+			);
 			return contents.includes("/home/") || contents.includes("/Users/");
 		});
 		expect(leakingFiles).toEqual([]);

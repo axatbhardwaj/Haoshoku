@@ -128,9 +128,7 @@ describe("installUserScripts — deployment", () => {
 			}),
 		).resolves.toBeUndefined();
 
-		expect(
-			fs.existsSync(path.join(tmpHome, ".local", "bin")),
-		).toBe(false);
+		expect(fs.existsSync(path.join(tmpHome, ".local", "bin"))).toBe(false);
 	});
 
 	it("removes retired streaming scripts from ~/.local/bin/", async () => {
@@ -172,12 +170,7 @@ describe("installUserScripts — deployment", () => {
 
 	it("ships game-performance with a reset mode for crash-stale VRR", () => {
 		const script = fs.readFileSync(
-			path.join(
-				process.cwd(),
-				"configs",
-				"scripts",
-				"game-performance",
-			),
+			path.join(process.cwd(), "configs", "scripts", "game-performance"),
 			"utf8",
 		);
 
@@ -189,12 +182,7 @@ describe("installUserScripts — deployment", () => {
 
 	it("toggles game VRR without reloading all monitor outputs", () => {
 		const script = fs.readFileSync(
-			path.join(
-				process.cwd(),
-				"configs",
-				"scripts",
-				"game-performance",
-			),
+			path.join(process.cwd(), "configs", "scripts", "game-performance"),
 			"utf8",
 		);
 
@@ -212,9 +200,7 @@ describe("installUserScripts — deployment", () => {
 		);
 
 		expect(script).toContain("WS=7");
-		expect(script).toContain(
-			"kitty --class=$CLASS --directory=$HOME",
-		);
+		expect(script).toContain("kitty --class=$CLASS --directory=$HOME");
 		// Occupancy is checked against the whole class family so a Super+T window
 		// already counts; only the window this script spawns carries the suffix.
 		expect(script).toContain("CLASS_FAMILY=kitty");
@@ -293,9 +279,7 @@ describe("installUserScripts — deployment", () => {
 		// Escalate cooperative -> TERM -> KILL, in that order.
 		expect(code).toContain("kill -TERM");
 		expect(code).toContain("kill -KILL");
-		expect(code.indexOf("kill -TERM")).toBeLessThan(
-			code.indexOf("kill -KILL"),
-		);
+		expect(code.indexOf("kill -TERM")).toBeLessThan(code.indexOf("kill -KILL"));
 
 		// Healthy IPC alone is not success: a ladder survivor answers exactly
 		// as a fresh shell would, and --no-duplicate would have refused ours.

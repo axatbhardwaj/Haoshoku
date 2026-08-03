@@ -169,7 +169,10 @@ describe("syncCaelestiaPrefs — deploys device-specific hypr-user variant", () 
 	it("skips hypr-user deploy gracefully if the chosen variant file is missing", async () => {
 		// Only laptop variant in repo, but deviceType says pc → no pc variant to copy.
 		const sourceDir = path.join(tmpProjectRoot, "configs", "caelestia");
-		fs.writeFileSync(path.join(sourceDir, "hypr-user-laptop.conf"), "# laptop\n");
+		fs.writeFileSync(
+			path.join(sourceDir, "hypr-user-laptop.conf"),
+			"# laptop\n",
+		);
 		fs.writeFileSync(path.join(sourceDir, "cli.json"), "{}");
 		writeDeviceType("pc");
 
@@ -292,12 +295,7 @@ describe("backupCaelestiaPrefs — ~/.config/caelestia/ → configs/caelestia/<v
 		});
 		expect(
 			fs.readFileSync(
-				path.join(
-					tmpProjectRoot,
-					"configs",
-					"caelestia",
-					"hypr-user-pc.conf",
-				),
+				path.join(tmpProjectRoot, "configs", "caelestia", "hypr-user-pc.conf"),
 				"utf8",
 			),
 		).toContain("# live hypr-user.conf");
@@ -333,12 +331,7 @@ describe("backupCaelestiaPrefs — ~/.config/caelestia/ → configs/caelestia/<v
 		).toContain("# live hypr-user.conf");
 		expect(
 			fs.existsSync(
-				path.join(
-					tmpProjectRoot,
-					"configs",
-					"caelestia",
-					"hypr-user-pc.conf",
-				),
+				path.join(tmpProjectRoot, "configs", "caelestia", "hypr-user-pc.conf"),
 			),
 		).toBe(false);
 	});
@@ -352,12 +345,7 @@ describe("backupCaelestiaPrefs — ~/.config/caelestia/ → configs/caelestia/<v
 		});
 		expect(
 			fs.existsSync(
-				path.join(
-					tmpProjectRoot,
-					"configs",
-					"caelestia",
-					"hypr-user-pc.conf",
-				),
+				path.join(tmpProjectRoot, "configs", "caelestia", "hypr-user-pc.conf"),
 			),
 		).toBe(true);
 	});
@@ -430,9 +418,9 @@ describe("backupCaelestiaPrefs — ~/.config/caelestia/ → configs/caelestia/<v
 		}
 
 		// Curated repo variant must survive untouched.
-		expect(fs.readFileSync(path.join(repoDir, "hypr-user-pc.conf"), "utf8")).toBe(
-			curated,
-		);
+		expect(
+			fs.readFileSync(path.join(repoDir, "hypr-user-pc.conf"), "utf8"),
+		).toBe(curated);
 		expect(messages.join("\n")).toMatch(/hypr-user/i);
 	});
 
@@ -481,7 +469,10 @@ describe("backupCaelestiaPrefs — ~/.config/caelestia/ → configs/caelestia/<v
 	it("backs up a non-empty live file normally even when repo target is non-empty", async () => {
 		writeDeviceType("pc");
 		const repoDir = path.join(tmpProjectRoot, "configs", "caelestia");
-		fs.writeFileSync(path.join(repoDir, "hypr-user-pc.conf"), "# old curated\n");
+		fs.writeFileSync(
+			path.join(repoDir, "hypr-user-pc.conf"),
+			"# old curated\n",
+		);
 
 		const liveDir = path.join(tmpHome, ".config", "caelestia");
 		fs.mkdirSync(liveDir, { recursive: true });
@@ -535,9 +526,7 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		expect(directives).not.toContain("codex");
 		expect(directives).not.toContain("split =");
 		expect(
-			fs.existsSync(
-				path.join(PROJECT_ROOT, "configs", "kitty", "kitty.conf"),
-			),
+			fs.existsSync(path.join(PROJECT_ROOT, "configs", "kitty", "kitty.conf")),
 		).toBe(true);
 	});
 
@@ -589,13 +578,13 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 			command: ["brave", "--profile-directory=Profile 1"],
 			move: true,
 		});
-			expect(toggles).not.toHaveProperty("primevideo");
-			expect(toggles).not.toHaveProperty("zee5");
-			expect(toggles).not.toHaveProperty("crunchyroll");
-			expect(toggles).not.toHaveProperty("jiohotstar");
-			expect(toggles).not.toHaveProperty("agents");
-			expect(toggles).not.toHaveProperty("claude");
-			expect(toggles).not.toHaveProperty("vivaldi");
+		expect(toggles).not.toHaveProperty("primevideo");
+		expect(toggles).not.toHaveProperty("zee5");
+		expect(toggles).not.toHaveProperty("crunchyroll");
+		expect(toggles).not.toHaveProperty("jiohotstar");
+		expect(toggles).not.toHaveProperty("agents");
+		expect(toggles).not.toHaveProperty("claude");
+		expect(toggles).not.toHaveProperty("vivaldi");
 	});
 
 	it("launches sysmon btop with a UTF-8 locale override", () => {
@@ -684,7 +673,9 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		// route its class here — under either Brave app-id spelling.
 		expect(conf).not.toContain("cadlkienfkclaiaibeoongdcgmdikeeg");
 		// Claude's old Brave PWA stays gone; workspace was renamed off ai-webapps.
-		expect(conf).not.toContain("brave-fmpnliohjhemenmnlpbfagaolkdacoja-Default");
+		expect(conf).not.toContain(
+			"brave-fmpnliohjhemenmnlpbfagaolkdacoja-Default",
+		);
 		expect(conf).not.toContain("special:ai-webapps");
 		expect(conf).not.toContain("bind = Super, I, exec, caelestia toggle");
 	});
@@ -695,12 +686,7 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 			"utf8",
 		);
 
-		for (const service of [
-			"primevideo",
-			"zee5",
-			"crunchyroll",
-			"jiohotstar",
-		]) {
+		for (const service of ["primevideo", "zee5", "crunchyroll", "jiohotstar"]) {
 			expect(conf).not.toContain(`special:${service}`);
 			expect(conf).not.toContain(`caelestia toggle ${service}`);
 		}
@@ -717,12 +703,8 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 			"utf8",
 		);
 
-		expect(conf).toContain(
-			"workspace = 6, monitor:DP-2, persistent:true",
-		);
-		expect(conf).toContain(
-			"workspace = 7, monitor:DP-2, persistent:true",
-		);
+		expect(conf).toContain("workspace = 6, monitor:DP-2, persistent:true");
+		expect(conf).toContain("workspace = 7, monitor:DP-2, persistent:true");
 		expect(conf).toContain("unbind = $kbGoToWs, 6");
 		expect(conf).toContain(
 			"bind = $kbGoToWs, 6, exec, hyprctl dispatch focusmonitor DP-2 && hyprctl dispatch workspace 6",
@@ -847,8 +829,8 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 			"windowrule = workspace 2 silent, match:class ^[Ss]team$",
 			"windowrule = workspace 4 silent, match:class discord",
 			"windowrule = workspace 5 silent, match:class (teams-for-linux|TelegramDesktop|org\\.telegram\\.desktop)",
-			"hyprctl dispatch exec \"[workspace 2 silent] app2unit -- steam\"",
-			"hyprctl dispatch exec \"[workspace 4 silent] app2unit -- discord\"",
+			'hyprctl dispatch exec "[workspace 2 silent] app2unit -- steam"',
+			'hyprctl dispatch exec "[workspace 4 silent] app2unit -- discord"',
 			"bind = $kbGoToWs, 6, exec, hyprctl dispatch workspace 6",
 			"bind = $kbGoToWs, 7, exec, /home/xzat/.local/bin/kitty-workspace-7",
 			"hyprshot -m output -m active",
@@ -895,8 +877,12 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 			);
 
 			expect(conf).toContain("unbind = $kbBrowser");
-			expect(conf).toContain("bind = $kbBrowser, exec, caelestia toggle brave-work");
-			expect(conf).toContain("bind = Super, B, exec, caelestia toggle brave-personal");
+			expect(conf).toContain(
+				"bind = $kbBrowser, exec, caelestia toggle brave-work",
+			);
+			expect(conf).toContain(
+				"bind = Super, B, exec, caelestia toggle brave-personal",
+			);
 			expect(conf).toContain(
 				"windowrule = workspace special:brave-personal, match:class brave-browser, match:title Flux",
 			);
@@ -950,7 +936,9 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 				"windowrule = workspace special:communication, match:class brave-web\\.whatsapp\\.com__-Default",
 			);
 			expect(conf).not.toContain("match:class zapzap");
-			expect(conf).not.toContain("brave-hnpfjngllnobngcgfapefoaidbinmjnm-Default");
+			expect(conf).not.toContain(
+				"brave-hnpfjngllnobngcgfapefoaidbinmjnm-Default",
+			);
 			expect(conf).not.toContain("--app-id=hnpfjngllnobngcgfapefoaidbinmjnm");
 			expect(conf).toContain(
 				"windowrule = workspace special:1password, match:class 1password",
@@ -965,7 +953,9 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 			expect(conf).toContain(
 				"windowrule = workspace special:brave-work, match:class brave-browser, match:title Defi",
 			);
-			expect(conf).toContain("bind = Super, B, exec, caelestia toggle brave-personal");
+			expect(conf).toContain(
+				"bind = Super, B, exec, caelestia toggle brave-personal",
+			);
 		}
 	});
 
@@ -1024,7 +1014,7 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		);
 		expect(s).toContain("haoshoku-agents-toggle.lock");
 		expect(s).toContain('mkdir "$LOCK_DIR"');
-		expect(s).toContain('trap \'rmdir "$LOCK_DIR"\' 0 HUP INT TERM');
+		expect(s).toContain("trap 'rmdir \"$LOCK_DIR\"' 0 HUP INT TERM");
 		expect(s).not.toContain("xdg-open");
 	});
 

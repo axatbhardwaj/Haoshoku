@@ -7,24 +7,27 @@ import { log, safeCopyFile } from "../common/utils.js";
 const HOME_DEFAULT = homedir();
 const PROJECT_ROOT_DEFAULT = path.resolve(__dirname, "..", "..");
 const RETIRED_LOCAL_BIN_ENTRIES = [
-  "primevideo-setup",
-  "primevideo-hd",
-  "zee5-hd",
-  "crunchyroll-hd",
-  "jiohotstar-hd",
-  "ai-webapps-toggle",
-  // Superseded workspace-7 launchers from earlier primary terminals.
-  "warp-workspace-7",
-  "ghostty-workspace-7",
-  "CLAUDE.md",
-  "CLAUDE.md.bak",
+	"primevideo-setup",
+	"primevideo-hd",
+	"zee5-hd",
+	"crunchyroll-hd",
+	"jiohotstar-hd",
+	"ai-webapps-toggle",
+	// Superseded workspace-7 launchers from earlier primary terminals.
+	"warp-workspace-7",
+	"ghostty-workspace-7",
+	"CLAUDE.md",
+	"CLAUDE.md.bak",
 ];
 
-function resolvePaths({ home = HOME_DEFAULT, projectRoot = PROJECT_ROOT_DEFAULT } = {}) {
-  return {
-    scriptsSrc: path.join(projectRoot, "configs", "scripts"),
-    localBin: path.join(home, ".local", "bin"),
-  };
+function resolvePaths({
+	home = HOME_DEFAULT,
+	projectRoot = PROJECT_ROOT_DEFAULT,
+} = {}) {
+	return {
+		scriptsSrc: path.join(projectRoot, "configs", "scripts"),
+		localBin: path.join(home, ".local", "bin"),
+	};
 }
 
 /**
@@ -45,42 +48,41 @@ function resolvePaths({ home = HOME_DEFAULT, projectRoot = PROJECT_ROOT_DEFAULT 
  * no scripts to deploy should pass through cleanly.
  */
 export async function installUserScripts(opts = {}) {
-  const { scriptsSrc, localBin } = resolvePaths(opts);
+	const { scriptsSrc, localBin } = resolvePaths(opts);
 
-  for (const script of RETIRED_LOCAL_BIN_ENTRIES) {
-    const retiredPath = path.join(localBin, script);
-    if (fs.existsSync(retiredPath)) {
-      fs.rmSync(retiredPath, { force: true });
-      log.info(`Removed retired local-bin entry ${script}`);
-    }
-  }
+	for (const script of RETIRED_LOCAL_BIN_ENTRIES) {
+		const retiredPath = path.join(localBin, script);
+		if (fs.existsSync(retiredPath)) {
+			fs.rmSync(retiredPath, { force: true });
+			log.info(`Removed retired local-bin entry ${script}`);
+		}
+	}
 
-  if (!fs.existsSync(scriptsSrc)) {
-    log.info("No configs/scripts/ directory; skipping user-script install.");
-    return;
-  }
+	if (!fs.existsSync(scriptsSrc)) {
+		log.info("No configs/scripts/ directory; skipping user-script install.");
+		return;
+	}
 
-  const entries = fs
-    .readdirSync(scriptsSrc, { withFileTypes: true })
-    .filter(
-      (e) =>
-        e.isFile() && !e.name.startsWith(".") && !e.name.endsWith(".md"),
-    );
+	const entries = fs
+		.readdirSync(scriptsSrc, { withFileTypes: true })
+		.filter(
+			(e) => e.isFile() && !e.name.startsWith(".") && !e.name.endsWith(".md"),
+		);
 
-  if (entries.length === 0) {
-    log.info("configs/scripts/ is empty; skipping user-script install.");
-    return;
-  }
+	if (entries.length === 0) {
+		log.info("configs/scripts/ is empty; skipping user-script install.");
+		return;
+	}
 
-  fs.mkdirSync(localBin, { recursive: true });
+	fs.mkdirSync(localBin, { recursive: true });
 
-  log.info(`Installing ${entries.length} user script(s) to ${localBin}...`);
-  for (const entry of entries) {
-    const src = path.join(scriptsSrc, entry.name);
-    const dest = path.join(localBin, entry.name);
-    safeCopyFile(src, dest);
-    fs.chmodSync(dest, 0o755);
-    log.info(`  ${entry.name}`);
-  }
-  log.success("User scripts installed.");
+	log.info(`Installing ${entries.length} user script(s) to ${localBin}...`);
+	for (const entry of entries) {
+		const src = path.join(scriptsSrc, entry.name);
+		const dest = path.join(localBin, entry.name);
+		safeCopyFile(src, dest);
+		fs.chmodSync(dest, 0o755);
+		log.info(`  ${entry.name}`);
+	}
+	log.success("User scripts installed.");
 }
