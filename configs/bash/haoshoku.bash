@@ -1,26 +1,30 @@
 # Haoshoku portable Bash additions. Omarchy's defaults load before this file.
 
-if [[ $- != *h* ]]; then
-  set -h
-  haoshoku_restore_hashall=1
-fi
+haoshoku_run_initializers() {
+  local hashall_was_disabled=0
+  if [[ $- != *h* ]]; then
+    set -h
+    hashall_was_disabled=1
+  fi
 
-command -v starship >/dev/null 2>&1 && eval "$(starship init bash)"
-command -v direnv >/dev/null 2>&1 && eval "$(direnv hook bash)"
-command -v zoxide >/dev/null 2>&1 && eval "$(zoxide init bash --cmd cd)"
-command -v pyenv >/dev/null 2>&1 && eval "$(pyenv init - bash)"
-command -v thefuck >/dev/null 2>&1 && eval "$(thefuck --alias)"
+  command -v starship >/dev/null 2>&1 && eval "$(starship init bash)"
+  command -v direnv >/dev/null 2>&1 && eval "$(direnv hook bash)"
+  command -v zoxide >/dev/null 2>&1 && eval "$(zoxide init bash --cmd cd)"
+  command -v pyenv >/dev/null 2>&1 && eval "$(pyenv init - bash)"
+  command -v thefuck >/dev/null 2>&1 && eval "$(thefuck --alias)"
 
-if [[ -x "$HOME/anaconda3/bin/conda" ]]; then
-  eval "$("$HOME/anaconda3/bin/conda" shell.bash hook)"
-elif [[ -x /opt/miniconda3/bin/conda ]]; then
-  eval "$(/opt/miniconda3/bin/conda shell.bash hook)"
-fi
+  if [[ -x "$HOME/anaconda3/bin/conda" ]]; then
+    eval "$("$HOME/anaconda3/bin/conda" shell.bash hook)"
+  elif [[ -x /opt/miniconda3/bin/conda ]]; then
+    eval "$(/opt/miniconda3/bin/conda shell.bash hook)"
+  fi
 
-if [[ ${haoshoku_restore_hashall:-} ]]; then
-  set +h
-fi
-unset haoshoku_restore_hashall
+  if ((hashall_was_disabled)); then
+    set +h
+  fi
+}
+haoshoku_run_initializers
+unset -f haoshoku_run_initializers
 
 cursor() { command cursor "$@" >/dev/null 2>&1 & }
 antigravity() { command antigravity --new-window "$@" >/dev/null 2>&1 & }

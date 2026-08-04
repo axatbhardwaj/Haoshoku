@@ -99,14 +99,18 @@ describe("configureBash", () => {
 			"bash",
 			"haoshoku.bash",
 		);
-		const sourceFragment = (hashing) =>
+		const sourceFragment = (
+			hashing,
+			beforeSource = "",
+			afterSource = `set -o | awk '$1 == "hashall" { print $2 }'`,
+		) =>
 			spawnSync(
 				"bash",
 				[
 					"--noprofile",
 					"--norc",
 					"-c",
-					`set ${hashing ? "-h" : "+h"}; source "$1"; set -o | awk '$1 == "hashall" { print $2 }'`,
+					`set ${hashing ? "-h" : "+h"}; ${beforeSource} source "$1"; ${afterSource}`,
 					"bash",
 					fragment,
 				],
@@ -129,6 +133,15 @@ describe("configureBash", () => {
 		expect(initiallyEnabled.status).toBe(0);
 		expect(initiallyEnabled.stderr).not.toContain("hashing disabled");
 		expect(initiallyEnabled.stdout.trim()).toBe("on");
+
+		const initiallyEnabledWithMarker = sourceFragment(
+			true,
+			"haoshoku_restore_hashall=preexisting;",
+			`printf '%s;%s\\n' "$(set -o | awk '$1 == "hashall" { print $2 }')" "$haoshoku_restore_hashall"`,
+		);
+		expect(initiallyEnabledWithMarker.status).toBe(0);
+		expect(initiallyEnabledWithMarker.stderr).not.toContain("hashing disabled");
+		expect(initiallyEnabledWithMarker.stdout.trim()).toBe("on;preexisting");
 	});
 
 	it("keeps bun-bin in the Arch package set", () => {
