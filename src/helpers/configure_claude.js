@@ -157,6 +157,7 @@ export async function bootstrapClaudePolicy(options = {}) {
   const {
     claudeHome = HOME,
     configPath = HAOSHOKU_CONFIG_PATH,
+    strict = true,
   } = options;
   const claudeDir = path.join(claudeHome, ".claude");
   const url = readClaudeBootstrapUrl(configPath);
@@ -171,7 +172,7 @@ export async function bootstrapClaudePolicy(options = {}) {
     log.error(
       `Unable to reach the Claude policy repository. Authentication is the likely cause. Consider checking your git credentials and retrying.`,
     );
-    process.exitCode = 1;
+    if (strict) process.exitCode = 1;
     return false;
   }
 

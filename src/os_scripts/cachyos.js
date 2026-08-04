@@ -12,7 +12,10 @@ import {
 import { configureAgentOs } from "../helpers/configure_agent_os.js";
 import { configureAudio } from "../helpers/configure_audio.js";
 import { configureBash } from "../helpers/configure_bash.js";
-import { configureClaude } from "../helpers/configure_claude.js";
+import {
+	bootstrapClaudePolicy,
+	configureClaude,
+} from "../helpers/configure_claude.js";
 import { configureClaudeStayAwake } from "../helpers/configure_claude_stay_awake.js";
 import { configureCodex } from "../helpers/configure_codex.js";
 import { configureChromiumProfiles } from "../helpers/configure_chromium_profiles.js";
@@ -535,6 +538,7 @@ export async function configureUserApps({
 	runCommandImpl = runCommand,
 	enableServicesImpl = enableServices,
 	configureClaudeImpl = configureClaude,
+	bootstrapClaudePolicyImpl = bootstrapClaudePolicy,
 	configureClaudeStayAwakeImpl = configureClaudeStayAwake,
 	configurePrWatchImpl = configurePrWatch,
 	configureCodexImpl = configureCodex,
@@ -564,6 +568,21 @@ export async function configureUserApps({
 
 	await enableServicesImpl();
 	await configureClaudeImpl();
+	if (
+		await promptUserImpl("Bootstrap private Claude policy repository?", true)
+	) {
+		try {
+			if (!(await bootstrapClaudePolicyImpl({ strict: false }))) {
+				log.warning(
+					"Claude policy bootstrap failed — continuing. Retry with: haoshoku --claude-bootstrap",
+				);
+			}
+		} catch (err) {
+			log.warning(
+				`Claude policy bootstrap failed (${err?.message ?? err}) — continuing. Retry with: haoshoku --claude-bootstrap`,
+			);
+		}
+	}
 	await configureClaudeStayAwakeImpl();
 	if (configurePrWatchImpl === configurePrWatch) await configurePrWatch();
 	else await configurePrWatchImpl();

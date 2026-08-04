@@ -125,6 +125,12 @@ describe("bootstrapClaudePolicy()", () => {
 		const claudeDir = path.join(claudeHome, ".claude");
 		fs.mkdirSync(claudeDir, { recursive: true });
 		fs.writeFileSync(path.join(claudeDir, "local-only.txt"), "keep me\n");
+		fs.writeFileSync(path.join(claudeDir, "CLAUDE.md"), "# Public baseline\n");
+		const omarchySkill = path.join(tmpDir, "omarchy-skill");
+		const omarchyLink = path.join(claudeDir, "skills", "omarchy");
+		fs.mkdirSync(omarchySkill);
+		fs.mkdirSync(path.dirname(omarchyLink), { recursive: true });
+		fs.symlinkSync(omarchySkill, omarchyLink);
 
 		const result = await claudeConfig.bootstrapClaudePolicy?.({
 			claudeHome,
@@ -138,6 +144,13 @@ describe("bootstrapClaudePolicy()", () => {
 		expect(fs.readFileSync(path.join(claudeDir, "local-only.txt"), "utf-8")).toBe(
 			"keep me\n",
 		);
+		expect(fs.lstatSync(omarchyLink).isSymbolicLink()).toBe(true);
+		expect(fs.realpathSync(omarchyLink)).toBe(fs.realpathSync(omarchySkill));
+		expect(
+			fs
+				.readdirSync(claudeDir)
+				.some((file) => file.startsWith("CLAUDE.md.bak")),
+		).toBe(false);
 	});
 
 	it("updates an existing origin when claudeBootstrapUrl changes", async () => {
@@ -192,6 +205,32 @@ describe("bootstrapClaudePolicy()", () => {
 		expect(child.exitCode).toBe(1);
 		expect(output).toContain("Consider checking your git credentials");
 		expect(output).not.toContain("fatal:");
+		expect(fs.existsSync(path.join(claudeHome, ".claude"))).toBe(false);
+	});
+
+	it("returns an unreachable bootstrap failure without a nonzero exit in non-strict mode", () => {
+		const unreachable = path.join(tmpDir, "typo", "missing.git");
+		writeConfig(unreachable);
+		const configureModule = path.resolve(
+			import.meta.dir,
+			"..",
+			"src",
+			"helpers",
+			"configure_claude.js",
+		);
+		const child = Bun.spawnSync(
+			[
+				process.execPath,
+				"--eval",
+				`const module = await import(${JSON.stringify(configureModule)}); await module.bootstrapClaudePolicy(${JSON.stringify({ claudeHome, configPath, strict: false })});`,
+			],
+			{
+				stderr: "pipe",
+				stdout: "pipe",
+			},
+		);
+
+		expect(child.exitCode).toBe(0);
 		expect(fs.existsSync(path.join(claudeHome, ".claude"))).toBe(false);
 	});
 
