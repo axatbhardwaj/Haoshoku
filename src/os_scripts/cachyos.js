@@ -191,30 +191,29 @@ async function installPackagesFromFile(filePath, installerCmd) {
 
 // --- Installation Functions ---
 
-async function installBaseDependencies() {
-	log.info("Refreshing keyrings...");
-	// // Initialize and populate keys first to ensure we can verify signatures
-	// await runCommand("sudo pacman-key --init");
-	// await runCommand("sudo pacman-key --populate archlinux cachyos");
-	// // Then update the keyring packages
-	// await runCommand("sudo pacman -Sy --noconfirm archlinux-keyring cachyos-keyring");
-
-	log.info(
-		"Installing base-devel and git (required for makepkg / paru build)...",
-	);
-	const baseDevelOk = await runCommand(
-		"sudo pacman -S --needed --noconfirm base-devel git",
-	);
-	if (!baseDevelOk) {
-		log.warning(
-			"base-devel/git install failed — paru build and AUR installs may fail.",
+export async function prepareArchPackageManager({
+	runCommandImpl = runCommand,
+} = {}) {
+	log.info("Refreshing package databases and performing a full system upgrade...");
+	if (!(await runCommandImpl("sudo pacman -Syu --noconfirm"))) {
+		log.error(
+			"Pacman refresh and full upgrade failed. Aborting Arch setup before package installation.",
 		);
+		return false;
 	}
 
-	log.info("Installing Rust via rustup...");
-	await withSpinner("Installing Rust", () =>
-		runCommand(`curl ${RUSTUP_URL} -sSf | sh -s -- -y`),
-	);
+	log.info("Installing base-devel and git (required for makepkg / AUR builds)...");
+	if (
+		!(await runCommandImpl(
+			"sudo pacman -S --needed --noconfirm base-devel git",
+		))
+	) {
+		log.error(
+			"base-devel/git installation failed. Aborting Arch setup before AUR package installation.",
+		);
+		return false;
+	}
+	return true;
 }
 
 async function installAurHelper() {
@@ -406,8 +405,14 @@ async function configureUserApps() {
 	await configureAgentOs();
 }
 
-export async function runCachyOSSetup() {
-	await installBaseDependencies();
+export async function runCachyOSSetup({
+	prepareArchPackageManagerImpl = prepareArchPackageManager,
+} = {}) {
+	if (!(await prepareArchPackageManagerImpl())) return false;
+	log.info("Installing Rust via rustup...");
+	await withSpinner("Installing Rust", () =>
+		runCommand(`curl ${RUSTUP_URL} -sSf | sh -s -- -y`),
+	);
 	const aurHelper = await ensureAurHelper();
 	await installDevTools();
 
@@ -420,4 +425,5 @@ export async function runCachyOSSetup() {
 	if (isOmarchy) await configureOmazed();
 
 	log.success("Arch setup finished. Please restart your terminal or log out.");
+	return true;
 }

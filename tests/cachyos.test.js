@@ -3,7 +3,9 @@ import fs from "node:fs";
 import path from "node:path";
 import {
 	installGamingPackages,
+	prepareArchPackageManager,
 	resolveAurHelper,
+	runCachyOSSetup,
 	selectArchInstallCommand,
 } from "../src/os_scripts/cachyos.js";
 
@@ -64,6 +66,62 @@ describe("portable gaming setup", () => {
 			},
 		});
 		expect(commands).toHaveLength(2);
+	});
+});
+
+describe("Arch package-manager preflight", () => {
+	it("fully upgrades before installing essential build dependencies", async () => {
+		const commands = [];
+		const result = await prepareArchPackageManager({
+			runCommandImpl: async (command) => {
+				commands.push(command);
+				return true;
+			},
+		});
+
+		expect(result).toBe(true);
+		expect(commands).toEqual([
+			"sudo pacman -Syu --noconfirm",
+			"sudo pacman -S --needed --noconfirm base-devel git",
+		]);
+	});
+
+	it("does not install dependencies when the full upgrade fails", async () => {
+		const commands = [];
+		const result = await prepareArchPackageManager({
+			runCommandImpl: async (command) => {
+				commands.push(command);
+				return false;
+			},
+		});
+
+		expect(result).toBe(false);
+		expect(commands).toEqual(["sudo pacman -Syu --noconfirm"]);
+	});
+
+	it("reports failure when essential dependencies cannot be installed", async () => {
+		let attempt = 0;
+		const result = await prepareArchPackageManager({
+			runCommandImpl: async () => {
+				attempt += 1;
+				return attempt === 1;
+			},
+		});
+
+		expect(result).toBe(false);
+	});
+
+	it("stops the full setup when package-manager preparation fails", async () => {
+		let preflightCalls = 0;
+		const result = await runCachyOSSetup({
+			prepareArchPackageManagerImpl: async () => {
+				preflightCalls += 1;
+				return false;
+			},
+		});
+
+		expect(result).toBe(false);
+		expect(preflightCalls).toBe(1);
 	});
 });
 
