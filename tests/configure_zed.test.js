@@ -12,29 +12,17 @@ import {
 const PROJECT_ROOT = path.resolve(__dirname, "..");
 const ZED_CONFIG_DIR = path.join(PROJECT_ROOT, "configs", "zed");
 
-describe("Zed Caelestia theme defaults", () => {
-	it("selects Caelestia for both Zed theme modes", () => {
+describe("Zed Omarchy theme defaults", () => {
+	it("selects Omazed without triggering its unsafe object conversion", () => {
 		const settingsPath = path.join(ZED_CONFIG_DIR, "settings.json");
 		const settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
 
-		expect(settings.theme).toEqual({
-			mode: "system",
-			light: "Caelestia",
-			dark: "Caelestia",
-		});
+		expect(settings.theme).toBe("Omazed");
 	});
 
-	it("vendors a parseable Caelestia Zed theme", () => {
+	it("does not vendor the retired Caelestia Zed theme", () => {
 		const themePath = path.join(ZED_CONFIG_DIR, "themes", "caelestia.json");
-		const theme = JSON.parse(fs.readFileSync(themePath, "utf8"));
-
-		expect(theme.name).toBe("Caelestia");
-		expect(theme.themes[0].name).toBe("Caelestia");
-		expect(theme.themes[0].appearance).toBe("dark");
-		// Theme colors are personal and drift via --zed-backup; assert shape, not exact hex.
-		const style = theme.themes[0].style;
-		expect(style["editor.background"]).toMatch(/^#[0-9a-fA-F]{6,8}$/);
-		expect(style["border.focused"]).toMatch(/^#[0-9a-fA-F]{6,8}$/);
+		expect(fs.existsSync(themePath)).toBe(false);
 	});
 });
 
@@ -46,7 +34,9 @@ let tmpZedConfigDir;
 let tmpBackupDir;
 
 beforeEach(() => {
-	tmpZedConfigDir = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-zed-live-"));
+	tmpZedConfigDir = fs.mkdtempSync(
+		path.join(os.tmpdir(), "haoshoku-zed-live-"),
+	);
 	tmpBackupDir = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-zed-backup-"));
 });
 
@@ -57,7 +47,8 @@ afterEach(() => {
 
 /** Seed a live settings.json with the given object/string. */
 function seedLiveSettings(content) {
-	const body = typeof content === "string" ? content : JSON.stringify(content, null, 2);
+	const body =
+		typeof content === "string" ? content : JSON.stringify(content, null, 2);
 	fs.writeFileSync(path.join(tmpZedConfigDir, "settings.json"), body);
 }
 

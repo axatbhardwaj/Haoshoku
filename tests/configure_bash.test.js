@@ -57,4 +57,24 @@ describe("configureBash", () => {
 			/cachyos|caelestia|fish|\babbr\b|\bset -gx\b/i,
 		);
 	});
+
+	it("exposes a user-installed Bun in a clean Bash environment", () => {
+		configureBash({ home });
+		const fragment = fs.readFileSync(
+			path.join(home, ".config", "haoshoku", "bashrc"),
+			"utf8",
+		);
+		expect(fragment).toContain('export BUN_INSTALL="$HOME/.bun"');
+		expect(fragment).toContain('"$BUN_INSTALL/bin"');
+	});
+
+	it("keeps bun-bin in the Arch package set", () => {
+		const packages = fs
+			.readFileSync(
+				path.join(import.meta.dir, "..", "common", "paru_applist.txt"),
+				"utf8",
+			)
+			.split(/\r?\n/);
+		expect(packages).toContain("bun-bin");
+	});
 });

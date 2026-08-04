@@ -36,6 +36,7 @@ mpv-uosc
 mission-center
 ghostty
 zed
+omazed
 starship
 httpie
 thefuck

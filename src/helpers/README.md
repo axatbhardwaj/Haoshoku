@@ -4,6 +4,11 @@
 and its fixed-recipe Bash helper, then adds one idempotent source line to the
 user's `hyprland.conf`. It never edits `~/.local/share/omarchy/`.
 
+`configure_omazed.js` prepares the user's existing Zed settings safely before
+running packaged `omazed setup`, then retires only Haoshoku's former Caelestia
+theme. It backs up changed settings and rolls them back if setup fails; the
+upstream manual installer is intentionally never used.
+
 ## Claude Config Architecture
 
 The Claude configuration has deliberately separate ownership paths:

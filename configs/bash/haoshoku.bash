@@ -43,6 +43,9 @@ alias ll='ls -l'
 alias la='ls -a'
 alias lla='ls -la'
 
+export BUN_INSTALL="$HOME/.bun"
+[[ -d "$BUN_INSTALL/bin" ]] && PATH="$BUN_INSTALL/bin:$PATH"
+
 for haoshoku_path in \
   "$HOME/.lmstudio/bin" \
   "$HOME/go/bin" \
