@@ -27,7 +27,7 @@ describe("configureBash", () => {
 			"source ~/.local/share/omarchy/default/bash/rc\n",
 		);
 		expect(
-			result.match(/source \"\$HOME\/\.config\/haoshoku\/bashrc\"/g),
+			result.match(/source "\$HOME\/\.config\/haoshoku\/bashrc"/g),
 		).toHaveLength(1);
 	});
 

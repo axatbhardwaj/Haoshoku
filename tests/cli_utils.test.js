@@ -43,12 +43,12 @@ describe("detectOS", () => {
 		expect(detectOS(p)).toBe("arch");
 	});
 
-	it("detects vanilla Arch (ID=arch only, no ID_LIKE) as cachyos-family", () => {
+	it("detects vanilla Arch (ID=arch only, no ID_LIKE) as Arch family", () => {
 		const p = writeOsRelease('NAME="Arch Linux"\nID=arch\n');
 		expect(detectOS(p)).toBe("arch");
 	});
 
-	it("detects an Arch derivative (ID_LIKE=arch) as cachyos-family", () => {
+	it("detects an Arch derivative (ID_LIKE=arch) as Arch family", () => {
 		const p = writeOsRelease(
 			'NAME="EndeavourOS"\nID=endeavouros\nID_LIKE=arch\n',
 		);

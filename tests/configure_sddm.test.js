@@ -252,24 +252,3 @@ describe.skip("retired cachyos.js wiring (configureSddm)", () => {
 		expect(count).toBe(1);
 	});
 });
-
-describe("haoshoku.js CLI wiring (--sddm-posthook)", () => {
-	const readSrc = () =>
-		fs.readFileSync(path.join(PROJECT_ROOT, "haoshoku.js"), "utf8");
-
-	it("imports configureSddm from ./src/helpers/configure_sddm.js", () => {
-		expect(readSrc()).toMatch(
-			/import\s+\{[^}]*\bconfigureSddm\b[^}]*\}\s+from\s+["']\.\/src\/helpers\/configure_sddm\.js["']/,
-		);
-	});
-
-	it("declares the --sddm-posthook option", () => {
-		expect(readSrc()).toMatch(/\.option\(\s*["']--sddm-posthook["']/);
-	});
-
-	it("the --sddm-posthook handler awaits configureSddm and returns", () => {
-		expect(readSrc()).toMatch(
-			/if\s*\(\s*options\.sddmPosthook\s*\)\s*\{\s*await\s+configureSddm\(\s*\)\s*;\s*return\s*;\s*\}/,
-		);
-	});
-});

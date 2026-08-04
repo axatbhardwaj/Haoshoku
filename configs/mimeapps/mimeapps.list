@@ -1,7 +1,7 @@
 [Default Applications]
 x-scheme-handler/claude-cli=claude-code-url-handler.desktop
 x-scheme-handler/discord=discord.desktop
-inode/directory=org.kde.dolphin.desktop
+inode/directory=org.gnome.Nautilus.desktop
 image/avif=swayimg.desktop
 image/bmp=swayimg.desktop
 image/gif=swayimg.desktop

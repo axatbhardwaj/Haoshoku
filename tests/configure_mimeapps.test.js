@@ -480,13 +480,13 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 		expect(deployed).not.toContain("Exec=caelestia toggle communication");
 	});
 
-	it("sets Dolphin as the XDG default for directories", () => {
+	it("sets Omarchy's Files app as the XDG default for directories", () => {
 		const content = fs.readFileSync(
 			path.join(CONFIGS_MIMEAPPS_DIR, "mimeapps.list"),
 			"utf8",
 		);
 
-		expect(content).toContain("inode/directory=org.kde.dolphin.desktop");
+		expect(content).toContain("inode/directory=org.gnome.Nautilus.desktop");
 	});
 
 	it("routes notion:// links to the managed Brave Notion web app", () => {
@@ -547,7 +547,7 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 		const providerAliases = {
 			"brave-browser.desktop": "brave-bin",
 			"com.anthropic.Claude.desktop": "claude-desktop",
-			"org.kde.dolphin.desktop": "dolphin",
+			"org.gnome.Nautilus.desktop": "nautilus",
 		};
 		const installed = new Set(
 			packageLists.split("\n").map((line) => line.trim()),

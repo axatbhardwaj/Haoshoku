@@ -12,6 +12,7 @@ flatpak
 bitwarden
 inotify-tools
 thunar
+nautilus
 swayimg
 teams-for-linux
 onlyoffice-bin
