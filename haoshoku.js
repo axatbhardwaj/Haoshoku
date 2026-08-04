@@ -309,7 +309,10 @@ async function runAction(options) {
 			if (osType === "cachyos") {
 				log.warning("--os cachyos is deprecated; use --os arch.");
 			}
-			await runCachyOSSetup();
+			if (!(await runCachyOSSetup())) {
+				process.exitCode = 1;
+				return;
+			}
 			break;
 		case "debian-server":
 			await runDebianServerSetup();

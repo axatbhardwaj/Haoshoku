@@ -27,21 +27,36 @@ describe("Rust toolchain preparation", () => {
 		expect(commands).toEqual([]);
 	});
 
-	it("installs Rust when either required command is missing", async () => {
-		const commands = [];
+	for (const { availableCommand, missingCommand } of [
+		{ availableCommand: "rustc", missingCommand: "cargo" },
+		{ availableCommand: "cargo", missingCommand: "rustc" },
+	]) {
+		it(`installs Rust when ${missingCommand} is missing`, async () => {
+			const commands = [];
+			const result = await ensureRustToolchain({
+				commandExistsImpl: async (command) => command === availableCommand,
+				runCommandImpl: async (command) => {
+					commands.push(command);
+					return true;
+				},
+				withSpinnerImpl: async (_label, operation) => operation(),
+			});
+
+			expect(result).toBe(true);
+			expect(commands).toEqual([
+				"curl https://sh.rustup.rs -sSf | sh -s -- -y",
+			]);
+		});
+	}
+
+	it("reports failure when rustup fails", async () => {
 		const result = await ensureRustToolchain({
-			commandExistsImpl: async (command) => command === "rustc",
-			runCommandImpl: async (command) => {
-				commands.push(command);
-				return true;
-			},
+			commandExistsImpl: async () => false,
+			runCommandImpl: async () => false,
 			withSpinnerImpl: async (_label, operation) => operation(),
 		});
 
-		expect(result).toBe(true);
-		expect(commands).toEqual([
-			"curl https://sh.rustup.rs -sSf | sh -s -- -y",
-		]);
+		expect(result).toBe(false);
 	});
 });
 
