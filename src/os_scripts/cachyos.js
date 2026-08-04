@@ -50,6 +50,23 @@ const CUSTOM_FASTFETCH_CONFIG_PATH = path.join(
 
 // --- Helper Functions ---
 
+const ARCH_PACKAGE_NAME_PATTERN = /^[A-Za-z0-9@._+-]+$/;
+
+export function normalizeArchPackageNames(packages) {
+	const valid = [];
+	const invalid = [];
+	const seen = new Set();
+
+	for (const raw of packages) {
+		const pkg = raw.trim();
+		if (seen.has(pkg)) continue;
+		seen.add(pkg);
+		if (pkg && ARCH_PACKAGE_NAME_PATTERN.test(pkg)) valid.push(pkg);
+		else invalid.push(pkg);
+	}
+	return { valid, invalid };
+}
+
 export async function resolveAurHelper(commandExistsImpl = commandExists) {
 	for (const helper of ["yay", "paru"]) {
 		if (await commandExistsImpl(helper)) return helper;

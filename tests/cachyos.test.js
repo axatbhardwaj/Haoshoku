@@ -4,6 +4,7 @@ import path from "node:path";
 import {
 	ensureRustToolchain,
 	installGamingPackages,
+	normalizeArchPackageNames,
 	prepareArchPackageManager,
 	resolveAurHelper,
 	runCachyOSSetup,
@@ -81,6 +82,38 @@ describe("Arch package routing", () => {
 			"yay -S --needed --noconfirm protonup-rs-bin",
 		);
 		expect(selectArchInstallCommand("missing", false, null)).toBeNull();
+	});
+});
+
+describe("Arch package-list normalization", () => {
+	it("trims, deduplicates, and preserves first-seen order", () => {
+		expect(
+			normalizeArchPackageNames([
+				" chromium ",
+				"visual-studio-code-bin",
+				"chromium",
+				"bun-bin",
+			]),
+		).toEqual({
+			valid: ["chromium", "visual-studio-code-bin", "bun-bin"],
+			invalid: [],
+		});
+	});
+
+	it("rejects empty and shell-active package names", () => {
+		expect(
+			normalizeArchPackageNames([
+				"",
+				"   ",
+				"good_pkg+git@source",
+				"bad package",
+				"bad;touch-/tmp/pwned",
+				"$(bad)",
+			]),
+		).toEqual({
+			valid: ["good_pkg+git@source"],
+			invalid: ["", "bad package", "bad;touch-/tmp/pwned", "$(bad)"],
+		});
 	});
 });
 
