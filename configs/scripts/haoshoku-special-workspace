@@ -44,14 +44,21 @@ if [[ "$recipe" == numbered ]]; then
 fi
 
 browser_profile=""
+browser_toggle=false
 case "$recipe" in
   browser)
     [[ $# -ge 2 ]] || { echo "usage: haoshoku-special-workspace browser PROFILE_ID [URL ...]" >&2; exit 2; }
     browser_profile="$2"
     urls=("${@:3}")
     ;;
-  browser-flux) browser_profile=flux; urls=("${@:2}") ;;
-  browser-defi) browser_profile=defi; urls=("${@:2}") ;;
+  browser-toggle)
+    [[ $# -ge 2 ]] || { echo "usage: haoshoku-special-workspace browser-toggle PROFILE_ID [URL ...]" >&2; exit 2; }
+    browser_profile="$2"
+    browser_toggle=true
+    urls=("${@:3}")
+    ;;
+  browser-flux) browser_profile=flux; browser_toggle=true; urls=("${@:2}") ;;
+  browser-defi) browser_profile=defi; browser_toggle=true; urls=("${@:2}") ;;
 esac
 
 if [[ -n "$browser_profile" ]]; then
@@ -77,11 +84,21 @@ fi
 
 reveal_special_workspace() {
   hyprctl dispatch focusmonitor "$monitor" >/dev/null
-  hyprctl monitors -j | jq -e --arg workspace "special:$workspace" 'any(.[]; .specialWorkspace.name == $workspace)' >/dev/null || \
+  special_workspace_visible || \
     hyprctl dispatch togglespecialworkspace "$workspace" >/dev/null
 }
 
+special_workspace_visible() {
+  hyprctl monitors -j | jq -e --arg workspace "special:$workspace" 'any(.[]; .specialWorkspace.name == $workspace)' >/dev/null
+}
+
 if [[ -n "$browser_profile" ]]; then
+  if "$browser_toggle" && special_workspace_visible; then
+    hyprctl dispatch focusmonitor "$monitor" >/dev/null
+    hyprctl dispatch togglespecialworkspace "$workspace" >/dev/null
+    exit 0
+  fi
+
   if has_client_class "$class"; then
     if (( ${#urls[@]} )); then
       /usr/bin/chromium "--user-data-dir=$HOME/.config/chromium-haoshoku/$profile" "${urls[@]}"

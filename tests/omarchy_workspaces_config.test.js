@@ -43,6 +43,15 @@ describe("Omarchy workspace overlay", () => {
 		expect(config).toContain("SUPER CTRL SHIFT ALT, H");
 	});
 
+	it("binds browser shortcuts to explicit toggle commands", () => {
+		expect(config).toContain(
+			"bindd = SUPER CTRL SHIFT, B, Toggle Flux Chromium workspace, exec, haoshoku-special-workspace browser-toggle flux",
+		);
+		expect(config).toContain(
+			"bindd = SUPER CTRL SHIFT, D, Toggle DeFi Chromium workspace, exec, haoshoku-special-workspace browser-toggle defi",
+		);
+	});
+
 	it("keeps retired desktops, browsers, and visual ownership out", () => {
 		expect(config).not.toMatch(
 			/caelestia|brave|kde|opacity|blur|decoration|wallpaper/i,
