@@ -19,6 +19,11 @@ const UUID_PATTERN =
 // existing singleton and remains `brave-browser`. The separate data directories
 // are therefore required for the measured brave-flux/brave-defi classes to exist.
 const WINDOW_CLASSES = {
+	// Brave's generated PWA desktop entry declares StartupWMClass=crx_hnpfjngllnobngcgfapefoaidbinmjnm,
+	// but the real Wayland class measured by KWin is the brave-* value below.
+	// Its -Default suffix embeds the Brave profile, making this machine- and
+	// profile-specific; moving the PWA profiles silently breaks this match. The
+	// Notion PWA has the same constraint.
 	notion: "brave-dcokohelbbehjlcjjfmhfbpdgfjcoopf-Default",
 	spotify: "Spotify",
 	agents: "kitty-agents",
@@ -27,7 +32,7 @@ const WINDOW_CLASSES = {
 	// wmclassmatch=1 deliberately excludes steam_app_* game windows.
 	steam: "steam",
 	discord: "discord",
-	whatsapp: "brave-web.whatsapp.com__-Default",
+	whatsapp: "brave-hnpfjngllnobngcgfapefoaidbinmjnm-Default",
 	telegram: "org.telegram.desktop",
 	signal: "signal",
 	braveDefi: "brave-defi",

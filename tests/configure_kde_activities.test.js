@@ -31,7 +31,7 @@ const CLASSES = {
 	braveFlux: "brave-flux",
 	steam: "steam",
 	discord: "discord",
-	whatsapp: "brave-web.whatsapp.com__-Default",
+	whatsapp: "brave-hnpfjngllnobngcgfapefoaidbinmjnm-Default",
 	telegram: "org.telegram.desktop",
 	signal: "signal",
 	braveDefi: "brave-defi",
@@ -557,6 +557,44 @@ describe("syncKdeActivities", () => {
 	});
 
 	afterEach(() => fs.rmSync(home, { recursive: true, force: true }));
+
+	it("writes every exact managed class to the generated KWin rules", async () => {
+		const { syncKdeActivities } = await activitiesModule();
+		const db = activityDb([
+			[IDS.flux, "flux"],
+			[IDS.defi, "defi"],
+			[IDS.palmUSD, "palmUSD"],
+		]);
+		const expectedClasses = {
+			"haoshoku-notion": "brave-dcokohelbbehjlcjjfmhfbpdgfjcoopf-Default",
+			"haoshoku-spotify": "Spotify",
+			"haoshoku-agents": "kitty-agents",
+			"haoshoku-brave-flux": "brave-flux",
+			"haoshoku-steam": "steam",
+			"haoshoku-discord": "discord",
+			"haoshoku-whatsapp":
+				"brave-hnpfjngllnobngcgfapefoaidbinmjnm-Default",
+			"haoshoku-telegram": "org.telegram.desktop",
+			"haoshoku-signal": "signal",
+			"haoshoku-brave-defi": "brave-defi",
+			"haoshoku-teams": "teams-for-linux",
+		};
+
+		expect(
+			await syncKdeActivities({
+				home,
+				runCapture: db.runCapture,
+				reload: false,
+			}),
+		).toBe(true);
+		const rules = fs.readFileSync(
+			path.join(home, ".config", "kwinrulesrc"),
+			"utf8",
+		);
+		for (const [rule, windowClass] of Object.entries(expectedClasses)) {
+			expect(section(rules, rule)).toContain(`wmclass=${windowClass}\n`);
+		}
+	});
 
 	it("creates only missing activities, installs owned files, and is idempotent", async () => {
 		const { syncKdeActivities } = await activitiesModule();

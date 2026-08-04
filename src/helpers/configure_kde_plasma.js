@@ -15,6 +15,7 @@ const APP_SHORTCUTS = [
 		"Meta+A",
 	],
 	["claude", "Claude", "claude-desktop", "Meta+I"],
+	["1password", "1Password", "1password", "Meta+O"],
 	["music", "Spotify", "spotify", "Meta+M"],
 	["microphone", "Toggle microphone", "mic-toggle", "Meta+Shift+M"],
 ];

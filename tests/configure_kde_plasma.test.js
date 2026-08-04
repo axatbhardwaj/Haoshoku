@@ -238,6 +238,29 @@ describe("syncKdePlasma", () => {
 		expect(launcher).toContain("X-KDE-Shortcuts=Meta+M");
 	});
 
+	it.each([
+		["without KDE Activities", false],
+		["with KDE Activities", true],
+	])("installs the Meta+O 1Password launcher %s", async (_label, optedIn) => {
+		await syncKdePlasma({
+			home,
+			reload: false,
+			enableActivities: optedIn,
+		});
+		const launcher = fs.readFileSync(
+			path.join(
+				home,
+				".local",
+				"share",
+				"applications",
+				"haoshoku-1password.desktop",
+			),
+			"utf8",
+		);
+		expect(launcher.split("\n")).toContain("Exec=1password");
+		expect(launcher).toContain("X-KDE-Shortcuts=Meta+O");
+	});
+
 	it("never creates or modifies kwinrc", async () => {
 		const kwinrc = path.join(home, ".config", "kwinrc");
 		fs.writeFileSync(kwinrc, "[Windows]\nFocusPolicy=ClickToFocus\n");

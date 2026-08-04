@@ -1,4 +1,8 @@
 const outputByClass = {
+	// Brave's generated WhatsApp PWA entry declares StartupWMClass=crx_hnpfjngllnobngcgfapefoaidbinmjnm,
+	// but KWin measures the brave-* Wayland class below. Its -Default suffix makes
+	// this machine- and profile-specific; moving PWA profiles silently breaks the
+	// mapping. The Notion PWA class has the same constraint.
 	"brave-dcokohelbbehjlcjjfmhfbpdgfjcoopf-Default": "DP-2",
 	Spotify: "DP-2",
 	"kitty-agents": "DP-2",
@@ -8,7 +12,7 @@ const outputByClass = {
 	"brave-defi": "DP-1",
 	steam: "DP-1",
 	discord: "HDMI-A-1",
-	"brave-web.whatsapp.com__-Default": "HDMI-A-1",
+	"brave-hnpfjngllnobngcgfapefoaidbinmjnm-Default": "HDMI-A-1",
 	"org.telegram.desktop": "HDMI-A-1",
 	signal: "HDMI-A-1",
 	"teams-for-linux": "HDMI-A-1",

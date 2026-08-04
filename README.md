@@ -125,9 +125,9 @@ haoshoku --plasma
 ```
 
 The command installs portable launch shortcuts for Kitty, Dolphin, Zed, Claude,
-the agents terminal, and microphone mute, and unbinds the KDE/KWin defaults that
-would otherwise collide with them. The default paths do not write `kwinrc` or
-`kwinrulesrc` and do not manage virtual desktops.
+1Password, the agents terminal, and microphone mute, and unbinds the KDE/KWin
+defaults that would otherwise collide with them. The default paths do not write
+`kwinrc` or `kwinrulesrc` and do not manage virtual desktops.
 
 Window placement is available separately as an opt-in:
 
@@ -154,7 +154,7 @@ use every activity discovered after provisioning. No activity is deleted.
 | Brave Flux | `brave-flux` | `flux` | `DP-1` |
 | Steam | `steam` | `flux` | `DP-1` |
 | Discord | `discord` | `flux` | `HDMI-A-1` |
-| WhatsApp | `brave-web.whatsapp.com__-Default` | `flux` | `HDMI-A-1` |
+| WhatsApp | `brave-hnpfjngllnobngcgfapefoaidbinmjnm-Default` | `flux` | `HDMI-A-1` |
 | Telegram | `org.telegram.desktop` | `flux` | `HDMI-A-1` |
 | Signal | `signal` | `flux` | `HDMI-A-1` |
 | Brave DeFi | `brave-defi` | `defi` | `DP-1` |
@@ -162,6 +162,8 @@ use every activity discovered after provisioning. No activity is deleted.
 
 Placement uses each output's work area, so panels remain unobstructed. Steam's
 exact `steam` match deliberately leaves `steam_app_*` game windows unmanaged.
+The WhatsApp launcher opens the installed Brave PWA in profile `Default`; its
+measured Wayland class is profile-specific, as is the Notion PWA class.
 
 To opt out of the isolated Brave launcher recipes, clear the saved opt-in and
 restore the original Default/Profile 1 launchers:

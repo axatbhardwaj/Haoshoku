@@ -149,6 +149,7 @@ describe("installUserScripts — deployment", () => {
 			"agents-toggle",
 			"claude-desktop-toggle",
 			"kitty-workspace-7",
+			"whatsapp-web",
 		]) {
 			fs.writeFileSync(path.join(localBin, script), "# stale\n");
 		}
@@ -168,6 +169,7 @@ describe("installUserScripts — deployment", () => {
 			"ai-webapps-toggle",
 			"warp-workspace-7",
 			"ghostty-workspace-7",
+			"whatsapp-web",
 		]) {
 			expect(fs.existsSync(path.join(localBin, script))).toBe(false);
 		}
@@ -361,18 +363,12 @@ describe("installUserScripts — deployment", () => {
 		}
 	});
 
-	it("ships whatsapp-web as a native Brave app launcher in a dedicated profile", () => {
-		const script = fs.readFileSync(
-			path.join(process.cwd(), "configs", "scripts", "whatsapp-web"),
-			"utf8",
-		);
-
-		expect(script).toContain("https://web.whatsapp.com");
-		expect(script).toContain("--app=");
-		expect(script).toContain(".local/share/whatsapp-brave-profile");
-		expect(script).not.toContain("bottles-cli");
-		expect(script).not.toContain("brave.exe");
-		expect(script).not.toContain("remote-debugging-port");
+	it("no longer ships the retired whatsapp-web script", () => {
+		expect(
+			fs.existsSync(
+				path.join(process.cwd(), "configs", "scripts", "whatsapp-web"),
+			),
+		).toBe(false);
 	});
 });
 

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Repoint the WhatsApp launcher and KDE activity/output rules at the installed
+  Brave PWA, and retire the isolated-profile Hyprland-era launcher script.
+- Add a portable KDE Plasma 1Password launcher on `Meta+O`, both with and
+  without the opt-in KDE Activities mode.
 - Add Steam to the KDE Activities placement matrix using its live-measured
   Wayland `resourceClass=steam` (the desktop entry declares no
   `StartupWMClass`). The exact KWin rule pins only Steam's own windows to the

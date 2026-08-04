@@ -436,16 +436,20 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 		}
 	});
 
-	it("ships a WhatsApp Web desktop entry that opens the communication workspace", () => {
+	it("ships a WhatsApp desktop entry that opens the installed Brave PWA", () => {
 		const desktop = fs.readFileSync(
 			path.join(CONFIGS_MIMEAPPS_DIR, "applications", "whatsapp-web.desktop"),
 			"utf8",
 		);
 
 		expect(desktop).toContain("Name=WhatsApp Web");
-		expect(desktop).toContain("Exec=whatsapp-web");
+		expect(desktop).toContain(
+			"Exec=brave --profile-directory=Default --app-id=hnpfjngllnobngcgfapefoaidbinmjnm",
+		);
 		expect(desktop).toContain("Type=Application");
-		expect(desktop).toContain("StartupWMClass=brave-web.whatsapp.com__-Default");
+		expect(desktop).toContain(
+			"StartupWMClass=brave-hnpfjngllnobngcgfapefoaidbinmjnm-Default",
+		);
 	});
 
 	it("restores the working WhatsApp Exec on every later mimeapps sync", async () => {
@@ -470,7 +474,9 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 			path.join(liveApplications, "whatsapp-web.desktop"),
 			"utf8",
 		);
-		expect(deployed).toContain("Exec=whatsapp-web");
+		expect(deployed).toContain(
+			"Exec=brave --profile-directory=Default --app-id=hnpfjngllnobngcgfapefoaidbinmjnm",
+		);
 		expect(deployed).not.toContain("Exec=caelestia toggle communication");
 	});
 

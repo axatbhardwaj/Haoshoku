@@ -21,6 +21,7 @@ const RETIRED_LOCAL_BIN_ENTRIES = [
 	"agents-toggle",
 	"claude-desktop-toggle",
 	"kitty-workspace-7",
+	"whatsapp-web",
 	"CLAUDE.md",
 	"CLAUDE.md.bak",
 ];
