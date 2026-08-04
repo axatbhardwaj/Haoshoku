@@ -3,15 +3,15 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-const router = path.join(
+const browserRouter = path.join(
 	import.meta.dir,
 	"..",
 	"configs",
 	"scripts",
-	"chromium",
+	"haoshoku-browser",
 );
 
-describe("Chromium default-browser routing", () => {
+describe("haoshoku-browser default-browser routing", () => {
 	let directory;
 	let call;
 
@@ -42,7 +42,7 @@ printf '%s\\0' "$@" > "$ROUTER_CALL"
 	afterEach(() => fs.rmSync(directory, { recursive: true, force: true }));
 
 	async function run(clients, urls) {
-		const proc = Bun.spawn(["bash", router, ...urls], {
+		const proc = Bun.spawn(["bash", browserRouter, ...urls], {
 			env: {
 				...process.env,
 				HYPR_CLIENTS: clients,
