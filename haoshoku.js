@@ -72,7 +72,7 @@ const program = new Command();
 program
 	.name("haoshoku")
 	.description("Haoshoku: Color of the Supreme King. Dominate your setup.")
-	.version("6.2.0")
+	.version("7.0.0")
 	.addHelpText("before", getBanner());
 
 program
