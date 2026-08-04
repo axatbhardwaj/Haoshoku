@@ -48,7 +48,7 @@ export function isValidChromiumProfileRegistry(profiles) {
 	return (
 		ids.size === profiles.length &&
 		classes.size === profiles.length &&
-		defaultCount === 1
+		defaultCount <= 1
 	);
 }
 

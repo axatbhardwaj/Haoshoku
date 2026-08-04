@@ -164,6 +164,56 @@ printf '%s\\0' "$@" > "$ROUTER_CALL"
 		]);
 	});
 
+	// Mutation caught: treating a zero-default custom registry as malformed
+	// discards a focused registered profile instead of routing to it.
+	it("routes a focused profile from a valid zero-default registry", async () => {
+		const result = await run(
+			JSON.stringify([{ class: "chromium-research", focusHistoryID: 0 }]),
+			["https://research.example/zero-default"],
+			{
+				chromiumProfiles: [
+					{
+						id: "research",
+						class: "chromium-research",
+						monitor: "DP-2",
+					},
+				],
+			},
+		);
+
+		expect(result.exitCode).toBe(0);
+		expect(forwardedArguments()).toEqual([
+			"browser",
+			"research",
+			"https://research.example/zero-default",
+		]);
+	});
+
+	// Mutation caught: choosing an arbitrary custom entry when no configured
+	// default exists loses the explicit Flux compatibility fallback.
+	it("falls back to Flux when a zero-default registry has no focused profile", async () => {
+		const result = await run(
+			JSON.stringify([{ class: "chromium-unmanaged", focusHistoryID: 0 }]),
+			["https://fallback.example/zero-default"],
+			{
+				chromiumProfiles: [
+					{
+						id: "research",
+						class: "chromium-research",
+						monitor: "DP-2",
+					},
+				],
+			},
+		);
+
+		expect(result.exitCode).toBe(0);
+		expect(forwardedArguments()).toEqual([
+			"browser",
+			"flux",
+			"https://fallback.example/zero-default",
+		]);
+	});
+
 	// Mutation caught: trusting a malformed registry can route to an arbitrary
 	// class; invalid configuration must restore the shipped safe registry.
 	it("falls back to the shipped registry when configured profiles are invalid", async () => {

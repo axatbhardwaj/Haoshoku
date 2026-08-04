@@ -55,6 +55,54 @@ describe("configureChromiumProfiles", () => {
 		expect(fs.readFileSync(configFile, "utf8")).toBe(customConfig);
 	});
 
+	// Mutation caught: requiring a default profile rewrites a valid custom list
+	// even though runtime routing has an explicit Flux fallback for that case.
+	it("preserves a non-empty zero-default custom registry verbatim", () => {
+		const customConfig = `{
+  "chromiumProfiles": [
+    {"id":"research","class":"chromium-research","monitor":"DP-2"}
+  ],
+  "theme": "ocean"
+}\n`;
+		fs.writeFileSync(configFile, customConfig);
+
+		const result = configureChromiumProfiles({ home });
+
+		expect(result).toEqual({ changed: false, skipped: false });
+		expect(fs.readFileSync(configFile, "utf8")).toBe(customConfig);
+	});
+
+	// Mutation caught: allowing multiple defaults makes fallback routing
+	// ambiguous instead of restoring the shipped single-default registry.
+	it("replaces a registry with multiple default profiles", () => {
+		fs.writeFileSync(
+			configFile,
+			JSON.stringify({
+				theme: "ocean",
+				chromiumProfiles: [
+					{
+						id: "flux",
+						class: "chromium-flux",
+						monitor: "DP-1",
+						default: true,
+					},
+					{
+						id: "research",
+						class: "chromium-research",
+						monitor: "DP-2",
+						default: true,
+					},
+				],
+			}),
+		);
+
+		const result = configureChromiumProfiles({ home });
+		const configured = JSON.parse(fs.readFileSync(configFile, "utf8"));
+
+		expect(result).toEqual({ changed: true, skipped: false });
+		expect(configured.chromiumProfiles).toEqual(DEFAULT_CHROMIUM_PROFILES);
+	});
+
 	// Mutation caught: retaining a malformed profile list would make shell
 	// launchers interpret untrusted values instead of using the shipped registry.
 	it("replaces an invalid registry without dropping unrelated configuration", () => {

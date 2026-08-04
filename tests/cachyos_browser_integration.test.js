@@ -6,9 +6,9 @@ import {
 } from "../src/os_scripts/cachyos.js";
 
 describe("CachyOS browser integration", () => {
-	// Mutation caught: installing scripts or MIME defaults before the registry is
-	// seeded exposes the default-browser handler to an unconfigured profile.
-	it("seeds Chromium profiles before deploying MIME handlers and scripts", async () => {
+	// Mutation caught: activating MIME defaults before the installed wrapper
+	// exists can leave the desktop handler pointing at a missing command.
+	it("seeds profiles and installs scripts before deploying MIME handlers", async () => {
 		const calls = [];
 		const record = (name) => async () => calls.push(name);
 
@@ -18,7 +18,7 @@ describe("CachyOS browser integration", () => {
 			installUserScriptsImpl: record("scripts"),
 		});
 
-		expect(calls).toEqual(["profiles", "mimeapps", "scripts"]);
+		expect(calls).toEqual(["profiles", "scripts", "mimeapps"]);
 	});
 
 	it("runs browser integration from the CachyOS user-app setup", async () => {

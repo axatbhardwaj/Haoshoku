@@ -1,37 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-readonly FALLBACK_PROFILES='[{"id":"flux","class":"chromium-flux","monitor":"DP-1","default":true},{"id":"defi","class":"chromium-defi","monitor":"DP-1"}]'
+profiles_helper="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/haoshoku-chromium-profiles"
+[[ -x "$profiles_helper" ]] || { echo "missing haoshoku-chromium-profiles helper" >&2; exit 1; }
 
-load_profiles() {
-	local config="$HOME/.haoshoku.json"
-	if [[ -r "$config" ]] && jq -ce '
-		def safe_id:
-			type == "string" and test("^[A-Za-z0-9][A-Za-z0-9_-]*$");
-		def safe_value:
-			type == "string" and test("^[A-Za-z0-9][A-Za-z0-9_.-]*$");
-		def valid_profile:
-			type == "object"
-			and (.id | safe_id)
-			and (.class | safe_value)
-			and (.monitor | safe_value)
-			and (if has("default") then (.default | type == "boolean") else true end);
-		def valid_registry:
-			type == "array"
-			and length > 0
-			and all(.[]; valid_profile)
-			and ([.[].id] | unique | length) == length
-			and ([.[].class] | unique | length) == length
-			and ([.[] | select(.default == true)] | length) == 1;
-		if type == "object" and (.chromiumProfiles? | valid_registry)
-		then .chromiumProfiles else empty end
-	' "$config" 2>/dev/null; then
-		return
-	fi
-	printf '%s\n' "$FALLBACK_PROFILES"
-}
-
-profiles="$(load_profiles)"
+profiles="$("$profiles_helper" list)"
 profile_id=""
 if ! profile_id="$(
 	hyprctl clients -j 2>/dev/null | jq -r '
@@ -52,7 +25,7 @@ if ! profile_id="$(
 fi
 
 if [[ -z "$profile_id" ]]; then
-	profile_id="$(jq -r '[.[] | select(.default == true)][0].id // "flux"' <<<"$profiles")"
+	profile_id="$("$profiles_helper" default)"
 fi
 
 exec haoshoku-special-workspace browser "$profile_id" "$@"

@@ -2,35 +2,7 @@
 set -euo pipefail
 
 recipe="${1:-}"
-readonly FALLBACK_PROFILES='[{"id":"flux","class":"chromium-flux","monitor":"DP-1","default":true},{"id":"defi","class":"chromium-defi","monitor":"DP-1"}]'
-
-load_profiles() {
-  local config="$HOME/.haoshoku.json"
-  if [[ -r "$config" ]] && jq -ce '
-    def safe_id:
-      type == "string" and test("^[A-Za-z0-9][A-Za-z0-9_-]*$");
-    def safe_value:
-      type == "string" and test("^[A-Za-z0-9][A-Za-z0-9_.-]*$");
-    def valid_profile:
-      type == "object"
-      and (.id | safe_id)
-      and (.class | safe_value)
-      and (.monitor | safe_value)
-      and (if has("default") then (.default | type == "boolean") else true end);
-    def valid_registry:
-      type == "array"
-      and length > 0
-      and all(.[]; valid_profile)
-      and ([.[].id] | unique | length) == length
-      and ([.[].class] | unique | length) == length
-      and ([.[] | select(.default == true)] | length) == 1;
-    if type == "object" and (.chromiumProfiles? | valid_registry)
-    then .chromiumProfiles else empty end
-  ' "$config" 2>/dev/null; then
-    return
-  fi
-  printf '%s\n' "$FALLBACK_PROFILES"
-}
+profiles_helper="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/haoshoku-chromium-profiles"
 
 has_client() {
   local pattern="$1"
@@ -83,8 +55,8 @@ case "$recipe" in
 esac
 
 if [[ -n "$browser_profile" ]]; then
-  profiles="$(load_profiles)"
-  profile_json="$(jq -ce --arg id "$browser_profile" '.[] | select(.id == $id)' <<<"$profiles" 2>/dev/null || true)"
+  [[ -x "$profiles_helper" ]] || { echo "missing haoshoku-chromium-profiles helper" >&2; exit 1; }
+  profile_json="$("$profiles_helper" get "$browser_profile" 2>/dev/null || true)"
   [[ -n "$profile_json" ]] || { echo "unknown browser profile: $browser_profile" >&2; exit 2; }
   profile="$(jq -r '.id' <<<"$profile_json")"
   class="$(jq -r '.class' <<<"$profile_json")"

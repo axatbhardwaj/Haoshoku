@@ -521,8 +521,8 @@ export async function configureBrowserIntegration({
 	installUserScriptsImpl = installUserScripts,
 } = {}) {
 	await configureChromiumProfilesImpl();
-	await configureMimeappsImpl();
 	await installUserScriptsImpl();
+	await configureMimeappsImpl();
 }
 
 export async function configureUserApps({

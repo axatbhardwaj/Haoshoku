@@ -203,6 +203,57 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 		expect(fs.existsSync(browserCall)).toBe(false);
 	});
 
+	// Mutation caught: resolving aliases only through a custom registry makes
+	// existing Flux/DeFi shortcuts fail when that registry omits those IDs.
+	it("uses shipped definitions for browser aliases omitted from a custom registry", async () => {
+		const chromiumProfiles = [
+			{
+				id: "research",
+				class: "chromium-research",
+				monitor: "DP-2",
+				default: true,
+			},
+		];
+
+		for (const [recipe, id] of [
+			["browser-flux", "flux"],
+			["browser-defi", "defi"],
+		]) {
+			fs.rmSync(browserCall, { force: true });
+			const result = await run([recipe], {
+				chromiumProfiles,
+				sandboxChromium: true,
+			});
+
+			expect(result.exitCode).toBe(0);
+			expect(await chromiumArguments()).toEqual([
+				`--user-data-dir=${directory}/.config/chromium-haoshoku/${id}`,
+				`--class=chromium-${id}`,
+			]);
+		}
+	});
+
+	it("honors configured definitions for legacy browser aliases", async () => {
+		const result = await run(["browser-flux"], {
+			chromiumProfiles: [
+				{
+					id: "flux",
+					class: "chromium-research",
+					monitor: "DP-2",
+					default: true,
+				},
+			],
+			sandboxChromium: true,
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(await chromiumArguments()).toEqual([
+			`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+			"--class=chromium-research",
+		]);
+		expect(fs.readFileSync(log, "utf8")).toContain("dispatch focusmonitor DP-2");
+	});
+
 	for (const [recipe, profile] of [
 		["browser-flux", "flux"],
 		["browser-defi", "defi"],
