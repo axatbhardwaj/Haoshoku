@@ -329,3 +329,6 @@ tasks/
 
 # Branch/session working notes (local-only)
 BRANCH-NOTES.md
+
+# Local Git worktrees
+/.worktrees/
