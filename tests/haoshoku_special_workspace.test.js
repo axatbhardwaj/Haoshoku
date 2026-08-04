@@ -12,6 +12,10 @@ const script = path.join(
 );
 
 describe("haoshoku-special-workspace", () => {
+	it("resolves browser profile Chromium through PATH", () => {
+		expect(fs.readFileSync(script, "utf8")).not.toContain("/usr/bin/chromium");
+	});
+
 	let directory;
 	let log;
 	let browserCall;
@@ -70,7 +74,7 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 
 	async function run(
 		args,
-		{ clients = "[]", sandboxChromium = false, chromiumProfiles } = {},
+		{ clients = "[]", chromiumProfiles } = {},
 	) {
 		if (chromiumProfiles !== undefined) {
 			fs.writeFileSync(
@@ -78,26 +82,7 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 				JSON.stringify({ chromiumProfiles }),
 			);
 		}
-		const command = sandboxChromium
-			? [
-					"bwrap",
-					"--ro-bind",
-					"/",
-					"/",
-					"--dev",
-					"/dev",
-					"--bind",
-					directory,
-					directory,
-					"--bind",
-					chromium,
-					"/usr/bin/chromium",
-					"--",
-					script,
-					...args,
-				]
-			: [script, ...args];
-		const proc = Bun.spawn(command, {
+		const proc = Bun.spawn([script, ...args], {
 			env: {
 				...process.env,
 				HOME: directory,
@@ -122,9 +107,7 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 	it("launches an absent browser through its special workspace with literal URL argv", async () => {
 		const marker = path.join(directory, "hostile-url-executed");
 		const hostileUrl = `https://example.test/has space;$(touch ${marker})?dollar=$HOME`;
-		const result = await run(["browser-flux", hostileUrl], {
-			sandboxChromium: true,
-		});
+		const result = await run(["browser-flux", hostileUrl]);
 
 		expect(result.exitCode).toBe(0);
 		expect(await chromiumArguments()).toEqual([
@@ -163,7 +146,7 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 
 	it("opens Flux in its isolated Chromium profile and class", async () => {
 		expect(
-			(await run(["browser-toggle", "flux"], { sandboxChromium: true })).exitCode,
+			(await run(["browser-toggle", "flux"])).exitCode,
 		).toBe(0);
 		const calls = fs.readFileSync(log, "utf8");
 		expect(calls).toContain("dispatch focusmonitor DP-1");
@@ -176,7 +159,7 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 
 	it("opens DeFi in a different Chromium profile", async () => {
 		expect(
-			(await run(["browser-toggle", "defi"], { sandboxChromium: true })).exitCode,
+			(await run(["browser-toggle", "defi"])).exitCode,
 		).toBe(0);
 		expect(await chromiumArguments()).toEqual([
 			`--user-data-dir=${directory}/.config/chromium-haoshoku/defi`,
@@ -207,7 +190,7 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 		];
 		const result = await run(
 			["browser", "research", "https://research.example/brief"],
-			{ chromiumProfiles, sandboxChromium: true },
+			{ chromiumProfiles },
 		);
 
 		expect(result.exitCode).toBe(0);
@@ -234,7 +217,6 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 						default: true,
 					},
 				],
-				sandboxChromium: true,
 			},
 		);
 
@@ -262,7 +244,6 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 			fs.rmSync(browserCall, { force: true });
 			const result = await run([recipe], {
 				chromiumProfiles,
-				sandboxChromium: true,
 			});
 
 			expect(result.exitCode).toBe(0);
@@ -283,7 +264,6 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 					default: true,
 				},
 			],
-			sandboxChromium: true,
 		});
 
 		expect(result.exitCode).toBe(0);
@@ -306,7 +286,7 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 				"https://example.test/one?query=space%20kept",
 				"https://example.test/two path#fragment",
 			];
-			const result = await run([recipe, ...urls], { sandboxChromium: true });
+			const result = await run([recipe, ...urls]);
 
 			expect(result.exitCode).toBe(0);
 			expect(await chromiumArguments()).toEqual([
@@ -325,7 +305,6 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 			];
 			const result = await run([recipe, ...urls], {
 				clients: JSON.stringify([{ class: `chromium-${profile}` }]),
-				sandboxChromium: true,
 			});
 
 			expect(result.exitCode).toBe(0);
@@ -346,7 +325,6 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 	it("reveals an existing Flux browser without invoking Chromium when no URL is supplied", async () => {
 		const result = await run(["browser-flux"], {
 			clients: JSON.stringify([{ class: "chromium-flux" }]),
-			sandboxChromium: true,
 		});
 
 		expect(result.exitCode).toBe(0);
@@ -375,7 +353,7 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 			fs.writeFileSync(specialState, workspace);
 
 			expect(
-				(await run(["browser-toggle", profile], { clients: client, sandboxChromium: true }))
+				(await run(["browser-toggle", profile], { clients: client }))
 					.exitCode,
 			).toBe(0);
 			expect(fs.readFileSync(specialState, "utf8")).toBe("");
@@ -386,7 +364,7 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 		// workspace creates a duplicate Chromium invocation instead of revealing it.
 		it(`reveals a hidden existing ${profile} browser without Chromium`, async () => {
 			expect(
-				(await run(["browser-toggle", profile], { clients: client, sandboxChromium: true }))
+				(await run(["browser-toggle", profile], { clients: client }))
 					.exitCode,
 			).toBe(0);
 			expect(fs.readFileSync(specialState, "utf8")).toBe(workspace);
@@ -397,7 +375,7 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 		// leaves the requested profile without a Chromium client.
 		it(`reveals and launches a missing ${profile} browser exactly once`, async () => {
 			expect(
-				(await run(["browser-toggle", profile], { sandboxChromium: true })).exitCode,
+				(await run(["browser-toggle", profile])).exitCode,
 			).toBe(0);
 			expect(fs.readFileSync(specialState, "utf8")).toBe(workspace);
 			const calls = fs.readFileSync(log, "utf8").trim().split("\n");
@@ -410,7 +388,7 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 			fs.writeFileSync(specialState, workspace);
 
 			expect(
-				(await run(["browser", profile], { clients: client, sandboxChromium: true }))
+				(await run(["browser", profile], { clients: client }))
 					.exitCode,
 			).toBe(0);
 			expect(fs.readFileSync(specialState, "utf8")).toBe(workspace);

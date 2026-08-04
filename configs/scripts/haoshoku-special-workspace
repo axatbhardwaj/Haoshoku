@@ -101,12 +101,12 @@ if [[ -n "$browser_profile" ]]; then
 
   if has_client_class "$class"; then
     if (( ${#urls[@]} )); then
-      /usr/bin/chromium "--user-data-dir=$HOME/.config/chromium-haoshoku/$profile" "${urls[@]}"
+      chromium "--user-data-dir=$HOME/.config/chromium-haoshoku/$profile" "${urls[@]}"
     fi
     reveal_special_workspace
   else
     chromium=(
-      /usr/bin/chromium
+      chromium
       "--user-data-dir=$HOME/.config/chromium-haoshoku/$profile"
       "--class=$class"
       "${urls[@]}"
