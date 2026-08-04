@@ -4,270 +4,100 @@
 
 # Haoshoku: Color of the Supreme King
 
-**Haoshoku** (formerly Bankai) is a modular, multi-distro Linux setup and configuration toolkit. It automates the installation of essential applications, developer tools, terminal configs, and user environment tweaks.
+Haoshoku is a personal, modular setup toolkit for Arch-family desktops and
+Debian servers. Its desktop path is designed around Omarchy: Haoshoku installs
+applications and portable developer configuration while Omarchy remains the
+owner of the desktop experience.
 
-> [!NOTE]
-> **Haoshoku** (referencing ["Supreme King Haki"](https://onepiece.fandom.com/wiki/Haki/Supreme_King_Haki) from *One Piece*) serves as an authoritative configuration manager, enforcing a strict and consistent environment setup across your Linux systems.
+## Install
 
-> [!IMPORTANT]
-> **Rebranding & Migration**: This project was previously known as **Bankai** and was available on **PyPI** (Python). It has been renamed to **Haoshoku** and is now available on **NPM** (JavaScript/Bun). Please uninstall old Python versions (`pipx uninstall bankai`) before installing.
-
-## Quick Start
-
-### Option 1: Run with Bun (Recommended)
 ```bash
-# Clone the repo
 git clone https://github.com/axatbhardwaj/haoshoku.git
 cd haoshoku
-
-# Install dependencies
 bun install
-
-# Run the setup
-bun haoshoku.js
+bun link
+haoshoku --os arch
 ```
 
-### Option 2: Install Globally with Bun
+`bun haoshoku.js --os arch` works without creating a global link. The legacy
+`--os cachyos` spelling is accepted with a deprecation warning.
+
+## Arch and Omarchy behavior
+
+The Arch setup:
+
+- prefers Omarchy's `yay`, falls back to `paru`, and bootstraps an AUR helper
+  only when neither is available;
+- uses `pacman` for repository packages and the AUR helper only for AUR
+  packages;
+- installs only JetBrains Mono Nerd Font instead of the conflicting complete
+  Nerd Font group;
+- keeps Bash as the account shell and adds portable aliases and tool
+  initialization through `~/.config/haoshoku/bashrc`;
+- preserves Omarchy's `.bashrc`, themes, terminals, wallpapers, lock screen,
+  Waybar, Walker, and Hyprland defaults;
+- restores only `~/.config/hypr/monitors.conf`, backing up different existing
+  content first;
+- continues after individual optional application failures and reports them.
+
+Haoshoku deliberately does not configure Fish, KDE Plasma, KWin, SDDM,
+Caelestia, terminal themes, Zed themes, or wallpapers.
+
+## Gaming
+
+Accepting the gaming prompt installs a portable Arch gaming base:
+
+- Steam
+- GameMode and its 32-bit library
+- Gamescope
+- MangoHud and its 32-bit library
+- ProtonUp-RS
+
+On Omarchy, Haoshoku also invokes Omarchy's GPU-aware helper for the correct
+32-bit Vulkan/NVIDIA libraries. Other Arch distributions are not given guessed
+GPU packages.
+
+## Bash additions
+
+The managed fragment provides guarded initialization for Starship, direnv,
+zoxide, thefuck, pyenv, and Conda, plus the aliases formerly kept in the Fish
+configuration. Machine-local secrets can be stored in
+`~/.config/haoshoku/secrets.bash`; that file is never copied into this repo.
+
+## One-shot configuration
+
 ```bash
-bun install -g haoshoku
-haoshoku
-```
-
-### Option 3: Install via npm (Alternative)
-```bash
-npm install -g haoshoku
-haoshoku
-```
-
-> [!IMPORTANT]
-> **Default-path behaviour change:** A plain CachyOS/Arch `haoshoku` run no
-> longer configures KDE Plasma or another desktop environment. It still installs
-> some KDE applications, including Dolphin, alongside the application, dotfile,
-> and developer-tool setup. Existing KDE users who relied on a plain run to
-> configure their desktop must now opt in with `haoshoku --plasma` (and the
-> other KDE-specific flags where needed).
-
-## CLI Usage
-
-Haoshoku provides command-line options for non-interactive use or specific tasks.
-
-```bash
-# Run for a specific OS (skips detection/prompt)
-haoshoku --os cachyos
-haoshoku --os debian-server
-
-# Deploy untracked Claude Code personal config (CLAUDE.md, statusline, .gitignore)
 haoshoku --claude
-
-# Back up the same three personal files to configs/claude/
 haoshoku --claude-backup
-
-# Update cached config and sync Claude config
 haoshoku --claude-update
-
-# Sync skills from configured sources
+haoshoku --claude-bootstrap
+haoshoku --codex
+haoshoku --codex-backup
+haoshoku --audio
+haoshoku --audio-backup
+haoshoku --mimeapps
+haoshoku --mimeapps-backup
 haoshoku --skills
-
-# Update cached skill sources to latest
 haoshoku --skills-update
-
-# List available skills from all sources
 haoshoku --skills-list
-
-# Enable Superpowers plugin (idempotent)
 haoshoku --superpowers
-
-# Sync Zed editor config from configs/zed/ to ~/.config/zed/
-haoshoku --zed
-
-# Backup Zed config to configs/zed/ (sanitizes sensitive data)
-haoshoku --zed-backup
-
-# Install/reinstall KDE Glass blur effect (CachyOS/Arch only)
-haoshoku --kde-glass
-
-# Deploy and activate the KDE Ocean theme
-haoshoku --kde-theme
-
-# Merge portable Haoshoku settings and shortcuts into KDE Plasma.
-haoshoku --plasma
-
-# Deploy Caelestia preferences explicitly (not part of the default path)
-haoshoku --caelestia-prefs
 ```
 
-## Features
+Run `haoshoku --help` for the complete current list.
 
-### Supported Platforms
--   **CachyOS / Arch Linux**: Application, dotfile, developer-tool, gaming, and daily-driver setup that leaves desktop configuration untouched by default, while still installing some KDE applications.
--   **Debian Server**: Minimal, secure server setup with Docker, UFW, and Fail2ban.
-
-### What It Does
--   **Terminal & Shell**:
-    -   Installs and configures **Fish Shell** as default.
-    -   Sets up **Starship** prompt and **Fisher** plugins.
-    -   Deploys custom configs for **Alacritty**, **kitty**, **Fastfetch**, and the desktop-independent **Warp agents tab**.
--   **Developer Ecosystem**:
-    -   **Languages**: Rust (Rustup), Python (Uv/Conda), Node.js (Volta/NVM).
-    -   **Tools**: Docker, Git (with signing), Neovim/VS Code, Foundry (Smart Contracts).
--   **System Hardening (Debian)**:
-    -   Configures **UFW** firewall (allow SSH/HTTP/HTTPS).
-    -   Sets up **Fail2ban** for SSH protection.
-    -   Enables auto-updates and essential system utilities.
--   **Desktop Experience (Arch)**:
-    -   Installs curated Flatpaks (Obsidian, Discord, Spotify).
-    -   Leaves desktop-environment configuration untouched by default.
-    -   Offers KDE Plasma migration as an explicit opt-in with `--plasma`.
-    -   **KDE Glass Blur**: Optional installation of glass blur effect for KDE Plasma 6 (reinstall easily after KDE updates with `--kde-glass`).
-    -   Sets up gaming tools (Steam, Lutris) and media players (mpv).
--   **AI Configuration**:
-    -   **Claude Code Config**: Considers exactly `CLAUDE.md`, the statusline, and `.gitignore`, skipping any destination tracked by a git repository rooted at `~/.claude` (`haoshoku --claude`).
-    -   **Claude Backup**: Backs up exactly those three personal files to `configs/claude/`, refusing literal absolute home-path leaks (`haoshoku --claude-backup`).
-    -   **Executable Policy**: Deliberately not bundled. Bootstrap a private policy repository you own in place at `~/.claude/`; this public installer does not deploy or capture `agents/` or `workflows/`.
-    -   **Skill Management**: Runtime git cloning of Claude skills and agents (`haoshoku --skills`).
-    -   **Superpowers**: Idempotently enables the Superpowers plugin in `~/.claude/settings.json` (`haoshoku --superpowers`).
-
-Executable policy comes from a private policy repository the user owns; follow the [canonical in-place bootstrap procedure](configs/claude/README.md#executable-policy-bootstrap).
-
-## KDE Plasma migration
-
-KDE Plasma configuration is optional and is not part of a plain `haoshoku` run.
-The explicit migration is merge-only: existing unrelated Plasma settings are
-preserved and first-capture backups are written beside changed KDE configuration
-files.
+## Debian Server
 
 ```bash
-haoshoku --plasma
+haoshoku --os debian-server
 ```
 
-The command installs portable launch shortcuts for Kitty, Dolphin, Zed, Claude,
-1Password, the agents terminal, and microphone mute, and unbinds the KDE/KWin
-defaults that would otherwise collide with them. It also applies the KDE Connect
-firewall rules and offers the Ocean theme and KDE Glass as explicit prompts. The
-`--plasma` path does not write `kwinrc` or `kwinrulesrc` and does not manage
-virtual desktops.
-
-Window placement is available separately as an opt-in:
-
-**Warning:** `--activities` repoints the Brave launchers at **BRAND-NEW EMPTY
-profile directories**, so the flux and defi browsers start with no cookies,
-history, extensions, or passwords and remain separate from existing Brave
-profiles.
-
-```bash
-haoshoku --activities
-```
-
-This creates the `flux`, `defi`, and `palmUSD` activities when they are missing,
-preserves every existing activity, writes activity-scoped window rules, writes
-the one `kwinrc` `[Plugins]` key needed to enable the Haoshoku placement script,
-and installs that KWin script. Rules for windows intended to appear everywhere
-use every activity discovered after provisioning. No activity is deleted.
-
-| Window | Exact Wayland class | Activity scope | Output |
-| --- | --- | --- | --- |
-| Notion | `brave-dcokohelbbehjlcjjfmhfbpdgfjcoopf-Default` | All managed activities | `DP-2` |
-| Spotify | `Spotify` | All managed activities | `DP-2` |
-| Agents | `kitty-agents` | All managed activities | `DP-2` |
-| Brave Flux | `brave-flux` | `flux` | `DP-1` |
-| Steam | `steam` | `flux` | `DP-1` |
-| Discord | `discord` | `flux` | `HDMI-A-1` |
-| WhatsApp | `brave-hnpfjngllnobngcgfapefoaidbinmjnm-Default` | `flux` | `HDMI-A-1` |
-| Telegram | `org.telegram.desktop` | `flux` | `HDMI-A-1` |
-| Signal | `signal` | `flux` | `HDMI-A-1` |
-| Brave DeFi | `brave-defi` | `defi` | `DP-1` |
-| Teams | `teams-for-linux` | `defi` | `HDMI-A-1` |
-
-Placement uses each output's work area, so panels remain unobstructed. Steam's
-exact `steam` match deliberately leaves `steam_app_*` game windows unmanaged.
-The WhatsApp launcher opens the installed Brave PWA in profile `Default`; its
-measured Wayland class is profile-specific, as is the Notion PWA class.
-
-To opt out of the isolated Brave launcher recipes, clear the saved opt-in and
-restore the original Default/Profile 1 launchers:
-
-```bash
-haoshoku --activities-off
-```
-
-This retires the DeFi launcher and restores the Brave Work launcher; it does not
-delete any activity. The placement matrix is specific to the author's
-three-monitor rig and is not portable. Hyprland-specific VRR mutation,
-Caelestia recovery, special workspaces, and the portrait lock-screen patch are
-deliberately not part of the Plasma path.
-
-## Skill Management
-
-Haoshoku manages Claude Code skills and cache-backed agents via runtime git cloning to enable global npm installations.
-
-**Configuration**: Edit `~/.haoshoku.json` to add custom skill sources.
-
-```json
-{
-  "skillSources": [
-    "https://github.com/axatbhardwaj/claude-skills.git"
-  ]
-}
-```
-
-**Priority Rules**: User sources take precedence over community sources. If multiple sources provide the same skill name, the first source in the array wins.
-
-**Cache Location**: Skills are cloned to `~/.cache/haoshoku/` (or `$XDG_CACHE_HOME/haoshoku/`) and symlinked to `~/.claude/skills/`.
-
-**Usage**:
-- `--skills`: Clone/sync all configured sources
-- `--skills-update`: Pull latest changes from cached sources
-- `--skills-list`: Display available skills by source
-
-**Tradeoffs**:
-- **Git dependency**: Requires git installed on system (standard for developer environments)
-- **Network requirement**: Skills unavailable until first sync (offline operation supported after initial clone)
-- **Separate config file**: `~/.haoshoku.json` adds another config to manage (avoids coupling with Claude config structure)
-
-## Configuration
-
-All configuration templates are stored in the `configs/` directory. Desktop-independent terminal and shell configs (fish, Alacritty, kitty, Starship, Fastfetch, and the Warp agents tab config) are applied during setup. The Caelestia-generated Warp theme is activated only when the user accepts its false-by-default prompt. The public Claude bundle contains only three personal files. Claude skills and non-shadowed cache-backed agents are symlinked, while executable policy comes from a private policy repository the user bootstraps in place at `~/.claude/`:
-
--   `configs/fish/`: Fish shell configuration and functions.
--   `configs/warp/`: Warp agents tab config deployed by the default setup; Caelestia theme activation remains optional.
--   `configs/starship.toml`: Cross-shell prompt theme.
--   `configs/fastfetch/`: System information fetch tool config.
--   `deskback/`: Assets and wallpapers.
+The Debian path remains separate and continues to provide its existing server
+hardening and developer setup.
 
 ## Development
 
-### Testing
-
-Run the test suite using Bun's native test runner:
-
 ```bash
+bun install
 bun test
-```
-
-### Linting & Formatting
-
-This project uses [Biome](https://biomejs.dev/) for fast linting and formatting.
-
-```bash
-# Format code
-bun run format
-
-# Lint code
 bun run lint
 ```
-
-## For Developers
-
-To modify or extend the scripts:
-
-1.  Clone the repository.
-2.  Install dependencies: `bun install`
-3.  Run locally: `bun haoshoku.js`
-
-**Project Structure:**
--   `src/os_scripts/`: OS-specific logic (`cachyos.js`, `debian_server.js`).
--   `configs/`: Configuration files to be deployed.
--   `common/`: Package lists and shared utilities.
-
-## License
-MIT

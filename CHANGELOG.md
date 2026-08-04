@@ -2,30 +2,14 @@
 
 ## Unreleased
 
-- **Behaviour change:** A plain CachyOS/Arch `haoshoku` run no longer configures a
-  desktop environment. It still installs some KDE applications, including
-  Dolphin, but desktop configuration now requires an explicit KDE opt-in:
-  `--plasma` runs Plasma migration and KDE Connect firewall rules, with optional
-  Ocean theme/KDE Glass prompts; `--kde-theme` and `--kde-glass` remain available
-  directly. The desktop-independent Warp agents tab config remains in the default
-  setup, while its Caelestia theme requires an explicit false-by-default prompt.
-- Repoint the WhatsApp launcher and KDE activity/output rules at the installed
-  Brave PWA, and retire the isolated-profile Hyprland-era launcher script.
-- Add a portable KDE Plasma 1Password launcher on `Meta+O`, both with and
-  without the opt-in KDE Activities mode.
-- Add Steam to the KDE Activities placement matrix using its live-measured
-  Wayland `resourceClass=steam` (the desktop entry declares no
-  `StartupWMClass`). The exact KWin rule pins only Steam's own windows to the
-  `flux` activity and the `DP-1` work area, deliberately leaving
-  `steam_app_*` game windows unmanaged.
-- Add the opt-in `--activities` mode, which creates the `flux`, `defi`, and
-  `palmUSD` KDE Activities when missing without deleting any activity; writes
-  activity-scoped window rules using every discovered activity for all-activity
-  windows; enables and installs the KWin placement script; and repoints the flux
-  and defi Brave launchers at brand-new empty profile directories with no cookies,
-  history, extensions, or passwords. `--activities-off` clears the saved opt-in,
-  restores the original Brave launcher recipes, and retires the DeFi launcher.
-  The placement matrix remains specific to the author's three-monitor rig.
+- Make the Arch desktop path Omarchy-native without restructuring the installer:
+  prefer `yay` with `paru` fallback, route repository packages through `pacman`,
+  install a single conflict-free Nerd Font, port the user's shell additions to a
+  managed Bash fragment, and restore only Omarchy's user-owned `monitors.conf`.
+- Replace CachyOS gaming meta-packages with Steam, GameMode, Gamescope, MangoHud,
+  ProtonUp-RS, and Omarchy's GPU-aware 32-bit driver helper.
+- Retire the KDE, Caelestia, SDDM, Fish, terminal-theme, Zed-theme, and wallpaper
+  setup paths. Omarchy is now the sole owner of desktop appearance.
 - Add the opt-in `--claude-bootstrap` mode for checking out the configured private
   Claude policy repository, including pre-mutation authentication checks and
   idempotent `origin` URL updates when `claudeBootstrapUrl` changes.

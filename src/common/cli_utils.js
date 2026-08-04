@@ -20,30 +20,16 @@ export const MODE_FLAGS = [
 	"skillsUpdate",
 	"skillsList",
 	"superpowers",
-	"zed",
-	"zedBackup",
-	"zedTheme",
-	"caelestiaPrefs",
-	"caelestiaPrefsBackup",
-	"sddmPosthook",
 	"audio",
 	"audioBackup",
 	"mimeapps",
 	"mimeappsBackup",
-	"lockfix",
-	"lockfixBackup",
 	"worktreeCleanup",
 	"worktreeCleanupBackup",
 	"claudeStayAwake",
 	"claudeStayAwakeBackup",
 	"prWatch",
 	"prWatchBackup",
-	"kdeTheme",
-	"kdeThemeBackup",
-	"activities",
-	"activitiesOff",
-	"plasma",
-	"kdeGlass",
 ];
 
 /**
@@ -56,7 +42,7 @@ export const MODE_FLAGS = [
  * and made `--hyprland` refuse to run.
  *
  * @param {string} [osReleasePath="/etc/os-release"] path to an os-release file
- * @returns {"cachyos" | "debian-server" | null}
+ * @returns {"arch" | "debian-server" | null}
  */
 export function detectOS(osReleasePath = "/etc/os-release") {
 	try {
@@ -73,8 +59,12 @@ export function detectOS(osReleasePath = "/etc/os-release") {
 		const id = info.ID ? info.ID.toLowerCase() : "";
 		const idLike = info.ID_LIKE ? info.ID_LIKE.toLowerCase() : "";
 
-		if (id.includes("cachyos") || id.includes("arch") || idLike.includes("arch")) {
-			return "cachyos";
+		if (
+			id.includes("cachyos") ||
+			id.includes("arch") ||
+			idLike.includes("arch")
+		) {
+			return "arch";
 		}
 		if (id.includes("debian") || idLike.includes("debian")) {
 			return "debian-server";

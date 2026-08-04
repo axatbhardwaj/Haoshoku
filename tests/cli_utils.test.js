@@ -38,19 +38,21 @@ describe("detectOS", () => {
 		return p;
 	};
 
-	it("detects CachyOS (ID=cachyos) as cachyos", () => {
+	it("detects CachyOS (ID=cachyos) as Arch family", () => {
 		const p = writeOsRelease('NAME="CachyOS"\nID=cachyos\nID_LIKE=arch\n');
-		expect(detectOS(p)).toBe("cachyos");
+		expect(detectOS(p)).toBe("arch");
 	});
 
 	it("detects vanilla Arch (ID=arch only, no ID_LIKE) as cachyos-family", () => {
 		const p = writeOsRelease('NAME="Arch Linux"\nID=arch\n');
-		expect(detectOS(p)).toBe("cachyos");
+		expect(detectOS(p)).toBe("arch");
 	});
 
 	it("detects an Arch derivative (ID_LIKE=arch) as cachyos-family", () => {
-		const p = writeOsRelease('NAME="EndeavourOS"\nID=endeavouros\nID_LIKE=arch\n');
-		expect(detectOS(p)).toBe("cachyos");
+		const p = writeOsRelease(
+			'NAME="EndeavourOS"\nID=endeavouros\nID_LIKE=arch\n',
+		);
+		expect(detectOS(p)).toBe("arch");
 	});
 
 	it("detects Debian (ID=debian) as debian-server", () => {
@@ -100,10 +102,10 @@ describe("findActiveModeFlags", () => {
 	});
 
 	it("returns both names when two mode flags are set", () => {
-		const result = findActiveModeFlags({ claude: true, zed: true });
+		const result = findActiveModeFlags({ claude: true, audio: true });
 		expect(result.length).toBe(2);
 		expect(result).toContain("claude");
-		expect(result).toContain("zed");
+		expect(result).toContain("audio");
 	});
 
 	it("covers every Commander one-shot option and excludes only --os", () => {

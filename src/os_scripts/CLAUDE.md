@@ -4,5 +4,5 @@
 
 | File               | What                                | When to read                                  |
 | ------------------ | ----------------------------------- | --------------------------------------------- |
-| `cachyos.js`       | Arch/CachyOS desktop setup          | Modifying Arch setup, Rust, paru, Flatpaks    |
+| `cachyos.js`       | Arch/Omarchy desktop setup          | Modifying Arch setup, package routing, gaming |
 | `debian_server.js` | Debian server hardening setup       | Modifying server setup, UFW, Docker, SSH      |

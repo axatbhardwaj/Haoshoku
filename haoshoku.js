@@ -12,10 +12,6 @@ import {
 	syncAudioConfig,
 } from "./src/helpers/configure_audio.js";
 import {
-	backupCaelestiaPrefs,
-	syncCaelestiaPrefs,
-} from "./src/helpers/configure_caelestia_prefs.js";
-import {
 	backupClaudeConfig,
 	bootstrapClaudePolicy,
 	installSuperpowers,
@@ -30,13 +26,6 @@ import {
 	backupCodexConfig,
 	syncCodexConfig,
 } from "./src/helpers/configure_codex.js";
-import { syncKdeActivities } from "./src/helpers/configure_kde_activities.js";
-import { syncKdePlasma } from "./src/helpers/configure_kde_plasma.js";
-import {
-	backupKdeTheme,
-	configureKdeTheme,
-} from "./src/helpers/configure_kde_theme.js";
-import { backupLockfix, syncLockfix } from "./src/helpers/configure_lockfix.js";
 import {
 	backupMimeappsConfig,
 	syncMimeappsConfig,
@@ -45,38 +34,28 @@ import {
 	backupPrWatch,
 	syncPrWatch,
 } from "./src/helpers/configure_pr_watch.js";
-import { configureSddm } from "./src/helpers/configure_sddm.js";
 import {
 	backupWorktreeCleanup,
 	syncWorktreeCleanup,
 } from "./src/helpers/configure_worktree_cleanup.js";
 import {
-	backupZedConfig,
-	syncZedConfig,
-	syncZedTheme,
-} from "./src/helpers/configure_zed.js";
-import {
 	CACHE_DIR,
 	printAvailableSkills,
 	syncSkills,
 } from "./src/helpers/skill_manager.js";
-import {
-	configureKde,
-	installKdeGlass,
-	runCachyOSSetup,
-} from "./src/os_scripts/cachyos.js";
+import { runCachyOSSetup } from "./src/os_scripts/cachyos.js";
 import { runDebianServerSetup } from "./src/os_scripts/debian_server.js";
 
 const program = new Command();
 
 program
 	.name("haoshoku")
-	.description("Haoshoku: Color of the Supreme King. Dominate your setup.")
+	.description("Haoshoku: portable setup for Arch / Omarchy and Debian Server.")
 	.version("7.0.0")
 	.addHelpText("before", getBanner());
 
 program
-	.option("--os <type>", "Specify the target OS (cachyos, debian-server)")
+	.option("--os <type>", "Specify the target OS (arch, debian-server)")
 	.option(
 		"--claude",
 		"Deploy Claude Code config (CLAUDE.md, statusline, .gitignore)",
@@ -100,24 +79,6 @@ program
 	.option("--skills-update", "Update cached skill sources")
 	.option("--skills-list", "List available skills")
 	.option("--superpowers", "Enable the Superpowers plugin for Claude Code")
-	.option("--zed", "Sync Zed config from configs/zed/ to ~/.config/zed/")
-	.option(
-		"--zed-backup",
-		"Backup Zed config to configs/zed/ (sanitizes sensitive data)",
-	)
-	.option("--zed-theme", "Sync Zed theme to ~/.config/zed/themes/")
-	.option(
-		"--caelestia-prefs",
-		"Sync Caelestia hypr-user.conf + cli.json from configs/caelestia/ to ~/.config/caelestia/",
-	)
-	.option(
-		"--caelestia-prefs-backup",
-		"Backup Caelestia hypr-user.conf + cli.json from ~/.config/caelestia/ to configs/caelestia/",
-	)
-	.option(
-		"--sddm-posthook",
-		"Write the caelestia-sddm posthook sudoers rule (passwordless auto-sync of the SDDM login screen when Caelestia wallpaper/colours change)",
-	)
 	.option("--audio", "Sync audio config from configs/audio/ to ~/.config/")
 	.option(
 		"--audio-backup",
@@ -130,14 +91,6 @@ program
 	.option(
 		"--mimeapps-backup",
 		"Backup mimeapps.list from ~/.config/ to configs/mimeapps/",
-	)
-	.option(
-		"--lockfix",
-		"Sync caelestia-lockfix kit from configs/caelestia-lockfix/ to ~/.local/share/caelestia-lockfix/",
-	)
-	.option(
-		"--lockfix-backup",
-		"Backup caelestia-lockfix kit from ~/.local/share/caelestia-lockfix/ to configs/caelestia-lockfix/",
 	)
 	.option(
 		"--worktree-cleanup",
@@ -162,27 +115,6 @@ program
 	.option(
 		"--pr-watch-backup",
 		"Backup the pr-watch PR watcher from ~/.local/bin/ to configs/pr-watch/",
-	)
-	.option("--kde-theme", "Deploy and activate the KDE Ocean theme")
-	.option(
-		"--kde-theme-backup",
-		"Backup KDE Ocean theme from system to configs/kde/",
-	)
-	.option(
-		"--activities",
-		"Provision KDE Activities and activity-scoped window placement",
-	)
-	.option(
-		"--activities-off",
-		"Restore the standard Brave launchers and disable Activities opt-in",
-	)
-	.option(
-		"--plasma",
-		"Migrate portable Haoshoku desktop settings and shortcuts to KDE Plasma",
-	)
-	.option(
-		"--kde-glass",
-		"Install/reinstall KDE Glass blur effect (CachyOS/Arch only)",
 	)
 	.action(async (options) => {
 		try {
@@ -275,36 +207,6 @@ async function runAction(options) {
 		return;
 	}
 
-	if (options.zedBackup) {
-		await backupZedConfig();
-		return;
-	}
-
-	if (options.zed) {
-		await syncZedConfig();
-		return;
-	}
-
-	if (options.zedTheme) {
-		await syncZedTheme();
-		return;
-	}
-
-	if (options.caelestiaPrefsBackup) {
-		await backupCaelestiaPrefs();
-		return;
-	}
-
-	if (options.caelestiaPrefs) {
-		await syncCaelestiaPrefs();
-		return;
-	}
-
-	if (options.sddmPosthook) {
-		await configureSddm();
-		return;
-	}
-
 	if (options.audioBackup) {
 		await backupAudioConfig();
 		return;
@@ -322,16 +224,6 @@ async function runAction(options) {
 
 	if (options.mimeapps) {
 		await syncMimeappsConfig();
-		return;
-	}
-
-	if (options.lockfixBackup) {
-		await backupLockfix();
-		return;
-	}
-
-	if (options.lockfix) {
-		await syncLockfix();
 		return;
 	}
 
@@ -365,40 +257,6 @@ async function runAction(options) {
 		return;
 	}
 
-	if (options.kdeThemeBackup) {
-		await backupKdeTheme();
-		return;
-	}
-
-	if (options.kdeTheme) {
-		await configureKdeTheme();
-		return;
-	}
-
-	if (options.kdeGlass) {
-		await installKdeGlass();
-		return;
-	}
-
-	if (options.activities) {
-		await syncKdePlasma({ enableActivities: true });
-		if (!(await syncKdeActivities())) {
-			await syncKdePlasma({ disableActivities: true });
-			process.exit(1);
-		}
-		return;
-	}
-
-	if (options.activitiesOff) {
-		await syncKdePlasma({ disableActivities: true });
-		return;
-	}
-
-	if (options.plasma) {
-		await configureKde();
-		return;
-	}
-
 	let osType = options.os;
 	// Track whether osType came from silent auto-detection (vs the --os flag or
 	// the interactive select prompt): a bare `haoshoku` must confirm before
@@ -417,7 +275,7 @@ async function runAction(options) {
 				name: "os",
 				message: "Select the target operating system:",
 				choices: [
-					{ title: "CachyOS", value: "cachyos" },
+					{ title: "Arch / Omarchy", value: "arch" },
 					{ title: "Debian Server", value: "debian-server" },
 				],
 			});
@@ -446,7 +304,11 @@ async function runAction(options) {
 	log.info(`Starting setup for: ${osType}`);
 
 	switch (osType) {
+		case "arch":
 		case "cachyos":
+			if (osType === "cachyos") {
+				log.warning("--os cachyos is deprecated; use --os arch.");
+			}
 			await runCachyOSSetup();
 			break;
 		case "debian-server":
