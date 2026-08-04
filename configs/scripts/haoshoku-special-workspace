@@ -82,17 +82,18 @@ reveal_special_workspace() {
 }
 
 if [[ -n "$browser_profile" ]]; then
-  chromium=(
-    /usr/bin/chromium
-    "--user-data-dir=$HOME/.config/chromium-haoshoku/$profile"
-    "--class=$class"
-    "${urls[@]}"
-  )
-
   if has_client_class "$class"; then
-    "${chromium[@]}"
+    if (( ${#urls[@]} )); then
+      /usr/bin/chromium "--user-data-dir=$HOME/.config/chromium-haoshoku/$profile" "${urls[@]}"
+    fi
     reveal_special_workspace
   else
+    chromium=(
+      /usr/bin/chromium
+      "--user-data-dir=$HOME/.config/chromium-haoshoku/$profile"
+      "--class=$class"
+      "${urls[@]}"
+    )
     reveal_special_workspace
     printf -v chromium_command '%q ' "${chromium[@]}"
     hyprctl dispatch exec "[workspace special:$workspace silent] uwsm-app -- $chromium_command" >/dev/null

@@ -316,8 +316,8 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 			]);
 		});
 
-		// Mutation caught: skipping the direct Chromium command when its client
-		// exists loses default-browser URLs instead of forwarding them to the profile.
+		// Mutation caught: retaining the launch-only class flag can cause Chromium
+		// to miss the existing profile process instead of appending these URLs to it.
 		it(`forwards URLs to the existing ${recipe} Chromium client before revealing it`, async () => {
 			const urls = [
 				"https://example.test/forward?one=1",
@@ -331,7 +331,6 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 			expect(result.exitCode).toBe(0);
 			expect(await chromiumArguments()).toEqual([
 				`--user-data-dir=${directory}/.config/chromium-haoshoku/${profile}`,
-				`--class=chromium-${profile}`,
 				...urls,
 			]);
 			const calls = fs.readFileSync(log, "utf8").split("\n");
@@ -341,6 +340,23 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 			expect(fs.readFileSync(specialState, "utf8")).toBe(recipe);
 		});
 	}
+
+	// Mutation caught: invoking Chromium with no URL creates a new browser
+	// window instead of just revealing the registered profile's workspace.
+	it("reveals an existing Flux browser without invoking Chromium when no URL is supplied", async () => {
+		const result = await run(["browser-flux"], {
+			clients: JSON.stringify([{ class: "chromium-flux" }]),
+			sandboxChromium: true,
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(fs.existsSync(browserCall)).toBe(false);
+		expect(fs.readFileSync(log, "utf8").trim().split("\n")).toEqual([
+			"dispatch focusmonitor DP-1",
+			"dispatch togglespecialworkspace browser-flux",
+		]);
+		expect(fs.readFileSync(specialState, "utf8")).toBe("browser-flux");
+	});
 
 	it("rejects unexpected arguments for non-browser recipes", async () => {
 		const result = await run(["music", "https://ambiguous.example/"]);
