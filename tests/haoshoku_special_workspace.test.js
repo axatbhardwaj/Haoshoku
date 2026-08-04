@@ -163,7 +163,7 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 
 	it("opens Flux in its isolated Chromium profile and class", async () => {
 		expect(
-			(await run(["browser-flux"], { sandboxChromium: true })).exitCode,
+			(await run(["browser-toggle", "flux"], { sandboxChromium: true })).exitCode,
 		).toBe(0);
 		const calls = fs.readFileSync(log, "utf8");
 		expect(calls).toContain("dispatch focusmonitor DP-1");
@@ -176,7 +176,7 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 
 	it("opens DeFi in a different Chromium profile", async () => {
 		expect(
-			(await run(["browser-defi"], { sandboxChromium: true })).exitCode,
+			(await run(["browser-toggle", "defi"], { sandboxChromium: true })).exitCode,
 		).toBe(0);
 		expect(await chromiumArguments()).toEqual([
 			`--user-data-dir=${directory}/.config/chromium-haoshoku/defi`,
@@ -365,23 +365,56 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 		expect(result.stderr).toContain("usage: haoshoku-special-workspace music");
 	});
 
-	// Mutation caught: unconditionally toggling an already-visible workspace hides
-	// it, so an explicit browser recipe cannot reliably reveal and focus it.
-	for (const recipe of ["browser-flux", "browser-defi"]) {
-		// Mutation caught: omitting the reveal action when the browser workspace is
-		// initially absent leaves the explicit browser recipe off-screen.
-		it(`reveals ${recipe} when the special workspace is initially absent`, async () => {
-			expect(fs.existsSync(specialState)).toBe(false);
+	for (const profile of ["flux", "defi"]) {
+		const workspace = `browser-${profile}`;
+		const client = JSON.stringify([{ class: `chromium-${profile}` }]);
 
-			expect((await run([recipe], { sandboxChromium: true })).exitCode).toBe(0);
-			expect(fs.readFileSync(specialState, "utf8")).toBe(recipe);
+		// Mutation caught: treating browser-toggle like the reveal-only browser
+		// command makes an already visible workspace impossible to hide.
+		it(`hides a visible ${profile} workspace through browser-toggle`, async () => {
+			fs.writeFileSync(specialState, workspace);
+
+			expect(
+				(await run(["browser-toggle", profile], { clients: client, sandboxChromium: true }))
+					.exitCode,
+			).toBe(0);
+			expect(fs.readFileSync(specialState, "utf8")).toBe("");
+			expect(fs.existsSync(browserCall)).toBe(false);
 		});
 
-		it(`keeps ${recipe} visible when the explicit recipe is invoked again`, async () => {
-			fs.writeFileSync(specialState, recipe);
+		// Mutation caught: launching an already-running browser on a hidden
+		// workspace creates a duplicate Chromium invocation instead of revealing it.
+		it(`reveals a hidden existing ${profile} browser without Chromium`, async () => {
+			expect(
+				(await run(["browser-toggle", profile], { clients: client, sandboxChromium: true }))
+					.exitCode,
+			).toBe(0);
+			expect(fs.readFileSync(specialState, "utf8")).toBe(workspace);
+			expect(fs.existsSync(browserCall)).toBe(false);
+		});
 
-			expect((await run([recipe], { sandboxChromium: true })).exitCode).toBe(0);
-			expect(fs.readFileSync(specialState, "utf8")).toBe(recipe);
+		// Mutation caught: skipping the launch after revealing an empty workspace
+		// leaves the requested profile without a Chromium client.
+		it(`reveals and launches a missing ${profile} browser exactly once`, async () => {
+			expect(
+				(await run(["browser-toggle", profile], { sandboxChromium: true })).exitCode,
+			).toBe(0);
+			expect(fs.readFileSync(specialState, "utf8")).toBe(workspace);
+			const calls = fs.readFileSync(log, "utf8").trim().split("\n");
+			expect(calls.filter((call) => call === "chromium")).toHaveLength(1);
+		});
+
+		// Mutation caught: routing the generic browser command through toggle
+		// behavior hides an already-visible workspace when no URL is provided.
+		it(`keeps a visible ${profile} workspace revealed for browser with no URLs`, async () => {
+			fs.writeFileSync(specialState, workspace);
+
+			expect(
+				(await run(["browser", profile], { clients: client, sandboxChromium: true }))
+					.exitCode,
+			).toBe(0);
+			expect(fs.readFileSync(specialState, "utf8")).toBe(workspace);
+			expect(fs.existsSync(browserCall)).toBe(false);
 		});
 	}
 });
