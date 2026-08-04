@@ -1,6 +1,5 @@
 visual-studio-code-bin
-brave-bin
-floorp-bin
+chromium
 zip
 kitty
 signal-desktop
@@ -47,7 +46,6 @@ bun-bin
 gitleaks
 pyenv
 cursor-bin
-thorium-browser-avx2-bin
 session-desktop-bin
 1password
 anydesk-bin
@@ -55,7 +53,6 @@ anytype-bin
 azd-cli
 bottles
 claude-desktop
-google-chrome
 kiro-ide-bin
 obs-backgroundremoval
 obs-composite-blur

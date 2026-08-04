@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Complete the Chromium-only migration found during live E2E validation:
+  remove Brave, Floorp, Google Chrome, and Thorium from the package set; make
+  Chromium the default web handler; and replace the remaining Brave WhatsApp
+  and Notion desktop entries with isolated Chromium profiles.
 - Install Omazed from Omarchy's package repository and hand Zed theme ownership
   to its generated palette. The setup path transactionally replaces the unsafe
   object-form theme selector before first launch, preserves all other Zed

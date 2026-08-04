@@ -119,9 +119,9 @@ describe("syncMimeappsConfig — deploys mimeapps.list to ~/.config/", () => {
 		).resolves.toBeUndefined();
 
 		// Nothing deployed to live
-		expect(
-			fs.existsSync(path.join(tmpHome, ".config", "mimeapps.list")),
-		).toBe(false);
+		expect(fs.existsSync(path.join(tmpHome, ".config", "mimeapps.list"))).toBe(
+			false,
+		);
 	});
 
 	it("is idempotent (running twice yields the same file)", async () => {
@@ -136,10 +136,7 @@ describe("syncMimeappsConfig — deploys mimeapps.list to ~/.config/", () => {
 		});
 
 		expect(
-			fs.readFileSync(
-				path.join(tmpHome, ".config", "mimeapps.list"),
-				"utf8",
-			),
+			fs.readFileSync(path.join(tmpHome, ".config", "mimeapps.list"), "utf8"),
 		).toBe(FIXTURE_CONTENT);
 	});
 
@@ -179,7 +176,10 @@ describe("syncMimeappsConfig — deploys mimeapps.list to ~/.config/", () => {
 			"jiohotstar-hd.desktop",
 			"primevideo-hd.desktop",
 		]) {
-			fs.writeFileSync(path.join(liveApplicationsDir, desktop), "[Desktop Entry]\n");
+			fs.writeFileSync(
+				path.join(liveApplicationsDir, desktop),
+				"[Desktop Entry]\n",
+			);
 		}
 
 		await mimeapps.syncMimeappsConfig({
@@ -193,10 +193,12 @@ describe("syncMimeappsConfig — deploys mimeapps.list to ~/.config/", () => {
 			"jiohotstar-hd.desktop",
 			"primevideo-hd.desktop",
 		]) {
-			expect(fs.existsSync(path.join(liveApplicationsDir, desktop))).toBe(false);
+			expect(fs.existsSync(path.join(liveApplicationsDir, desktop))).toBe(
+				false,
+			);
 		}
 	});
-	});
+});
 
 // ---------------------------------------------------------------------------
 // backupMimeappsConfig — live → repo
@@ -265,8 +267,7 @@ describe("backupMimeappsConfig — snapshots ~/.config/mimeapps.list into repo",
 
 describe("sync / backup round-trip", () => {
 	it("backup then sync restores identical content", async () => {
-		const originalContent =
-			"[Default Applications]\nvideo/mp4=vlc.desktop\n";
+		const originalContent = "[Default Applications]\nvideo/mp4=vlc.desktop\n";
 
 		// Seed live with original content
 		fs.mkdirSync(path.join(tmpHome, ".config"), { recursive: true });
@@ -294,10 +295,7 @@ describe("sync / backup round-trip", () => {
 		});
 
 		expect(
-			fs.readFileSync(
-				path.join(tmpHome, ".config", "mimeapps.list"),
-				"utf8",
-			),
+			fs.readFileSync(path.join(tmpHome, ".config", "mimeapps.list"), "utf8"),
 		).toBe(originalContent);
 	});
 });
@@ -371,14 +369,11 @@ describe("configureMimeapps — alias for syncMimeappsConfig", () => {
 			projectRoot: tmpProjectRoot,
 		});
 
+		expect(fs.existsSync(path.join(tmpHome, ".config", "mimeapps.list"))).toBe(
+			true,
+		);
 		expect(
-			fs.existsSync(path.join(tmpHome, ".config", "mimeapps.list")),
-		).toBe(true);
-		expect(
-			fs.readFileSync(
-				path.join(tmpHome, ".config", "mimeapps.list"),
-				"utf8",
-			),
+			fs.readFileSync(path.join(tmpHome, ".config", "mimeapps.list"), "utf8"),
 		).toBe(FIXTURE_CONTENT);
 	});
 });
@@ -390,9 +385,7 @@ describe("configureMimeapps — alias for syncMimeappsConfig", () => {
 describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 	it("ships mimeapps.list under configs/mimeapps/", () => {
 		expect(
-			fs.existsSync(
-				path.join(CONFIGS_MIMEAPPS_DIR, "mimeapps.list"),
-			),
+			fs.existsSync(path.join(CONFIGS_MIMEAPPS_DIR, "mimeapps.list")),
 		).toBe(true);
 	});
 
@@ -436,7 +429,7 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 		}
 	});
 
-	it("ships a WhatsApp desktop entry that opens the installed Brave PWA", () => {
+	it("ships a WhatsApp desktop entry with an isolated Chromium profile", () => {
 		const desktop = fs.readFileSync(
 			path.join(CONFIGS_MIMEAPPS_DIR, "applications", "whatsapp-web.desktop"),
 			"utf8",
@@ -444,12 +437,10 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 
 		expect(desktop).toContain("Name=WhatsApp Web");
 		expect(desktop).toContain(
-			"Exec=brave --profile-directory=Default --app-id=hnpfjngllnobngcgfapefoaidbinmjnm",
+			`Exec=sh -lc 'exec chromium --user-data-dir="$HOME/.config/chromium-haoshoku/whatsapp" --class=chromium-whatsapp --app=https://web.whatsapp.com/'`,
 		);
 		expect(desktop).toContain("Type=Application");
-		expect(desktop).toContain(
-			"StartupWMClass=brave-hnpfjngllnobngcgfapefoaidbinmjnm-Default",
-		);
+		expect(desktop).toContain("StartupWMClass=chromium-whatsapp");
 	});
 
 	it("restores the working WhatsApp Exec on every later mimeapps sync", async () => {
@@ -475,7 +466,7 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 			"utf8",
 		);
 		expect(deployed).toContain(
-			"Exec=brave --profile-directory=Default --app-id=hnpfjngllnobngcgfapefoaidbinmjnm",
+			`Exec=sh -lc 'exec chromium --user-data-dir="$HOME/.config/chromium-haoshoku/whatsapp" --class=chromium-whatsapp --app=https://web.whatsapp.com/'`,
 		);
 		expect(deployed).not.toContain("Exec=caelestia toggle communication");
 	});
@@ -489,7 +480,7 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 		expect(content).toContain("inode/directory=org.gnome.Nautilus.desktop");
 	});
 
-	it("routes notion:// links to the managed Brave Notion web app", () => {
+	it("routes notion:// links to the isolated Chromium Notion app", () => {
 		const content = fs.readFileSync(
 			path.join(CONFIGS_MIMEAPPS_DIR, "mimeapps.list"),
 			"utf8",
@@ -498,22 +489,20 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 			path.join(
 				CONFIGS_MIMEAPPS_DIR,
 				"applications",
-				"brave-dcokohelbbehjlcjjfmhfbpdgfjcoopf-Default.desktop",
+				"notion-chromium.desktop",
 			),
 			"utf8",
 		);
 
 		expect(content).toContain(
-			"x-scheme-handler/notion=brave-dcokohelbbehjlcjjfmhfbpdgfjcoopf-Default.desktop",
+			"x-scheme-handler/notion=notion-chromium.desktop",
 		);
 		expect(content).not.toContain("x-scheme-handler/notion=cohesion.desktop");
 		expect(desktop).toContain("Name=Genesis Block | Notion");
 		expect(desktop).toContain(
-			"Exec=/opt/brave-bin/brave --profile-directory=Default --app-id=dcokohelbbehjlcjjfmhfbpdgfjcoopf",
+			`Exec=sh -lc 'exec chromium --user-data-dir="$HOME/.config/chromium-haoshoku/notion" --class=chromium-notion --app=https://www.notion.so/'`,
 		);
-		expect(desktop).toContain(
-			"StartupWMClass=brave-dcokohelbbehjlcjjfmhfbpdgfjcoopf-Default",
-		);
+		expect(desktop).toContain("StartupWMClass=chromium-notion");
 	});
 
 	it("covers every managed desktop entry with either a deployed handler or installed package", () => {
@@ -541,11 +530,8 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 			),
 		];
 
-		// Some AUR packages ship a .desktop whose basename differs from the
-		// package name (brave-bin → brave-browser.desktop), so a naive basename
-		// match would false-flag them.
 		const providerAliases = {
-			"brave-browser.desktop": "brave-bin",
+			"chromium.desktop": "chromium",
 			"com.anthropic.Claude.desktop": "claude-desktop",
 			"org.gnome.Nautilus.desktop": "nautilus",
 		};

@@ -24,12 +24,12 @@ image/x-portable-graymap=swayimg.desktop
 image/x-portable-pixmap=swayimg.desktop
 image/x-targa=swayimg.desktop
 image/x-tga=swayimg.desktop
-text/html=brave-browser.desktop
-x-scheme-handler/http=brave-browser.desktop
-x-scheme-handler/https=brave-browser.desktop
-x-scheme-handler/about=brave-browser.desktop
-x-scheme-handler/unknown=brave-browser.desktop
-x-scheme-handler/notion=brave-dcokohelbbehjlcjjfmhfbpdgfjcoopf-Default.desktop
+text/html=chromium.desktop
+x-scheme-handler/http=chromium.desktop
+x-scheme-handler/https=chromium.desktop
+x-scheme-handler/about=chromium.desktop
+x-scheme-handler/unknown=chromium.desktop
+x-scheme-handler/notion=notion-chromium.desktop
 x-scheme-handler/claude=com.anthropic.Claude.desktop
 
 [Added Associations]
