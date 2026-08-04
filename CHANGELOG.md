@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Behaviour change:** A plain CachyOS/Arch `haoshoku` run no longer configures a
+  desktop environment. It still installs some KDE applications, including
+  Dolphin, but desktop configuration now requires an explicit KDE opt-in:
+  `--plasma` runs Plasma migration and KDE Connect firewall rules, with optional
+  Ocean theme/KDE Glass prompts; `--kde-theme` and `--kde-glass` remain available
+  directly. The desktop-independent Warp agents tab config remains in the default
+  setup, while its Caelestia theme requires an explicit false-by-default prompt.
 - Repoint the WhatsApp launcher and KDE activity/output rules at the installed
   Brave PWA, and retire the isolated-profile Hyprland-era launcher script.
 - Add a portable KDE Plasma 1Password launcher on `Meta+O`, both with and

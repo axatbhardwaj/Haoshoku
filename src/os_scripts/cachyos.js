@@ -59,6 +59,20 @@ const CUSTOM_ALACRITTY_CONFIG_PATH = path.join(
 	"alacritty.toml",
 );
 const CUSTOM_KITTY_CONFIG_PATH = path.join(CONFIGS_DIR, "kitty", "kitty.conf");
+const WARP_TAB_CONFIG_SRC = path.join(
+	CONFIGS_DIR,
+	"warp",
+	"tab_configs",
+	"agents.toml",
+);
+const WARP_TAB_CONFIG_DST = path.join(
+	HOME,
+	".local",
+	"share",
+	"warp-terminal",
+	"tab_configs",
+	"agents.toml",
+);
 const WALLPAPERS_SRC = path.join(PROJECT_ROOT, "deskback");
 const WALLPAPERS_DST = path.join(HOME, "Pictures", "Wallpapers");
 
@@ -381,7 +395,18 @@ async function configureFastfetch() {
 	}
 }
 
-async function configureKde() {
+async function configureWarpTabConfig() {
+	if (!fs.existsSync(WARP_TAB_CONFIG_SRC)) {
+		log.warning(`Warp agents tab config not found at ${WARP_TAB_CONFIG_SRC}`);
+		return;
+	}
+
+	fs.mkdirSync(path.dirname(WARP_TAB_CONFIG_DST), { recursive: true });
+	safeCopyFile(WARP_TAB_CONFIG_SRC, WARP_TAB_CONFIG_DST);
+	log.info("Deployed Warp agents tab config.");
+}
+
+export async function configureKde() {
 	await syncKdePlasma();
 
 	log.info("Applying KDE Connect fix...");
@@ -516,11 +541,12 @@ async function configureUserApps() {
 	}
 
 	await configureTerminals();
-	// Activate the Caelestia-generated Warp theme (fixes Warp's dull whites).
-	await configureWarp();
+	await configureWarpTabConfig();
+	if (await promptUser("Activate the Caelestia-generated Warp theme?", false)) {
+		await configureWarp();
+	}
 	await configureZed();
 	await configureMimeapps();
-	await configureKde();
 	await installUserScripts();
 	await deployWallpapers();
 	try {

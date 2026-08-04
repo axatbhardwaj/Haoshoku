@@ -39,6 +39,14 @@ npm install -g haoshoku
 haoshoku
 ```
 
+> [!IMPORTANT]
+> **Default-path behaviour change:** A plain CachyOS/Arch `haoshoku` run no
+> longer configures KDE Plasma or another desktop environment. It still installs
+> some KDE applications, including Dolphin, alongside the application, dotfile,
+> and developer-tool setup. Existing KDE users who relied on a plain run to
+> configure their desktop must now opt in with `haoshoku --plasma` (and the
+> other KDE-specific flags where needed).
+
 ## CLI Usage
 
 Haoshoku provides command-line options for non-interactive use or specific tasks.
@@ -78,21 +86,27 @@ haoshoku --zed-backup
 # Install/reinstall KDE Glass blur effect (CachyOS/Arch only)
 haoshoku --kde-glass
 
+# Deploy and activate the KDE Ocean theme
+haoshoku --kde-theme
+
 # Merge portable Haoshoku settings and shortcuts into KDE Plasma.
 haoshoku --plasma
+
+# Deploy Caelestia preferences explicitly (not part of the default path)
+haoshoku --caelestia-prefs
 ```
 
 ## Features
 
 ### Supported Platforms
--   **CachyOS / Arch Linux**: Full desktop environment setup (KDE Plasma), gaming optimizations, and daily driver tools.
+-   **CachyOS / Arch Linux**: Application, dotfile, developer-tool, gaming, and daily-driver setup that leaves desktop configuration untouched by default, while still installing some KDE applications.
 -   **Debian Server**: Minimal, secure server setup with Docker, UFW, and Fail2ban.
 
 ### What It Does
 -   **Terminal & Shell**:
     -   Installs and configures **Fish Shell** as default.
     -   Sets up **Starship** prompt and **Fisher** plugins.
-    -   Deploys custom configs for **Warp**, **Alacritty**, and **Fastfetch**.
+    -   Deploys custom configs for **Alacritty**, **kitty**, **Fastfetch**, and the desktop-independent **Warp agents tab**.
 -   **Developer Ecosystem**:
     -   **Languages**: Rust (Rustup), Python (Uv/Conda), Node.js (Volta/NVM).
     -   **Tools**: Docker, Git (with signing), Neovim/VS Code, Foundry (Smart Contracts).
@@ -102,7 +116,8 @@ haoshoku --plasma
     -   Enables auto-updates and essential system utilities.
 -   **Desktop Experience (Arch)**:
     -   Installs curated Flatpaks (Obsidian, Discord, Spotify).
-    -   Optimizes KDE Plasma settings.
+    -   Leaves desktop-environment configuration untouched by default.
+    -   Offers KDE Plasma migration as an explicit opt-in with `--plasma`.
     -   **KDE Glass Blur**: Optional installation of glass blur effect for KDE Plasma 6 (reinstall easily after KDE updates with `--kde-glass`).
     -   Sets up gaming tools (Steam, Lutris) and media players (mpv).
 -   **AI Configuration**:
@@ -116,9 +131,10 @@ Executable policy comes from a private policy repository the user owns; follow t
 
 ## KDE Plasma migration
 
-Haoshoku uses KDE Plasma as its desktop environment. The migration is merge-only:
-existing unrelated Plasma settings are preserved and first-capture backups are
-written beside changed KDE configuration files.
+KDE Plasma configuration is optional and is not part of a plain `haoshoku` run.
+The explicit migration is merge-only: existing unrelated Plasma settings are
+preserved and first-capture backups are written beside changed KDE configuration
+files.
 
 ```bash
 haoshoku --plasma
@@ -126,8 +142,10 @@ haoshoku --plasma
 
 The command installs portable launch shortcuts for Kitty, Dolphin, Zed, Claude,
 1Password, the agents terminal, and microphone mute, and unbinds the KDE/KWin
-defaults that would otherwise collide with them. The default paths do not write
-`kwinrc` or `kwinrulesrc` and do not manage virtual desktops.
+defaults that would otherwise collide with them. It also applies the KDE Connect
+firewall rules and offers the Ocean theme and KDE Glass as explicit prompts. The
+`--plasma` path does not write `kwinrc` or `kwinrulesrc` and does not manage
+virtual desktops.
 
 Window placement is available separately as an opt-in:
 
@@ -208,10 +226,10 @@ Haoshoku manages Claude Code skills and cache-backed agents via runtime git clon
 
 ## Configuration
 
-All configuration templates are stored in the `configs/` directory. Terminal configs (fish, warp, starship, fastfetch) are copied during setup. The public Claude bundle contains only three personal files. Claude skills and non-shadowed cache-backed agents are symlinked, while executable policy comes from a private policy repository the user bootstraps in place at `~/.claude/`:
+All configuration templates are stored in the `configs/` directory. Desktop-independent terminal and shell configs (fish, Alacritty, kitty, Starship, Fastfetch, and the Warp agents tab config) are applied during setup. The Caelestia-generated Warp theme is activated only when the user accepts its false-by-default prompt. The public Claude bundle contains only three personal files. Claude skills and non-shadowed cache-backed agents are symlinked, while executable policy comes from a private policy repository the user bootstraps in place at `~/.claude/`:
 
 -   `configs/fish/`: Fish shell configuration and functions.
--   `configs/warp/`: Warp terminal tab config (theme is activated in `settings.toml`).
+-   `configs/warp/`: Warp agents tab config deployed by the default setup; Caelestia theme activation remains optional.
 -   `configs/starship.toml`: Cross-shell prompt theme.
 -   `configs/fastfetch/`: System information fetch tool config.
 -   `deskback/`: Assets and wallpapers.

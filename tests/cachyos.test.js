@@ -8,6 +8,10 @@ const CACHYOS_SRC = fs.readFileSync(
 	path.join(PROJECT_ROOT, "src", "os_scripts", "cachyos.js"),
 	"utf8",
 );
+const HAOSHOKU_SRC = fs.readFileSync(
+	path.join(PROJECT_ROOT, "haoshoku.js"),
+	"utf8",
+);
 
 describe("KDE Configuration Assets", () => {
 	it("should have a configs directory", () => {
@@ -15,13 +19,7 @@ describe("KDE Configuration Assets", () => {
 	});
 });
 
-describe("configureUserApps step ordering", () => {
-	// Caelestia's install.fish overwrites ~/.config/fish/config.fish,
-	// ~/.config/fish/functions/fish_greeting.fish, and
-	// ~/.config/fastfetch/config.jsonc during configureHyprland(). If our
-	// fish/fastfetch deploys run earlier, Caelestia clobbers them and the user
-	// loses the onefetch/fastfetch decider, the `z` zoxide command, and the
-	// konqi fastfetch layout. Don't reorder.
+describe("configureUserApps invariants", () => {
 	const callIndex = (needle) => {
 		const matches = [
 			...CACHYOS_SRC.matchAll(new RegExp(`await ${needle}\\(`, "g")),
@@ -29,30 +27,22 @@ describe("configureUserApps step ordering", () => {
 		return { count: matches.length, index: matches[0]?.index ?? -1 };
 	};
 
-	it("configures Plasma without invoking Hyprland", () => {
-		expect(callIndex("configureKde").count).toBe(1);
+	it("does not configure KDE in the default flow", () => {
+		expect(callIndex("configureKde").count).toBe(0);
 		expect(callIndex("configureHyprland").count).toBe(0);
 	});
 
-	it("calls configureFishShell exactly once, after configureHyprland", () => {
-		const hyprland = callIndex("configureKde");
-		const fish = callIndex("configureFishShell");
-		expect(fish.count).toBe(1);
-		expect(fish.index).toBeGreaterThan(hyprland.index);
+	it("deploys the Warp agents tab config in the default flow", () => {
+		expect(callIndex("configureWarpTabConfig").count).toBe(1);
+		expect(CACHYOS_SRC).toMatch(
+			/path\.join\(\s*CONFIGS_DIR,\s*["']warp["'],\s*["']tab_configs["'],\s*["']agents\.toml["']/s,
+		);
 	});
 
-	it("calls configureFastfetch exactly once, after configureHyprland", () => {
-		const hyprland = callIndex("configureKde");
-		const fastfetch = callIndex("configureFastfetch");
-		expect(fastfetch.count).toBe(1);
-		expect(fastfetch.index).toBeGreaterThan(hyprland.index);
-	});
-
-	it("calls configureAudio exactly once, after configureHyprland captures device type", () => {
-		const hyprland = callIndex("configureKde");
-		const audio = callIndex("configureAudio");
-		expect(audio.count).toBe(1);
-		expect(audio.index).toBeGreaterThan(hyprland.index);
+	it("activates the Caelestia-generated Warp theme only after explicit opt-in", () => {
+		expect(CACHYOS_SRC).toMatch(
+			/if\s*\(\s*await promptUser\(\s*["']Activate the Caelestia-generated Warp theme\?["'],\s*false\s*\)\s*\)\s*\{\s*await configureWarp\(\);\s*\}/s,
+		);
 	});
 
 	it("guards configureAudio so audio sync errors do not abort later app setup", () => {
@@ -73,9 +63,36 @@ describe("configureUserApps step ordering", () => {
 		expect(prefs.count).toBe(0);
 		expect(installCaelestia.count).toBe(0);
 	});
+});
 
-	it("imports the Plasma configurator", () => {
-		expect(CACHYOS_SRC).toContain("configure_kde_plasma.js");
+describe("explicit KDE CLI dispatch", () => {
+	it("routes --plasma through the KDE opt-in wrapper", () => {
+		expect(HAOSHOKU_SRC).toMatch(
+			/if\s*\(options\.plasma\)\s*\{\s*await configureKde\(\);\s*return;\s*\}/s,
+		);
+	});
+
+	it("routes --kde-theme through deployment and activation", () => {
+		expect(HAOSHOKU_SRC).toMatch(
+			/if\s*\(options\.kdeTheme\)\s*\{\s*await configureKdeTheme\(\);\s*return;\s*\}/s,
+		);
+	});
+
+	it("keeps KDE Connect firewall setup inside the KDE opt-in wrapper", () => {
+		expect(CACHYOS_SRC).toContain(
+			"sudo iptables -I INPUT -p tcp --dport 1714:1764 -j ACCEPT",
+		);
+		expect(CACHYOS_SRC).toContain(
+			"sudo iptables -I INPUT -p udp --dport 1714:1764 -j ACCEPT",
+		);
+		expect(CACHYOS_SRC).toContain("sudo ufw allow 1714:1764/udp");
+		expect(CACHYOS_SRC).toContain("sudo ufw allow 1714:1764/tcp");
+	});
+
+	it("keeps --activities dispatching to Plasma and Activities sync", () => {
+		expect(HAOSHOKU_SRC).toMatch(
+			/if\s*\(options\.activities\)\s*\{\s*await syncKdePlasma\(\{\s*enableActivities:\s*true\s*\}\);\s*if\s*\(!\(await syncKdeActivities\(\)\)\)/s,
+		);
 	});
 });
 
@@ -196,13 +213,6 @@ describe("wallpaper deployment", () => {
 			return stat.isFile();
 		});
 		expect(entries.length).toBeGreaterThan(0);
-	});
-
-	it("calls deployWallpapers exactly once, after KDE configuration", () => {
-		const deploy = [...CACHYOS_SRC.matchAll(/await deployWallpapers\(/g)];
-		const install = [...CACHYOS_SRC.matchAll(/await configureKde\(/g)];
-		expect(deploy.length).toBe(1);
-		expect(deploy[0].index).toBeGreaterThan(install[0].index);
 	});
 
 	it("targets ~/Pictures/Wallpapers as the deploy destination", () => {

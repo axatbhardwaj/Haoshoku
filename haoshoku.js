@@ -34,7 +34,7 @@ import { syncKdeActivities } from "./src/helpers/configure_kde_activities.js";
 import { syncKdePlasma } from "./src/helpers/configure_kde_plasma.js";
 import {
 	backupKdeTheme,
-	syncKdeTheme,
+	configureKdeTheme,
 } from "./src/helpers/configure_kde_theme.js";
 import { backupLockfix, syncLockfix } from "./src/helpers/configure_lockfix.js";
 import {
@@ -60,7 +60,11 @@ import {
 	printAvailableSkills,
 	syncSkills,
 } from "./src/helpers/skill_manager.js";
-import { installKdeGlass, runCachyOSSetup } from "./src/os_scripts/cachyos.js";
+import {
+	configureKde,
+	installKdeGlass,
+	runCachyOSSetup,
+} from "./src/os_scripts/cachyos.js";
 import { runDebianServerSetup } from "./src/os_scripts/debian_server.js";
 
 const program = new Command();
@@ -159,10 +163,7 @@ program
 		"--pr-watch-backup",
 		"Backup the pr-watch PR watcher from ~/.local/bin/ to configs/pr-watch/",
 	)
-	.option(
-		"--kde-theme",
-		"Deploy KDE Ocean theme files (sync only, no activate)",
-	)
+	.option("--kde-theme", "Deploy and activate the KDE Ocean theme")
 	.option(
 		"--kde-theme-backup",
 		"Backup KDE Ocean theme from system to configs/kde/",
@@ -370,7 +371,7 @@ async function runAction(options) {
 	}
 
 	if (options.kdeTheme) {
-		await syncKdeTheme();
+		await configureKdeTheme();
 		return;
 	}
 
@@ -394,7 +395,7 @@ async function runAction(options) {
 	}
 
 	if (options.plasma) {
-		await syncKdePlasma();
+		await configureKde();
 		return;
 	}
 
