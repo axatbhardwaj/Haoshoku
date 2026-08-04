@@ -1,8 +1,8 @@
 [Desktop Entry]
 Name=WhatsApp Web
-Comment=Open the installed WhatsApp Brave PWA in the communication workspace
-Exec=brave --profile-directory=Default --app-id=hnpfjngllnobngcgfapefoaidbinmjnm
+Comment=Open WhatsApp in its isolated Chromium profile
+Exec=sh -lc 'exec chromium --user-data-dir="$HOME/.config/chromium-haoshoku/whatsapp" --class=chromium-whatsapp --app=https://web.whatsapp.com/'
 Terminal=false
 Type=Application
 Categories=Network;InstantMessaging;
-StartupWMClass=brave-hnpfjngllnobngcgfapefoaidbinmjnm-Default
+StartupWMClass=chromium-whatsapp

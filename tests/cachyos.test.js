@@ -85,6 +85,24 @@ describe("Omarchy-owned defaults", () => {
 		}
 	});
 
+	it("uses Chromium as the only managed browser", () => {
+		const packages = fs
+			.readFileSync(
+				path.resolve(import.meta.dir, "..", "common", "paru_applist.txt"),
+				"utf8",
+			)
+			.split(/\r?\n/);
+		expect(packages).toContain("chromium");
+		for (const retired of [
+			"brave-bin",
+			"floorp-bin",
+			"google-chrome",
+			"thorium-browser-avx2-bin",
+		]) {
+			expect(packages).not.toContain(retired);
+		}
+	});
+
 	it("keeps optional gaming packages behind the gaming prompt", () => {
 		const packages = fs
 			.readFileSync(

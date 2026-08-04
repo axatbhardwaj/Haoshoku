@@ -7,10 +7,11 @@ import { log, safeCopyFile } from "../common/utils.js";
 const HOME_DEFAULT = homedir();
 const PROJECT_ROOT_DEFAULT = path.resolve(__dirname, "..", "..");
 const RETIRED_DESKTOP_HANDLERS = [
-  "zee5-hd.desktop",
-  "crunchyroll-hd.desktop",
-  "jiohotstar-hd.desktop",
-  "primevideo-hd.desktop",
+	"zee5-hd.desktop",
+	"crunchyroll-hd.desktop",
+	"jiohotstar-hd.desktop",
+	"primevideo-hd.desktop",
+	"brave-dcokohelbbehjlcjjfmhfbpdgfjcoopf-Default.desktop",
 ];
 
 /**
@@ -20,37 +21,47 @@ const RETIRED_DESKTOP_HANDLERS = [
  *
  * @param {{ home?: string, projectRoot?: string }} opts
  */
-function resolvePaths({ home = HOME_DEFAULT, projectRoot = PROJECT_ROOT_DEFAULT } = {}) {
-  return {
-    liveFile: path.join(home, ".config", "mimeapps.list"),
-    liveDir: path.join(home, ".config"),
-    liveApplicationsDir: path.join(home, ".local", "share", "applications"),
-    repoFile: path.join(projectRoot, "configs", "mimeapps", "mimeapps.list"),
-    repoDir: path.join(projectRoot, "configs", "mimeapps"),
-    repoApplicationsDir: path.join(projectRoot, "configs", "mimeapps", "applications"),
-  };
+function resolvePaths({
+	home = HOME_DEFAULT,
+	projectRoot = PROJECT_ROOT_DEFAULT,
+} = {}) {
+	return {
+		liveFile: path.join(home, ".config", "mimeapps.list"),
+		liveDir: path.join(home, ".config"),
+		liveApplicationsDir: path.join(home, ".local", "share", "applications"),
+		repoFile: path.join(projectRoot, "configs", "mimeapps", "mimeapps.list"),
+		repoDir: path.join(projectRoot, "configs", "mimeapps"),
+		repoApplicationsDir: path.join(
+			projectRoot,
+			"configs",
+			"mimeapps",
+			"applications",
+		),
+	};
 }
 
 function syncDesktopHandlers(repoApplicationsDir, liveApplicationsDir) {
-  for (const desktop of RETIRED_DESKTOP_HANDLERS) {
-    const retiredPath = path.join(liveApplicationsDir, desktop);
-    if (fs.existsSync(retiredPath)) {
-      fs.rmSync(retiredPath, { force: true });
-      log.info(`Removed retired applications/${desktop}`);
-    }
-  }
+	for (const desktop of RETIRED_DESKTOP_HANDLERS) {
+		const retiredPath = path.join(liveApplicationsDir, desktop);
+		if (fs.existsSync(retiredPath)) {
+			fs.rmSync(retiredPath, { force: true });
+			log.info(`Removed retired applications/${desktop}`);
+		}
+	}
 
-  if (!fs.existsSync(repoApplicationsDir)) return;
+	if (!fs.existsSync(repoApplicationsDir)) return;
 
-  fs.mkdirSync(liveApplicationsDir, { recursive: true });
-  for (const entry of fs.readdirSync(repoApplicationsDir, { withFileTypes: true })) {
-    if (!entry.isFile() || !entry.name.endsWith(".desktop")) continue;
-    fs.copyFileSync(
-      path.join(repoApplicationsDir, entry.name),
-      path.join(liveApplicationsDir, entry.name),
-    );
-    log.info(`Synced applications/${entry.name}`);
-  }
+	fs.mkdirSync(liveApplicationsDir, { recursive: true });
+	for (const entry of fs.readdirSync(repoApplicationsDir, {
+		withFileTypes: true,
+	})) {
+		if (!entry.isFile() || !entry.name.endsWith(".desktop")) continue;
+		fs.copyFileSync(
+			path.join(repoApplicationsDir, entry.name),
+			path.join(liveApplicationsDir, entry.name),
+		);
+		log.info(`Synced applications/${entry.name}`);
+	}
 }
 
 /**
@@ -63,23 +74,23 @@ function syncDesktopHandlers(repoApplicationsDir, liveApplicationsDir) {
  * @param {{ home?: string, projectRoot?: string }} opts
  */
 export async function syncMimeappsConfig(opts = {}) {
-  const {
-    liveFile,
-    liveDir,
-    liveApplicationsDir,
-    repoFile,
-    repoApplicationsDir,
-  } = resolvePaths(opts);
+	const {
+		liveFile,
+		liveDir,
+		liveApplicationsDir,
+		repoFile,
+		repoApplicationsDir,
+	} = resolvePaths(opts);
 
-  if (!fs.existsSync(repoFile)) {
-    log.warning(`No mimeapps.list source found at ${repoFile} — skipping`);
-    return;
-  }
+	if (!fs.existsSync(repoFile)) {
+		log.warning(`No mimeapps.list source found at ${repoFile} — skipping`);
+		return;
+	}
 
-  fs.mkdirSync(liveDir, { recursive: true });
-  safeCopyFile(repoFile, liveFile);
-  syncDesktopHandlers(repoApplicationsDir, liveApplicationsDir);
-  log.success("mimeapps.list synced to ~/.config/");
+	fs.mkdirSync(liveDir, { recursive: true });
+	safeCopyFile(repoFile, liveFile);
+	syncDesktopHandlers(repoApplicationsDir, liveApplicationsDir);
+	log.success("mimeapps.list synced to ~/.config/");
 }
 
 /**
@@ -93,19 +104,19 @@ export async function syncMimeappsConfig(opts = {}) {
  * @param {{ home?: string, projectRoot?: string }} opts
  */
 export async function backupMimeappsConfig(opts = {}) {
-  const { liveFile, repoFile, repoDir } = resolvePaths(opts);
+	const { liveFile, repoFile, repoDir } = resolvePaths(opts);
 
-  if (!fs.existsSync(liveFile)) {
-    log.warning(`No live mimeapps.list found at ${liveFile} — skipping`);
-    return;
-  }
+	if (!fs.existsSync(liveFile)) {
+		log.warning(`No live mimeapps.list found at ${liveFile} — skipping`);
+		return;
+	}
 
-  fs.mkdirSync(repoDir, { recursive: true });
-  fs.copyFileSync(liveFile, repoFile);
-  log.success("mimeapps.list backed up to configs/mimeapps/");
+	fs.mkdirSync(repoDir, { recursive: true });
+	fs.copyFileSync(liveFile, repoFile);
+	log.success("mimeapps.list backed up to configs/mimeapps/");
 }
 
 /** Alias used by OS setup flows; deploys the portable MIME/app handler defaults. */
 export async function configureMimeapps(opts = {}) {
-  await syncMimeappsConfig(opts);
+	await syncMimeappsConfig(opts);
 }
