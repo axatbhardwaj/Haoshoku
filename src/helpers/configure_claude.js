@@ -19,7 +19,7 @@ const SUPERPOWERS_PLUGIN_ID = "superpowers@claude-plugins-official";
 
 const CLAUDE_INSTALL_URL = "https://claude.ai/install.sh";
 export const DEFAULT_CLAUDE_BOOTSTRAP_URL =
-  "https://github.com/axatbhardwaj/claude-policy.git";
+  "git@github.com:axatbhardwaj/claude-policy.git";
 const GIT_REPOSITORY_ENV_VARS = [
   "GIT_ALTERNATE_OBJECT_DIRECTORIES",
   "GIT_CEILING_DIRECTORIES",

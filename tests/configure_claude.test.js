@@ -97,7 +97,7 @@ describe("bootstrapClaudePolicy()", () => {
 
 	it("uses the private policy repository as its default URL", () => {
 		expect(claudeConfig.DEFAULT_CLAUDE_BOOTSTRAP_URL).toBe(
-			"https://github.com/axatbhardwaj/claude-policy.git",
+			"git@github.com:axatbhardwaj/claude-policy.git",
 		);
 	});
 
