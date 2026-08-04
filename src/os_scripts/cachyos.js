@@ -18,6 +18,7 @@ import { configureCodex } from "../helpers/configure_codex.js";
 import { configureMimeapps } from "../helpers/configure_mimeapps.js";
 import { configureOmarchyMonitors } from "../helpers/configure_omarchy_monitors.js";
 import { configureOmarchyWorkspaces } from "../helpers/configure_omarchy_workspaces.js";
+import { configureOmazed } from "../helpers/configure_omazed.js";
 import { configurePrWatch } from "../helpers/configure_pr_watch.js";
 import { installUserScripts } from "../helpers/install_user_scripts.js";
 
@@ -416,6 +417,7 @@ export async function runCachyOSSetup() {
 	await configureUserApps();
 	if (isOmarchy) await configureOmarchyMonitors();
 	if (isOmarchy) await configureOmarchyWorkspaces();
+	if (isOmarchy) await configureOmazed();
 
 	log.success("Arch setup finished. Please restart your terminal or log out.");
 }
