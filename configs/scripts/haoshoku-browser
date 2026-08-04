@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+profile="$(
+	{
+		hyprctl clients -j 2>/dev/null || true
+	} | jq -r '
+		[
+			.[]?
+			| select(type == "object")
+			| select(.class == "chromium-flux" or .class == "chromium-defi")
+			| select((.focusHistoryID | type) == "number")
+			| select(.focusHistoryID >= 0)
+		]
+		| sort_by(.focusHistoryID)
+		| .[0].class // empty
+	' 2>/dev/null || true
+)"
+
+case "$profile" in
+	chromium-defi) recipe="browser-defi" ;;
+	*) recipe="browser-flux" ;;
+esac
+
+exec haoshoku-special-workspace "$recipe" "$@"
