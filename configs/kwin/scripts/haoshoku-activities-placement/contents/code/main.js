@@ -35,7 +35,8 @@ workspace.windowAdded.connect((window) => {
 				workspace.currentDesktop,
 			);
 			if (workArea) destination = workArea;
-		} catch {
+		} catch (e) {
+			void e;
 			// Keep the output geometry fallback when the work area is unavailable.
 		}
 	}

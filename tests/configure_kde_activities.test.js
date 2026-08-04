@@ -343,6 +343,27 @@ describe("updateKwinRulesContent", () => {
 });
 
 describe("KWin activities placement asset", () => {
+	it("uses only syntax supported by KWin's QJSEngine", () => {
+		const source = fs.readFileSync(SCRIPT_PATH, "utf8");
+		// Bun's parser accepts newer JavaScript than KWin's QJSEngine. Keep this
+		// explicit denylist aligned with the newer constructs QJSEngine rejects.
+		const unsupportedSyntax = [
+			["optional catch binding", /\bcatch\s*\{/],
+			["optional chaining", /\?\.(?!\d)/],
+			["nullish coalescing", /\?\?/],
+			["spread syntax (including object spread)", /\.\.\./],
+			[
+				"class fields",
+				/\bclass(?:\s+[A-Za-z_$][\w$]*)?(?:\s+extends\s+[^{]+)?\s*\{[\s\S]*?(?:^|\n)\s*(?:static\s+)?#?[A-Za-z_$][\w$]*\s*(?:=|;)/m,
+			],
+		];
+		const violations = unsupportedSyntax
+			.filter(([, pattern]) => pattern.test(source))
+			.map(([name]) => name);
+
+		expect(violations).toEqual([]);
+	});
+
 	it("the activity-read guard throws when its activities property is read", () => {
 		const fake = guarded({ resourceClass: "discord" });
 		expect(() => fake.activities).toThrow("activities must not be read");
