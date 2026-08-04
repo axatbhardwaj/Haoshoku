@@ -50,7 +50,7 @@ const CUSTOM_FASTFETCH_CONFIG_PATH = path.join(
 
 // --- Helper Functions ---
 
-const ARCH_PACKAGE_NAME_PATTERN = /^[A-Za-z0-9@._+-]+$/;
+const ARCH_PACKAGE_NAME_PATTERN = /^(?![-.])[A-Za-z0-9@._+-]+$/;
 
 export function normalizeArchPackageNames(packages) {
 	const valid = [];
@@ -137,14 +137,18 @@ async function refreshSudo() {
  * Returns an empty Set on failure so callers fall back to "try to install
  * everything", matching pre-optimization behavior.
  */
-export async function getInstalledPackages() {
+export async function getInstalledPackages(spawnImpl = Bun.spawn) {
 	try {
-		const proc = Bun.spawn(["pacman", "-Qq"], {
+		const proc = spawnImpl(["pacman", "-Qq"], {
 			stdout: "pipe",
 			stderr: "pipe",
 		});
 		const output = await new Response(proc.stdout).text();
-		await proc.exited;
+		const exitCode = await proc.exited;
+		if (exitCode !== 0) {
+			log.warning("pacman -Qq failed; skipping pre-install filter.");
+			return new Set();
+		}
 		return new Set(
 			output
 				.split("\n")

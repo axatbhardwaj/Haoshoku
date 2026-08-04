@@ -29,7 +29,7 @@
 
 **Interfaces:**
 - Produces: `normalizeArchPackageNames(packages: string[]): { valid: string[], invalid: string[] }`.
-- Package names are valid only when they match `/^[A-Za-z0-9@._+-]+$/`.
+- Package names are valid only when they match `/^(?![-.])[A-Za-z0-9@._+-]+$/`.
 - Duplicate names are discarded after their first appearance; whitespace is trimmed before validation.
 
 - [ ] **Step 1: Write failing normalization tests**
@@ -83,7 +83,7 @@ Expected: FAIL because `normalizeArchPackageNames` is not exported.
 Add near the existing package-routing helpers:
 
 ```js
-const ARCH_PACKAGE_NAME_PATTERN = /^[A-Za-z0-9@._+-]+$/;
+const ARCH_PACKAGE_NAME_PATTERN = /^(?![-.])[A-Za-z0-9@._+-]+$/;
 
 export function normalizeArchPackageNames(packages) {
 	const valid = [];

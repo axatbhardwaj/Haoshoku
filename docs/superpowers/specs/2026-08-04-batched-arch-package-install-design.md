@@ -40,8 +40,10 @@ The installer will parse non-empty, non-comment lines from
 `common/paru_applist.txt`, preserve first-seen order, and discard duplicates.
 Before any package name reaches a shell command, it must match Arch's practical
 package-name character set: ASCII letters, digits, `@`, `.`, `_`, `+`, and `-`,
-with at least one character. Invalid entries will be reported as malformed and
-will not be queried or installed.
+with at least one character and no leading `-` or `.`. Invalid entries will be
+reported as malformed and will not be queried or installed. Rejecting those
+leading characters prevents package names from being interpreted as command
+options or hidden paths.
 
 The installer will snapshot `pacman -Qq` once and skip exact package names that
 are already installed. Existing `--needed` flags remain as defense for
@@ -163,4 +165,3 @@ will be run before completion.
 
 The README will describe the batched fast path, missing-target filtering, and
 individual fallback behavior under the Arch and Omarchy behavior section.
-

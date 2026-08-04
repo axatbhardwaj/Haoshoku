@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {
 	ensureRustToolchain,
+	getInstalledPackages,
 	installArchPackageBatch,
 	installGamingPackages,
 	installSystemPackages,
@@ -117,9 +118,56 @@ describe("Arch package-list normalization", () => {
 			invalid: ["", "bad package", "bad;touch-/tmp/pwned", "$(bad)"],
 		});
 	});
+
+	it("rejects option-like and hidden-path-like package names", () => {
+		expect(
+			normalizeArchPackageNames(["--help", ".hidden", "valid-package"]),
+		).toEqual({
+			valid: ["valid-package"],
+			invalid: ["--help", ".hidden"],
+		});
+	});
+});
+
+describe("installed package snapshots", () => {
+	it("discards partial output when pacman exits nonzero", async () => {
+		const result = await getInstalledPackages(() => ({
+			stdout: new Response("partial-package\n").body,
+			exited: Promise.resolve(1),
+		}));
+
+		expect(result).toEqual(new Set());
+	});
 });
 
 describe("batched Arch package installation", () => {
+	it("does not query or execute option-like package names", async () => {
+		const metadataQueries = [];
+		const commands = [];
+		const result = await installArchPackageBatch(
+			["--help", ".hidden", "repo-one"],
+			{
+				aurHelper: "yay",
+				getInstalledPackagesImpl: async () => new Set(),
+				packageInRepositoryImpl: async (pkg) => {
+					metadataQueries.push(pkg);
+					return true;
+				},
+				packageInAurImpl: async () => true,
+				runCommandImpl: async (command) => {
+					commands.push(command);
+					return true;
+				},
+			},
+		);
+
+		expect(metadataQueries).toEqual(["repo-one"]);
+		expect(commands).toEqual([
+			"sudo pacman -S --needed --noconfirm repo-one",
+		]);
+		expect(result.invalid).toEqual(["--help", ".hidden"]);
+	});
+
 	it("skips installed targets and uses one batch per available source", async () => {
 		const commands = [];
 		const result = await installArchPackageBatch(
@@ -310,6 +358,48 @@ describe("batched Arch package installation", () => {
 			missing: [],
 			invalid: [],
 			skipped: [],
+		});
+	});
+
+	it("preserves input order across every terminal result category", async () => {
+		const snapshots = [
+			new Set(["skipped"]),
+			new Set(["repo-present"]),
+			new Set(["aur-present"]),
+		];
+		const result = await installArchPackageBatch(
+			[
+				"skipped",
+				"repo-present",
+				"repo-success",
+				"repo-fail",
+				"aur-present",
+				"aur-success",
+				"aur-fail",
+				"missing",
+				"bad;name",
+			],
+			{
+				aurHelper: "yay",
+				getInstalledPackagesImpl: async () => snapshots.shift() ?? new Set(),
+				packageInRepositoryImpl: async (pkg) => pkg.startsWith("repo-"),
+				packageInAurImpl: async (pkg) => pkg !== "missing",
+				runCommandImpl: async (command) =>
+					command.endsWith("repo-success") || command.endsWith("aur-success"),
+			},
+		);
+
+		expect(result).toEqual({
+			installed: [
+				"repo-present",
+				"repo-success",
+				"aur-present",
+				"aur-success",
+			],
+			failed: ["repo-fail", "aur-fail"],
+			missing: ["missing"],
+			invalid: ["bad;name"],
+			skipped: ["skipped"],
 		});
 	});
 });
