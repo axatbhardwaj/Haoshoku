@@ -89,6 +89,15 @@ async function packageInRepository(pkg) {
 	return (await proc.exited) === 0;
 }
 
+async function packageInAur(pkg, aurHelper) {
+	if (!aurHelper) return false;
+	const proc = Bun.spawn([aurHelper, "-Si", "--aur", pkg], {
+		stdout: "ignore",
+		stderr: "ignore",
+	});
+	return (await proc.exited) === 0;
+}
+
 export async function installGamingPackages({
 	aurHelper,
 	isOmarchy,
@@ -128,7 +137,7 @@ async function refreshSudo() {
  * Returns an empty Set on failure so callers fall back to "try to install
  * everything", matching pre-optimization behavior.
  */
-async function getInstalledPackages() {
+export async function getInstalledPackages() {
 	try {
 		const proc = Bun.spawn(["pacman", "-Qq"], {
 			stdout: "pipe",
@@ -146,6 +155,86 @@ async function getInstalledPackages() {
 		log.warning("pacman -Qq failed; skipping pre-install filter.");
 		return new Set();
 	}
+}
+
+async function installBatchWithFallback({
+	packages,
+	batchCommand,
+	individualCommand,
+	status,
+	getInstalledPackagesImpl,
+	runCommandImpl,
+}) {
+	if (packages.length === 0) return;
+	if (await runCommandImpl(batchCommand)) {
+		for (const pkg of packages) status.set(pkg, "installed");
+		return;
+	}
+
+	const installedAfterBatch = await getInstalledPackagesImpl();
+	for (const pkg of packages) {
+		if (installedAfterBatch.has(pkg)) {
+			status.set(pkg, "installed");
+		} else if (await runCommandImpl(individualCommand(pkg))) {
+			status.set(pkg, "installed");
+		} else {
+			status.set(pkg, "failed");
+		}
+	}
+}
+
+export async function installArchPackageBatch(packages, options = {}) {
+	const {
+		aurHelper,
+		packageInRepositoryImpl = packageInRepository,
+		packageInAurImpl = packageInAur,
+		getInstalledPackagesImpl = getInstalledPackages,
+		runCommandImpl = runCommand,
+	} = options;
+	const { valid, invalid } = normalizeArchPackageNames(packages);
+	const status = new Map();
+	const initiallyInstalled = await getInstalledPackagesImpl();
+	const repositoryPackages = [];
+	const aurPackages = [];
+
+	for (const pkg of valid) {
+		if (initiallyInstalled.has(pkg)) {
+			status.set(pkg, "skipped");
+		} else if (await packageInRepositoryImpl(pkg)) {
+			repositoryPackages.push(pkg);
+		} else if (!aurHelper) {
+			status.set(pkg, "missing");
+		} else if (await packageInAurImpl(pkg, aurHelper)) {
+			aurPackages.push(pkg);
+		} else {
+			status.set(pkg, "missing");
+		}
+	}
+
+	await installBatchWithFallback({
+		packages: repositoryPackages,
+		batchCommand: `sudo pacman -S --needed --noconfirm ${repositoryPackages.join(" ")}`,
+		individualCommand: (pkg) => `sudo pacman -S --needed --noconfirm ${pkg}`,
+		status,
+		getInstalledPackagesImpl,
+		runCommandImpl,
+	});
+	await installBatchWithFallback({
+		packages: aurPackages,
+		batchCommand: `${aurHelper} -S --needed --noconfirm --batchinstall ${aurPackages.join(" ")}`,
+		individualCommand: (pkg) => `${aurHelper} -S --needed --noconfirm ${pkg}`,
+		status,
+		getInstalledPackagesImpl,
+		runCommandImpl,
+	});
+
+	return {
+		installed: valid.filter((pkg) => status.get(pkg) === "installed"),
+		failed: valid.filter((pkg) => status.get(pkg) === "failed"),
+		missing: valid.filter((pkg) => status.get(pkg) === "missing"),
+		invalid,
+		skipped: valid.filter((pkg) => status.get(pkg) === "skipped"),
+	};
 }
 
 async function installPackagesFromFile(filePath, installerCmd) {

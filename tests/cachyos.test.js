@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {
 	ensureRustToolchain,
+	installArchPackageBatch,
 	installGamingPackages,
 	normalizeArchPackageNames,
 	prepareArchPackageManager,
@@ -113,6 +114,201 @@ describe("Arch package-list normalization", () => {
 		).toEqual({
 			valid: ["good_pkg+git@source"],
 			invalid: ["", "bad package", "bad;touch-/tmp/pwned", "$(bad)"],
+		});
+	});
+});
+
+describe("batched Arch package installation", () => {
+	it("skips installed targets and uses one batch per available source", async () => {
+		const commands = [];
+		const result = await installArchPackageBatch(
+			["already", "repo-one", "aur-one", "repo-two", "aur-two"],
+			{
+				aurHelper: "yay",
+				getInstalledPackagesImpl: async () => new Set(["already"]),
+				packageInRepositoryImpl: async (pkg) => pkg.startsWith("repo-"),
+				packageInAurImpl: async () => true,
+				runCommandImpl: async (command) => {
+					commands.push(command);
+					return true;
+				},
+			},
+		);
+
+		expect(commands).toEqual([
+			"sudo pacman -S --needed --noconfirm repo-one repo-two",
+			"yay -S --needed --noconfirm --batchinstall aur-one aur-two",
+		]);
+		expect(result).toEqual({
+			installed: ["repo-one", "aur-one", "repo-two", "aur-two"],
+			failed: [],
+			missing: [],
+			invalid: [],
+			skipped: ["already"],
+		});
+	});
+
+	it("filters missing AUR and malformed targets before install commands", async () => {
+		const metadataQueries = [];
+		const commands = [];
+		const result = await installArchPackageBatch(
+			["repo-one", "aur-good", "aur-missing", "bad;name"],
+			{
+				aurHelper: "paru",
+				getInstalledPackagesImpl: async () => new Set(),
+				packageInRepositoryImpl: async (pkg) => pkg === "repo-one",
+				packageInAurImpl: async (pkg) => {
+					metadataQueries.push(pkg);
+					return pkg === "aur-good";
+				},
+				runCommandImpl: async (command) => {
+					commands.push(command);
+					return true;
+				},
+			},
+		);
+
+		expect(metadataQueries).toEqual(["aur-good", "aur-missing"]);
+		expect(commands).toEqual([
+			"sudo pacman -S --needed --noconfirm repo-one",
+			"paru -S --needed --noconfirm --batchinstall aur-good",
+		]);
+		expect(result.missing).toEqual(["aur-missing"]);
+		expect(result.invalid).toEqual(["bad;name"]);
+	});
+
+	it("retries only still-absent repository targets after batch failure", async () => {
+		const snapshots = [new Set(), new Set(["repo-one"])];
+		const commands = [];
+		const result = await installArchPackageBatch(["repo-one", "repo-two"], {
+			aurHelper: "yay",
+			getInstalledPackagesImpl: async () => snapshots.shift() ?? new Set(),
+			packageInRepositoryImpl: async () => true,
+			packageInAurImpl: async () => false,
+			runCommandImpl: async (command) => {
+				commands.push(command);
+				return command === "sudo pacman -S --needed --noconfirm repo-two";
+			},
+		});
+
+		expect(commands).toEqual([
+			"sudo pacman -S --needed --noconfirm repo-one repo-two",
+			"sudo pacman -S --needed --noconfirm repo-two",
+		]);
+		expect(result.installed).toEqual(["repo-one", "repo-two"]);
+		expect(result.failed).toEqual([]);
+	});
+
+	it("retries only still-absent AUR targets after batch failure", async () => {
+		const snapshots = [new Set(), new Set(["aur-one"])];
+		const commands = [];
+		const result = await installArchPackageBatch(["aur-one", "aur-two"], {
+			aurHelper: "yay",
+			getInstalledPackagesImpl: async () => snapshots.shift() ?? new Set(),
+			packageInRepositoryImpl: async () => false,
+			packageInAurImpl: async () => true,
+			runCommandImpl: async (command) => {
+				commands.push(command);
+				return command === "yay -S --needed --noconfirm aur-two";
+			},
+		});
+
+		expect(commands).toEqual([
+			"yay -S --needed --noconfirm --batchinstall aur-one aur-two",
+			"yay -S --needed --noconfirm aur-two",
+		]);
+		expect(result).toEqual({
+			installed: ["aur-one", "aur-two"],
+			failed: [],
+			missing: [],
+			invalid: [],
+			skipped: [],
+		});
+	});
+
+	it("runs the AUR batch when repository fallback fails", async () => {
+		const commands = [];
+		const result = await installArchPackageBatch(["repo-one", "aur-one"], {
+			aurHelper: "paru",
+			getInstalledPackagesImpl: async () => new Set(),
+			packageInRepositoryImpl: async (pkg) => pkg === "repo-one",
+			packageInAurImpl: async () => true,
+			runCommandImpl: async (command) => {
+				commands.push(command);
+				return command === "paru -S --needed --noconfirm --batchinstall aur-one";
+			},
+		});
+
+		expect(commands).toContain(
+			"paru -S --needed --noconfirm --batchinstall aur-one",
+		);
+		expect(result).toEqual({
+			installed: ["aur-one"],
+			failed: ["repo-one"],
+			missing: [],
+			invalid: [],
+			skipped: [],
+		});
+	});
+
+	it("marks non-repository targets missing without an AUR helper", async () => {
+		const commands = [];
+		let aurMetadataQueries = 0;
+		const result = await installArchPackageBatch(["repo-one", "aur-one"], {
+			aurHelper: null,
+			getInstalledPackagesImpl: async () => new Set(),
+			packageInRepositoryImpl: async (pkg) => pkg === "repo-one",
+			packageInAurImpl: async () => {
+				aurMetadataQueries += 1;
+				return true;
+			},
+			runCommandImpl: async (command) => {
+				commands.push(command);
+				return true;
+			},
+		});
+
+		expect(commands).toEqual(["sudo pacman -S --needed --noconfirm repo-one"]);
+		expect(aurMetadataQueries).toBe(0);
+		expect(result).toEqual({
+			installed: ["repo-one"],
+			failed: [],
+			missing: ["aur-one"],
+			invalid: [],
+			skipped: [],
+		});
+	});
+
+	it("does not query metadata or install packages for empty input", async () => {
+		let repositoryMetadataQueries = 0;
+		let aurMetadataQueries = 0;
+		const commands = [];
+		const result = await installArchPackageBatch([], {
+			aurHelper: "yay",
+			getInstalledPackagesImpl: async () => new Set(),
+			packageInRepositoryImpl: async () => {
+				repositoryMetadataQueries += 1;
+				return false;
+			},
+			packageInAurImpl: async () => {
+				aurMetadataQueries += 1;
+				return false;
+			},
+			runCommandImpl: async (command) => {
+				commands.push(command);
+				return true;
+			},
+		});
+
+		expect(repositoryMetadataQueries).toBe(0);
+		expect(aurMetadataQueries).toBe(0);
+		expect(commands).toEqual([]);
+		expect(result).toEqual({
+			installed: [],
+			failed: [],
+			missing: [],
+			invalid: [],
+			skipped: [],
 		});
 	});
 });
