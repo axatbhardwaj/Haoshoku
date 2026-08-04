@@ -14,13 +14,29 @@ const script = path.join(
 describe("haoshoku-special-workspace", () => {
 	let directory;
 	let log;
+	let specialState;
 	beforeEach(() => {
 		directory = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-special-"));
 		log = path.join(directory, "calls");
+		specialState = path.join(directory, "special-workspace-state");
 		const hyprctl = path.join(directory, "hyprctl");
 		fs.writeFileSync(
 			hyprctl,
-			`#!/usr/bin/env bash\nif [[ "$1 $2" == "clients -j" ]]; then echo '[]'; else printf '%s\\n' "$*" >> "$CALL_LOG"; fi\n`,
+			`#!/usr/bin/env bash
+if [[ -f "$SPECIAL_STATE" ]]; then state="$(< "$SPECIAL_STATE")"; else state=""; fi
+if [[ "$1 $2" == "clients -j" ]]; then
+  echo '[]'
+elif [[ "$1 $2" == "monitors -j" ]]; then
+  printf '[{"specialWorkspace":{"name":"special:%s"}}]\\n' "$state"
+elif [[ "$1 $2" == "activeworkspace -j" ]]; then
+  printf '{"name":"special:%s"}\\n' "$state"
+elif [[ "$1" == "dispatch" && "$2" == "togglespecialworkspace" ]]; then
+  if [[ "$state" == "$3" ]]; then : > "$SPECIAL_STATE"; else printf '%s' "$3" > "$SPECIAL_STATE"; fi
+  printf '%s\\n' "$*" >> "$CALL_LOG"
+else
+  printf '%s\\n' "$*" >> "$CALL_LOG"
+fi
+`,
 		);
 		fs.chmodSync(hyprctl, 0o755);
 	});
@@ -32,6 +48,7 @@ describe("haoshoku-special-workspace", () => {
 				...process.env,
 				HOME: home,
 				CALL_LOG: log,
+				SPECIAL_STATE: specialState,
 				PATH: `${directory}:${process.env.PATH}`,
 			},
 			stdout: "pipe",
@@ -66,4 +83,15 @@ describe("haoshoku-special-workspace", () => {
 			`--user-data-dir=${directory}/.config/chromium-haoshoku/defi --class=chromium-defi`,
 		);
 	});
+
+	// Mutation caught: unconditionally toggling an already-visible workspace hides
+	// it, so an explicit browser recipe cannot reliably reveal and focus it.
+	for (const recipe of ["browser-flux", "browser-defi"]) {
+		it(`keeps ${recipe} visible when the explicit recipe is invoked again`, async () => {
+			fs.writeFileSync(specialState, recipe);
+
+			expect((await run([recipe])).exitCode).toBe(0);
+			expect(fs.readFileSync(specialState, "utf8")).toBe(recipe);
+		});
+	}
 });
