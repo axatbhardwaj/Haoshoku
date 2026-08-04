@@ -11,16 +11,14 @@ import {
 } from "../common/utils.js";
 import { configureAgentOs } from "../helpers/configure_agent_os.js";
 import { configureAudio } from "../helpers/configure_audio.js";
+import { configureBash } from "../helpers/configure_bash.js";
 import { configureClaude } from "../helpers/configure_claude.js";
 import { configureClaudeStayAwake } from "../helpers/configure_claude_stay_awake.js";
 import { configureCodex } from "../helpers/configure_codex.js";
-import { syncKdePlasma } from "../helpers/configure_kde_plasma.js";
-import { configureKdeTheme } from "../helpers/configure_kde_theme.js";
 import { configureMimeapps } from "../helpers/configure_mimeapps.js";
 import { configurePrWatch } from "../helpers/configure_pr_watch.js";
-import { configureWarp } from "../helpers/configure_warp.js";
-import { configureZed } from "../helpers/configure_zed.js";
 import { installUserScripts } from "../helpers/install_user_scripts.js";
+import { configureOmarchyMonitors } from "../helpers/configure_omarchy_monitors.js";
 
 // URLs
 const RUSTUP_URL = "https://sh.rustup.rs";
@@ -34,12 +32,7 @@ const UOSC_INSTALL_URL =
 const HOME = homedir();
 const _CARGO_HOME = path.join(HOME, ".cargo");
 const PARU_BUILD_DIR = "/tmp/paru";
-const STARSHIP_CONFIG_PATH = path.join(HOME, ".config", "starship.toml");
-const FISH_CONFIG_DIR = path.join(HOME, ".config", "fish");
-const PYENV_ROOT = path.join(HOME, ".pyenv");
 const FASTFETCH_CONFIG_DIR = path.join(HOME, ".config", "fastfetch");
-const ALACRITTY_CONFIG_DIR = path.join(HOME, ".config", "alacritty");
-const KITTY_CONFIG_DIR = path.join(HOME, ".config", "kitty");
 // Project paths (resolved from script location, works from any cwd)
 const PROJECT_ROOT = path.resolve(__dirname, "..", "..");
 const COMMON_DIR = path.join(PROJECT_ROOT, "common");
@@ -47,36 +40,62 @@ const CONFIGS_DIR = path.join(PROJECT_ROOT, "configs");
 
 const PARU_APPLIST_PATH = path.join(COMMON_DIR, "paru_applist.txt");
 const FLATPAK_APPLIST_PATH = path.join(COMMON_DIR, "flatpacks_arch.txt");
-const CUSTOM_FISH_CONFIG_PATH = path.join(CONFIGS_DIR, "fish", "config.fish");
 const CUSTOM_FASTFETCH_CONFIG_PATH = path.join(
 	CONFIGS_DIR,
 	"fastfetch",
 	"config.jsonc",
 );
-const CUSTOM_ALACRITTY_CONFIG_PATH = path.join(
-	CONFIGS_DIR,
-	"alacritty",
-	"alacritty.toml",
-);
-const CUSTOM_KITTY_CONFIG_PATH = path.join(CONFIGS_DIR, "kitty", "kitty.conf");
-const WARP_TAB_CONFIG_SRC = path.join(
-	CONFIGS_DIR,
-	"warp",
-	"tab_configs",
-	"agents.toml",
-);
-const WARP_TAB_CONFIG_DST = path.join(
-	HOME,
-	".local",
-	"share",
-	"warp-terminal",
-	"tab_configs",
-	"agents.toml",
-);
-const WALLPAPERS_SRC = path.join(PROJECT_ROOT, "deskback");
-const WALLPAPERS_DST = path.join(HOME, "Pictures", "Wallpapers");
 
 // --- Helper Functions ---
+
+export async function resolveAurHelper(commandExistsImpl = commandExists) {
+	for (const helper of ["yay", "paru"]) {
+		if (await commandExistsImpl(helper)) return helper;
+	}
+	return null;
+}
+
+export function selectArchInstallCommand(pkg, inRepository, aurHelper) {
+	if (inRepository) {
+		return `sudo pacman -S --needed --noconfirm ${pkg}`;
+	}
+	return aurHelper ? `${aurHelper} -S --needed --noconfirm ${pkg}` : null;
+}
+
+async function packageInRepository(pkg) {
+	const proc = Bun.spawn(["pacman", "-Si", pkg], {
+		stdout: "ignore",
+		stderr: "ignore",
+	});
+	return (await proc.exited) === 0;
+}
+
+export async function installGamingPackages({
+	aurHelper,
+	isOmarchy,
+	commandExistsImpl = commandExists,
+	runCommandImpl = runCommand,
+} = {}) {
+	const repositoryOk = await runCommandImpl(
+		"sudo pacman -S --needed --noconfirm steam gamemode lib32-gamemode gamescope mangohud lib32-mangohud",
+	);
+	const protonOk = aurHelper
+		? await runCommandImpl(
+				`${aurHelper} -S --needed --noconfirm protonup-rs-bin`,
+			)
+		: false;
+
+	let gpuOk = true;
+	if (
+		isOmarchy &&
+		(await commandExistsImpl("omarchy-install-gaming-gpu-lib32"))
+	) {
+		gpuOk = await runCommandImpl("omarchy-install-gaming-gpu-lib32");
+	} else if (!isOmarchy) {
+		log.info("Skipping GPU-specific 32-bit packages outside Omarchy.");
+	}
+	return Boolean(repositoryOk && protonOk && gpuOk);
+}
 
 async function refreshSudo() {
 	log.info("Checking sudo access. You may be prompted for your password.");
@@ -194,15 +213,6 @@ async function installBaseDependencies() {
 	await withSpinner("Installing Rust", () =>
 		runCommand(`curl ${RUSTUP_URL} -sSf | sh -s -- -y`),
 	);
-
-	if ((await commandExists("pyenv")) && (await commandExists("fish"))) {
-		log.info("Configuring Pyenv for Fish...");
-		await runCommand(`fish -c 'set -Ux PYENV_ROOT "${PYENV_ROOT}"'`);
-		// Use set -U fish_user_paths as it is more robust than fish_add_path in some environments
-		await runCommand(
-			`fish -c 'if not contains "${PYENV_ROOT}/bin" $fish_user_paths; set -Ua fish_user_paths "${PYENV_ROOT}/bin"; end'`,
-		);
-	}
 }
 
 async function installAurHelper() {
@@ -223,6 +233,16 @@ async function installAurHelper() {
 			"paru installation failed — AUR package installs will be unavailable.",
 		);
 	}
+}
+
+async function ensureAurHelper() {
+	const existing = await resolveAurHelper();
+	if (existing) {
+		log.info(`${existing} is available for AUR packages.`);
+		return existing;
+	}
+	await installAurHelper();
+	return await resolveAurHelper();
 }
 
 async function installDevTools() {
@@ -258,99 +278,6 @@ async function setupFlatpakRemotes() {
 }
 
 // --- Configuration Functions ---
-
-async function configureFishShell() {
-	if (!(await commandExists("fish"))) {
-		log.info("Installing Fish shell...");
-		await runCommand("paru -S fish --noconfirm");
-	}
-
-	if (await promptUser("Set Fish as the default shell?", true)) {
-		const fishPathProc = Bun.spawn(["which", "fish"]);
-		const fishPath = (await new Response(fishPathProc.stdout).text()).trim();
-
-		if (fishPath) {
-			log.info("Setting Fish as the default shell...");
-			await runCommand(`chsh -s ${fishPath}`);
-		} else {
-			log.warning("Could not find fish executable.");
-		}
-	}
-
-	// CachyOS's cachyos-fish-config package (sourced from configs/fish/config.fish
-	// line 1) already ships done/sponge/nvm/gitnow in
-	// /usr/share/cachyos-fish-config/conf.d/. Installing the same plugins via
-	// fisher creates user-level duplicates in ~/.config/fish/conf.d/ that load
-	// alongside the system copies — `done` in particular crashes the prompt
-	// with `test ... -gt : Missing argument` when the two versions trip over
-	// each other's state. Install only fisher itself so users can add other
-	// plugins later without re-introducing the conflict.
-	log.info("Installing Fisher (no extra plugins — CachyOS ships the rest)...");
-	await runCommand(`fish -c "fisher install jorgebucaran/fisher"`);
-
-	if (await commandExists("starship")) {
-		log.info("Configuring Starship prompt...");
-		await runCommand(
-			`starship preset nerd-font-symbols -o ${STARSHIP_CONFIG_PATH}`,
-		);
-	}
-
-	fs.mkdirSync(FISH_CONFIG_DIR, { recursive: true });
-	if (fs.existsSync(CUSTOM_FISH_CONFIG_PATH)) {
-		safeCopyFile(
-			CUSTOM_FISH_CONFIG_PATH,
-			path.join(FISH_CONFIG_DIR, "config.fish"),
-		);
-		log.info("Copied custom fish config.");
-	}
-
-	// Deploy custom fish functions (e.g. fish_greeting with the onefetch/fastfetch
-	// decider, is_git_repo helper). Caelestia ships its own fish_greeting.fish,
-	// so this MUST run after configureHyprland() to win.
-	const fishFunctionsSrc = path.join(CONFIGS_DIR, "fish", "functions");
-	const fishFunctionsDst = path.join(FISH_CONFIG_DIR, "functions");
-	if (fs.existsSync(fishFunctionsSrc)) {
-		fs.mkdirSync(fishFunctionsDst, { recursive: true });
-		for (const file of fs.readdirSync(fishFunctionsSrc)) {
-			if (!file.endsWith(".fish")) continue;
-			safeCopyFile(
-				path.join(fishFunctionsSrc, file),
-				path.join(fishFunctionsDst, file),
-			);
-		}
-		log.info("Deployed custom fish functions.");
-	}
-}
-
-async function configureTerminals() {
-	log.info("Configuring Alacritty terminal...");
-	fs.mkdirSync(ALACRITTY_CONFIG_DIR, { recursive: true });
-	if (fs.existsSync(CUSTOM_ALACRITTY_CONFIG_PATH)) {
-		safeCopyFile(
-			CUSTOM_ALACRITTY_CONFIG_PATH,
-			path.join(ALACRITTY_CONFIG_DIR, "alacritty.toml"),
-		);
-		log.info("Copied custom Alacritty config.");
-	} else {
-		log.warning(
-			`Custom Alacritty config not found at ${CUSTOM_ALACRITTY_CONFIG_PATH}`,
-		);
-	}
-
-	// kitty is the primary terminal (Super+T, Caelestia's apps.terminal).
-	// Only the config file is deployed; gen-sequences.py beside it is a maintenance tool, not deployed.
-	log.info("Configuring kitty terminal...");
-	fs.mkdirSync(KITTY_CONFIG_DIR, { recursive: true });
-	if (fs.existsSync(CUSTOM_KITTY_CONFIG_PATH)) {
-		safeCopyFile(
-			CUSTOM_KITTY_CONFIG_PATH,
-			path.join(KITTY_CONFIG_DIR, "kitty.conf"),
-		);
-		log.info("Copied custom kitty config.");
-	} else {
-		log.warning(`Custom kitty config not found at ${CUSTOM_KITTY_CONFIG_PATH}`);
-	}
-}
 
 async function enableServices() {
 	if (await promptUser("Enable Bluetooth?", false)) {
@@ -395,109 +322,7 @@ async function configureFastfetch() {
 	}
 }
 
-async function configureWarpTabConfig() {
-	if (!fs.existsSync(WARP_TAB_CONFIG_SRC)) {
-		log.warning(`Warp agents tab config not found at ${WARP_TAB_CONFIG_SRC}`);
-		return;
-	}
-
-	fs.mkdirSync(path.dirname(WARP_TAB_CONFIG_DST), { recursive: true });
-	safeCopyFile(WARP_TAB_CONFIG_SRC, WARP_TAB_CONFIG_DST);
-	log.info("Deployed Warp agents tab config.");
-}
-
-export async function configureKde() {
-	await syncKdePlasma();
-
-	log.info("Applying KDE Connect fix...");
-	await runCommand("sudo iptables -I INPUT -p tcp --dport 1714:1764 -j ACCEPT");
-	await runCommand("sudo iptables -I INPUT -p udp --dport 1714:1764 -j ACCEPT");
-	if (await commandExists("ufw")) {
-		await runCommand("sudo ufw allow 1714:1764/udp");
-		await runCommand("sudo ufw allow 1714:1764/tcp");
-		await runCommand("sudo ufw reload");
-	}
-
-	if (await promptUser("Deploy KDE Ocean theme?", false)) {
-		await configureKdeTheme();
-	}
-
-	if (
-		await promptUser("Install KDE Glass blur effect (requires build)?", false)
-	) {
-		await installKdeGlass();
-	}
-}
-
-/**
- * Copy bundled wallpapers from `deskback/` into `~/Pictures/Wallpapers/`.
- * Idempotent — existing files are kept (so user-added or already-deployed
- * wallpapers survive re-runs). Source dir is the project's `deskback/`.
- */
-async function deployWallpapers() {
-	if (!fs.existsSync(WALLPAPERS_SRC)) {
-		log.warning(`Wallpaper source dir not found at ${WALLPAPERS_SRC}`);
-		return;
-	}
-	fs.mkdirSync(WALLPAPERS_DST, { recursive: true });
-
-	let copied = 0;
-	let skipped = 0;
-	for (const file of fs.readdirSync(WALLPAPERS_SRC)) {
-		const src = path.join(WALLPAPERS_SRC, file);
-		if (!fs.statSync(src).isFile()) continue;
-		const dst = path.join(WALLPAPERS_DST, file);
-		if (fs.existsSync(dst)) {
-			skipped++;
-			continue;
-		}
-		fs.copyFileSync(src, dst);
-		copied++;
-	}
-	log.success(
-		`Deployed wallpapers to ${WALLPAPERS_DST} (${copied} new, ${skipped} already present).`,
-	);
-}
-
-export async function installKdeGlass() {
-	log.info("Installing prerequisites for KDE Glass blur effect...");
-	const prerequisitesOk = await runCommand(
-		"paru -S --needed --noconfirm base-devel git extra-cmake-modules qt6-tools kwin vulkan-headers",
-	);
-	if (!prerequisitesOk) {
-		log.error("KDE Glass prerequisites failed to install; skipping build.");
-		return;
-	}
-
-	log.info("Cloning and building KDE Glass blur effect...");
-	const buildDir = "/tmp/kwin-effects-glass";
-
-	// Remove old build directory if it exists so git clone always starts clean.
-	fs.rmSync(buildDir, { recursive: true, force: true });
-
-	const kdeGlassOk = await runCommand(
-		`cd /tmp && ` +
-			`git clone https://github.com/4v3ngR/kwin-effects-glass && ` +
-			`cd kwin-effects-glass && ` +
-			`mkdir build && cd build && ` +
-			`cmake .. -DCMAKE_INSTALL_PREFIX=/usr && ` +
-			`make -j$(nproc) && ` +
-			`sudo make install`,
-	);
-
-	if (kdeGlassOk) {
-		log.success(
-			"KDE Glass blur effect installed successfully!\n" +
-				"Open System Settings > Desktop Effects, disable other blur effects, and enable Glass.",
-		);
-	} else {
-		log.error(
-			"KDE Glass build failed — see output above; install manually from https://github.com/4v3ngR/kwin-effects-glass",
-		);
-	}
-}
-
-async function installSystemPackages() {
+async function installSystemPackages(aurHelper, isOmarchy) {
 	log.info("Preparing for package installation...");
 	if (!(await refreshSudo())) {
 		log.error(
@@ -507,18 +332,33 @@ async function installSystemPackages() {
 	}
 
 	log.info("Installing packages from file lists...");
-	await installPackagesFromFile(
-		PARU_APPLIST_PATH,
-		"paru -S --needed --noconfirm --sudoloop",
-	);
+	const content = fs.readFileSync(PARU_APPLIST_PATH, "utf8");
+	const requested = content
+		.split("\n")
+		.map((line) => line.trim())
+		.filter((line) => line && !line.startsWith("#"));
+	const failed = [];
+	for (const pkg of requested) {
+		const command = selectArchInstallCommand(
+			pkg,
+			await packageInRepository(pkg),
+			aurHelper,
+		);
+		if (!command || !(await runCommand(command))) failed.push(pkg);
+	}
+	if (failed.length > 0) {
+		log.warning(
+			`${failed.length} package(s) failed to install:\n  ${failed.join("\n  ")}`,
+		);
+	}
 
 	log.info("Installing Nerd Fonts...");
-	await runCommand("sudo pacman -S $(pacman -Sgq nerd-fonts) --noconfirm");
+	await runCommand(
+		"sudo pacman -S --needed --noconfirm ttf-jetbrains-mono-nerd",
+	);
 
 	if (await promptUser("Enable gaming configuration?", false)) {
-		await runCommand(
-			"paru -S cachyos-gaming-meta cachyos-gaming-applications protonup-rs-bin --noconfirm",
-		);
+		await installGamingPackages({ aurHelper, isOmarchy });
 	}
 }
 
@@ -540,15 +380,8 @@ async function configureUserApps() {
 		await configureGit();
 	}
 
-	await configureTerminals();
-	await configureWarpTabConfig();
-	if (await promptUser("Activate the Caelestia-generated Warp theme?", false)) {
-		await configureWarp();
-	}
-	await configureZed();
 	await configureMimeapps();
 	await installUserScripts();
-	await deployWallpapers();
 	try {
 		await configureAudio();
 	} catch (err) {
@@ -557,7 +390,7 @@ async function configureUserApps() {
 		);
 	}
 
-	await configureFishShell();
+	configureBash();
 	await configureFastfetch();
 
 	log.info("Installing uosc for MPV...");
@@ -573,14 +406,14 @@ async function configureUserApps() {
 
 export async function runCachyOSSetup() {
 	await installBaseDependencies();
-	await installAurHelper();
+	const aurHelper = await ensureAurHelper();
 	await installDevTools();
 
-	await installSystemPackages();
+	const isOmarchy = await commandExists("omarchy");
+	await installSystemPackages(aurHelper, isOmarchy);
 	await installFlatpakApps();
 	await configureUserApps();
+	if (isOmarchy) await configureOmarchyMonitors();
 
-	log.success(
-		"CachyOS setup finished. Please restart your terminal or log out.",
-	);
+	log.success("Arch setup finished. Please restart your terminal or log out.");
 }

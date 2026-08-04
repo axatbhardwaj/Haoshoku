@@ -1,4 +1,3 @@
-fish
 visual-studio-code-bin
 brave-bin
 floorp-bin
@@ -11,14 +10,11 @@ github-cli
 nvm
 flatpak
 bitwarden
-partitionmanager
 inotify-tools
 thunar
-dolphin
 swayimg
 teams-for-linux
 onlyoffice-bin
-kvantum
 zoxide
 telegram-desktop
 qbittorrent
@@ -31,7 +27,6 @@ fastfetch
 expect
 discord
 solaar
-okular
 slack-desktop-wayland
 mpv
 python-mpv
@@ -50,7 +45,6 @@ bun-bin
 gitleaks
 pyenv
 cursor-bin
-merkuro
 thorium-browser-avx2-bin
 session-desktop-bin
 1password
