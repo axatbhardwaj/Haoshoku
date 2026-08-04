@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+readonly FALLBACK_PROFILES='[{"id":"flux","class":"chromium-flux","monitor":"DP-1","default":true},{"id":"defi","class":"chromium-defi","monitor":"DP-1"}]'
+
+load_profiles() {
+	local config="$HOME/.haoshoku.json"
+	if [[ -r "$config" ]] && jq -ce '
+		def safe_id:
+			type == "string" and test("^[A-Za-z0-9][A-Za-z0-9_-]*$");
+		def safe_value:
+			type == "string" and test("^[A-Za-z0-9][A-Za-z0-9_.-]*$");
+		def valid_profile:
+			type == "object"
+			and (.id | safe_id)
+			and (.class | safe_value)
+			and (.monitor | safe_value)
+			and (if has("default") then (.default | type == "boolean") else true end);
+		def valid_registry:
+			type == "array"
+			and length > 0
+			and all(.[]; valid_profile)
+			and ([.[].id] | unique | length) == length
+			and ([.[].class] | unique | length) == length
+			and ([.[] | select(.default == true)] | length) <= 1;
+		if type == "object" and (.chromiumProfiles? | valid_registry)
+		then .chromiumProfiles else empty end
+	' "$config" 2>/dev/null; then
+		return
+	fi
+	printf '%s\n' "$FALLBACK_PROFILES"
+}
+
+usage() {
+	echo "usage: haoshoku-chromium-profiles {list|default|get PROFILE_ID}" >&2
+	exit 2
+}
+
+case "${1:-}" in
+	list)
+		[[ $# -eq 1 ]] || usage
+		load_profiles
+		;;
+	default)
+		[[ $# -eq 1 ]] || usage
+		profiles="$(load_profiles)"
+		jq -r '[.[] | select(.default == true)][0].id // "flux"' <<<"$profiles"
+		;;
+	get)
+		[[ $# -eq 2 ]] || usage
+		profiles="$(load_profiles)"
+		if profile="$(jq -ce --arg id "$2" '.[] | select(.id == $id)' <<<"$profiles" 2>/dev/null)"; then
+			printf '%s\n' "$profile"
+			exit 0
+		fi
+		case "$2" in
+			flux|defi)
+				jq -ce --arg id "$2" '.[] | select(.id == $id)' <<<"$FALLBACK_PROFILES"
+				;;
+			*) exit 1 ;;
+		esac
+		;;
+	*) usage ;;
+esac

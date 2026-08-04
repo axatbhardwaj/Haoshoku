@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+profiles_helper="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/haoshoku-chromium-profiles"
+[[ -x "$profiles_helper" ]] || { echo "missing haoshoku-chromium-profiles helper" >&2; exit 1; }
+
+profiles="$("$profiles_helper" list)"
+profile_id=""
+if ! profile_id="$(
+	hyprctl clients -j 2>/dev/null | jq -r '
+		[
+			.[]? as $client
+			| select($client | type == "object")
+			| select(($client.focusHistoryID | type) == "number")
+			| select($client.focusHistoryID >= 0)
+			| $profiles[]
+			| select(.class == $client.class)
+			| { id, focusHistoryID: $client.focusHistoryID }
+		]
+		| sort_by(.focusHistoryID)
+		| .[0].id // empty
+	' --argjson profiles "$profiles" 2>/dev/null
+)"; then
+	profile_id=""
+fi
+
+if [[ -z "$profile_id" ]]; then
+	profile_id="$("$profiles_helper" default)"
+fi
+
+exec haoshoku-special-workspace browser "$profile_id" "$@"

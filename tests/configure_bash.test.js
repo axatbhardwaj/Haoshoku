@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -66,6 +67,81 @@ describe("configureBash", () => {
 		);
 		expect(fragment).toContain('export BUN_INSTALL="$HOME/.bun"');
 		expect(fragment).toContain('"$BUN_INSTALL/bin"');
+	});
+
+	it("preserves hashall state without initializer hash warnings", () => {
+		const bin = path.join(home, "bin");
+		fs.mkdirSync(bin, { recursive: true });
+		for (const command of [
+			"starship",
+			"direnv",
+			"zoxide",
+			"pyenv",
+			"thefuck",
+		]) {
+			const executable = path.join(bin, command);
+			fs.writeFileSync(
+				executable,
+				"#!/usr/bin/env bash\nprintf 'hash -r\\n'\n",
+			);
+			fs.chmodSync(executable, 0o755);
+		}
+
+		const conda = path.join(home, "anaconda3", "bin", "conda");
+		fs.mkdirSync(path.dirname(conda), { recursive: true });
+		fs.writeFileSync(conda, "#!/usr/bin/env bash\nprintf 'hash -r\\n'\n");
+		fs.chmodSync(conda, 0o755);
+
+		const fragment = path.join(
+			import.meta.dir,
+			"..",
+			"configs",
+			"bash",
+			"haoshoku.bash",
+		);
+		const sourceFragment = (
+			hashing,
+			beforeSource = "",
+			afterSource = `set -o | awk '$1 == "hashall" { print $2 }'`,
+		) =>
+			spawnSync(
+				"bash",
+				[
+					"--noprofile",
+					"--norc",
+					"-c",
+					`set ${hashing ? "-h" : "+h"}; ${beforeSource} source "$1"; ${afterSource}`,
+					"bash",
+					fragment,
+				],
+				{
+					encoding: "utf8",
+					env: {
+						...process.env,
+						HOME: home,
+						PATH: `${bin}:${process.env.PATH}`,
+					},
+				},
+			);
+
+		const initiallyDisabled = sourceFragment(false);
+		expect(initiallyDisabled.status).toBe(0);
+		expect(initiallyDisabled.stderr).not.toContain("hashing disabled");
+		expect(initiallyDisabled.stdout.trim()).toBe("off");
+
+		const initiallyEnabled = sourceFragment(true);
+		expect(initiallyEnabled.status).toBe(0);
+		expect(initiallyEnabled.stderr).not.toContain("hashing disabled");
+		expect(initiallyEnabled.stdout.trim()).toBe("on");
+
+		const initiallyEnabledWithMarker = sourceFragment(
+			true,
+			"haoshoku_restore_hashall=preexisting;",
+			`printf '%s;%s\\n' "$(set -o | awk '$1 == "hashall" { print $2 }')" "$haoshoku_restore_hashall"`,
+		);
+		expect(initiallyEnabledWithMarker.status).toBe(0);
+		expect(initiallyEnabledWithMarker.stderr).not.toContain("hashing disabled");
+		expect(initiallyEnabledWithMarker.stdout.trim()).toBe("on;preexisting");
 	});
 
 	it("keeps bun-bin in the Arch package set", () => {

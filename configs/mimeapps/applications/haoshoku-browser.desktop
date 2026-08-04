@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Haoshoku Browser
+Comment=Open links in the most recently focused Haoshoku Chromium profile
+Exec=haoshoku-browser %U
+Type=Application
+Terminal=false
+Categories=Network;WebBrowser;
+MimeType=text/html;x-scheme-handler/http;x-scheme-handler/https;x-scheme-handler/about;x-scheme-handler/unknown;
+StartupNotify=true
