@@ -24,17 +24,26 @@ describe("configureOmazed", () => {
 
 	it("runs packaged setup then retires only the legacy Caelestia theme", async () => {
 		const themes = path.join(home, ".config", "zed", "themes");
+		const settings = path.join(home, ".config", "zed", "settings.json");
 		fs.mkdirSync(themes, { recursive: true });
 		fs.writeFileSync(path.join(themes, "caelestia.json"), "legacy");
 		fs.writeFileSync(path.join(themes, "personal.json"), "keep");
+		fs.writeFileSync(
+			settings,
+			'{"theme":{"mode":"system","dark":"Caelestia"},"autosave":"on_focus_change"}\n',
+		);
 		const commands = [];
 		const result = await configureOmazed({
 			home,
 			commandExistsImpl: async () => true,
 			runCommandImpl: async (command) => {
 				commands.push(command);
+				expect(JSON.parse(fs.readFileSync(settings, "utf8")).theme).toBe(
+					"Omazed",
+				);
 				return true;
 			},
+			now: () => 42,
 		});
 		expect(commands).toEqual(["omazed setup"]);
 		expect(result).toEqual({ configured: true, retiredLegacyTheme: true });
@@ -42,6 +51,11 @@ describe("configureOmazed", () => {
 		expect(fs.readFileSync(path.join(themes, "personal.json"), "utf8")).toBe(
 			"keep",
 		);
+		expect(JSON.parse(fs.readFileSync(settings, "utf8"))).toMatchObject({
+			theme: "Omazed",
+			autosave: "on_focus_change",
+		});
+		expect(fs.existsSync(`${settings}.bak.42`)).toBe(true);
 	});
 
 	it("is idempotent after the legacy theme is gone", async () => {
@@ -62,8 +76,12 @@ describe("configureOmazed", () => {
 
 	it("keeps the legacy theme when packaged setup fails", async () => {
 		const themes = path.join(home, ".config", "zed", "themes");
+		const settings = path.join(home, ".config", "zed", "settings.json");
 		fs.mkdirSync(themes, { recursive: true });
 		fs.writeFileSync(path.join(themes, "caelestia.json"), "legacy");
+		const original =
+			'{"theme":{"dark":"Caelestia"},"autosave":"on_focus_change"}\n';
+		fs.writeFileSync(settings, original);
 		const result = await configureOmazed({
 			home,
 			commandExistsImpl: async () => true,
@@ -71,6 +89,7 @@ describe("configureOmazed", () => {
 		});
 		expect(result).toEqual({ configured: false, retiredLegacyTheme: false });
 		expect(fs.existsSync(path.join(themes, "caelestia.json"))).toBe(true);
+		expect(fs.readFileSync(settings, "utf8")).toBe(original);
 	});
 });
 
