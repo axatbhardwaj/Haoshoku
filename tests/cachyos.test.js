@@ -2,12 +2,48 @@ import { describe, expect, it } from "bun:test";
 import fs from "node:fs";
 import path from "node:path";
 import {
+	ensureRustToolchain,
 	installGamingPackages,
 	prepareArchPackageManager,
 	resolveAurHelper,
 	runCachyOSSetup,
 	selectArchInstallCommand,
 } from "../src/os_scripts/cachyos.js";
+
+describe("Rust toolchain preparation", () => {
+	it("preserves Rust when rustc and cargo are already available", async () => {
+		const commands = [];
+		const result = await ensureRustToolchain({
+			commandExistsImpl: async (command) =>
+				command === "rustc" || command === "cargo",
+			runCommandImpl: async (command) => {
+				commands.push(command);
+				return true;
+			},
+			withSpinnerImpl: async (_label, operation) => operation(),
+		});
+
+		expect(result).toBe(true);
+		expect(commands).toEqual([]);
+	});
+
+	it("installs Rust when either required command is missing", async () => {
+		const commands = [];
+		const result = await ensureRustToolchain({
+			commandExistsImpl: async (command) => command === "rustc",
+			runCommandImpl: async (command) => {
+				commands.push(command);
+				return true;
+			},
+			withSpinnerImpl: async (_label, operation) => operation(),
+		});
+
+		expect(result).toBe(true);
+		expect(commands).toEqual([
+			"curl https://sh.rustup.rs -sSf | sh -s -- -y",
+		]);
+	});
+});
 
 describe("Arch package routing", () => {
 	it("prefers yay and falls back to paru", async () => {

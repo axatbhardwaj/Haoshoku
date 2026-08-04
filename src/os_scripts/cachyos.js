@@ -216,6 +216,27 @@ export async function prepareArchPackageManager({
 	return true;
 }
 
+export async function ensureRustToolchain({
+	commandExistsImpl = commandExists,
+	runCommandImpl = runCommand,
+	withSpinnerImpl = withSpinner,
+} = {}) {
+	if (
+		(await commandExistsImpl("rustc")) &&
+		(await commandExistsImpl("cargo"))
+	) {
+		log.info("Rust is already installed.");
+		return true;
+	}
+
+	log.info("Installing Rust via rustup...");
+	return Boolean(
+		await withSpinnerImpl("Installing Rust", () =>
+			runCommandImpl(`curl ${RUSTUP_URL} -sSf | sh -s -- -y`),
+		),
+	);
+}
+
 async function installAurHelper() {
 	if (await commandExists("paru")) {
 		log.info("Paru is already installed.");
@@ -409,10 +430,7 @@ export async function runCachyOSSetup({
 	prepareArchPackageManagerImpl = prepareArchPackageManager,
 } = {}) {
 	if (!(await prepareArchPackageManagerImpl())) return false;
-	log.info("Installing Rust via rustup...");
-	await withSpinner("Installing Rust", () =>
-		runCommand(`curl ${RUSTUP_URL} -sSf | sh -s -- -y`),
-	);
+	await ensureRustToolchain();
 	const aurHelper = await ensureAurHelper();
 	await installDevTools();
 
