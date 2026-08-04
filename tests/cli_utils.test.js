@@ -2,7 +2,24 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { detectOS, findActiveModeFlags } from "../src/common/cli_utils.js";
+import {
+	detectOS,
+	findActiveModeFlags,
+	MODE_FLAGS,
+} from "../src/common/cli_utils.js";
+
+function registeredModeFlags(source) {
+	return [
+		...source.matchAll(
+			/\.(?:option|addOption\(\s*new\s+Option)\(\s*(["'])([^"']*--[a-z0-9-]+[^"']*)\1/g,
+		),
+	]
+		.map((match) => match[2].match(/--[a-z0-9-]+/)[0])
+		.filter((flag) => flag !== "--os")
+		.map((flag) =>
+			flag.slice(2).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase()),
+		);
+}
 
 describe("detectOS", () => {
 	let tmpDir;
@@ -89,34 +106,29 @@ describe("findActiveModeFlags", () => {
 		expect(result).toContain("zed");
 	});
 
-	it("recognizes every mutually-exclusive mode flag", () => {
-		const allFlags = [
-			"claude",
-			"claudeBackup",
-			"claudeUpdate",
-			"skills",
-			"skillsUpdate",
-			"skillsList",
-			"superpowers",
-			"zed",
-			"zedBackup",
-			"zedTheme",
-			"caelestiaPrefs",
-			"caelestiaPrefsBackup",
-			"sddmPosthook",
-			"audio",
-			"audioBackup",
-			"mimeapps",
-			"mimeappsBackup",
-			"lockfix",
-			"lockfixBackup",
-			"kdeTheme",
-			"kdeThemeBackup",
-			"kdeGlass",
-			"hyprland",
-		];
-		for (const flag of allFlags) {
+	it("covers every Commander one-shot option and excludes only --os", () => {
+		const source = fs.readFileSync(
+			path.resolve(import.meta.dir, "..", "haoshoku.js"),
+			"utf8",
+		);
+		const registeredModes = registeredModeFlags(source);
+
+		expect(MODE_FLAGS).toEqual(registeredModes);
+		for (const flag of registeredModes) {
 			expect(findActiveModeFlags({ [flag]: true })).toEqual([flag]);
 		}
+	});
+
+	it("derives mode flags from short aliases and addOption registrations", () => {
+		const source = `program
+			.option("-x, --xyz", "short alias")
+			.addOption(new Option("--via-option", "long-only Option"))
+			.addOption(new Option("-q, --aliased-option", "aliased Option"));`;
+
+		expect(registeredModeFlags(source)).toEqual([
+			"xyz",
+			"viaOption",
+			"aliasedOption",
+		]);
 	});
 });

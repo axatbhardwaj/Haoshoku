@@ -11,6 +11,7 @@ import fs from "node:fs";
 export const MODE_FLAGS = [
 	"claude",
 	"claudeBackup",
+	"claudeBootstrap",
 	"claudeUpdate",
 	"codex",
 	"codexBackup",
@@ -31,10 +32,18 @@ export const MODE_FLAGS = [
 	"mimeappsBackup",
 	"lockfix",
 	"lockfixBackup",
+	"worktreeCleanup",
+	"worktreeCleanupBackup",
+	"claudeStayAwake",
+	"claudeStayAwakeBackup",
+	"prWatch",
+	"prWatchBackup",
 	"kdeTheme",
 	"kdeThemeBackup",
+	"activities",
+	"activitiesOff",
+	"plasma",
 	"kdeGlass",
-	"hyprland",
 ];
 
 /**

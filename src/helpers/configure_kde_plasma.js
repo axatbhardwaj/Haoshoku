@@ -5,13 +5,6 @@ import path from "node:path";
 import { log, runCommand } from "../common/utils.js";
 
 const APP_SHORTCUTS = [
-	["brave-flux", "Brave Flux", "brave --profile-directory=Default", "Meta+B"],
-	[
-		"brave-work",
-		"Brave Work",
-		'brave --profile-directory="Profile 1"',
-		"Meta+W",
-	],
 	["terminal", "Terminal", "kitty", "Meta+T"],
 	["files", "Files", "dolphin", "Meta+E"],
 	["editor", "Editor", "zeditor", "Meta+C"],
@@ -25,6 +18,76 @@ const APP_SHORTCUTS = [
 	["music", "Spotify", "spotify", "Meta+M"],
 	["microphone", "Toggle microphone", "mic-toggle", "Meta+Shift+M"],
 ];
+
+function isPlainObject(value) {
+	return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function readKdeActivitiesOptIn(home) {
+	const stateFile = path.join(home, ".haoshoku.json");
+	if (!fs.existsSync(stateFile)) return false;
+	try {
+		const state = JSON.parse(fs.readFileSync(stateFile, "utf8"));
+		if (!isPlainObject(state)) throw new TypeError("expected a JSON object");
+		return state.kdeActivities === true;
+	} catch (err) {
+		log.warning(
+			`Malformed ~/.haoshoku.json at ${stateFile}; treating KDE Activities as not opted in (${err?.message ?? err})`,
+		);
+		return false;
+	}
+}
+
+function persistKdeActivitiesOptIn(home, enabled) {
+	const stateFile = path.join(home, ".haoshoku.json");
+	let state = {};
+	if (fs.existsSync(stateFile)) {
+		try {
+			const parsed = JSON.parse(fs.readFileSync(stateFile, "utf8"));
+			if (!isPlainObject(parsed)) throw new TypeError("expected a JSON object");
+			state = parsed;
+		} catch (err) {
+			log.warning(
+				`Malformed ~/.haoshoku.json at ${stateFile}; replacing it while updating KDE Activities (${err?.message ?? err})`,
+			);
+		}
+	}
+	state.kdeActivities = enabled;
+	fs.writeFileSync(stateFile, `${JSON.stringify(state, null, 2)}\n`);
+}
+
+function appShortcuts(home, kdeActivities) {
+	const brave = kdeActivities
+		? [
+				[
+					"brave-flux",
+					"Brave Flux",
+					`brave --user-data-dir=${path.join(home, ".local", "share", "haoshoku", "brave-flux")} --class=brave-flux`,
+					"Meta+B",
+				],
+				[
+					"brave-defi",
+					"Brave DeFi",
+					`brave --user-data-dir=${path.join(home, ".local", "share", "haoshoku", "brave-defi")} --class=brave-defi`,
+					"Meta+W",
+				],
+			]
+		: [
+				[
+					"brave-flux",
+					"Brave Flux",
+					"brave --profile-directory=Default",
+					"Meta+B",
+				],
+				[
+					"brave-work",
+					"Brave Work",
+					'brave --profile-directory="Profile 1"',
+					"Meta+W",
+				],
+			];
+	return [...brave, ...APP_SHORTCUTS];
+}
 
 function firstCapture(file) {
 	if (!fs.existsSync(file)) return;
@@ -104,15 +167,23 @@ function shortcutUpdates() {
 	return { kwin, org_kde_powerdevil: power, plasmashell: plasma };
 }
 
-function installLaunchers(home) {
+function installLaunchers(home, kdeActivities) {
 	const applications = path.join(home, ".local", "share", "applications");
 	fs.mkdirSync(applications, { recursive: true });
-	const retiredBrowserLauncher = path.join(
-		applications,
+	const retiredLaunchers = [
 		"haoshoku-browser.desktop",
-	);
-	if (fs.existsSync(retiredBrowserLauncher)) fs.rmSync(retiredBrowserLauncher);
-	for (const [id, name, command, shortcut] of APP_SHORTCUTS) {
+		kdeActivities
+			? "haoshoku-brave-work.desktop"
+			: "haoshoku-brave-defi.desktop",
+	];
+	for (const retired of retiredLaunchers) {
+		const target = path.join(applications, retired);
+		if (fs.existsSync(target)) fs.rmSync(target);
+	}
+	for (const [id, name, command, shortcut] of appShortcuts(
+		home,
+		kdeActivities,
+	)) {
 		const target = path.join(applications, `haoshoku-${id}.desktop`);
 		const content = [
 			"[Desktop Entry]",
@@ -135,12 +206,23 @@ export async function syncKdePlasma({
 	home = homedir(),
 	reload = true,
 	run = runCommand,
+	enableActivities = false,
+	disableActivities = false,
 } = {}) {
+	if (enableActivities && disableActivities) {
+		throw new Error("Cannot enable and disable KDE Activities together");
+	}
+	if (enableActivities || disableActivities) {
+		persistKdeActivitiesOptIn(home, enableActivities);
+	}
+	const kdeActivities = disableActivities
+		? false
+		: enableActivities || readKdeActivitiesOptIn(home);
 	setIniValues(
 		path.join(home, ".config", "kglobalshortcutsrc"),
 		shortcutUpdates(),
 	);
-	installLaunchers(home);
+	installLaunchers(home, kdeActivities);
 
 	if (reload) {
 		await run("kbuildsycoca6", { check: false });

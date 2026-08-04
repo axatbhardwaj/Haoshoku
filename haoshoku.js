@@ -30,6 +30,7 @@ import {
 	backupCodexConfig,
 	syncCodexConfig,
 } from "./src/helpers/configure_codex.js";
+import { syncKdeActivities } from "./src/helpers/configure_kde_activities.js";
 import { syncKdePlasma } from "./src/helpers/configure_kde_plasma.js";
 import {
 	backupKdeTheme,
@@ -167,6 +168,14 @@ program
 		"Backup KDE Ocean theme from system to configs/kde/",
 	)
 	.option(
+		"--activities",
+		"Provision KDE Activities and activity-scoped window placement",
+	)
+	.option(
+		"--activities-off",
+		"Restore the standard Brave launchers and disable Activities opt-in",
+	)
+	.option(
 		"--plasma",
 		"Migrate portable Haoshoku desktop settings and shortcuts to KDE Plasma",
 	)
@@ -189,12 +198,7 @@ async function runAction(options) {
 
 	// Mutually-exclusive mode flags: pass exactly one. Previously the if/return
 	// chain silently ran only the first matching flag and ignored the rest.
-	const activeFlags = [
-		...findActiveModeFlags(options),
-		...["claudeBootstrap", "prWatch", "prWatchBackup"].filter(
-			(flag) => options[flag],
-		),
-	];
+	const activeFlags = findActiveModeFlags(options);
 	if (activeFlags.length >= 2) {
 		log.error(
 			`--${activeFlags[0]} and --${activeFlags[1]} are mutually exclusive — pass exactly one mode flag`,
@@ -372,6 +376,20 @@ async function runAction(options) {
 
 	if (options.kdeGlass) {
 		await installKdeGlass();
+		return;
+	}
+
+	if (options.activities) {
+		await syncKdePlasma({ enableActivities: true });
+		if (!(await syncKdeActivities())) {
+			await syncKdePlasma({ disableActivities: true });
+			process.exit(1);
+		}
+		return;
+	}
+
+	if (options.activitiesOff) {
+		await syncKdePlasma({ disableActivities: true });
 		return;
 	}
 

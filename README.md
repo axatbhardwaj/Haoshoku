@@ -126,10 +126,38 @@ haoshoku --plasma
 
 The command installs portable launch shortcuts for Kitty, Dolphin, Zed, Claude,
 the agents terminal, and microphone mute, and unbinds the KDE/KWin defaults that
-would otherwise collide with them. Haoshoku does not manage virtual desktops or
-window placement. Hyprland-specific VRR mutation, Caelestia recovery, special
-workspaces, and the portrait lock-screen patch are deliberately not part of the
-Plasma path.
+would otherwise collide with them. The default paths do not write `kwinrc` or
+`kwinrulesrc` and do not manage virtual desktops.
+
+Window placement is available separately as an opt-in:
+
+**Warning:** `--activities` repoints the Brave launchers at **BRAND-NEW EMPTY
+profile directories**, so the flux and defi browsers start with no cookies,
+history, extensions, or passwords and remain separate from existing Brave
+profiles.
+
+```bash
+haoshoku --activities
+```
+
+This creates the `flux`, `defi`, and `palmUSD` activities when they are missing,
+preserves every existing activity, writes activity-scoped window rules, writes
+the one `kwinrc` `[Plugins]` key needed to enable the Haoshoku placement script,
+and installs that KWin script. Rules for windows intended to appear everywhere
+use every activity discovered after provisioning. No activity is deleted.
+
+To opt out of the isolated Brave launcher recipes, clear the saved opt-in and
+restore the original Default/Profile 1 launchers:
+
+```bash
+haoshoku --activities-off
+```
+
+This retires the DeFi launcher and restores the Brave Work launcher; it does not
+delete any activity. The placement matrix is specific to the author's
+three-monitor rig and is not portable. Hyprland-specific VRR mutation,
+Caelestia recovery, special workspaces, and the portrait lock-screen patch are
+deliberately not part of the Plasma path.
 
 ## Skill Management
 

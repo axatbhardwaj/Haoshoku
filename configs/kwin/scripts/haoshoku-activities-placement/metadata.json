@@ -1,0 +1,16 @@
+{
+	"KPackageStructure": "KWin/Script",
+	"KPlugin": {
+		"Authors": [
+			{
+				"Name": "Haoshoku"
+			}
+		],
+		"Description": "Places activity application windows on outputs by connector name",
+		"Id": "haoshoku-activities-placement",
+		"License": "MIT",
+		"Name": "Haoshoku Activities Placement",
+		"Version": "1.0.0"
+	},
+	"X-Plasma-API": "javascript"
+}

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Add the opt-in `--activities` mode, which creates the `flux`, `defi`, and
+  `palmUSD` KDE Activities when missing without deleting any activity; writes
+  activity-scoped window rules using every discovered activity for all-activity
+  windows; enables and installs the KWin placement script; and repoints the flux
+  and defi Brave launchers at brand-new empty profile directories with no cookies,
+  history, extensions, or passwords. `--activities-off` clears the saved opt-in,
+  restores the original Brave launcher recipes, and retires the DeFi launcher.
+  The placement matrix remains specific to the author's three-monitor rig.
 - Add the opt-in `--claude-bootstrap` mode for checking out the configured private
   Claude policy repository, including pre-mutation authentication checks and
   idempotent `origin` URL updates when `claudeBootstrapUrl` changes.

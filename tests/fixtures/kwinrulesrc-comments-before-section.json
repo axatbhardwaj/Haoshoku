@@ -1,0 +1,4 @@
+{
+	"original": "[General]\nrules=haoshoku-brave-work,custom\ncount=2\n\n[haoshoku-brave-work]\nwmclass=old\n\n# Custom rule documentation must survive\n; This comment belongs with the following section\n[custom]\nvalue=keep\n",
+	"preserved": "# Custom rule documentation must survive\n; This comment belongs with the following section\n[custom]\nvalue=keep\n"
+}

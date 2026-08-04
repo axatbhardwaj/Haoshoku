@@ -56,6 +56,150 @@ describe("syncKdePlasma", () => {
 		);
 	});
 
+	it("opting in retires the obsolete Brave Work launcher", async () => {
+		const stateFile = path.join(home, ".haoshoku.json");
+		fs.writeFileSync(stateFile, '{"skillSources":["example"]}\n');
+		const applications = path.join(home, ".local", "share", "applications");
+		fs.mkdirSync(applications, { recursive: true });
+		fs.writeFileSync(
+			path.join(applications, "haoshoku-brave-work.desktop"),
+			"retired launcher",
+		);
+
+		await syncKdePlasma({ home, reload: false, enableActivities: true });
+
+		expect(JSON.parse(fs.readFileSync(stateFile, "utf8"))).toEqual({
+			skillSources: ["example"],
+			kdeActivities: true,
+		});
+		const flux = fs.readFileSync(
+			path.join(applications, "haoshoku-brave-flux.desktop"),
+			"utf8",
+		);
+		const defi = fs.readFileSync(
+			path.join(applications, "haoshoku-brave-defi.desktop"),
+			"utf8",
+		);
+		expect(flux).toContain(
+			`Exec=brave --user-data-dir=${path.join(home, ".local", "share", "haoshoku", "brave-flux")} --class=brave-flux`,
+		);
+		expect(flux).toContain("X-KDE-Shortcuts=Meta+B");
+		expect(defi).toContain(
+			`Exec=brave --user-data-dir=${path.join(home, ".local", "share", "haoshoku", "brave-defi")} --class=brave-defi`,
+		);
+		expect(defi).toContain("X-KDE-Shortcuts=Meta+W");
+		expect(
+			fs.existsSync(path.join(applications, "haoshoku-brave-work.desktop")),
+		).toBe(false);
+	});
+
+	it("opting out retires the obsolete Brave DeFi launcher", async () => {
+		const applications = path.join(home, ".local", "share", "applications");
+		fs.mkdirSync(applications, { recursive: true });
+		fs.writeFileSync(
+			path.join(applications, "haoshoku-brave-defi.desktop"),
+			"retired launcher",
+		);
+
+		await syncKdePlasma({ home, reload: false });
+
+		expect(
+			fs.existsSync(path.join(applications, "haoshoku-brave-defi.desktop")),
+		).toBe(false);
+		expect(
+			fs.readFileSync(
+				path.join(applications, "haoshoku-brave-work.desktop"),
+				"utf8",
+			),
+		).toContain('Exec=brave --profile-directory="Profile 1"');
+	});
+
+	it("uses opted-in Brave recipes on later default Plasma syncs", async () => {
+		fs.writeFileSync(
+			path.join(home, ".haoshoku.json"),
+			'{"kdeActivities":true}\n',
+		);
+
+		await syncKdePlasma({ home, reload: false });
+
+		const applications = path.join(home, ".local", "share", "applications");
+		expect(
+			fs.readFileSync(
+				path.join(applications, "haoshoku-brave-flux.desktop"),
+				"utf8",
+			),
+		).toContain("--class=brave-flux");
+		expect(
+			fs.readFileSync(
+				path.join(applications, "haoshoku-brave-defi.desktop"),
+				"utf8",
+			),
+		).toContain("--class=brave-defi");
+	});
+
+	it("treats malformed opt-in state as off and preserves default Brave bytes", async () => {
+		const stateFile = path.join(home, ".haoshoku.json");
+		fs.writeFileSync(stateFile, "{ malformed json");
+		const messages = [];
+		const originalLog = console.log;
+		console.log = (...args) => messages.push(args.join(" "));
+
+		try {
+			await syncKdePlasma({ home, reload: false });
+		} finally {
+			console.log = originalLog;
+		}
+
+		const applications = path.join(home, ".local", "share", "applications");
+		expect(
+			fs.readFileSync(
+				path.join(applications, "haoshoku-brave-flux.desktop"),
+				"utf8",
+			),
+		).toContain("Exec=brave --profile-directory=Default");
+		expect(
+			fs.readFileSync(
+				path.join(applications, "haoshoku-brave-work.desktop"),
+				"utf8",
+			),
+		).toContain('Exec=brave --profile-directory="Profile 1"');
+		expect(fs.readFileSync(stateFile, "utf8")).toBe("{ malformed json");
+		expect(messages.join("\n")).toMatch(/Malformed .*\.haoshoku\.json/i);
+	});
+
+	it.each([
+		["null", "null"],
+		["an array", "[]"],
+		["a string", '"invalid"'],
+	])("warns and rebuilds opt-in state containing %s", async (_label, state) => {
+		const stateFile = path.join(home, ".haoshoku.json");
+		fs.writeFileSync(stateFile, `${state}\n`);
+		const messages = [];
+		const originalLog = console.log;
+		console.log = (...args) => messages.push(args.join(" "));
+
+		try {
+			await syncKdePlasma({ home, reload: false });
+			const applications = path.join(home, ".local", "share", "applications");
+			expect(
+				fs.readFileSync(
+					path.join(applications, "haoshoku-brave-work.desktop"),
+					"utf8",
+				),
+			).toContain('Exec=brave --profile-directory="Profile 1"');
+			expect(fs.readFileSync(stateFile, "utf8")).toBe(`${state}\n`);
+
+			await syncKdePlasma({ home, reload: false, enableActivities: true });
+		} finally {
+			console.log = originalLog;
+		}
+
+		expect(JSON.parse(fs.readFileSync(stateFile, "utf8"))).toEqual({
+			kdeActivities: true,
+		});
+		expect(messages.join("\n")).toMatch(/Malformed .*\.haoshoku\.json/i);
+	});
+
 	it("unbinds Plasma shortcuts that conflict with familiar app launchers", async () => {
 		await syncKdePlasma({ home, reload: false });
 		const shortcuts = fs.readFileSync(

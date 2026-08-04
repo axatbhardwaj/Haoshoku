@@ -160,11 +160,6 @@ describe("pr-watch Haoshoku wiring", () => {
     expect(source).toMatch(
       /if\s*\(\s*options\.prWatch\s*\)\s*\{\s*await\s+syncPrWatch\(\s*\)\s*;\s*return\s*;\s*\}/,
     );
-    // Asserts pr-watch's flags participate in the mutual-exclusion list without
-    // pinning the list's full membership: other features legitimately join it,
-    // and a literal match makes every such addition fail an unrelated test.
-    expect(source).toMatch(/"prWatch",\s*"prWatchBackup"\]\.filter\(/);
-    expect(source).toMatch(/\(flag\) => options\[flag\]/);
   });
 
   it("imports and awaits configurePrWatch in the CachyOS app setup", () => {

@@ -1,0 +1,3 @@
+{
+	"content": "[General]\nrules=keep\rrules=shadow\ncount=1\n\n[keep]\nvalue=untouched\n"
+}
