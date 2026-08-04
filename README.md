@@ -45,6 +45,9 @@ The Arch setup:
   and H stash (add Alt to H to stash the focused window);
 - isolates Flux, DeFi, WhatsApp, and Notion below
   `~/.config/chromium-haoshoku/`;
+- installs packaged Omazed and safely points Zed at its generated theme so Zed
+  follows the active Omarchy palette. Haoshoku never runs Omazed's manual
+  installer or deletes unrelated Zed themes;
 - continues after individual optional application failures and reports them.
 
 Haoshoku deliberately does not configure Fish, KDE Plasma, KWin, SDDM,
@@ -66,7 +69,8 @@ GPU packages.
 
 ## Bash additions
 
-The managed fragment provides guarded initialization for Starship, direnv,
+The managed fragment exposes both package-installed Bun and a user installation
+under `~/.bun/bin`, and provides guarded initialization for Starship, direnv,
 zoxide, thefuck, pyenv, and Conda, plus the aliases formerly kept in the Fish
 configuration. Machine-local secrets can be stored in
 `~/.config/haoshoku/secrets.bash`; that file is never copied into this repo.

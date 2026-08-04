@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Install Omazed from Omarchy's package repository and hand Zed theme ownership
+  to its generated palette. The setup path transactionally replaces the unsafe
+  object-form theme selector before first launch, preserves all other Zed
+  settings, restores the original on failure, and removes the retired
+  Caelestia theme only after successful setup.
+- Keep `bun-bin` in the Arch package set and add `~/.bun/bin` explicitly to the
+  managed Bash environment, fixing Bun lookup in clean Omarchy Bash sessions.
 - Restore the former Caelestia workspace workflow as an additive Omarchy user
   overlay. It preserves Omarchy visuals and stock shortcuts, restores the
   three-monitor map, uses a conflict-free special-workspace namespace, and
