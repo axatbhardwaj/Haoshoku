@@ -156,4 +156,21 @@ printf '%s\\0' "$@" > "$ROUTER_CALL"
 			"https://safe.example/malformed-json",
 		]);
 	});
+
+	// Mutation caught: accepting jq's partial stdout after a parse failure can send
+	// URLs to DeFi based on malformed client data instead of taking the Flux fallback.
+	it("falls back to Flux when valid client JSON has malformed trailing data", async () => {
+		const result = await run(
+			`${JSON.stringify([
+				{ class: "chromium-defi", focusHistoryID: 0 },
+			])} trailing-garbage`,
+			["https://safe.example/trailing-data"],
+		);
+
+		expect(result.exitCode).toBe(0);
+		expect(forwardedArguments()).toEqual([
+			"browser-flux",
+			"https://safe.example/trailing-data",
+		]);
+	});
 });

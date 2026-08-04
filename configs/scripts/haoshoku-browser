@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-profile="$(
-	{
-		hyprctl clients -j 2>/dev/null || true
-	} | jq -r '
+profile=""
+if ! profile="$(
+	hyprctl clients -j 2>/dev/null | jq -r '
 		[
 			.[]?
 			| select(type == "object")
@@ -14,8 +13,10 @@ profile="$(
 		]
 		| sort_by(.focusHistoryID)
 		| .[0].class // empty
-	' 2>/dev/null || true
-)"
+	' 2>/dev/null
+)"; then
+	profile=""
+fi
 
 case "$profile" in
 	chromium-defi) recipe="browser-defi" ;;
