@@ -450,9 +450,19 @@ async function configureFastfetch() {
 	}
 }
 
-async function installSystemPackages(aurHelper, isOmarchy) {
+export async function installSystemPackages(
+	aurHelper,
+	isOmarchy,
+	{
+		refreshSudoImpl = refreshSudo,
+		installArchPackageBatchImpl = installArchPackageBatch,
+		readFileImpl = fs.readFileSync,
+		runCommandImpl = runCommand,
+		promptUserImpl = promptUser,
+	} = {},
+) {
 	log.info("Preparing for package installation...");
-	if (!(await refreshSudo())) {
+	if (!(await refreshSudoImpl())) {
 		log.error(
 			"Sudo authentication failed. Skipping sudo-dependent installations.",
 		);
@@ -460,32 +470,30 @@ async function installSystemPackages(aurHelper, isOmarchy) {
 	}
 
 	log.info("Installing packages from file lists...");
-	const content = fs.readFileSync(PARU_APPLIST_PATH, "utf8");
+	const content = readFileImpl(PARU_APPLIST_PATH, "utf8");
 	const requested = content
 		.split("\n")
 		.map((line) => line.trim())
 		.filter((line) => line && !line.startsWith("#"));
-	const failed = [];
-	for (const pkg of requested) {
-		const command = selectArchInstallCommand(
-			pkg,
-			await packageInRepository(pkg),
-			aurHelper,
-		);
-		if (!command || !(await runCommand(command))) failed.push(pkg);
-	}
-	if (failed.length > 0) {
-		log.warning(
-			`${failed.length} package(s) failed to install:\n  ${failed.join("\n  ")}`,
-		);
+	const result = await installArchPackageBatchImpl(requested, { aurHelper });
+	for (const [label, packages] of [
+		["failed", result.failed],
+		["missing", result.missing],
+		["invalid", result.invalid],
+	]) {
+		if (packages.length > 0) {
+			log.warning(
+				`${packages.length} package(s) ${label}:\n  ${packages.join("\n  ")}`,
+			);
+		}
 	}
 
 	log.info("Installing Nerd Fonts...");
-	await runCommand(
+	await runCommandImpl(
 		"sudo pacman -S --needed --noconfirm ttf-jetbrains-mono-nerd",
 	);
 
-	if (await promptUser("Enable gaming configuration?", false)) {
+	if (await promptUserImpl("Enable gaming configuration?", false)) {
 		await installGamingPackages({ aurHelper, isOmarchy });
 	}
 }

@@ -32,6 +32,8 @@ The Arch setup:
   only when neither is available;
 - uses `pacman` for repository packages and the AUR helper only for AUR
   packages;
+- batches repository and AUR packages, filters missing targets, and retries only
+  still-uninstalled packages individually when a batch fails;
 - installs only JetBrains Mono Nerd Font instead of the conflicting complete
   Nerd Font group;
 - keeps Bash as the account shell and adds portable aliases and tool

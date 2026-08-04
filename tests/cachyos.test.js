@@ -5,6 +5,7 @@ import {
 	ensureRustToolchain,
 	installArchPackageBatch,
 	installGamingPackages,
+	installSystemPackages,
 	normalizeArchPackageNames,
 	prepareArchPackageManager,
 	resolveAurHelper,
@@ -310,6 +311,70 @@ describe("batched Arch package installation", () => {
 			invalid: [],
 			skipped: [],
 		});
+	});
+});
+
+describe("system package installation orchestration", () => {
+	it("passes filtered package-file entries to the batch installer before Nerd Fonts", async () => {
+		const commands = [];
+		const batchRequests = [];
+		const events = [];
+
+		await installSystemPackages("yay", false, {
+			refreshSudoImpl: async () => true,
+			readFileImpl: () => "# Applications\n chromium \n\nvisual-studio-code-bin\n",
+			installArchPackageBatchImpl: async (packages, options) => {
+				events.push("batch");
+				batchRequests.push({ packages, options });
+				return {
+					installed: ["chromium", "visual-studio-code-bin"],
+					failed: [],
+					missing: [],
+					invalid: [],
+					skipped: [],
+				};
+			},
+			runCommandImpl: async (command) => {
+				events.push("font");
+				commands.push(command);
+				return true;
+			},
+			promptUserImpl: async () => false,
+		});
+
+		expect(batchRequests).toEqual([
+			{
+				packages: ["chromium", "visual-studio-code-bin"],
+				options: { aurHelper: "yay" },
+			},
+		]);
+		expect(commands).toEqual([
+			"sudo pacman -S --needed --noconfirm ttf-jetbrains-mono-nerd",
+		]);
+		expect(events).toEqual(["batch", "font"]);
+	});
+
+	it("does not batch packages when sudo validation fails", async () => {
+		let batchCalls = 0;
+
+		await installSystemPackages("paru", false, {
+			refreshSudoImpl: async () => false,
+			readFileImpl: () => "chromium\n",
+			installArchPackageBatchImpl: async () => {
+				batchCalls += 1;
+				return {
+					installed: [],
+					failed: [],
+					missing: [],
+					invalid: [],
+					skipped: [],
+				};
+			},
+			runCommandImpl: async () => true,
+			promptUserImpl: async () => false,
+		});
+
+		expect(batchCalls).toBe(0);
 	});
 });
 
