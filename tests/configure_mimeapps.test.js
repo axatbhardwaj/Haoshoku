@@ -443,9 +443,35 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 		);
 
 		expect(desktop).toContain("Name=WhatsApp Web");
-		expect(desktop).toContain("Exec=caelestia toggle communication");
+		expect(desktop).toContain("Exec=whatsapp-web");
 		expect(desktop).toContain("Type=Application");
 		expect(desktop).toContain("StartupWMClass=brave-web.whatsapp.com__-Default");
+	});
+
+	it("restores the working WhatsApp Exec on every later mimeapps sync", async () => {
+		const liveApplications = path.join(
+			tmpHome,
+			".local",
+			"share",
+			"applications",
+		);
+		fs.mkdirSync(liveApplications, { recursive: true });
+		fs.writeFileSync(
+			path.join(liveApplications, "whatsapp-web.desktop"),
+			"[Desktop Entry]\nExec=caelestia toggle communication\n",
+		);
+
+		await mimeapps.syncMimeappsConfig({
+			home: tmpHome,
+			projectRoot: PROJECT_ROOT,
+		});
+
+		const deployed = fs.readFileSync(
+			path.join(liveApplications, "whatsapp-web.desktop"),
+			"utf8",
+		);
+		expect(deployed).toContain("Exec=whatsapp-web");
+		expect(deployed).not.toContain("Exec=caelestia toggle communication");
 	});
 
 	it("sets Dolphin as the XDG default for directories", () => {
