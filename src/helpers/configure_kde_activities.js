@@ -23,6 +23,9 @@ const WINDOW_CLASSES = {
 	spotify: "Spotify",
 	agents: "kitty-agents",
 	braveFlux: "brave-flux",
+	// Measured live because steam.desktop declares no StartupWMClass. Exact
+	// wmclassmatch=1 deliberately excludes steam_app_* game windows.
+	steam: "steam",
 	discord: "discord",
 	whatsapp: "brave-web.whatsapp.com__-Default",
 	telegram: "org.telegram.desktop",
@@ -36,6 +39,7 @@ const RULES = [
 	["haoshoku-spotify", "spotify", "all", "Spotify"],
 	["haoshoku-agents", "agents", "all", "Agents"],
 	["haoshoku-brave-flux", "braveFlux", "flux", "Brave Flux"],
+	["haoshoku-steam", "steam", "flux", "Steam"],
 	["haoshoku-discord", "discord", "flux", "Discord"],
 	["haoshoku-whatsapp", "whatsapp", "flux", "WhatsApp"],
 	["haoshoku-telegram", "telegram", "flux", "Telegram"],

@@ -146,6 +146,23 @@ the one `kwinrc` `[Plugins]` key needed to enable the Haoshoku placement script,
 and installs that KWin script. Rules for windows intended to appear everywhere
 use every activity discovered after provisioning. No activity is deleted.
 
+| Window | Exact Wayland class | Activity scope | Output |
+| --- | --- | --- | --- |
+| Notion | `brave-dcokohelbbehjlcjjfmhfbpdgfjcoopf-Default` | All managed activities | `DP-2` |
+| Spotify | `Spotify` | All managed activities | `DP-2` |
+| Agents | `kitty-agents` | All managed activities | `DP-2` |
+| Brave Flux | `brave-flux` | `flux` | `DP-1` |
+| Steam | `steam` | `flux` | `DP-1` |
+| Discord | `discord` | `flux` | `HDMI-A-1` |
+| WhatsApp | `brave-web.whatsapp.com__-Default` | `flux` | `HDMI-A-1` |
+| Telegram | `org.telegram.desktop` | `flux` | `HDMI-A-1` |
+| Signal | `signal` | `flux` | `HDMI-A-1` |
+| Brave DeFi | `brave-defi` | `defi` | `DP-1` |
+| Teams | `teams-for-linux` | `defi` | `HDMI-A-1` |
+
+Placement uses each output's work area, so panels remain unobstructed. Steam's
+exact `steam` match deliberately leaves `steam_app_*` game windows unmanaged.
+
 To opt out of the isolated Brave launcher recipes, clear the saved opt-in and
 restore the original Default/Profile 1 launchers:
 

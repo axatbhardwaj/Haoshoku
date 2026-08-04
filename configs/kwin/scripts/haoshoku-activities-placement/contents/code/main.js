@@ -6,6 +6,7 @@ const outputByClass = {
 	// was measured, while these exact production values were not observed live.
 	"brave-flux": "DP-1",
 	"brave-defi": "DP-1",
+	steam: "DP-1",
 	discord: "HDMI-A-1",
 	"brave-web.whatsapp.com__-Default": "HDMI-A-1",
 	"org.telegram.desktop": "HDMI-A-1",
@@ -14,6 +15,8 @@ const outputByClass = {
 };
 
 workspace.windowAdded.connect((window) => {
+	if (!window.normalWindow) return;
+
 	const outputName = outputByClass[window.resourceClass];
 	if (!outputName) return;
 

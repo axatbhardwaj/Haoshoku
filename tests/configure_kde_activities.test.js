@@ -29,6 +29,7 @@ const CLASSES = {
 	spotify: "Spotify",
 	agents: "kitty-agents",
 	braveFlux: "brave-flux",
+	steam: "steam",
 	discord: "discord",
 	whatsapp: "brave-web.whatsapp.com__-Default",
 	telegram: "org.telegram.desktop",
@@ -190,6 +191,7 @@ describe("updateKwinRulesContent", () => {
 			"haoshoku-spotify",
 			"haoshoku-agents",
 			"haoshoku-brave-flux",
+			"haoshoku-steam",
 			"haoshoku-discord",
 			"haoshoku-whatsapp",
 			"haoshoku-telegram",
@@ -197,7 +199,7 @@ describe("updateKwinRulesContent", () => {
 			"haoshoku-brave-defi",
 			"haoshoku-teams",
 		]);
-		expect(section(result, "General")).toContain("count=11\n");
+		expect(section(result, "General")).toContain("count=12\n");
 	});
 
 	it("emits the measured Wayland classes and explicit forced activity UUIDs", async () => {
@@ -209,6 +211,7 @@ describe("updateKwinRulesContent", () => {
 			"haoshoku-spotify": [CLASSES.spotify, allActivities],
 			"haoshoku-agents": [CLASSES.agents, allActivities],
 			"haoshoku-brave-flux": [CLASSES.braveFlux, IDS.flux],
+			"haoshoku-steam": [CLASSES.steam, IDS.flux],
 			"haoshoku-discord": [CLASSES.discord, IDS.flux],
 			"haoshoku-whatsapp": [CLASSES.whatsapp, IDS.flux],
 			"haoshoku-telegram": [CLASSES.telegram, IDS.flux],
@@ -225,6 +228,20 @@ describe("updateKwinRulesContent", () => {
 			expect(block).toContain("activityrule=2\n");
 			expect(block).toMatch(/^Description=Haoshoku /m);
 		}
+	});
+
+	it("pins only Steam's exact measured class to flux", async () => {
+		const { updateKwinRulesContent } = await activitiesModule();
+		const result = updateKwinRulesContent("", IDS, CLASSES);
+		const steam = section(result, "haoshoku-steam");
+		const allActivities = `${IDS.flux},${IDS.defi},${IDS.palmUSD}`;
+
+		expect(steam).toContain("wmclass=steam\n");
+		expect(steam).toContain("wmclassmatch=1\n");
+		expect(steam).toContain(`activity=${IDS.flux}\n`);
+		expect(steam).toContain("activityrule=2\n");
+		expect(steam).not.toContain(`activity=${allActivities}\n`);
+		expect(steam).not.toContain("wmclasscomplete=");
 	});
 
 	it("never emits screen or desktop placement keys", async () => {
@@ -338,6 +355,23 @@ describe("KWin activities placement asset", () => {
 		}).toThrow("output is read-only");
 	});
 
+	it("leaves matching non-normal windows untouched", () => {
+		const { callbacks } = loadPlacementHarness();
+		const originalOutput = guarded({ name: "original" });
+		const originalFrame = { x: 99, y: 88, width: 800, height: 600 };
+		const window = guarded({
+			normalWindow: false,
+			resourceClass: CLASSES.steam,
+			output: originalOutput,
+			frameGeometry: originalFrame,
+		});
+
+		callbacks[0](window);
+
+		expect(window.output).toBe(originalOutput);
+		expect(window.frameGeometry).toBe(originalFrame);
+	});
+
 	it("falls back to output geometry when clientArea is absent and clamps within it", () => {
 		const { callbacks, workspace } = loadPlacementHarness();
 		expect(callbacks).toHaveLength(1);
@@ -346,6 +380,7 @@ describe("KWin activities placement asset", () => {
 			[CLASSES.spotify]: "DP-2",
 			[CLASSES.agents]: "DP-2",
 			[CLASSES.braveFlux]: "DP-1",
+			[CLASSES.steam]: "DP-1",
 			[CLASSES.braveDefi]: "DP-1",
 			[CLASSES.discord]: "HDMI-A-1",
 			[CLASSES.whatsapp]: "HDMI-A-1",
@@ -357,6 +392,7 @@ describe("KWin activities placement asset", () => {
 		for (const [resourceClass, outputName] of Object.entries(expected)) {
 			const originalOutput = guarded({ name: "original" });
 			const window = guarded({
+				normalWindow: true,
 				resourceClass,
 				output: originalOutput,
 				frameGeometry: { x: 99, y: 88, width: 1600, height: 1200 },
@@ -375,15 +411,19 @@ describe("KWin activities placement asset", () => {
 		}
 	});
 
-	it("uses the output work area origin and bounds for placement", () => {
+	it("places matching normal windows using the output work area", () => {
 		const workArea = { x: 1090, y: 274, width: 2540, height: 1380 };
-		const { callbacks } = loadPlacementHarness(undefined, (area, output, desktop) => {
-			if (area !== 0 || output.name !== "DP-1" || desktop !== "desktop-1") {
-				throw new Error("unexpected clientArea arguments");
-			}
-			return workArea;
-		});
+		const { callbacks } = loadPlacementHarness(
+			undefined,
+			(area, output, desktop) => {
+				if (area !== 0 || output.name !== "DP-1" || desktop !== "desktop-1") {
+					throw new Error("unexpected clientArea arguments");
+				}
+				return workArea;
+			},
+		);
 		const window = guarded({
+			normalWindow: true,
 			resourceClass: CLASSES.braveFlux,
 			output: guarded({ name: "original" }),
 			frameGeometry: { x: 99, y: 88, width: 3000, height: 1500 },
@@ -394,11 +434,44 @@ describe("KWin activities placement asset", () => {
 		expect(window.frameGeometry).toEqual(workArea);
 	});
 
+	it("places only Steam's own class in the DP-1 work area", () => {
+		const workArea = { x: 1080, y: 244, width: 2560, height: 1410 };
+		const { callbacks } = loadPlacementHarness(
+			undefined,
+			(area, output, desktop) => {
+				if (area !== 0 || output.name !== "DP-1" || desktop !== "desktop-1") {
+					throw new Error("unexpected clientArea arguments");
+				}
+				return workArea;
+			},
+		);
+		const steam = guarded({
+			normalWindow: true,
+			resourceClass: CLASSES.steam,
+			output: guarded({ name: "original" }),
+			frameGeometry: { x: 99, y: 88, width: 3000, height: 1500 },
+		});
+
+		callbacks[0](steam);
+
+		expect(steam.frameGeometry).toEqual(workArea);
+		const gameFrame = { x: 10, y: 20, width: 1920, height: 1080 };
+		const game = guarded({
+			normalWindow: true,
+			resourceClass: "steam_app_730",
+			output: guarded({ name: "original" }),
+			frameGeometry: gameFrame,
+		});
+		callbacks[0](game);
+		expect(game.frameGeometry).toBe(gameFrame);
+	});
+
 	it("falls back to output geometry when clientArea throws", () => {
 		const { callbacks } = loadPlacementHarness(undefined, () => {
 			throw new Error("clientArea unavailable");
 		});
 		const window = guarded({
+			normalWindow: true,
 			resourceClass: CLASSES.braveFlux,
 			output: guarded({ name: "original" }),
 			frameGeometry: { x: 99, y: 88, width: 3000, height: 1500 },
@@ -415,6 +488,7 @@ describe("KWin activities placement asset", () => {
 			const originalOutput = guarded({ name: "original" });
 			const originalFrame = { x: 99, y: 88, width: 800, height: 600 };
 			const window = guarded({
+				normalWindow: true,
 				resourceClass,
 				output: originalOutput,
 				frameGeometry: originalFrame,
@@ -434,6 +508,7 @@ describe("KWin activities placement asset", () => {
 		]);
 		const window = new Proxy(
 			{
+				normalWindow: true,
 				resourceClass: CLASSES.discord,
 				output: null,
 				frameGeometry: { x: 0, y: 0, width: 800, height: 600 },
@@ -640,7 +715,11 @@ describe("syncKdeActivities", () => {
 		fs.writeFileSync(kwinrc, original);
 
 		expect(
-			await syncKdeActivities({ home, runCapture: db.runCapture, reload: false }),
+			await syncKdeActivities({
+				home,
+				runCapture: db.runCapture,
+				reload: false,
+			}),
 		).toBe(true);
 
 		const enabled = fs.readFileSync(kwinrc, "utf8");

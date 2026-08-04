@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add Steam to the KDE Activities placement matrix using its live-measured
+  Wayland `resourceClass=steam` (the desktop entry declares no
+  `StartupWMClass`). The exact KWin rule pins only Steam's own windows to the
+  `flux` activity and the `DP-1` work area, deliberately leaving
+  `steam_app_*` game windows unmanaged.
 - Add the opt-in `--activities` mode, which creates the `flux`, `defi`, and
   `palmUSD` KDE Activities when missing without deleting any activity; writes
   activity-scoped window rules using every discovered activity for all-activity
