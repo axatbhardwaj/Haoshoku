@@ -16,9 +16,10 @@ import { configureClaude } from "../helpers/configure_claude.js";
 import { configureClaudeStayAwake } from "../helpers/configure_claude_stay_awake.js";
 import { configureCodex } from "../helpers/configure_codex.js";
 import { configureMimeapps } from "../helpers/configure_mimeapps.js";
+import { configureOmarchyMonitors } from "../helpers/configure_omarchy_monitors.js";
+import { configureOmarchyWorkspaces } from "../helpers/configure_omarchy_workspaces.js";
 import { configurePrWatch } from "../helpers/configure_pr_watch.js";
 import { installUserScripts } from "../helpers/install_user_scripts.js";
-import { configureOmarchyMonitors } from "../helpers/configure_omarchy_monitors.js";
 
 // URLs
 const RUSTUP_URL = "https://sh.rustup.rs";
@@ -414,6 +415,7 @@ export async function runCachyOSSetup() {
 	await installFlatpakApps();
 	await configureUserApps();
 	if (isOmarchy) await configureOmarchyMonitors();
+	if (isOmarchy) await configureOmarchyWorkspaces();
 
 	log.success("Arch setup finished. Please restart your terminal or log out.");
 }

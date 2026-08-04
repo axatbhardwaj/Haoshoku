@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+recipe="${1:-}"
+
+has_client() {
+  local pattern="$1"
+  hyprctl clients -j | jq -e --arg pattern "$pattern" 'any(.[]; ((.class // "") | test($pattern; "i")))' >/dev/null
+}
+
+launch() {
+  local workspace="$1"
+  shift
+  hyprctl dispatch exec "[workspace ${workspace} silent] uwsm-app -- $*" >/dev/null
+}
+
+launch_if_missing() {
+  local workspace="$1" pattern="$2"
+  shift 2
+  has_client "$pattern" || launch "$workspace" "$@"
+}
+
+if [[ "$recipe" == numbered ]]; then
+  [[ $# -eq 3 ]] || { echo "usage: haoshoku-special-workspace numbered WORKSPACE APP" >&2; exit 2; }
+  workspace="$2" app="$3"
+  hyprctl dispatch workspace "$workspace" >/dev/null
+  case "$app" in
+    steam) launch_if_missing "$workspace" '^[Ss]team$' steam ;;
+    discord) launch_if_missing "$workspace" '^(discord|vesktop)$' discord ;;
+    communication-numbered)
+      launch_if_missing "$workspace" '^teams-for-linux$' teams-for-linux
+      launch_if_missing "$workspace" '^(TelegramDesktop|org\.telegram\.desktop)$' Telegram
+      ;;
+    notion) launch_if_missing "$workspace" '^chromium-notion$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/notion" --class=chromium-notion --app=https://www.notion.so/ ;;
+    *) echo "unknown numbered recipe: $app" >&2; exit 2 ;;
+  esac
+  exit 0
+fi
+
+case "$recipe" in
+  agents) workspace=agents; monitor=DP-2 ;;
+  claude-desktop) workspace=claude-desktop; monitor=DP-2 ;;
+  music) workspace=music; monitor=DP-1 ;;
+  1password) workspace=1password; monitor=DP-1 ;;
+  communication) workspace=communication; monitor=HDMI-A-1 ;;
+  browser-flux) workspace=browser-flux; monitor=DP-1 ;;
+  browser-defi) workspace=browser-defi; monitor=DP-1 ;;
+  stash) workspace=stash; monitor=DP-1 ;;
+  *) echo "unknown workspace recipe: ${recipe:-<empty>}" >&2; exit 2 ;;
+esac
+
+hyprctl dispatch focusmonitor "$monitor" >/dev/null
+hyprctl dispatch togglespecialworkspace "$workspace" >/dev/null
+
+case "$recipe" in
+  agents) launch_if_missing "special:$workspace" '^haoshoku-agents$' alacritty --class haoshoku-agents -e bash -lc claude ;;
+  claude-desktop) launch_if_missing "special:$workspace" '^com\.anthropic\.Claude$' claude-desktop ;;
+  music) launch_if_missing "special:$workspace" '^[Ss]potify$' spotify ;;
+  1password) launch_if_missing "special:$workspace" '^1password$' 1password ;;
+  communication)
+    launch_if_missing "special:$workspace" '^signal$' signal-desktop
+    launch_if_missing "special:$workspace" '^chromium-whatsapp$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/whatsapp" --class=chromium-whatsapp --app=https://web.whatsapp.com/
+    ;;
+  browser-flux) launch_if_missing "special:$workspace" '^chromium-flux$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/flux" --class=chromium-flux ;;
+  browser-defi) launch_if_missing "special:$workspace" '^chromium-defi$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/defi" --class=chromium-defi ;;
+  stash) ;;
+esac

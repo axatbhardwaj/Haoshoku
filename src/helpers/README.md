@@ -1,5 +1,9 @@
 # src/helpers/
 
+`configure_omarchy_workspaces.js` deploys the behavior-only Hyprland overlay
+and its fixed-recipe Bash helper, then adds one idempotent source line to the
+user's `hyprland.conf`. It never edits `~/.local/share/omarchy/`.
+
 ## Claude Config Architecture
 
 The Claude configuration has deliberately separate ownership paths:
