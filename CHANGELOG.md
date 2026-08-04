@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Restore the former Caelestia workspace workflow as an additive Omarchy user
+  overlay. It preserves Omarchy visuals and stock shortcuts, restores the
+  three-monitor map, uses a conflict-free special-workspace namespace, and
+  replaces Brave profiles and PWAs with isolated Chromium data directories.
 - Make the Arch desktop path Omarchy-native without restructuring the installer:
   prefer `yay` with `paru` fallback, route repository packages through `pacman`,
   install a single conflict-free Nerd Font, port the user's shell additions to a

@@ -1,4 +1,6 @@
 # configs/omarchy/
 
-`monitors.conf` is the only Omarchy/Hyprland user configuration managed by
-Haoshoku. Do not add theme, bindings, appearance, or other desktop files here.
+Haoshoku manages `monitors.conf` plus the additive `workspaces.conf` behavior
+overlay. Omarchy remains the owner of appearance and core defaults. Do not add
+theme, wallpaper, Waybar, Walker, terminal, lock-screen, animation, decoration,
+or other visual settings here, and do not unbind Omarchy shortcuts.
