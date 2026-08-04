@@ -49,6 +49,41 @@ case "$recipe" in
   *) echo "unknown workspace recipe: ${recipe:-<empty>}" >&2; exit 2 ;;
 esac
 
+if [[ "$recipe" == browser-flux || "$recipe" == browser-defi ]]; then
+  urls=("${@:2}")
+else
+  [[ $# -eq 1 ]] || { echo "usage: haoshoku-special-workspace $recipe" >&2; exit 2; }
+fi
+
+reveal_special_workspace() {
+  hyprctl dispatch focusmonitor "$monitor" >/dev/null
+  hyprctl monitors -j | jq -e --arg workspace "special:$workspace" 'any(.[]; .specialWorkspace.name == $workspace)' >/dev/null || \
+    hyprctl dispatch togglespecialworkspace "$workspace" >/dev/null
+}
+
+if [[ "$recipe" == browser-flux || "$recipe" == browser-defi ]]; then
+  case "$recipe" in
+    browser-flux) profile=flux; class=chromium-flux ;;
+    browser-defi) profile=defi; class=chromium-defi ;;
+  esac
+
+  chromium=(
+    /usr/bin/chromium
+    "--user-data-dir=$HOME/.config/chromium-haoshoku/$profile"
+    "--class=$class"
+    "${urls[@]}"
+  )
+
+  if has_client "^$class$"; then
+    "${chromium[@]}"
+    reveal_special_workspace
+  else
+    reveal_special_workspace
+    "${chromium[@]}" >/dev/null 2>&1 &
+  fi
+  exit 0
+fi
+
 hyprctl dispatch focusmonitor "$monitor" >/dev/null
 hyprctl dispatch togglespecialworkspace "$workspace" >/dev/null
 
@@ -61,7 +96,5 @@ case "$recipe" in
     launch_if_missing "special:$workspace" '^signal$' signal-desktop
     launch_if_missing "special:$workspace" '^chromium-whatsapp$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/whatsapp" --class=chromium-whatsapp --app=https://web.whatsapp.com/
     ;;
-  browser-flux) launch_if_missing "special:$workspace" '^chromium-flux$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/flux" --class=chromium-flux ;;
-  browser-defi) launch_if_missing "special:$workspace" '^chromium-defi$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/defi" --class=chromium-defi ;;
   stash) ;;
 esac
