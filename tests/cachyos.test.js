@@ -222,4 +222,14 @@ describe("Omarchy-owned defaults", () => {
 		expect(packages).not.toContain("protonup-rs-bin");
 		expect(packages).not.toContain("steam-native-runtime");
 	});
+
+	it("does not manage Stremio and its retired Qt5 dependency chain", () => {
+		const packages = fs
+			.readFileSync(
+				path.resolve(import.meta.dir, "..", "common", "paru_applist.txt"),
+				"utf8",
+			)
+			.split(/\r?\n/);
+		expect(packages).not.toContain("stremio");
+	});
 });

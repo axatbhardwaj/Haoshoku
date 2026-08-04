@@ -62,7 +62,6 @@ r-quick-share-bin
 spotify
 spicetify-cli
 spicetify-marketplace-bin
-stremio
 teamspeak
 timr
 warp-terminal-bin
