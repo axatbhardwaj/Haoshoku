@@ -41,10 +41,17 @@ printf '%s\\0' "$@" > "$ROUTER_CALL"
 
 	afterEach(() => fs.rmSync(directory, { recursive: true, force: true }));
 
-	async function run(clients, urls) {
+	async function run(clients, urls, { chromiumProfiles } = {}) {
+		if (chromiumProfiles !== undefined) {
+			fs.writeFileSync(
+				path.join(directory, ".haoshoku.json"),
+				JSON.stringify({ chromiumProfiles }),
+			);
+		}
 		const proc = Bun.spawn(["bash", browserRouter, ...urls], {
 			env: {
 				...process.env,
+				HOME: directory,
 				HYPR_CLIENTS: clients,
 				PATH: `${directory}:${process.env.PATH}`,
 				ROUTER_CALL: call,
@@ -80,9 +87,105 @@ printf '%s\\0' "$@" > "$ROUTER_CALL"
 
 		expect(result.exitCode).toBe(0);
 		expect(forwardedArguments()).toEqual([
-			"browser-defi",
+			"browser",
+			"defi",
 			"https://app.defi.example/portfolio",
 			"https://app.defi.example/trade?pair=ETH%2FUSD",
+		]);
+	});
+
+	// Mutation caught: limiting the router to the shipped Flux/DeFi classes
+	// makes a registered future profile unreachable as the default browser.
+	it("routes URLs to the focused third configured profile", async () => {
+		const result = await run(
+			JSON.stringify([
+				{ class: "chromium-flux", focusHistoryID: 8 },
+				{ class: "chromium-research", focusHistoryID: 2 },
+			]),
+			["https://research.example/brief"],
+			{
+				chromiumProfiles: [
+					{
+						id: "flux",
+						class: "chromium-flux",
+						monitor: "DP-1",
+					},
+					{
+						id: "defi",
+						class: "chromium-defi",
+						monitor: "DP-1",
+					},
+					{
+						id: "research",
+						class: "chromium-research",
+						monitor: "DP-2",
+						default: true,
+					},
+				],
+			},
+		);
+
+		expect(result.exitCode).toBe(0);
+		expect(forwardedArguments()).toEqual([
+			"browser",
+			"research",
+			"https://research.example/brief",
+		]);
+	});
+
+	// Mutation caught: falling back to Flux instead of the configured default
+	// launches default-browser URLs in the wrong profile when no client exists.
+	it("falls back to the configured default profile", async () => {
+		const result = await run(
+			JSON.stringify([{ class: "chromium-unmanaged", focusHistoryID: 0 }]),
+			["https://default.example/"],
+			{
+				chromiumProfiles: [
+					{
+						id: "flux",
+						class: "chromium-flux",
+						monitor: "DP-1",
+					},
+					{
+						id: "research",
+						class: "chromium-research",
+						monitor: "DP-2",
+						default: true,
+					},
+				],
+			},
+		);
+
+		expect(result.exitCode).toBe(0);
+		expect(forwardedArguments()).toEqual([
+			"browser",
+			"research",
+			"https://default.example/",
+		]);
+	});
+
+	// Mutation caught: trusting a malformed registry can route to an arbitrary
+	// class; invalid configuration must restore the shipped safe registry.
+	it("falls back to the shipped registry when configured profiles are invalid", async () => {
+		const invalidRegistry = [
+			{
+				id: "research;not-safe",
+				class: "chromium-research",
+				monitor: "DP-2",
+				default: true,
+			},
+		];
+		const result = await run(
+			JSON.stringify([{ class: "chromium-defi", focusHistoryID: 0 }]),
+			["https://fallback.example/"],
+			{ chromiumProfiles: invalidRegistry },
+		);
+
+		expect(result.exitCode).toBe(0);
+		expect(forwardedArguments()).toEqual([
+			"browser",
+			"defi",
+			"https://fallback.example/",
 		]);
 	});
 
@@ -99,7 +202,8 @@ printf '%s\\0' "$@" > "$ROUTER_CALL"
 
 		expect(result.exitCode).toBe(0);
 		expect(forwardedArguments()).toEqual([
-			"browser-flux",
+			"browser",
+			"flux",
 			"https://flux.example/research?q=one%20two",
 		]);
 	});
@@ -114,7 +218,8 @@ printf '%s\\0' "$@" > "$ROUTER_CALL"
 
 		expect(result.exitCode).toBe(0);
 		expect(forwardedArguments()).toEqual([
-			"browser-flux",
+			"browser",
+			"flux",
 			"https://fallback.example/",
 		]);
 	});
@@ -136,7 +241,8 @@ printf '%s\\0' "$@" > "$ROUTER_CALL"
 		expect(result.exitCode).toBe(0);
 		expect(fs.existsSync(marker)).toBe(false);
 		expect(forwardedArguments()).toEqual([
-			"browser-flux",
+			"browser",
+			"flux",
 			"https://safe.example/unknown-profile",
 		]);
 	});
@@ -152,7 +258,8 @@ printf '%s\\0' "$@" > "$ROUTER_CALL"
 		expect(result.exitCode).toBe(0);
 		expect(fs.existsSync(marker)).toBe(false);
 		expect(forwardedArguments()).toEqual([
-			"browser-flux",
+			"browser",
+			"flux",
 			"https://safe.example/malformed-json",
 		]);
 	});
@@ -169,7 +276,8 @@ printf '%s\\0' "$@" > "$ROUTER_CALL"
 
 		expect(result.exitCode).toBe(0);
 		expect(forwardedArguments()).toEqual([
-			"browser-flux",
+			"browser",
+			"flux",
 			"https://safe.example/trailing-data",
 		]);
 	});

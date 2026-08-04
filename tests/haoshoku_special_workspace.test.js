@@ -57,7 +57,16 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 	});
 	afterEach(() => fs.rmSync(directory, { recursive: true, force: true }));
 
-	async function run(args, { clients = "[]", sandboxChromium = false } = {}) {
+	async function run(
+		args,
+		{ clients = "[]", sandboxChromium = false, chromiumProfiles } = {},
+	) {
+		if (chromiumProfiles !== undefined) {
+			fs.writeFileSync(
+				path.join(directory, ".haoshoku.json"),
+				JSON.stringify({ chromiumProfiles }),
+			);
+		}
 		const command = sandboxChromium
 			? [
 					"bwrap",
@@ -133,6 +142,65 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 			`--user-data-dir=${directory}/.config/chromium-haoshoku/defi`,
 			"--class=chromium-defi",
 		]);
+	});
+
+	// Mutation caught: hard-coding Flux and DeFi recipe branches rejects a valid
+	// future profile instead of deriving its workspace and Chromium argv safely.
+	it("opens a registered third profile through the generic browser command", async () => {
+		const chromiumProfiles = [
+			{
+				id: "flux",
+				class: "chromium-flux",
+				monitor: "DP-1",
+				default: true,
+			},
+			{
+				id: "defi",
+				class: "chromium-defi",
+				monitor: "DP-1",
+			},
+			{
+				id: "research",
+				class: "chromium-research",
+				monitor: "DP-2",
+			},
+		];
+		const result = await run(
+			["browser", "research", "https://research.example/brief"],
+			{ chromiumProfiles, sandboxChromium: true },
+		);
+
+		expect(result.exitCode).toBe(0);
+		expect(await chromiumArguments()).toEqual([
+			`--user-data-dir=${directory}/.config/chromium-haoshoku/research`,
+			"--class=chromium-research",
+			"https://research.example/brief",
+		]);
+		expect(fs.readFileSync(log, "utf8")).toContain("dispatch focusmonitor DP-2");
+		expect(fs.readFileSync(specialState, "utf8")).toBe("browser-research");
+	});
+
+	// Mutation caught: accepting an ID that is absent from the validated registry
+	// starts an uncontrolled Chromium data directory instead of rejecting it.
+	it("rejects unknown generic browser profile IDs before launching Chromium", async () => {
+		const result = await run(
+			["browser", "not-registered", "https://unsafe.example/"],
+			{
+				chromiumProfiles: [
+					{
+						id: "flux",
+						class: "chromium-flux",
+						monitor: "DP-1",
+						default: true,
+					},
+				],
+				sandboxChromium: true,
+			},
+		);
+
+		expect(result.exitCode).toBe(2);
+		expect(result.stderr).toContain("unknown browser profile");
+		expect(fs.existsSync(browserCall)).toBe(false);
 	});
 
 	for (const [recipe, profile] of [

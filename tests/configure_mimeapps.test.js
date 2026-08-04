@@ -471,6 +471,48 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 		expect(deployed).not.toContain("Exec=caelestia toggle communication");
 	});
 
+	// Mutation caught: copying only mimeapps.list or retaining Chromium's desktop
+	// ID bypasses the focused-profile router for ordinary browser URLs.
+	it("deploys the Haoshoku Browser handler as every web default on repeat sync", async () => {
+		await mimeapps.syncMimeappsConfig({
+			home: tmpHome,
+			projectRoot: PROJECT_ROOT,
+		});
+		await mimeapps.syncMimeappsConfig({
+			home: tmpHome,
+			projectRoot: PROJECT_ROOT,
+		});
+
+		const handler = fs.readFileSync(
+			path.join(
+				tmpHome,
+				".local",
+				"share",
+				"applications",
+				"haoshoku-browser.desktop",
+			),
+			"utf8",
+		);
+		const deployedMimeapps = fs.readFileSync(
+			path.join(tmpHome, ".config", "mimeapps.list"),
+			"utf8",
+		);
+
+		expect(handler).toContain("Exec=haoshoku-browser %U");
+		expect(handler).toContain(
+			"MimeType=text/html;x-scheme-handler/http;x-scheme-handler/https;x-scheme-handler/about;x-scheme-handler/unknown;",
+		);
+		for (const association of [
+			"text/html=haoshoku-browser.desktop",
+			"x-scheme-handler/http=haoshoku-browser.desktop",
+			"x-scheme-handler/https=haoshoku-browser.desktop",
+			"x-scheme-handler/about=haoshoku-browser.desktop",
+			"x-scheme-handler/unknown=haoshoku-browser.desktop",
+		]) {
+			expect(deployedMimeapps).toContain(association);
+		}
+	});
+
 	it("sets Omarchy's Files app as the XDG default for directories", () => {
 		const content = fs.readFileSync(
 			path.join(CONFIGS_MIMEAPPS_DIR, "mimeapps.list"),

@@ -15,6 +15,7 @@ import { configureBash } from "../helpers/configure_bash.js";
 import { configureClaude } from "../helpers/configure_claude.js";
 import { configureClaudeStayAwake } from "../helpers/configure_claude_stay_awake.js";
 import { configureCodex } from "../helpers/configure_codex.js";
+import { configureChromiumProfiles } from "../helpers/configure_chromium_profiles.js";
 import { configureMimeapps } from "../helpers/configure_mimeapps.js";
 import { configureOmarchyMonitors } from "../helpers/configure_omarchy_monitors.js";
 import { configureOmarchyWorkspaces } from "../helpers/configure_omarchy_workspaces.js";
@@ -514,34 +515,60 @@ async function installFlatpakApps() {
 	);
 }
 
-async function configureUserApps() {
-	if (await promptUser("Configure git?", true)) {
-		const { configureGit } = await import("../helpers/configure_git.js");
+export async function configureBrowserIntegration({
+	configureChromiumProfilesImpl = configureChromiumProfiles,
+	configureMimeappsImpl = configureMimeapps,
+	installUserScriptsImpl = installUserScripts,
+} = {}) {
+	await configureChromiumProfilesImpl();
+	await configureMimeappsImpl();
+	await installUserScriptsImpl();
+}
+
+export async function configureUserApps({
+	promptUserImpl = promptUser,
+	configureGitImpl,
+	configureBrowserIntegrationImpl = configureBrowserIntegration,
+	configureAudioImpl = configureAudio,
+	configureBashImpl = configureBash,
+	configureFastfetchImpl = configureFastfetch,
+	runCommandImpl = runCommand,
+	enableServicesImpl = enableServices,
+	configureClaudeImpl = configureClaude,
+	configureClaudeStayAwakeImpl = configureClaudeStayAwake,
+	configurePrWatchImpl = configurePrWatch,
+	configureCodexImpl = configureCodex,
+	configureAgentOsImpl = configureAgentOs,
+} = {}) {
+	if (await promptUserImpl("Configure git?", true)) {
+		const configureGit =
+			configureGitImpl ??
+			(await import("../helpers/configure_git.js")).configureGit;
 		await configureGit();
 	}
 
-	await configureMimeapps();
-	await installUserScripts();
+	await configureBrowserIntegrationImpl();
 	try {
-		await configureAudio();
+		await configureAudioImpl();
 	} catch (err) {
 		log.warning(
 			`Audio config sync failed (${err?.message ?? err}) — continuing with remaining app setup.`,
 		);
 	}
 
-	configureBash();
-	await configureFastfetch();
+	configureBashImpl();
+	await configureFastfetchImpl();
 
 	log.info("Installing uosc for MPV...");
-	await runCommand(`curl -fsSL ${UOSC_INSTALL_URL} | bash`);
+	await runCommandImpl(`curl -fsSL ${UOSC_INSTALL_URL} | bash`);
 
-	await enableServices();
-	await configureClaude();
-	await configureClaudeStayAwake();
-	await configurePrWatch();
-	await configureCodex();
-	await configureAgentOs();
+	await enableServicesImpl();
+	await configureClaudeImpl();
+	await configureClaudeStayAwakeImpl();
+	if (configurePrWatchImpl === configurePrWatch) await configurePrWatch();
+	else await configurePrWatchImpl();
+	await configureCodexImpl();
+	await configureAgentOsImpl();
 }
 
 export async function runCachyOSSetup({
