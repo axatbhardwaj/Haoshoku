@@ -68,21 +68,27 @@ describe("CachyOS browser integration", () => {
 			configureAgentOsImpl: record("agent-os"),
 		});
 
-		expect(prompts).toContainEqual({
-			message: "Bootstrap private Claude policy repository?",
-			initial: true,
-		});
-		expect(calls).not.toContain("bootstrap");
+		expect(
+			prompts.filter(
+				({ message, initial }) =>
+					message === "Bootstrap private Claude policy repository?" && initial,
+			),
+		).toHaveLength(1);
+		expect(calls.filter((call) => call === "bootstrap")).toHaveLength(0);
 		expect(calls).toContain("agent-os");
 	});
 
 	it("bootstraps private Claude policy after the public baseline", async () => {
 		const calls = [];
+		const prompts = [];
+		const bootstrapCalls = [];
 		const record = (name) => async () => calls.push(name);
 
 		await configureUserApps({
-			promptUserImpl: async (message) =>
-				message === "Bootstrap private Claude policy repository?",
+			promptUserImpl: async (message, initial) => {
+				prompts.push({ message, initial });
+				return message === "Bootstrap private Claude policy repository?";
+			},
 			configureBrowserIntegrationImpl: record("browser-integration"),
 			configureAudioImpl: record("audio"),
 			configureBashImpl: () => calls.push("bash"),
@@ -90,7 +96,11 @@ describe("CachyOS browser integration", () => {
 			runCommandImpl: record("uosc"),
 			enableServicesImpl: record("services"),
 			configureClaudeImpl: record("claude"),
-			bootstrapClaudePolicyImpl: record("bootstrap"),
+			bootstrapClaudePolicyImpl: async (options) => {
+				calls.push("bootstrap");
+				bootstrapCalls.push(options);
+				return true;
+			},
 			configureClaudeStayAwakeImpl: record("stay-awake"),
 			configurePrWatchImpl: record("pr-watch"),
 			configureCodexImpl: record("codex"),
@@ -98,12 +108,20 @@ describe("CachyOS browser integration", () => {
 		});
 
 		expect(calls.indexOf("bootstrap")).toBe(calls.indexOf("claude") + 1);
+		expect(
+			prompts.filter(
+				({ message, initial }) =>
+					message === "Bootstrap private Claude policy repository?" && initial,
+			),
+		).toHaveLength(1);
+		expect(bootstrapCalls).toEqual([{ strict: false }]);
 		expect(calls).toContain("agent-os");
 	});
 
 	it("warns with a retry command and continues when policy bootstrap fails", async () => {
 		const calls = [];
 		const warnings = [];
+		const bootstrapCalls = [];
 		const record = (name) => async () => calls.push(name);
 		const originalWarning = log.warning;
 		log.warning = (message) => warnings.push(message);
@@ -119,7 +137,10 @@ describe("CachyOS browser integration", () => {
 				runCommandImpl: record("uosc"),
 				enableServicesImpl: record("services"),
 				configureClaudeImpl: record("claude"),
-				bootstrapClaudePolicyImpl: async () => false,
+				bootstrapClaudePolicyImpl: async (options) => {
+					bootstrapCalls.push(options);
+					return false;
+				},
 				configureClaudeStayAwakeImpl: record("stay-awake"),
 				configurePrWatchImpl: record("pr-watch"),
 				configureCodexImpl: record("codex"),
@@ -130,6 +151,7 @@ describe("CachyOS browser integration", () => {
 		}
 
 		expect(warnings.join("\n")).toContain("haoshoku --claude-bootstrap");
+		expect(bootstrapCalls).toEqual([{ strict: false }]);
 		expect(calls).toContain("agent-os");
 	});
 });
