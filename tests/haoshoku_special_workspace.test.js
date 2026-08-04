@@ -30,6 +30,9 @@ elif [[ "$1 $2" == "monitors -j" ]]; then
   printf '[{"specialWorkspace":{"name":"special:%s"}}]\\n' "$state"
 elif [[ "$1 $2" == "activeworkspace -j" ]]; then
   printf '{"name":"special:%s"}\\n' "$state"
+elif [[ "$1" == "dispatch" && "$2" == "workspace" && "$3" == special:* ]]; then
+  printf '%s' "\${3#special:}" > "$SPECIAL_STATE"
+  printf '%s\\n' "$*" >> "$CALL_LOG"
 elif [[ "$1" == "dispatch" && "$2" == "togglespecialworkspace" ]]; then
   if [[ "$state" == "$3" ]]; then : > "$SPECIAL_STATE"; else printf '%s' "$3" > "$SPECIAL_STATE"; fi
   printf '%s\\n' "$*" >> "$CALL_LOG"
@@ -87,6 +90,15 @@ fi
 	// Mutation caught: unconditionally toggling an already-visible workspace hides
 	// it, so an explicit browser recipe cannot reliably reveal and focus it.
 	for (const recipe of ["browser-flux", "browser-defi"]) {
+		// Mutation caught: omitting the reveal action when the browser workspace is
+		// initially absent leaves the explicit browser recipe off-screen.
+		it(`reveals ${recipe} when the special workspace is initially absent`, async () => {
+			expect(fs.existsSync(specialState)).toBe(false);
+
+			expect((await run([recipe])).exitCode).toBe(0);
+			expect(fs.readFileSync(specialState, "utf8")).toBe(recipe);
+		});
+
 		it(`keeps ${recipe} visible when the explicit recipe is invoked again`, async () => {
 			fs.writeFileSync(specialState, recipe);
 

@@ -62,11 +62,13 @@ printf '%s\\0' "$@" > "$ROUTER_CALL"
 		return fs.readFileSync(call, "utf8").split("\0").filter(Boolean);
 	}
 
-	// Mutation caught: choosing the largest ID or the first matching client sends
-	// default-browser URLs to the profile that was not focused most recently.
+	// Mutation caught: accepting a negative ID, choosing the largest ID, or taking
+	// the first match sends default-browser URLs to a stale profile instead of the
+	// registered profile with the smallest non-negative focus-history ID.
 	it("routes multiple URLs to the registered window with the smallest focus history ID", async () => {
 		const result = await run(
 			JSON.stringify([
+				{ class: "chromium-flux", focusHistoryID: -1 },
 				{ class: "chromium-flux", focusHistoryID: 12 },
 				{ class: "chromium-defi", focusHistoryID: 3 },
 			]),
