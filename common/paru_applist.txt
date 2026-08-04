@@ -59,13 +59,11 @@ kiro-ide-bin
 obs-backgroundremoval
 obs-composite-blur
 opencode-bin
-protonup-rs-bin
 raindrop
 r-quick-share-bin
 spotify
 spicetify-cli
 spicetify-marketplace-bin
-steam-native-runtime
 stremio
 teamspeak
 timr

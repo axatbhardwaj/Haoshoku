@@ -84,4 +84,15 @@ describe("Omarchy-owned defaults", () => {
 			expect(packages.split(/\s+/)).not.toContain(removed);
 		}
 	});
+
+	it("keeps optional gaming packages behind the gaming prompt", () => {
+		const packages = fs
+			.readFileSync(
+				path.resolve(import.meta.dir, "..", "common", "paru_applist.txt"),
+				"utf8",
+			)
+			.split(/\s+/);
+		expect(packages).not.toContain("protonup-rs-bin");
+		expect(packages).not.toContain("steam-native-runtime");
+	});
 });
