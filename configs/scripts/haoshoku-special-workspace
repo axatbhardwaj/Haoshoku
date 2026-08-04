@@ -94,7 +94,8 @@ if [[ -n "$browser_profile" ]]; then
     reveal_special_workspace
   else
     reveal_special_workspace
-    "${chromium[@]}" >/dev/null 2>&1 &
+    printf -v chromium_command '%q ' "${chromium[@]}"
+    hyprctl dispatch exec "[workspace special:$workspace silent] uwsm-app -- $chromium_command" >/dev/null
   fi
   exit 0
 fi

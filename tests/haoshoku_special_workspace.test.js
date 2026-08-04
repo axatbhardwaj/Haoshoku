@@ -24,6 +24,7 @@ describe("haoshoku-special-workspace", () => {
 		chromium = path.join(directory, "chromium");
 		specialState = path.join(directory, "special-workspace-state");
 		const hyprctl = path.join(directory, "hyprctl");
+		const uwsmApp = path.join(directory, "uwsm-app");
 		fs.writeFileSync(
 			hyprctl,
 			`#!/usr/bin/env bash
@@ -40,9 +41,18 @@ elif [[ "$1" == "dispatch" && "$2" == "workspace" && "$3" == special:* ]]; then
 elif [[ "$1" == "dispatch" && "$2" == "togglespecialworkspace" ]]; then
   if [[ "$state" == "$3" ]]; then : > "$SPECIAL_STATE"; else printf '%s' "$3" > "$SPECIAL_STATE"; fi
   printf '%s\\n' "$*" >> "$CALL_LOG"
+elif [[ "$1 $2" == "dispatch exec" ]]; then
+  printf '%s\\n' "$*" >> "$CALL_LOG"
+  bash -c "\${3#*] }"
 else
   printf '%s\\n' "$*" >> "$CALL_LOG"
 fi
+`,
+		);
+		fs.writeFileSync(
+			uwsmApp,
+			`#!/usr/bin/env bash
+exec "$@"
 `,
 		);
 		fs.writeFileSync(
@@ -54,6 +64,7 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 		);
 		fs.chmodSync(hyprctl, 0o755);
 		fs.chmodSync(chromium, 0o755);
+		fs.chmodSync(uwsmApp, 0o755);
 	});
 	afterEach(() => fs.rmSync(directory, { recursive: true, force: true }));
 
@@ -104,6 +115,35 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 			stderr: await new Response(proc.stderr).text(),
 		};
 	}
+
+	// Mutation caught: directly backgrounding Chromium after revealing its workspace
+	// lets it land on the active workspace; unescaped URL data can also become shell
+	// syntax when Hyprland's string-based exec API is used.
+	it("launches an absent browser through its special workspace with literal URL argv", async () => {
+		const marker = path.join(directory, "hostile-url-executed");
+		const hostileUrl = `https://example.test/has space;$(touch ${marker})?dollar=$HOME`;
+		const result = await run(["browser-flux", hostileUrl], {
+			sandboxChromium: true,
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(await chromiumArguments()).toEqual([
+			`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+			"--class=chromium-flux",
+			hostileUrl,
+		]);
+		expect(fs.existsSync(marker)).toBe(false);
+		const calls = fs.readFileSync(log, "utf8").split("\n");
+		const launchIndex = calls.findIndex((call) =>
+			call.startsWith(
+				"dispatch exec [workspace special:browser-flux silent] uwsm-app -- ",
+			),
+		);
+		expect(launchIndex).toBeGreaterThan(
+			calls.indexOf("dispatch togglespecialworkspace browser-flux"),
+		);
+		expect(launchIndex).toBeLessThan(calls.indexOf("chromium"));
+	});
 
 	async function chromiumArguments() {
 		for (let attempt = 0; attempt < 20; attempt += 1) {
