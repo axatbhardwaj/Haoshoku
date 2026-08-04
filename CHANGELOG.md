@@ -28,6 +28,11 @@
 - Add the opt-in `--claude-bootstrap` mode for checking out the configured private
   Claude policy repository, including pre-mutation authentication checks and
   idempotent `origin` URL updates when `claudeBootstrapUrl` changes.
+- During full setup, prompt (default Yes) to bootstrap the configured private
+  Claude policy repository after the public baseline. An unreachable or
+  authentication-failed repository now warns and lets setup continue; retry with
+  `haoshoku --claude-bootstrap`. The checkout never runs `git clean`, preserving
+  Omarchy's `~/.claude/skills/omarchy` symlink.
 
 ## 6.1.0 - 2026-08-01
 

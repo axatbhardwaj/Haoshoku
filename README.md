@@ -57,6 +57,23 @@ The Arch setup:
 Haoshoku deliberately does not configure Fish, KDE Plasma, KWin, SDDM,
 Caelestia, terminal themes, Zed themes, or wallpapers.
 
+## Claude policy bootstrap
+
+During full setup, Haoshoku deploys its public Claude fallback and integration
+files, then asks whether to bootstrap the configured private Claude policy
+repository; the prompt defaults to Yes. If that repository is unreachable or
+authentication fails, setup continues and can be retried with:
+
+```bash
+haoshoku --claude-bootstrap
+```
+
+The private repository owns the live `CLAUDE.md`, `settings.json`, wrapper
+agents, workflows, conventions, and output styles. Haoshoku owns only the
+bootstrap orchestration and its public fallback/integration files. Bootstrap
+does not run `git clean`, so Omarchy's managed
+`~/.claude/skills/omarchy` symlink survives.
+
 ## Gaming
 
 Accepting the gaming prompt installs a portable Arch gaming base:
