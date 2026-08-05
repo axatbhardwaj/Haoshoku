@@ -82,6 +82,24 @@ describe("Omarchy workspace overlay", () => {
 		);
 	});
 
+	it("routes X by its exact app-derived Chromium class to workspace 6", () => {
+		expect(config).toContain(
+			"windowrule = workspace 6 silent, match:class ^chrome-x\\.com__-Default$",
+		);
+	});
+
+	it("does not let X's class regex match a decoy character", () => {
+		const rule = config.match(
+			/^windowrule = workspace 6 silent, match:class (.+)$/m,
+		)?.[1];
+		expect(rule).toBeDefined();
+		expect("chrome-xXcom__-Default").not.toMatch(new RegExp(rule));
+	});
+
+	it("keeps workspace 6 pinned to the portrait monitor", () => {
+		expect(config).toContain("workspace = 6, monitor:DP-2");
+	});
+
 	it("routes WhatsApp by its exact app-derived Chromium class", () => {
 		expect(config).toContain(
 			"windowrule = workspace special:communication, match:class ^(signal|Signal|chrome-web\\.whatsapp\\.com__-Default)$",
