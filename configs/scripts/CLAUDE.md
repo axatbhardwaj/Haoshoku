@@ -32,3 +32,7 @@ binary acts as a PATH-shadow wrapper for that binary.
 - Retired workspace-7 helpers are cleaned from `~/.local/bin/`; the active
   helper is `kitty-workspace-7`. Warp itself is still installed and still has
   its `configs/warp/` tab config; nothing launches it from a keybind any more.
+- Chromium profile `.monitor` remains required for registry schema stability,
+  but browser workspaces normally follow the focused monitor instead of that
+  value. It is used only as a fallback when Hyprland transiently reports no
+  focused monitor.

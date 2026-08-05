@@ -82,20 +82,31 @@ else
   [[ $# -eq 1 ]] || { echo "usage: haoshoku-special-workspace $recipe" >&2; exit 2; }
 fi
 
-reveal_special_workspace() {
-  hyprctl dispatch focusmonitor "$monitor" >/dev/null
-  special_workspace_visible || \
-    hyprctl dispatch togglespecialworkspace "$workspace" >/dev/null
+load_special_workspace_state() {
+  local monitors
+  monitors="$(hyprctl monitors -j)"
+  focused_monitor="$(jq -r 'first(.[] | select(.focused == true) | .name) // empty' <<<"$monitors")"
+  visible_monitor="$(jq -r --arg workspace "special:$workspace" 'first(.[] | select(.specialWorkspace.name == $workspace) | .name) // empty' <<<"$monitors")"
+  if [[ -n "$browser_profile" ]]; then
+    monitor="${focused_monitor:-$monitor}"
+  fi
 }
 
-special_workspace_visible() {
-  hyprctl monitors -j | jq -e --arg workspace "special:$workspace" 'any(.[]; .specialWorkspace.name == $workspace)' >/dev/null
+toggle_special_workspace() {
+  [[ -n "$visible_monitor" ]] || hyprctl dispatch focusmonitor "$monitor" >/dev/null
+  hyprctl dispatch togglespecialworkspace "$workspace" >/dev/null
 }
+
+reveal_special_workspace() {
+  [[ -n "$visible_monitor" && "$visible_monitor" == "$focused_monitor" ]] || \
+    toggle_special_workspace
+}
+
+load_special_workspace_state
 
 if [[ -n "$browser_profile" ]]; then
-  if "$browser_toggle" && special_workspace_visible; then
-    hyprctl dispatch focusmonitor "$monitor" >/dev/null
-    hyprctl dispatch togglespecialworkspace "$workspace" >/dev/null
+  if "$browser_toggle" && [[ -n "$visible_monitor" ]]; then
+    toggle_special_workspace
     exit 0
   fi
 
@@ -118,8 +129,7 @@ if [[ -n "$browser_profile" ]]; then
   exit 0
 fi
 
-hyprctl dispatch focusmonitor "$monitor" >/dev/null
-hyprctl dispatch togglespecialworkspace "$workspace" >/dev/null
+toggle_special_workspace
 
 case "$recipe" in
   agents) launch_if_missing "special:$workspace" '^haoshoku-agents$' kitty --class haoshoku-agents bash -lc claude ;;

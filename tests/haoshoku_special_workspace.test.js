@@ -20,30 +20,58 @@ describe("haoshoku-special-workspace", () => {
 	let log;
 	let browserCall;
 	let chromium;
+	let focusedMonitorState;
+	let specialMonitorState;
 	let specialState;
 	beforeEach(() => {
 		directory = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-special-"));
 		log = path.join(directory, "calls");
 		browserCall = path.join(directory, "chromium-call");
 		chromium = path.join(directory, "chromium");
+		focusedMonitorState = path.join(directory, "focused-monitor-state");
+		specialMonitorState = path.join(directory, "special-monitor-state");
 		specialState = path.join(directory, "special-workspace-state");
+		fs.writeFileSync(focusedMonitorState, "DP-1");
+		fs.writeFileSync(specialMonitorState, "DP-1");
 		const hyprctl = path.join(directory, "hyprctl");
 		const uwsmApp = path.join(directory, "uwsm-app");
 		fs.writeFileSync(
 			hyprctl,
 			`#!/usr/bin/env bash
 if [[ -f "$SPECIAL_STATE" ]]; then state="$(< "$SPECIAL_STATE")"; else state=""; fi
+focused_monitor="$(< "$FOCUSED_MONITOR_STATE")"
+special_monitor="$(< "$SPECIAL_MONITOR_STATE")"
 if [[ "$1 $2" == "clients -j" ]]; then
   printf '%s\\n' "$HYPR_CLIENTS"
 elif [[ "$1 $2" == "monitors -j" ]]; then
-  printf '[{"specialWorkspace":{"name":"special:%s"}}]\\n' "$state"
+  separator=""
+  printf '['
+  for monitor in DP-1 DP-2 HDMI-A-1; do
+    if [[ "$monitor" == "$focused_monitor" ]]; then focused=true; else focused=false; fi
+    if [[ -n "$state" && "$monitor" == "$special_monitor" ]]; then special="special:$state"; else special=""; fi
+    printf '%s{"name":"%s","focused":%s,"specialWorkspace":{"name":"%s"}}' "$separator" "$monitor" "$focused" "$special"
+    separator=,
+  done
+  printf ']\\n'
 elif [[ "$1 $2" == "activeworkspace -j" ]]; then
   printf '{"name":"special:%s"}\\n' "$state"
 elif [[ "$1" == "dispatch" && "$2" == "workspace" && "$3" == special:* ]]; then
   printf '%s' "\${3#special:}" > "$SPECIAL_STATE"
   printf '%s\\n' "$*" >> "$CALL_LOG"
+elif [[ "$1" == "dispatch" && "$2" == "focusmonitor" ]]; then
+  printf '%s' "$3" > "$FOCUSED_MONITOR_STATE"
+  printf '%s\\n' "$*" >> "$CALL_LOG"
 elif [[ "$1" == "dispatch" && "$2" == "togglespecialworkspace" ]]; then
-  if [[ "$state" == "$3" ]]; then : > "$SPECIAL_STATE"; else printf '%s' "$3" > "$SPECIAL_STATE"; fi
+  if [[ "$state" == "$3" ]]; then
+    if [[ "$special_monitor" == "$focused_monitor" ]]; then
+      : > "$SPECIAL_STATE"
+    else
+      printf '%s' "$focused_monitor" > "$SPECIAL_MONITOR_STATE"
+    fi
+  else
+    printf '%s' "$3" > "$SPECIAL_STATE"
+    printf '%s' "$focused_monitor" > "$SPECIAL_MONITOR_STATE"
+  fi
   printf '%s\\n' "$*" >> "$CALL_LOG"
 elif [[ "$1 $2" == "dispatch exec" ]]; then
   printf '%s\\n' "$*" >> "$CALL_LOG"
@@ -74,8 +102,19 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 
 	async function run(
 		args,
-		{ clients = "[]", chromiumProfiles } = {},
+		{
+			clients = "[]",
+			chromiumProfiles,
+			focusedMonitor = "DP-1",
+			visibleWorkspace,
+			visibleMonitor = "DP-1",
+		} = {},
 	) {
+		fs.writeFileSync(focusedMonitorState, focusedMonitor);
+		if (visibleWorkspace !== undefined) {
+			fs.writeFileSync(specialState, visibleWorkspace);
+			fs.writeFileSync(specialMonitorState, visibleMonitor);
+		}
 		if (chromiumProfiles !== undefined) {
 			fs.writeFileSync(
 				path.join(directory, ".haoshoku.json"),
@@ -89,7 +128,9 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 				HYPR_CLIENTS: clients,
 				BROWSER_CALL: browserCall,
 				CALL_LOG: log,
+				FOCUSED_MONITOR_STATE: focusedMonitorState,
 				SPECIAL_STATE: specialState,
+				SPECIAL_MONITOR_STATE: specialMonitorState,
 				PATH: `${directory}:${process.env.PATH}`,
 			},
 			stdout: "pipe",
@@ -100,6 +141,178 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 			stderr: await new Response(proc.stderr).text(),
 		};
 	}
+
+	function dispatchCalls() {
+		return fs.readFileSync(log, "utf8").trim().split("\n");
+	}
+
+	const fluxClient = JSON.stringify([{ class: "chromium-flux" }]);
+	const agentsClient = JSON.stringify([{ class: "haoshoku-agents" }]);
+	const forwardedUrl = "https://example.test/forwarded";
+
+	it("forwards a generic browser URL without hiding it on the focused monitor", async () => {
+		const result = await run(["browser", "flux", forwardedUrl], {
+			clients: fluxClient,
+			focusedMonitor: "DP-1",
+			visibleWorkspace: "browser-flux",
+			visibleMonitor: "DP-1",
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(await chromiumArguments()).toEqual([
+			`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+			forwardedUrl,
+		]);
+		expect(dispatchCalls()).toEqual(["chromium"]);
+		expect(fs.readFileSync(specialState, "utf8")).toBe("browser-flux");
+	});
+
+	it("pulls a generic browser from another monitor after forwarding its URL", async () => {
+		const result = await run(["browser", "flux", forwardedUrl], {
+			clients: fluxClient,
+			focusedMonitor: "DP-1",
+			visibleWorkspace: "browser-flux",
+			visibleMonitor: "DP-2",
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(await chromiumArguments()).toEqual([
+			`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+			forwardedUrl,
+		]);
+		expect(dispatchCalls()).toEqual([
+			"chromium",
+			"dispatch togglespecialworkspace browser-flux",
+		]);
+		expect(fs.readFileSync(specialState, "utf8")).toBe("browser-flux");
+		expect(fs.readFileSync(specialMonitorState, "utf8")).toBe("DP-1");
+	});
+
+	it("keeps a visible browser workspace shown before launching its missing client", async () => {
+		const result = await run(["browser", "flux", forwardedUrl], {
+			focusedMonitor: "DP-1",
+			visibleWorkspace: "browser-flux",
+			visibleMonitor: "DP-1",
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(await chromiumArguments()).toEqual([
+			`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+			"--class=chromium-flux",
+			forwardedUrl,
+		]);
+		expect(dispatchCalls()).not.toContain(
+			"dispatch togglespecialworkspace browser-flux",
+		);
+		expect(fs.readFileSync(specialState, "utf8")).toBe("browser-flux");
+	});
+
+	it("opens a hidden browser workspace on the focused monitor", async () => {
+		const result = await run(["browser-toggle", "flux"], {
+			clients: fluxClient,
+			focusedMonitor: "DP-2",
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(dispatchCalls()).toEqual([
+			"dispatch focusmonitor DP-2",
+			"dispatch togglespecialworkspace browser-flux",
+		]);
+	});
+
+	it("pulls a browser workspace from another monitor without hiding it", async () => {
+		const result = await run(["browser-toggle", "flux"], {
+			clients: fluxClient,
+			focusedMonitor: "DP-2",
+			visibleWorkspace: "browser-flux",
+			visibleMonitor: "DP-1",
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(dispatchCalls()).toEqual([
+			"dispatch togglespecialworkspace browser-flux",
+		]);
+		expect(fs.readFileSync(specialState, "utf8")).toBe("browser-flux");
+		expect(fs.readFileSync(specialMonitorState, "utf8")).toBe("DP-2");
+	});
+
+	it("hides a browser workspace visible on the focused monitor", async () => {
+		const result = await run(["browser-toggle", "flux"], {
+			clients: fluxClient,
+			focusedMonitor: "DP-2",
+			visibleWorkspace: "browser-flux",
+			visibleMonitor: "DP-2",
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(dispatchCalls()).toEqual([
+			"dispatch togglespecialworkspace browser-flux",
+		]);
+	});
+
+	it("falls back to the profile monitor when no monitor is focused", async () => {
+		const result = await run(["browser-toggle", "flux"], {
+			clients: fluxClient,
+			chromiumProfiles: [
+				{
+					id: "flux",
+					class: "chromium-flux",
+					monitor: "HDMI-A-1",
+					default: true,
+				},
+			],
+			focusedMonitor: "",
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(dispatchCalls()).toEqual([
+			"dispatch focusmonitor HDMI-A-1",
+			"dispatch togglespecialworkspace browser-flux",
+		]);
+	});
+
+	it("opens hidden agents on its pinned monitor", async () => {
+		const result = await run(["agents"], {
+			clients: agentsClient,
+			focusedMonitor: "DP-1",
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(dispatchCalls()).toEqual([
+			"dispatch focusmonitor DP-2",
+			"dispatch togglespecialworkspace agents",
+		]);
+	});
+
+	it("pulls visible agents to the focused monitor without hiding it", async () => {
+		const result = await run(["agents"], {
+			clients: agentsClient,
+			focusedMonitor: "DP-1",
+			visibleWorkspace: "agents",
+			visibleMonitor: "DP-2",
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(dispatchCalls()).toEqual([
+			"dispatch togglespecialworkspace agents",
+		]);
+		expect(fs.readFileSync(specialState, "utf8")).toBe("agents");
+		expect(fs.readFileSync(specialMonitorState, "utf8")).toBe("DP-1");
+	});
+
+	it("hides agents visible on the focused monitor", async () => {
+		const result = await run(["agents"], {
+			clients: agentsClient,
+			focusedMonitor: "DP-2",
+			visibleWorkspace: "agents",
+			visibleMonitor: "DP-2",
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(dispatchCalls()).toEqual([
+			"dispatch togglespecialworkspace agents",
+		]);
+	});
 
 	// Mutation caught: directly backgrounding Chromium after revealing its workspace
 	// lets it land on the active workspace; unescaped URL data can also become shell
@@ -199,7 +412,7 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 			"--class=chromium-research",
 			"https://research.example/brief",
 		]);
-		expect(fs.readFileSync(log, "utf8")).toContain("dispatch focusmonitor DP-2");
+		expect(fs.readFileSync(log, "utf8")).toContain("dispatch focusmonitor DP-1");
 		expect(fs.readFileSync(specialState, "utf8")).toBe("browser-research");
 	});
 
@@ -271,7 +484,7 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 			`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
 			"--class=chromium-research",
 		]);
-		expect(fs.readFileSync(log, "utf8")).toContain("dispatch focusmonitor DP-2");
+		expect(fs.readFileSync(log, "utf8")).toContain("dispatch focusmonitor DP-1");
 	});
 
 	for (const [recipe, profile] of [
