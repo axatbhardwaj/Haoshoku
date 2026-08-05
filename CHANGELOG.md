@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Make Email, Calendar, and Grok shortcuts focus-aware with exact web-app
+  classes, so they stop opening a duplicate window on every press.
+- Keep special-workspace browser URL requests visible and let recipes continue
+  when Hyprland dispatch IPC is unavailable.
+
 ## 7.3.0 - 2026-08-06
 
 - Make special-workspace toggles monitor-aware without hiding or migrating

@@ -311,6 +311,76 @@ printf 'claude\n' >> "$CALL_LOG"
 		]);
 	});
 
+	it("forwards browser-toggle URLs while keeping a visible workspace shown", async () => {
+		const urls = [
+			"https://example.test/toggle-one",
+			"https://example.test/toggle-two",
+		];
+		const result = await run(["browser-toggle", "flux", ...urls], {
+			clients: fluxClient,
+			focusedMonitor: "DP-2",
+			visibleWorkspace: "browser-flux",
+			visibleMonitor: "DP-2",
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(await chromiumArguments()).toEqual([
+			`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+			...urls,
+		]);
+		expect(dispatchCalls()).toEqual(["chromium"]);
+		expect(fs.readFileSync(specialState, "utf8")).toBe("browser-flux");
+	});
+
+	// Mutation caught: a visible browser-toggle URL request must not hide an
+	// empty workspace or launch Chromium outside its special workspace.
+	it("launches a missing visible browser-toggle client through its special workspace", async () => {
+		const result = await run(
+			["browser-toggle", "flux", "https://example.test/missing-toggle-client"],
+			{
+				focusedMonitor: "DP-2",
+				visibleWorkspace: "browser-flux",
+				visibleMonitor: "DP-2",
+			},
+		);
+
+		expect(result.exitCode).toBe(0);
+		expect(await chromiumArguments()).toEqual([
+			`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+			"--class=chromium-flux",
+			"https://example.test/missing-toggle-client",
+		]);
+		expect(dispatchCalls()).toEqual([
+			"dispatch exec [workspace special:browser-flux silent] uwsm-app -- chromium --user-data-dir=" +
+				`${directory}/.config/chromium-haoshoku/flux --class=chromium-flux https://example.test/missing-toggle-client `,
+			"chromium",
+		]);
+		expect(fs.readFileSync(specialState, "utf8")).toBe("browser-flux");
+	});
+
+	// Mutation caught: removing the browser-client guard must not hide a visible
+	// workspace whose registered profile client is absent.
+	it("launches a missing visible browser-toggle client without a URL instead of hiding", async () => {
+		const result = await run(["browser-toggle", "flux"], {
+			clients: JSON.stringify([{ class: "some-other-window" }]),
+			focusedMonitor: "DP-2",
+			visibleWorkspace: "browser-flux",
+			visibleMonitor: "DP-2",
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(await chromiumArguments()).toEqual([
+			`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+			"--class=chromium-flux",
+		]);
+		expect(dispatchCalls()).toEqual([
+			"dispatch exec [workspace special:browser-flux silent] uwsm-app -- chromium --user-data-dir=" +
+				`${directory}/.config/chromium-haoshoku/flux --class=chromium-flux `,
+			"chromium",
+		]);
+		expect(fs.readFileSync(specialState, "utf8")).toBe("browser-flux");
+	});
+
 	it("falls back to the profile monitor when no monitor is focused", async () => {
 		const result = await run(["browser-toggle", "flux"], {
 			clients: fluxClient,

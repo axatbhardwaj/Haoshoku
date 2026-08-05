@@ -4,20 +4,36 @@ set -euo pipefail
 recipe="${1:-}"
 profiles_helper="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/haoshoku-chromium-profiles"
 
+dispatch() {
+  hyprctl dispatch "$@" >/dev/null || true
+}
+
 has_client() {
   local pattern="$1"
-  hyprctl clients -j | jq -e --arg pattern "$pattern" 'any(.[]; ((.class // "") | test($pattern; "i")))' >/dev/null
+  hyprctl clients -j 2>/dev/null | jq -e --arg pattern "$pattern" 'any(.[]; ((.class // "") | test($pattern; "i")))' >/dev/null 2>&1 || return 1
 }
 
 has_client_class() {
+  # Return 0/1/2 as data (present/absent/probe failure). Under set -e, call
+  # only in a condition or as `has_client_class x || status=$?`; never bare.
   local class="$1"
-  hyprctl clients -j | jq -e --arg class "$class" 'any(.[]?; type == "object" and .class == $class)' >/dev/null
+  local -a probe_statuses
+  # Keep the PIPESTATUS capture inside this group. A trailing `|| true` resets
+  # PIPESTATUS to 0, making every failed probe report "client present".
+  {
+    hyprctl clients -j 2>/dev/null | jq -e --arg class "$class" 'any(.[]?; type == "object" and .class == $class)' >/dev/null 2>&1
+    probe_statuses=("${PIPESTATUS[@]}")
+  } || true
+  if (( probe_statuses[0] != 0 || probe_statuses[1] > 1 )); then
+    return 2
+  fi
+  return "${probe_statuses[1]}"
 }
 
 launch() {
   local workspace="$1"
   shift
-  hyprctl dispatch exec "[workspace ${workspace} silent] uwsm-app -- $*" >/dev/null
+  dispatch exec "[workspace ${workspace} silent] uwsm-app -- $*"
 }
 
 launch_if_missing() {
@@ -29,7 +45,7 @@ launch_if_missing() {
 if [[ "$recipe" == numbered ]]; then
   [[ $# -eq 3 ]] || { echo "usage: haoshoku-special-workspace numbered WORKSPACE APP" >&2; exit 2; }
   workspace="$2" app="$3"
-  hyprctl dispatch workspace "$workspace" >/dev/null
+  dispatch workspace "$workspace"
   case "$app" in
     steam) launch_if_missing "$workspace" '^[Ss]team$' steam ;;
     discord) launch_if_missing "$workspace" '^(discord|vesktop)$' discord ;;
@@ -91,27 +107,27 @@ fi
 
 load_special_workspace_state() {
   local monitors
-  monitors="$(hyprctl monitors -j)"
-  focused_monitor="$(jq -r 'first(.[] | select(.focused == true) | .name) // empty' <<<"$monitors")"
-  visible_monitor="$(jq -r --arg workspace "special:$workspace" 'first(.[] | select(.specialWorkspace.name == $workspace) | .name) // empty' <<<"$monitors")"
+  monitors="$(hyprctl monitors -j 2>/dev/null || true)"
+  focused_monitor="$(jq -r 'first(.[] | select(.focused == true) | .name) // empty' <<<"$monitors" 2>/dev/null || true)"
+  visible_monitor="$(jq -r --arg workspace "special:$workspace" 'first(.[] | select(.specialWorkspace.name == $workspace) | .name) // empty' <<<"$monitors" 2>/dev/null || true)"
   if [[ -n "$browser_profile" || "$follows_focus" == true ]]; then
     monitor="${focused_monitor:-$monitor}"
   fi
 }
 
 toggle_special_workspace() {
-  [[ -n "$visible_monitor" ]] || hyprctl dispatch focusmonitor "$monitor" >/dev/null
-  hyprctl dispatch togglespecialworkspace "$workspace" >/dev/null
+  [[ -n "$visible_monitor" ]] || dispatch focusmonitor "$monitor"
+  dispatch togglespecialworkspace "$workspace"
 }
 
 focus_or_toggle_special_workspace() {
   if [[ -z "$visible_monitor" ]]; then
-    hyprctl dispatch focusmonitor "$monitor" >/dev/null
-    hyprctl dispatch togglespecialworkspace "$workspace" >/dev/null
+    dispatch focusmonitor "$monitor"
+    dispatch togglespecialworkspace "$workspace"
   elif [[ "$visible_monitor" != "$focused_monitor" ]]; then
-    hyprctl dispatch focusmonitor "$visible_monitor" >/dev/null
+    dispatch focusmonitor "$visible_monitor"
   else
-    hyprctl dispatch togglespecialworkspace "$workspace" >/dev/null
+    dispatch togglespecialworkspace "$workspace"
   fi
 }
 
@@ -123,14 +139,22 @@ reveal_special_workspace() {
 load_special_workspace_state
 
 if [[ -n "$browser_profile" ]]; then
-  if "$browser_toggle" && [[ -n "$visible_monitor" ]]; then
+  probe_status=0
+  has_client_class "$class" || probe_status=$?
+  case "$probe_status" in
+    0) browser_client_state=present ;;
+    2) browser_client_state=unknown ;;
+    *) browser_client_state=absent ;;
+  esac
+
+  if "$browser_toggle" && [[ -n "$visible_monitor" ]] && [[ "$browser_client_state" != absent ]] && (( ${#urls[@]} == 0 )); then
     toggle_special_workspace
     exit 0
   fi
 
-  if has_client_class "$class"; then
+  if [[ "$browser_client_state" == present ]]; then
     if (( ${#urls[@]} )); then
-      chromium "--user-data-dir=$HOME/.config/chromium-haoshoku/$profile" "${urls[@]}"
+      chromium "--user-data-dir=$HOME/.config/chromium-haoshoku/$profile" "${urls[@]}" || true
     fi
     reveal_special_workspace
   else
@@ -142,7 +166,7 @@ if [[ -n "$browser_profile" ]]; then
     )
     reveal_special_workspace
     printf -v chromium_command '%q ' "${chromium[@]}"
-    hyprctl dispatch exec "[workspace special:$workspace silent] uwsm-app -- $chromium_command" >/dev/null
+    dispatch exec "[workspace special:$workspace silent] uwsm-app -- $chromium_command"
   fi
   exit 0
 elif [[ "$follows_focus" == true ]]; then

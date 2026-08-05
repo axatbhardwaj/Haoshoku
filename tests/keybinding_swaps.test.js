@@ -269,7 +269,7 @@ describe("Omarchy keybinding swaps", () => {
 		);
 	});
 
-	it("records the direct ChatGPT launcher as deleted while preserving Grok", () => {
+	it("records the direct ChatGPT launcher as deleted while preserving web shortcut behavior", () => {
 		const deletedChatgpt = swapsDocument.swaps.find(
 			(swap) => swap.key_combination_taken === "SUPER SHIFT, A",
 		);
@@ -284,10 +284,25 @@ describe("Omarchy keybinding swaps", () => {
 		});
 
 		const bindings = fs.readFileSync(bindingsConfigPath, "utf8");
+		const activeBindings = bindings
+			.split(/\r?\n/)
+			.filter((line) => line.startsWith("bindd = "));
 		expect(bindings).toContain("unbind = SUPER SHIFT, A");
 		expect(bindings).not.toContain(deletedChatgpt?.previous_binding);
-		expect(bindings).toContain(
-			'bindd = SUPER SHIFT ALT, A, Grok, exec, omarchy-launch-webapp "https://grok.com"',
+		expect(activeBindings).toContain(
+			'bindd = SUPER SHIFT ALT, A, Grok, exec, omarchy-launch-or-focus-webapp "chrome-grok\\.com__-Default" "https://grok.com"',
+		);
+		expect(bindings).not.toContain(
+			'# bindd = SUPER SHIFT ALT, A, Grok, exec, omarchy-launch-webapp "https://grok.com"',
+		);
+		expect(activeBindings).toContain(
+			'bindd = SUPER, E, Email, exec, omarchy-launch-or-focus-webapp "chrome-app\\.hey\\.com__-Default" "https://app.hey.com"',
+		);
+		expect(activeBindings).toContain(
+			'bindd = SUPER SHIFT, C, Calendar, exec, omarchy-launch-or-focus-webapp "chrome-app\\.hey\\.com__calendar_weeks_-Default" "https://app.hey.com/calendar/weeks/"',
+		);
+		expect(activeBindings).toContain(
+			'bindd = SUPER SHIFT ALT, X, X Post, exec, omarchy-launch-webapp "https://x.com/compose/post"',
 		);
 	});
 
