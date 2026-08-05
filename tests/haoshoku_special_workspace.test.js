@@ -375,6 +375,62 @@ printf 'kitty\\n' >> "$CALL_LOG"
 		]);
 	});
 
+	for (const { recipe, className, decoyClass, url } of [
+		{
+			recipe: "youtube",
+			className: "chrome-youtube.com__-Default",
+			decoyClass: "chrome-youtubeXcom__-Default",
+			url: "https://youtube.com/",
+		},
+		{
+			recipe: "crunchyroll",
+			className: "chrome-www.crunchyroll.com__-Default",
+			decoyClass: "chrome-wwwXcrunchyrollXcom__-Default",
+			url: "https://www.crunchyroll.com/",
+		},
+	]) {
+		it(`opens missing ${recipe} on DP-1 with the Flux app profile`, async () => {
+			const result = await run([recipe], { focusedMonitor: "DP-2" });
+
+			expect(result.exitCode).toBe(0);
+			expect(await chromiumArguments()).toEqual([
+				`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+				`--app=${url}`,
+			]);
+			expect(dispatchCalls()).toContain("dispatch focusmonitor DP-1");
+			expect(dispatchCalls()).toContain(
+				`dispatch togglespecialworkspace ${recipe}`,
+			);
+			expect(
+				dispatchCalls().filter((call) => call === "chromium"),
+			).toHaveLength(1);
+		});
+
+		it(`does not relaunch ${recipe} when its exact app-derived class is present`, async () => {
+			const result = await run([recipe], {
+				clients: JSON.stringify([{ class: className }]),
+			});
+
+			expect(result.exitCode).toBe(0);
+			expect(fs.existsSync(browserCall)).toBe(false);
+			expect(
+				dispatchCalls().filter((call) => call === "chromium"),
+			).toHaveLength(0);
+		});
+
+		it(`launches ${recipe} when dots in its class are replaced`, async () => {
+			const result = await run([recipe], {
+				clients: JSON.stringify([{ class: decoyClass }]),
+			});
+
+			expect(result.exitCode).toBe(0);
+			expect(await chromiumArguments()).toEqual([
+				`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+				`--app=${url}`,
+			]);
+		});
+	}
+
 	// Mutation caught: directly backgrounding Chromium after revealing its workspace
 	// lets it land on the active workspace; unescaped URL data can also become shell
 	// syntax when Hyprland's string-based exec API is used.

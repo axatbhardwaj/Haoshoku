@@ -81,6 +81,8 @@ else
     communication) workspace=communication; monitor=HDMI-A-1 ;;
     stash) workspace=stash; monitor=DP-1 ;;
     x) workspace=x; monitor=DP-2 ;;
+    youtube) workspace=youtube; monitor=DP-1 ;;
+    crunchyroll) workspace=crunchyroll; monitor=DP-1 ;;
     *) echo "unknown workspace recipe: ${recipe:-<empty>}" >&2; exit 2 ;;
   esac
   [[ $# -eq 1 ]] || { echo "usage: haoshoku-special-workspace $recipe" >&2; exit 2; }
@@ -158,4 +160,6 @@ case "$recipe" in
     ;;
   stash) ;;
   x) launch_if_missing "special:$workspace" '^chrome-x\.com__-Default$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/flux" --app=https://x.com/ ;;
+  youtube) launch_if_missing "special:$workspace" '^chrome-youtube\.com__-Default$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/flux" --app=https://youtube.com/ ;;
+  crunchyroll) launch_if_missing "special:$workspace" '^chrome-www\.crunchyroll\.com__-Default$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/flux" --app=https://www.crunchyroll.com/ ;;
 esac

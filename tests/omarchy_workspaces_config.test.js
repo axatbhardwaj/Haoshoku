@@ -6,6 +6,10 @@ const config = fs.readFileSync(
 	path.join(import.meta.dir, "..", "configs", "omarchy", "workspaces.conf"),
 	"utf8",
 );
+const bindingsConfig = fs.readFileSync(
+	path.join(import.meta.dir, "..", "configs", "omarchy", "bindings.conf"),
+	"utf8",
+);
 
 describe("Omarchy workspace overlay", () => {
 	it("pins the restored numbered workspaces to the intended monitors", () => {
@@ -46,6 +50,8 @@ describe("Omarchy workspace overlay", () => {
 			"bindd = SUPER, G, Show/focus/hide communication workspace, exec, haoshoku-special-workspace communication",
 			"bindd = SUPER, B, Toggle Flux Chromium workspace, exec, haoshoku-special-workspace browser-toggle flux",
 			"bindd = SUPER, D, Toggle DeFi Chromium workspace, exec, haoshoku-special-workspace browser-toggle defi",
+			"bindd = SUPER, Y, Show/focus/hide YouTube workspace, exec, haoshoku-special-workspace youtube",
+			"bindd = SUPER, R, Show/focus/hide Crunchyroll workspace, exec, haoshoku-special-workspace crunchyroll",
 			"bindd = SUPER, S, Toggle stash workspace, togglespecialworkspace, stash",
 			"bindd = SUPER SHIFT, X, Show/focus/hide X workspace, exec, haoshoku-special-workspace x",
 		];
@@ -55,11 +61,11 @@ describe("Omarchy workspace overlay", () => {
 				(line) =>
 					line.startsWith("bindd = SUPER, ") &&
 					!line.includes("haoshoku-special-workspace numbered ") &&
-					// Seven helper-backed toggles plus the stash toggle.
+					// Nine helper-backed toggles plus the stash toggle.
 					(line.includes("haoshoku-special-workspace") ||
 						line.endsWith("togglespecialworkspace, stash")),
 			),
-		).toHaveLength(8);
+		).toHaveLength(10);
 		expect(config).toContain(
 			"bindd = SUPER SHIFT, S, Stash focused window, movetoworkspacesilent, special:stash",
 		);
@@ -90,6 +96,50 @@ describe("Omarchy workspace overlay", () => {
 		expect(config).not.toContain(
 			"windowrule = workspace 6 silent, match:class ^chrome-x\\.com__-Default$",
 		);
+	});
+
+	for (const { workspace, classPattern, decoyClass } of [
+		{
+			workspace: "youtube",
+			classPattern: "^chrome-youtube\\.com__-Default$",
+			decoyClass: "chrome-youtubeXcom__-Default",
+		},
+		{
+			workspace: "crunchyroll",
+			classPattern: "^chrome-www\\.crunchyroll\\.com__-Default$",
+			decoyClass: "chrome-wwwXcrunchyrollXcom__-Default",
+		},
+	]) {
+		it(`routes ${workspace} by its escaped app-derived Chromium class without silent placement`, () => {
+			const rule = config
+				.split(/\r?\n/)
+				.find((line) => line.includes(`match:class ${classPattern}`));
+			expect(rule).toBe(
+				`windowrule = workspace special:${workspace}, match:class ${classPattern}`,
+			);
+			expect(rule).not.toContain("silent");
+			expect(decoyClass).not.toMatch(new RegExp(classPattern));
+		});
+	}
+
+	it("owns SUPER+Y and SUPER+R exactly once across both overlays", () => {
+		const overlayLines = `${bindingsConfig}\n${config}`.split(/\r?\n/);
+		for (const [key, expected] of [
+			[
+				"Y",
+				"bindd = SUPER, Y, Show/focus/hide YouTube workspace, exec, haoshoku-special-workspace youtube",
+			],
+			[
+				"R",
+				"bindd = SUPER, R, Show/focus/hide Crunchyroll workspace, exec, haoshoku-special-workspace crunchyroll",
+			],
+		]) {
+			expect(
+				overlayLines.filter((line) =>
+					line.startsWith(`bindd = SUPER, ${key},`),
+				),
+			).toEqual([expected]);
+		}
 	});
 
 	it("does not let X's class regex match a decoy character", () => {

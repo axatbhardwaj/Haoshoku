@@ -309,6 +309,35 @@ describe("Omarchy keybinding swaps", () => {
 		});
 	}
 
+	it("keeps every deleted_by_user key unbound across both overlays", () => {
+		const overlays = [
+			["configs/omarchy/bindings.conf", bindingsConfigPath],
+			["configs/omarchy/workspaces.conf", configPath],
+		];
+
+		for (const swap of swapsDocument.swaps.filter(
+			(swap) => swap.reason === "deleted_by_user",
+		)) {
+			const deletedKey = bindingOperation(
+				`unbind = ${swap.key_combination_taken}`,
+			).keyCombination;
+			const reboundLines = overlays.flatMap(([configFile, overlayPath]) =>
+				fs
+					.readFileSync(overlayPath, "utf8")
+					.split(/\r?\n/)
+					.flatMap((line, index) => {
+						const operation = bindingOperation(line);
+						return operation?.type !== "unbind" &&
+							operation?.keyCombination === deletedKey
+							? [`${configFile}:${index + 1}: ${line}`]
+							: [];
+					}),
+			);
+
+			expect(reboundLines).toEqual([]);
+		}
+	});
+
 	it("records every migrated app-binding unbind", () => {
 		const config = fs.existsSync(bindingsConfigPath)
 			? fs.readFileSync(bindingsConfigPath, "utf8")
