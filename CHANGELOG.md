@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 7.3.0 - 2026-08-06
 
 - Make special-workspace toggles monitor-aware without hiding or migrating
   panels: browser recipes open on the focused monitor, while pinned panels stay
