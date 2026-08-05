@@ -30,6 +30,7 @@ import {
 	backupMimeappsConfig,
 	syncMimeappsConfig,
 } from "./src/helpers/configure_mimeapps.js";
+import { configureOmarchyWorkspaces } from "./src/helpers/configure_omarchy_workspaces.js";
 import {
 	backupPrWatch,
 	syncPrWatch,
@@ -120,6 +121,10 @@ program
 	.option(
 		"--scripts",
 		"Deploy user scripts (configs/scripts/ → ~/.local/bin/) and prune retired entries",
+	)
+	.option(
+		"--workspaces",
+		"Deploy workspace config to ~/.config/hypr/, install helper script to ~/.local/bin/, add source line to ~/.config/hypr/hyprland.conf, and reload Hyprland",
 	)
 	.action(async (options) => {
 		try {
@@ -264,6 +269,11 @@ async function runAction(options) {
 
 	if (options.scripts) {
 		await installUserScripts();
+		return;
+	}
+
+	if (options.workspaces) {
+		await configureOmarchyWorkspaces();
 		return;
 	}
 

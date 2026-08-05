@@ -31,6 +31,7 @@ export const MODE_FLAGS = [
 	"prWatch",
 	"prWatchBackup",
 	"scripts",
+	"workspaces",
 ];
 
 /**
