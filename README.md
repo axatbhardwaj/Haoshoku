@@ -40,17 +40,21 @@ The Arch setup:
   initialization through `~/.config/haoshoku/bashrc`;
 - preserves Omarchy's `.bashrc`, themes, terminals, wallpapers, lock screen,
   Waybar, Walker, and Hyprland appearance; displaced Omarchy keybindings are
-  faithfully relocated and documented in
+  relocated or explicitly superseded and documented in
   [`configs/omarchy/keybinding-swaps.json`](configs/omarchy/keybinding-swaps.json),
   the canonical swap record;
+- ships refresh-safe app bindings from
+  [`configs/omarchy/bindings.conf`](configs/omarchy/bindings.conf) instead of
+  replacing Omarchy's `~/.config/hypr/bindings.conf`;
 - restores `~/.config/hypr/monitors.conf`, backing up different existing
   content first;
 - adds a behavior-only workspace overlay: workspaces 1–3 use DP-1, 4–5 use
   HDMI-A-1, and 6, 7, and 10 use DP-2;
 - adds two-key special-workspace toggles under `Super`: A agents, I Claude,
   M music, O 1Password, G communication, B Flux Chromium, D DeFi Chromium,
-  and S stash (`Super+Shift+S` stashes the focused window); see the canonical
-  swaps JSON above for every Omarchy default relocated to make room;
+  S stash, and `Super+Shift+X` X (`Super+Shift+S` stashes the focused window);
+  see the canonical swaps JSON above for every Omarchy default relocated or
+  superseded to make room;
 - isolates Flux, DeFi, WhatsApp, and Notion below
   `~/.config/chromium-haoshoku/`;
 - installs packaged Omazed and safely points Zed at its generated theme so Zed

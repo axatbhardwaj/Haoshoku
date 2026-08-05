@@ -80,6 +80,7 @@ else
     1password) workspace=1password; monitor=DP-1 ;;
     communication) workspace=communication; monitor=HDMI-A-1 ;;
     stash) workspace=stash; monitor=DP-1 ;;
+    x) workspace=x; monitor=DP-2 ;;
     *) echo "unknown workspace recipe: ${recipe:-<empty>}" >&2; exit 2 ;;
   esac
   [[ $# -eq 1 ]] || { echo "usage: haoshoku-special-workspace $recipe" >&2; exit 2; }
@@ -156,4 +157,5 @@ case "$recipe" in
     launch_if_missing "special:$workspace" '^chrome-web\.whatsapp\.com__-Default$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/whatsapp" --app=https://web.whatsapp.com/
     ;;
   stash) ;;
+  x) launch_if_missing "special:$workspace" '^chrome-x\.com__-Default$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/flux" --app=https://x.com/ ;;
 esac

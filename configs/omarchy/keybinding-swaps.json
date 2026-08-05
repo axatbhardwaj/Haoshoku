@@ -35,7 +35,7 @@
 			"reason": "displaced_by_workspace_toggle"
 		},
 		{
-			"config_file": "~/.config/hypr/bindings.conf",
+			"config_file": "configs/omarchy/bindings.conf",
 			"key_combination_taken": "SUPER, F",
 			"previous_binding": "bindd = SUPER, F, Full screen, fullscreen, 0",
 			"moved_from_dispatcher": "fullscreen",
@@ -46,7 +46,7 @@
 			"reason": "displaced_by_app_launcher"
 		},
 		{
-			"config_file": "~/.config/hypr/bindings.conf",
+			"config_file": "configs/omarchy/bindings.conf",
 			"key_combination_taken": "SUPER, P",
 			"previous_binding": "bindd = SUPER, P, Pseudo window, pseudo",
 			"moved_from_dispatcher": "pseudo",
@@ -57,7 +57,7 @@
 			"reason": "displaced_by_app_launcher"
 		},
 		{
-			"config_file": "~/.config/hypr/bindings.conf",
+			"config_file": "configs/omarchy/bindings.conf",
 			"key_combination_taken": "SUPER, T",
 			"previous_binding": "bindd = SUPER, T, Toggle window floating/tiling, togglefloating",
 			"moved_from_dispatcher": "togglefloating",
@@ -66,6 +66,206 @@
 			"moved_to_dispatcher": "togglefloating",
 			"moved_to_arg": "",
 			"reason": "displaced_by_app_launcher"
+		},
+		{
+			"config_file": "configs/omarchy/bindings.conf",
+			"key_combination_taken": "SUPER SHIFT, X",
+			"previous_binding": "bindd = SUPER SHIFT, X, X, exec, omarchy-launch-webapp \"https://x.com/\"",
+			"moved_from_dispatcher": "exec",
+			"moved_from_arg": "omarchy-launch-webapp \"https://x.com/\"",
+			"reason": "superseded_by_workspace_toggle"
+		},
+		{
+			"config_file": "configs/omarchy/bindings.conf",
+			"key_combination_taken": "SUPER, RETURN",
+			"previous_binding": "bindd = SUPER, RETURN, Terminal, exec, uwsm-app -- xdg-terminal-exec --dir=\"$(omarchy-cmd-terminal-cwd)\"",
+			"moved_from_dispatcher": "exec",
+			"moved_from_arg": "uwsm-app -- xdg-terminal-exec --dir=\"$(omarchy-cmd-terminal-cwd)\"",
+			"reason": "reclaimed_by_overlay"
+		},
+		{
+			"config_file": "configs/omarchy/bindings.conf",
+			"key_combination_taken": "SHIFT SUPER, RETURN",
+			"previous_binding": "bindd = SUPER SHIFT, RETURN, Browser, exec, omarchy-launch-browser",
+			"moved_from_dispatcher": "exec",
+			"moved_from_arg": "omarchy-launch-browser",
+			"reason": "reclaimed_by_overlay"
+		},
+		{
+			"config_file": "configs/omarchy/bindings.conf",
+			"key_combination_taken": "ALT SHIFT SUPER, F",
+			"previous_binding": "bindd = SUPER ALT SHIFT, F, File manager (cwd), exec, uwsm-app -- nautilus --new-window \"$(omarchy-cmd-terminal-cwd)\"",
+			"moved_from_dispatcher": "exec",
+			"moved_from_arg": "uwsm-app -- nautilus --new-window \"$(omarchy-cmd-terminal-cwd)\"",
+			"reason": "reclaimed_by_overlay"
+		},
+		{
+			"config_file": "configs/omarchy/bindings.conf",
+			"key_combination_taken": "SHIFT SUPER, B",
+			"previous_binding": "bindd = SUPER SHIFT, B, Browser, exec, omarchy-launch-browser",
+			"moved_from_dispatcher": "exec",
+			"moved_from_arg": "omarchy-launch-browser",
+			"reason": "reclaimed_by_overlay"
+		},
+		{
+			"config_file": "configs/omarchy/bindings.conf",
+			"key_combination_taken": "ALT SHIFT SUPER, B",
+			"previous_binding": "bindd = SUPER SHIFT ALT, B, Browser (private), exec, omarchy-launch-browser --private",
+			"moved_from_dispatcher": "exec",
+			"moved_from_arg": "omarchy-launch-browser --private",
+			"reason": "reclaimed_by_overlay"
+		},
+		{
+			"config_file": "configs/omarchy/bindings.conf",
+			"key_combination_taken": "ALT SHIFT SUPER, M",
+			"previous_binding": "bindd = SUPER SHIFT ALT, M, Music TUI, exec, omarchy-launch-or-focus-tui cliamp",
+			"moved_from_dispatcher": "exec",
+			"moved_from_arg": "omarchy-launch-or-focus-tui cliamp",
+			"reason": "reclaimed_by_overlay"
+		},
+		{
+			"config_file": "configs/omarchy/bindings.conf",
+			"key_combination_taken": "SHIFT SUPER, D",
+			"previous_binding": "bindd = SUPER SHIFT, D, Docker, exec, omarchy-launch-tui lazydocker",
+			"moved_from_dispatcher": "exec",
+			"moved_from_arg": "omarchy-launch-tui lazydocker",
+			"reason": "reclaimed_by_overlay"
+		},
+		{
+			"config_file": "configs/omarchy/bindings.conf",
+			"key_combination_taken": "SHIFT SUPER, W",
+			"previous_binding": "bindd = SUPER SHIFT, W, Typora, exec, uwsm-app -- typora --enable-wayland-ime",
+			"moved_from_dispatcher": "exec",
+			"moved_from_arg": "uwsm-app -- typora --enable-wayland-ime",
+			"reason": "reclaimed_by_overlay"
+		},
+		{
+			"config_file": "configs/omarchy/bindings.conf",
+			"key_combination_taken": "SHIFT SUPER, A",
+			"previous_binding": "bindd = SUPER SHIFT, A, ChatGPT, exec, omarchy-launch-webapp \"https://chatgpt.com\"",
+			"moved_from_dispatcher": "exec",
+			"moved_from_arg": "omarchy-launch-webapp \"https://chatgpt.com\"",
+			"reason": "reclaimed_by_overlay"
+		},
+		{
+			"config_file": "configs/omarchy/bindings.conf",
+			"key_combination_taken": "ALT SHIFT SUPER, A",
+			"previous_binding": "bindd = SUPER SHIFT ALT, A, Grok, exec, omarchy-launch-webapp \"https://grok.com\"",
+			"moved_from_dispatcher": "exec",
+			"moved_from_arg": "omarchy-launch-webapp \"https://grok.com\"",
+			"reason": "reclaimed_by_overlay"
+		},
+		{
+			"config_file": "configs/omarchy/bindings.conf",
+			"key_combination_taken": "SHIFT SUPER, C",
+			"previous_binding": "bindd = SUPER SHIFT, C, Calendar, exec, omarchy-launch-webapp \"https://app.hey.com/calendar/weeks/\"",
+			"moved_from_dispatcher": "exec",
+			"moved_from_arg": "omarchy-launch-webapp \"https://app.hey.com/calendar/weeks/\"",
+			"reason": "reclaimed_by_overlay"
+		},
+		{
+			"config_file": "configs/omarchy/bindings.conf",
+			"key_combination_taken": "ALT SHIFT SUPER, G",
+			"previous_binding": "bindd = SUPER SHIFT ALT, G, WhatsApp, exec, omarchy-launch-or-focus-webapp WhatsApp \"https://web.whatsapp.com/\"",
+			"moved_from_dispatcher": "exec",
+			"moved_from_arg": "omarchy-launch-or-focus-webapp WhatsApp \"https://web.whatsapp.com/\"",
+			"reason": "reclaimed_by_overlay"
+		},
+		{
+			"config_file": "configs/omarchy/bindings.conf",
+			"key_combination_taken": "ALT SHIFT SUPER, X",
+			"previous_binding": "bindd = SUPER SHIFT ALT, X, X Post, exec, omarchy-launch-webapp \"https://x.com/compose/post\"",
+			"moved_from_dispatcher": "exec",
+			"moved_from_arg": "omarchy-launch-webapp \"https://x.com/compose/post\"",
+			"reason": "reclaimed_by_overlay"
+		},
+		{
+			"config_file": "configs/omarchy/bindings.conf",
+			"key_combination_taken": "CTRL SHIFT SUPER, G",
+			"previous_binding": "bindd = SUPER SHIFT CTRL, G, Google Messages, exec, omarchy-launch-or-focus-webapp \"Google Messages\" \"https://messages.google.com/web/conversations\"",
+			"moved_from_dispatcher": "exec",
+			"moved_from_arg": "omarchy-launch-or-focus-webapp \"Google Messages\" \"https://messages.google.com/web/conversations\"",
+			"reason": "reclaimed_by_overlay"
+		},
+		{
+			"config_file": "configs/omarchy/bindings.conf",
+			"key_combination_taken": "SUPER ALT, RETURN",
+			"previous_binding": "bindd = SUPER ALT, RETURN, Tmux, exec, uwsm-app -- xdg-terminal-exec --dir=\"$(omarchy-cmd-terminal-cwd)\" bash -c \"tmux attach || tmux new -s Work\"",
+			"moved_from_dispatcher": "exec",
+			"moved_from_arg": "uwsm-app -- xdg-terminal-exec --dir=\"$(omarchy-cmd-terminal-cwd)\" bash -c \"tmux attach || tmux new -s Work\"",
+			"reason": "deleted_by_user"
+		},
+		{
+			"config_file": "configs/omarchy/bindings.conf",
+			"key_combination_taken": "SUPER SHIFT, F",
+			"previous_binding": "bindd = SUPER SHIFT, F, File manager, exec, uwsm-app -- nautilus --new-window",
+			"moved_from_dispatcher": "exec",
+			"moved_from_arg": "uwsm-app -- nautilus --new-window",
+			"reason": "deleted_by_user"
+		},
+		{
+			"config_file": "configs/omarchy/bindings.conf",
+			"key_combination_taken": "SUPER SHIFT, M",
+			"previous_binding": "bindd = SUPER SHIFT, M, Music, exec, omarchy-launch-or-focus spotify",
+			"moved_from_dispatcher": "exec",
+			"moved_from_arg": "omarchy-launch-or-focus spotify",
+			"reason": "deleted_by_user"
+		},
+		{
+			"config_file": "configs/omarchy/bindings.conf",
+			"key_combination_taken": "SUPER SHIFT, N",
+			"previous_binding": "bindd = SUPER SHIFT, N, Editor, exec, omarchy-launch-editor",
+			"moved_from_dispatcher": "exec",
+			"moved_from_arg": "omarchy-launch-editor",
+			"reason": "deleted_by_user"
+		},
+		{
+			"config_file": "configs/omarchy/bindings.conf",
+			"key_combination_taken": "SUPER SHIFT, G",
+			"previous_binding": "bindd = SUPER SHIFT, G, Signal, exec, omarchy-launch-or-focus ^signal$ \"uwsm-app -- signal-desktop\"",
+			"moved_from_dispatcher": "exec",
+			"moved_from_arg": "omarchy-launch-or-focus ^signal$ \"uwsm-app -- signal-desktop\"",
+			"reason": "deleted_by_user"
+		},
+		{
+			"config_file": "configs/omarchy/bindings.conf",
+			"key_combination_taken": "SUPER SHIFT, O",
+			"previous_binding": "bindd = SUPER SHIFT, O, Obsidian, exec, omarchy-launch-or-focus ^obsidian$ \"uwsm-app -- obsidian\"",
+			"moved_from_dispatcher": "exec",
+			"moved_from_arg": "omarchy-launch-or-focus ^obsidian$ \"uwsm-app -- obsidian\"",
+			"reason": "deleted_by_user"
+		},
+		{
+			"config_file": "configs/omarchy/bindings.conf",
+			"key_combination_taken": "SUPER SHIFT, SLASH",
+			"previous_binding": "bindd = SUPER SHIFT, SLASH, Passwords, exec, uwsm-app -- 1password",
+			"moved_from_dispatcher": "exec",
+			"moved_from_arg": "uwsm-app -- 1password",
+			"reason": "deleted_by_user"
+		},
+		{
+			"config_file": "configs/omarchy/bindings.conf",
+			"key_combination_taken": "SUPER SHIFT, E",
+			"previous_binding": "bindd = SUPER SHIFT, E, Email, exec, omarchy-launch-webapp \"https://app.hey.com\"",
+			"moved_from_dispatcher": "exec",
+			"moved_from_arg": "omarchy-launch-webapp \"https://app.hey.com\"",
+			"reason": "deleted_by_user"
+		},
+		{
+			"config_file": "configs/omarchy/bindings.conf",
+			"key_combination_taken": "SUPER SHIFT, Y",
+			"previous_binding": "bindd = SUPER SHIFT, Y, YouTube, exec, omarchy-launch-webapp \"https://youtube.com/\"",
+			"moved_from_dispatcher": "exec",
+			"moved_from_arg": "omarchy-launch-webapp \"https://youtube.com/\"",
+			"reason": "deleted_by_user"
+		},
+		{
+			"config_file": "configs/omarchy/bindings.conf",
+			"key_combination_taken": "SUPER SHIFT, P",
+			"previous_binding": "bindd = SUPER SHIFT, P, Google Photos, exec, omarchy-launch-or-focus-webapp \"Google Photos\" \"https://photos.google.com/\"",
+			"moved_from_dispatcher": "exec",
+			"moved_from_arg": "omarchy-launch-or-focus-webapp \"Google Photos\" \"https://photos.google.com/\"",
+			"reason": "deleted_by_user"
 		}
 	]
 }

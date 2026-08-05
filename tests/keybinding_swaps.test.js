@@ -4,6 +4,12 @@ import path from "node:path";
 
 const repoRoot = path.join(import.meta.dir, "..");
 const configPath = path.join(repoRoot, "configs", "omarchy", "workspaces.conf");
+const bindingsConfigPath = path.join(
+	repoRoot,
+	"configs",
+	"omarchy",
+	"bindings.conf",
+);
 const swapsPath = path.join(
 	repoRoot,
 	"configs",
@@ -19,13 +25,35 @@ const omarchyBindingsPath = path.join(
 	"hypr",
 	"bindings",
 );
+const omarchyAppBindingsPath = path.join(
+	process.env.HOME ?? "",
+	".local",
+	"share",
+	"omarchy",
+	"config",
+	"hypr",
+	"bindings.conf",
+);
 const allowedReasons = new Set([
 	"workspace_collision",
 	"modifier_reordering",
 	"displaced_by_app_launcher",
 	"displaced_by_workspace_toggle",
+	"deleted_by_user",
+	"reclaimed_by_overlay",
+	"superseded_by_workspace_toggle",
 ]);
 const swapsDocument = JSON.parse(fs.readFileSync(swapsPath, "utf8"));
+// These workspace toggles intentionally stack with Omarchy's numbered binds.
+const intentionalAdditiveBindings = new Set([
+	canonicalKeyCombination("SUPER", "code:11"),
+	canonicalKeyCombination("SUPER", "code:13"),
+	canonicalKeyCombination("SUPER", "code:14"),
+	canonicalKeyCombination("SUPER", "code:19"),
+]);
+// Stock app binds intentionally left unchanged must be listed here with a reason.
+// There are currently none: every stock key is explicitly rebound or unbound.
+const intentionalStockAppBindings = new Set([]);
 
 function repoConfigPath(configFile) {
 	if (
@@ -58,12 +86,104 @@ function relocatedBinding(swap) {
 	return `bindd = ${swap.moved_to}, ${description}, ${swap.moved_to_dispatcher}${argument}`;
 }
 
+function canonicalKeyCombination(modifiers, key) {
+	return `${modifiers.trim().split(/\s+/).toSorted().join(" ")}, ${key.trim()}`;
+}
+
+function bindingOperation(line) {
+	const match = line.match(/^(unbind|bindd?)\s*=\s*([^,]+),\s*([^,]+)/);
+	if (!match) return null;
+	return {
+		type: match[1],
+		keyCombination: canonicalKeyCombination(match[2], match[3]),
+	};
+}
+
+function resurrectedStockBindings(defaultLines, overlayText) {
+	const overlayKeys = new Set(
+		overlayText
+			.split(/\r?\n/)
+			.map(bindingOperation)
+			.filter(Boolean)
+			.map((operation) => operation.keyCombination),
+	);
+	return defaultLines.flatMap((line) => {
+		const operation = bindingOperation(line);
+		if (
+			!operation ||
+			operation.type === "unbind" ||
+			overlayKeys.has(operation.keyCombination) ||
+			intentionalStockAppBindings.has(operation.keyCombination)
+		)
+			return [];
+		return [{ keyCombination: operation.keyCombination, stockBinding: line }];
+	});
+}
+
+function omarchyDefaultBindingLines() {
+	const defaultConfigFiles = fs
+		.readdirSync(omarchyBindingsPath, { withFileTypes: true })
+		.filter((entry) => entry.isFile() && entry.name.endsWith(".conf"))
+		.map((entry) => path.join(omarchyBindingsPath, entry.name));
+	defaultConfigFiles.unshift(omarchyAppBindingsPath);
+	return defaultConfigFiles.flatMap((configFile) =>
+		fs.readFileSync(configFile, "utf8").split(/\r?\n/),
+	);
+}
+
+function duplicateBindings(defaultLines, overlayTexts) {
+	const active = new Map();
+	for (const line of defaultLines) {
+		const operation = bindingOperation(line);
+		if (operation?.type === "bind" || operation?.type === "bindd")
+			active.set(operation.keyCombination, line);
+	}
+
+	const duplicates = [];
+	for (const overlay of overlayTexts) {
+		for (const line of overlay.split(/\r?\n/)) {
+			const operation = bindingOperation(line);
+			if (!operation) continue;
+			if (operation.type === "unbind") {
+				active.delete(operation.keyCombination);
+				continue;
+			}
+			if (
+				active.has(operation.keyCombination) &&
+				!intentionalAdditiveBindings.has(operation.keyCombination)
+			) {
+				duplicates.push({
+					keyCombination: operation.keyCombination,
+					previous: active.get(operation.keyCombination),
+					duplicate: line,
+				});
+			}
+			active.set(operation.keyCombination, line);
+		}
+	}
+	return duplicates;
+}
+
+function expectNoDuplicateBindings(defaultLines, overlayTexts) {
+	expect(duplicateBindings(defaultLines, overlayTexts)).toEqual([]);
+}
+
 let omarchyDefaultsAvailable = true;
 try {
 	fs.accessSync(omarchyBindingsPath, fs.constants.R_OK);
+	fs.accessSync(omarchyAppBindingsPath, fs.constants.R_OK);
 } catch {
 	omarchyDefaultsAvailable = false;
 }
+if (!omarchyDefaultsAvailable)
+	console.info(
+		"Skipping Omarchy duplicate-key checks: stock binding paths are unavailable.",
+	);
+const omarchyAppBindingsAvailable = fs.existsSync(omarchyAppBindingsPath);
+if (!omarchyAppBindingsAvailable)
+	console.info(
+		`Skipping Omarchy stock-bind resurrection check: seed file is unavailable at ${omarchyAppBindingsPath}.`,
+	);
 
 describe("Omarchy keybinding swaps", () => {
 	it("keeps the scratchpad special-workspace relocation faithful", () => {
@@ -103,6 +223,20 @@ describe("Omarchy keybinding swaps", () => {
 			expect(swap.key_combination_taken).toEqual(expect.any(String));
 			expect(swap.key_combination_taken.length).toBeGreaterThan(0);
 			expect(swap.key_combination_taken).toMatch(/^[A-Z]+(?: [A-Z]+)*, \S+$/);
+			if (
+				swap.reason === "deleted_by_user" ||
+				swap.reason === "reclaimed_by_overlay" ||
+				swap.reason === "superseded_by_workspace_toggle"
+			) {
+				expect(swap.moved_to).toBeUndefined();
+				expect(swap.moved_to_dispatcher).toBeUndefined();
+				expect(swap.moved_to_arg).toBeUndefined();
+				expect(swap.moved_from_dispatcher).toEqual(expect.any(String));
+				expect(swap.moved_from_dispatcher.length).toBeGreaterThan(0);
+				expect(swap.moved_from_arg).toEqual(expect.any(String));
+				expect(allowedReasons.has(swap.reason)).toBe(true);
+				continue;
+			}
 			expect(swap.moved_to).toEqual(expect.any(String));
 			expect(swap.moved_to.length).toBeGreaterThan(0);
 			expect(swap.moved_to).toMatch(/^[A-Z]+(?: [A-Z]+)*, \S+$/);
@@ -126,17 +260,20 @@ describe("Omarchy keybinding swaps", () => {
 	(omarchyDefaultsAvailable ? it : it.skip)(
 		"aligns every swap with Omarchy defaults, including scratchpad special-workspace arguments",
 		() => {
-			const defaultBindings = fs
+			const defaultConfigFiles = fs
 				.readdirSync(omarchyBindingsPath, { withFileTypes: true })
 				.filter((entry) => entry.isFile() && entry.name.endsWith(".conf"))
-				.flatMap((entry) =>
-					fs
-						.readFileSync(path.join(omarchyBindingsPath, entry.name), "utf8")
-						.split("\n")
-						.map((line) => line.trim())
-						.filter((line) => /^bindd?\s*=/.test(line))
-						.map((line) => line.replace(/,\s*#.*$/, "").replace(/,\s*$/, "")),
-				);
+				.map((entry) => path.join(omarchyBindingsPath, entry.name));
+			if (fs.existsSync(omarchyAppBindingsPath))
+				defaultConfigFiles.push(omarchyAppBindingsPath);
+			const defaultBindings = defaultConfigFiles.flatMap((configFile) =>
+				fs
+					.readFileSync(configFile, "utf8")
+					.split("\n")
+					.map((line) => line.trim())
+					.filter((line) => /^bindd?\s*=/.test(line))
+					.map((line) => line.replace(/,\s*#.*$/, "").replace(/,\s*$/, "")),
+			);
 
 			for (const swap of swapsDocument.swaps) {
 				const recorded = parseBinding(swap.previous_binding);
@@ -172,7 +309,74 @@ describe("Omarchy keybinding swaps", () => {
 		});
 	}
 
-	for (const swap of swapsDocument.swaps) {
+	it("records every migrated app-binding unbind", () => {
+		const config = fs.existsSync(bindingsConfigPath)
+			? fs.readFileSync(bindingsConfigPath, "utf8")
+			: "";
+		const unbinds = [...config.matchAll(/^unbind\s*=\s*(.+)$/gm)]
+			.map(([, combination]) => combination.trim())
+			.toSorted();
+		const documented = swapsDocument.swaps
+			.filter((swap) => swap.config_file === "configs/omarchy/bindings.conf")
+			.map((swap) => swap.key_combination_taken)
+			.toSorted();
+
+		expect(documented).toEqual(unbinds);
+	});
+
+	(omarchyAppBindingsAvailable ? it : it.skip)(
+		"requires every stock app bind to be rebound, unbound, or allowlisted",
+		() => {
+			const stockBindings = fs
+				.readFileSync(omarchyAppBindingsPath, "utf8")
+				.split(/\r?\n/);
+			const overlay = fs.readFileSync(bindingsConfigPath, "utf8");
+
+			expect(resurrectedStockBindings(stockBindings, overlay)).toEqual([]);
+		},
+	);
+
+	(omarchyDefaultsAvailable ? it : it.skip)(
+		"detects a removed unbind and accepts the restored overlay",
+		() => {
+			const defaults = omarchyDefaultBindingLines();
+			const bindingsOverlay = fs.readFileSync(bindingsConfigPath, "utf8");
+			const workspacesOverlay = fs.readFileSync(configPath, "utf8");
+			const mutatedOverlay = bindingsOverlay.replace(
+				"unbind = SUPER, RETURN\n",
+				"",
+			);
+
+			expect(mutatedOverlay).not.toBe(bindingsOverlay);
+			expect(() =>
+				expectNoDuplicateBindings(defaults, [
+					mutatedOverlay,
+					workspacesOverlay,
+				]),
+			).toThrow("SUPER, RETURN");
+			expect(() =>
+				expectNoDuplicateBindings(defaults, [
+					bindingsOverlay,
+					workspacesOverlay,
+				]),
+			).not.toThrow();
+			console.info(
+				"Mutation proof: removing SUPER, RETURN unbind fails with SUPER, RETURN; restoring it passes.",
+			);
+		},
+	);
+
+	(omarchyDefaultsAvailable ? it : it.skip)(
+		"prevents duplicate keys when app and workspace overlays follow Omarchy defaults",
+		() => {
+			expectNoDuplicateBindings(omarchyDefaultBindingLines(), [
+				fs.readFileSync(bindingsConfigPath, "utf8"),
+				fs.readFileSync(configPath, "utf8"),
+			]);
+		},
+	);
+
+	for (const swap of swapsDocument.swaps.filter((swap) => swap.moved_to)) {
 		const resolvedConfigPath = repoConfigPath(swap.config_file);
 		if (!resolvedConfigPath) {
 			it.skip(`skips repo ordering checks for external swap ${swap.config_file} ${swap.key_combination_taken}`, () => {});
@@ -192,6 +396,68 @@ describe("Omarchy keybinding swaps", () => {
 			expect(unbindIndex).toBeGreaterThan(-1);
 			expect(relocationIndex).toBe(unbindIndex + 1);
 			expect(claimedSlotIndex).toBeGreaterThan(relocationIndex);
+		});
+	}
+
+	for (const swap of swapsDocument.swaps.filter(
+		(swap) => swap.reason === "reclaimed_by_overlay",
+	)) {
+		it(`orders the unbind before reclaimed ${swap.key_combination_taken}`, () => {
+			const lines = fs
+				.readFileSync(repoConfigPath(swap.config_file), "utf8")
+				.split("\n");
+			const unbindIndex = lines.indexOf(
+				`unbind = ${swap.key_combination_taken}`,
+			);
+			const claimedSlotIndex = lines.findIndex((line) => {
+				const operation = bindingOperation(line);
+				return (
+					operation?.type !== "unbind" &&
+					operation?.keyCombination === swap.key_combination_taken
+				);
+			});
+
+			expect(unbindIndex).toBeGreaterThan(-1);
+			if (claimedSlotIndex >= 0) {
+				expect(claimedSlotIndex).toBe(unbindIndex + 1);
+				return;
+			}
+
+			const workspaceClaim = fs
+				.readFileSync(configPath, "utf8")
+				.split("\n")
+				.find((line) => {
+					const operation = bindingOperation(line);
+					return (
+						operation?.type !== "unbind" &&
+						operation?.keyCombination === swap.key_combination_taken
+					);
+				});
+			expect(workspaceClaim).toBeDefined();
+		});
+	}
+
+	for (const swap of swapsDocument.swaps.filter(
+		(swap) => swap.reason === "superseded_by_workspace_toggle",
+	)) {
+		it(`orders the unbind before the replacement ${swap.key_combination_taken} workspace toggle`, () => {
+			const bindingLines = fs
+				.readFileSync(repoConfigPath(swap.config_file), "utf8")
+				.split("\n");
+			const workspaceLines = fs.readFileSync(configPath, "utf8").split("\n");
+			const unbindIndex = bindingLines.indexOf(
+				`unbind = ${swap.key_combination_taken}`,
+			);
+			const staleBindIndex = bindingLines.findIndex((line) =>
+				line.startsWith(`bindd = ${swap.key_combination_taken},`),
+			);
+			const replacementIndex = workspaceLines.findIndex((line) =>
+				line.startsWith(`bindd = ${swap.key_combination_taken},`),
+			);
+
+			expect(unbindIndex).toBeGreaterThan(-1);
+			expect(staleBindIndex).toBe(-1);
+			expect(replacementIndex).toBeGreaterThan(-1);
 		});
 	}
 });

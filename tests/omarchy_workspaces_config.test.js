@@ -37,7 +37,7 @@ describe("Omarchy workspace overlay", () => {
 		);
 	});
 
-	it("uses two-key special-workspace toggles", () => {
+	it("uses dedicated special-workspace toggles", () => {
 		const toggleBinds = [
 			"bindd = SUPER, A, Show/focus/hide agents workspace, exec, haoshoku-special-workspace agents",
 			"bindd = SUPER, I, Show/focus/hide Claude Desktop workspace, exec, haoshoku-special-workspace claude-desktop",
@@ -47,6 +47,7 @@ describe("Omarchy workspace overlay", () => {
 			"bindd = SUPER, B, Toggle Flux Chromium workspace, exec, haoshoku-special-workspace browser-toggle flux",
 			"bindd = SUPER, D, Toggle DeFi Chromium workspace, exec, haoshoku-special-workspace browser-toggle defi",
 			"bindd = SUPER, S, Toggle stash workspace, togglespecialworkspace, stash",
+			"bindd = SUPER SHIFT, X, Show/focus/hide X workspace, exec, haoshoku-special-workspace x",
 		];
 		for (const bind of toggleBinds) expect(config).toContain(bind);
 		expect(
@@ -82,15 +83,18 @@ describe("Omarchy workspace overlay", () => {
 		);
 	});
 
-	it("routes X by its exact app-derived Chromium class to workspace 6", () => {
+	it("routes X by its exact app-derived Chromium class to its special workspace", () => {
 		expect(config).toContain(
+			"windowrule = workspace special:x, match:class ^chrome-x\\.com__-Default$",
+		);
+		expect(config).not.toContain(
 			"windowrule = workspace 6 silent, match:class ^chrome-x\\.com__-Default$",
 		);
 	});
 
 	it("does not let X's class regex match a decoy character", () => {
 		const rule = config.match(
-			/^windowrule = workspace 6 silent, match:class (.+)$/m,
+			/^windowrule = workspace special:x, match:class (.+)$/m,
 		)?.[1];
 		expect(rule).toBeDefined();
 		expect("chrome-xXcom__-Default").not.toMatch(new RegExp(rule));

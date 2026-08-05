@@ -148,6 +148,7 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 
 	const fluxClient = JSON.stringify([{ class: "chromium-flux" }]);
 	const agentsClient = JSON.stringify([{ class: "haoshoku-agents" }]);
+	const xClient = JSON.stringify([{ class: "chrome-x.com__-Default" }]);
 	const forwardedUrl = "https://example.test/forwarded";
 
 	it("forwards a generic browser URL without hiding it on the focused monitor", async () => {
@@ -337,6 +338,40 @@ printf 'kitty\\n' >> "$CALL_LOG"
 		expect(result.exitCode).toBe(0);
 		expect(dispatchCalls()).toEqual([
 			"dispatch togglespecialworkspace agents",
+		]);
+	});
+
+	it("opens missing X on the portrait monitor with the Flux app profile", async () => {
+		const result = await run(["x"]);
+
+		expect(result.exitCode).toBe(0);
+		expect(await chromiumArguments()).toEqual([
+			`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+			"--app=https://x.com/",
+		]);
+		expect(dispatchCalls()).toContain("dispatch focusmonitor DP-2");
+		expect(dispatchCalls()).toContain("dispatch togglespecialworkspace x");
+		expect(fs.readFileSync(log, "utf8")).toContain(
+			"dispatch exec [workspace special:x silent] uwsm-app -- chromium",
+		);
+	});
+
+	it("does not relaunch X when its exact app-derived class is present", async () => {
+		const result = await run(["x"], { clients: xClient });
+
+		expect(result.exitCode).toBe(0);
+		expect(fs.existsSync(browserCall)).toBe(false);
+	});
+
+	it("launches X when a lookalike class differs at its literal dot", async () => {
+		const result = await run(["x"], {
+			clients: JSON.stringify([{ class: "chrome-xXcom__-Default" }]),
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(await chromiumArguments()).toEqual([
+			`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+			"--app=https://x.com/",
 		]);
 	});
 

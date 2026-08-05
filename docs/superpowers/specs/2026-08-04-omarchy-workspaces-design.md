@@ -1,5 +1,11 @@
 # Omarchy Workspace Port Design
 
+> **Superseded — original design from 2026-08-04.** This record preserves the
+> initial workspace-port decisions. The shortcut ownership and namespace claims
+> marked below were superseded by the two-key migration and the X workspace
+> toggle; current behavior lives in `configs/omarchy/workspaces.conf`, while
+> refresh-safe app bindings live in `configs/omarchy/bindings.conf`.
+
 ## Goal
 
 Restore the user's complete Haoshoku/Caelestia-era workspace layout on Omarchy using only user-owned Hyprland configuration and small portable helpers. Preserve Omarchy's defaults, shortcuts, themes, and update path.
@@ -42,7 +48,7 @@ Window rules silently route the mapped applications when they are launched throu
 
 ## Special Workspaces and Shortcuts
 
-All restored special-workspace bindings use the conflict-free `Super+Ctrl+Shift` namespace. No existing Omarchy binding is unbound.
+~~All restored special-workspace bindings use the conflict-free `Super+Ctrl+Shift` namespace. No existing Omarchy binding is unbound.~~ This was the original 2026-08-04 design. The current two-key layout displaces documented Omarchy defaults, and `Super+Shift+X` is explicitly unbound from the app-binding layer because the X special-workspace toggle supersedes that launcher.
 
 | Shortcut | Special workspace | Behavior |
 | --- | --- | --- |
@@ -56,7 +62,7 @@ All restored special-workspace bindings use the conflict-free `Super+Ctrl+Shift`
 | `Super+Ctrl+Shift+H` | `stash` | Toggle the general scratch workspace |
 | `Super+Ctrl+Shift+Alt+H` | `stash` | Move the active window silently into the stash |
 
-The existing Omarchy shortcuts—including `Super+B`, `Super+O`, `Super+D`, and `Super+Shift+M`—remain unchanged.
+~~The existing Omarchy shortcuts—including `Super+B`, `Super+O`, `Super+D`, and `Super+Shift+M`—remain unchanged.~~ The current layout relocates displaced defaults where their behavior remains useful and records the non-relocated X launcher as superseded in `configs/omarchy/keybinding-swaps.json`.
 
 ## Hyprland-Native Toggle Helper
 
@@ -104,8 +110,8 @@ Automated tests will cover:
 
 - exact workspace-to-monitor declarations and default/persistent flags;
 - exact application routing without broad Steam or Chromium matches;
-- preservation of all existing Omarchy shortcut definitions;
-- conflict-free `Super+Ctrl+Shift` bindings;
+- registry coverage for every relocated or superseded Omarchy shortcut;
+- cross-file duplicate detection across the app-binding and workspace overlays;
 - source-line insertion exactly once while preserving existing `hyprland.conf` bytes;
 - timestamped overlay backup and idempotent redeployment;
 - known-recipe dispatch and unknown-recipe rejection in the special-workspace helper;
@@ -117,4 +123,4 @@ Automated tests will cover:
 
 ## Success Criteria
 
-After a fresh Omarchy install and Haoshoku run, the three-monitor numbered layout and former Caelestia special-workspace workflow are available through Omarchy-native Hyprland configuration. Omarchy's existing shortcuts and appearance continue to work unchanged, Flux and DeFi Chromium sessions remain isolated, and repeated Haoshoku runs do not duplicate sources or destroy user edits without backups.
+After a fresh Omarchy install and Haoshoku run, the three-monitor numbered layout and former Caelestia special-workspace workflow are available through Omarchy-native Hyprland configuration. ~~Omarchy's existing shortcuts and appearance continue to work unchanged~~ Omarchy's appearance remains unchanged, while shortcut displacements are explicitly relocated or superseded; Flux and DeFi Chromium sessions remain isolated, and repeated Haoshoku runs do not duplicate sources or destroy user edits without backups.
