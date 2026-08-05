@@ -2,10 +2,59 @@
 
 ## Unreleased
 
+- Make special-workspace toggles monitor-aware without hiding or migrating
+  panels: browser recipes open on the focused monitor, while pinned panels stay
+  on their assigned monitor and focus an already-visible panel instead of
+  toggling it away. Add distinct-monitor and per-recipe coverage so placement
+  and follow-focus behavior cannot drift unnoticed.
+- Add standalone `--scripts` and `--workspaces` deployment paths, preventing the
+  tracked user scripts and Hyprland workspace overlay from drifting behind their
+  live copies. The scripts path also prunes retired entries; the workspace path
+  installs its helper and ensures Hyprland sources the overlay.
+- Fix Chromium `--app` routing for WhatsApp, Notion, X, YouTube, and Crunchyroll.
+  Chromium ignores `--class` under `--app` and derives the window class from the
+  URL instead, so each app now uses its escaped derived class rather than an
+  ineffective requested class. Shared web apps run through a Flux-profile
+  wrapper so their sessions stay together; the wrapper is necessary because the
+  launcher keeps only the first field of a desktop file's `Exec`. X is pinned to
+  the portrait workspace, while YouTube and Crunchyroll get focus-following
+  workspaces, with table-driven coverage guarding every recipe's monitor
+  behavior.
+- Restore durable Zed translucency and visible borders in the Omazed-generated
+  theme. Zed requires the dotted `background.appearance` setting inside the
+  theme style plus alpha-channel background colours; its own blur protocol is
+  KDE-only, so the transparent surfaces rely on Hyprland to supply the blur.
+- Move application keybindings into a refresh-safe overlay because
+  `~/.config/hypr/bindings.conf` is an Omarchy template that `omarchy refresh`
+  restores and overwrites. Hyprland adds bindings instead of replacing them, so
+  every override explicitly unbinds first, while `keybinding-swaps.json` records
+  each displaced default. The overlay also moves workspace toggles to shorter
+  two-key shortcuts, and `Super+Z` now always opens a new Zed window with
+  `zeditor --new` instead of focusing an existing one.
+- Rename the `Super+I` panel from Claude to assistants and tile ChatGPT beside
+  Claude. Deployment migrates a window stranded on the old special workspace,
+  while the former direct ChatGPT shortcut is removed so repeated presses do not
+  open duplicate windows.
+
+## 7.2.2 - 2026-08-05
+
 - Launch the agents special workspace in kitty instead of Alacritty, matching the
   kitty-first terminal setup. `--class haoshoku-agents` still sets the Wayland
   app_id, so the existing `match:class ^haoshoku-agents$` workspace rule continues
   to match.
+
+## 7.2.1 - 2026-08-05
+
+- During full setup, prompt (default Yes) to bootstrap the configured private
+  Claude policy repository after the public baseline. An unreachable or
+  authentication-failed repository now warns and lets setup continue; retry with
+  `haoshoku --claude-bootstrap`. The checkout never runs `git clean`, preserving
+  Omarchy's `~/.claude/skills/omarchy` symlink.
+
+## 7.2.0 - 2026-08-05
+
+## 7.1.0 - 2026-08-04
+
 - Complete the Chromium-only migration found during live E2E validation:
   remove Brave, Floorp, Google Chrome, and Thorium from the package set; make
   Chromium the default web handler; and replace the remaining Brave WhatsApp
@@ -29,14 +78,14 @@
   ProtonUp-RS, and Omarchy's GPU-aware 32-bit driver helper.
 - Retire the KDE, Caelestia, SDDM, Fish, terminal-theme, Zed-theme, and wallpaper
   setup paths. Omarchy is now the sole owner of desktop appearance.
+
+## 7.0.0 - 2026-08-04
+
+## 6.2.0 - 2026-08-04
+
 - Add the opt-in `--claude-bootstrap` mode for checking out the configured private
   Claude policy repository, including pre-mutation authentication checks and
   idempotent `origin` URL updates when `claudeBootstrapUrl` changes.
-- During full setup, prompt (default Yes) to bootstrap the configured private
-  Claude policy repository after the public baseline. An unreachable or
-  authentication-failed repository now warns and lets setup continue; retry with
-  `haoshoku --claude-bootstrap`. The checkout never runs `git clean`, preserving
-  Omarchy's `~/.claude/skills/omarchy` symlink.
 
 ## 6.1.0 - 2026-08-01
 

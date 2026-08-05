@@ -1,5 +1,9 @@
 import { describe, expect, it } from "bun:test";
-import { applyVersionBump, computeNextVersion } from "../scripts/release.js";
+import {
+	applyChangelogRelease,
+	applyVersionBump,
+	computeNextVersion,
+} from "../scripts/release.js";
 
 describe("computeNextVersion", () => {
 	it("bumps the patch component", () => {
@@ -53,5 +57,22 @@ describe("applyVersionBump", () => {
 		expect(() => applyVersionBump(content, "5.6.0")).toThrow(
 			/version pattern not found/,
 		);
+	});
+});
+
+describe("applyChangelogRelease", () => {
+	it("renames the Unreleased heading and leaves all other text untouched", () => {
+		const content =
+			"# Changelog\n\n## Unreleased\n\n- New behavior.\n\n## 7.2.2 - 2026-08-05\n\n- Previous behavior.\n";
+		expect(applyChangelogRelease(content, "7.3.0", "2026-08-06")).toBe(
+			"# Changelog\n\n## 7.3.0 - 2026-08-06\n\n- New behavior.\n\n## 7.2.2 - 2026-08-05\n\n- Previous behavior.\n",
+		);
+	});
+
+	it("throws when the Unreleased heading is not found", () => {
+		const content = "# Changelog\n\n## 7.2.2 - 2026-08-05\n";
+		expect(() =>
+			applyChangelogRelease(content, "7.3.0", "2026-08-06"),
+		).toThrow(/Unreleased heading not found/);
 	});
 });

@@ -86,6 +86,26 @@ export function applyVersionBump(content, newVersion) {
 	return updated;
 }
 
+/**
+ * Rename the Unreleased changelog section for a release. Throws if the heading
+ * is absent so a silent no-op cannot strand released entries under Unreleased.
+ *
+ * @param {string} content - CHANGELOG.md content
+ * @param {string} newVersion - release version
+ * @param {string} releaseDate - release date in YYYY-MM-DD format
+ * @returns {string} updated content
+ */
+export function applyChangelogRelease(content, newVersion, releaseDate) {
+	const updated = content.replace(
+		/^## Unreleased$/m,
+		`## ${newVersion} - ${releaseDate}`,
+	);
+	if (updated === content) {
+		throw new Error("Unreleased heading not found in CHANGELOG.md");
+	}
+	return updated;
+}
+
 /** Parse argv into { bump, version, yes, help } — no external dep. */
 function parseArgs(argv) {
 	const args = { bump: null, version: null, yes: false, help: false };
@@ -259,8 +279,29 @@ async function main() {
 		writeFileSync(cliPath, applyVersionBump(cliContent, newVersion));
 		log.success(`Updated haoshoku.js to v${newVersion}`);
 
+		// Update CHANGELOG.md — applyChangelogRelease throws if no Unreleased
+		// heading matches, so a silent no-op cannot strand released entries.
+		const changelogPath = resolve(process.cwd(), "CHANGELOG.md");
+		const changelogContent = readFileSync(changelogPath, "utf-8");
+		const now = new Date();
+		const releaseDate = [
+			now.getFullYear(),
+			String(now.getMonth() + 1).padStart(2, "0"),
+			String(now.getDate()).padStart(2, "0"),
+		].join("-");
+		writeFileSync(
+			changelogPath,
+			applyChangelogRelease(changelogContent, newVersion, releaseDate),
+		);
+		log.success(`Updated CHANGELOG.md for v${newVersion}`);
+
 		// 5. Git operations
-		await runCommand("git", ["add", "package.json", "haoshoku.js"]);
+		await runCommand("git", [
+			"add",
+			"package.json",
+			"haoshoku.js",
+			"CHANGELOG.md",
+		]);
 		await runCommand("git", ["commit", "-m", `chore: release v${newVersion}`]);
 		await runCommand("git", [
 			"tag",
