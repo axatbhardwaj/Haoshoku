@@ -122,7 +122,7 @@ hyprctl dispatch focusmonitor "$monitor" >/dev/null
 hyprctl dispatch togglespecialworkspace "$workspace" >/dev/null
 
 case "$recipe" in
-  agents) launch_if_missing "special:$workspace" '^haoshoku-agents$' alacritty --class haoshoku-agents -e bash -lc claude ;;
+  agents) launch_if_missing "special:$workspace" '^haoshoku-agents$' kitty --class haoshoku-agents bash -lc claude ;;
   claude-desktop) launch_if_missing "special:$workspace" '^com\.anthropic\.Claude$' claude-desktop ;;
   music) launch_if_missing "special:$workspace" '^[Ss]potify$' spotify ;;
   1password) launch_if_missing "special:$workspace" '^1password$' 1password ;;
