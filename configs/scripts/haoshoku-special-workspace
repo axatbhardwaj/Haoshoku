@@ -76,7 +76,7 @@ if [[ -n "$browser_profile" ]]; then
 else
   case "$recipe" in
     agents) workspace=agents; monitor=DP-2 ;;
-    claude-desktop) workspace=claude-desktop; monitor=DP-2 ;;
+    assistants) workspace=assistants; monitor=DP-2 ;;
     music) workspace=music; monitor=DP-1 ;;
     1password) workspace=1password; monitor=DP-1 ;;
     communication) workspace=communication; monitor=HDMI-A-1 ;;
@@ -153,7 +153,11 @@ fi
 
 case "$recipe" in
   agents) launch_if_missing "special:$workspace" '^haoshoku-agents$' kitty --class haoshoku-agents bash -lc claude ;;
-  claude-desktop) launch_if_missing "special:$workspace" '^com\.anthropic\.Claude$' claude-desktop ;;
+  assistants)
+    launch_if_missing "special:$workspace" '^com\.anthropic\.Claude$' claude-desktop
+    # Chromium ignores --class under --app and derives the class from the URL instead.
+    launch_if_missing "special:$workspace" '^chrome-chatgpt\.com__-Default$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/flux" --app=https://chatgpt.com
+    ;;
   music) launch_if_missing "special:$workspace" '^[Ss]potify$' spotify ;;
   1password) launch_if_missing "special:$workspace" '^1password$' 1password ;;
   communication)

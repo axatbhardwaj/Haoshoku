@@ -257,6 +257,28 @@ describe("Omarchy keybinding swaps", () => {
 		);
 	});
 
+	it("records the direct ChatGPT launcher as deleted while preserving Grok", () => {
+		const deletedChatgpt = swapsDocument.swaps.find(
+			(swap) => swap.key_combination_taken === "SUPER SHIFT, A",
+		);
+		expect(deletedChatgpt).toEqual({
+			config_file: "configs/omarchy/bindings.conf",
+			key_combination_taken: "SUPER SHIFT, A",
+			previous_binding:
+				'bindd = SUPER SHIFT, A, ChatGPT, exec, omarchy-launch-webapp "https://chatgpt.com"',
+			moved_from_dispatcher: "exec",
+			moved_from_arg: 'omarchy-launch-webapp "https://chatgpt.com"',
+			reason: "deleted_by_user",
+		});
+
+		const bindings = fs.readFileSync(bindingsConfigPath, "utf8");
+		expect(bindings).toContain("unbind = SUPER SHIFT, A");
+		expect(bindings).not.toContain(deletedChatgpt?.previous_binding);
+		expect(bindings).toContain(
+			'bindd = SUPER SHIFT ALT, A, Grok, exec, omarchy-launch-webapp "https://grok.com"',
+		);
+	});
+
 	(omarchyDefaultsAvailable ? it : it.skip)(
 		"aligns every swap with Omarchy defaults, including scratchpad special-workspace arguments",
 		() => {
@@ -333,7 +355,18 @@ describe("Omarchy keybinding swaps", () => {
 							: [];
 					}),
 			);
+			const unboundLines = fs
+				.readFileSync(repoConfigPath(swap.config_file), "utf8")
+				.split(/\r?\n/)
+				.filter((line) => {
+					const operation = bindingOperation(line);
+					return (
+						operation?.type === "unbind" &&
+						operation.keyCombination === deletedKey
+					);
+				});
 
+			expect(unboundLines).toEqual([`unbind = ${swap.key_combination_taken}`]);
 			expect(reboundLines).toEqual([]);
 		}
 	});

@@ -37,8 +37,8 @@ describe("haoshoku-special-workspace", () => {
 		);
 		const expectedRecipes = {
 			agents: { workspace: "agents", monitor: "DP-2", followsFocus: false },
-			"claude-desktop": {
-				workspace: "claude-desktop",
+			assistants: {
+				workspace: "assistants",
 				monitor: "DP-2",
 				followsFocus: false,
 			},
@@ -69,6 +69,7 @@ describe("haoshoku-special-workspace", () => {
 	let log;
 	let browserCall;
 	let chromium;
+	let claudeDesktop;
 	let focusedMonitorState;
 	let specialMonitorState;
 	let specialState;
@@ -77,6 +78,7 @@ describe("haoshoku-special-workspace", () => {
 		log = path.join(directory, "calls");
 		browserCall = path.join(directory, "chromium-call");
 		chromium = path.join(directory, "chromium");
+		claudeDesktop = path.join(directory, ["claude", "desktop"].join("-"));
 		focusedMonitorState = path.join(directory, "focused-monitor-state");
 		specialMonitorState = path.join(directory, "special-monitor-state");
 		specialState = path.join(directory, "special-workspace-state");
@@ -143,7 +145,14 @@ printf 'chromium\\n' >> "$CALL_LOG"
 printf '%s\\0' "$@" > "$BROWSER_CALL"
 `,
 		);
+		fs.writeFileSync(
+			claudeDesktop,
+			`#!/usr/bin/env bash
+printf 'claude\n' >> "$CALL_LOG"
+`,
+		);
 		fs.chmodSync(hyprctl, 0o755);
+		fs.chmodSync(claudeDesktop, 0o755);
 		fs.chmodSync(chromium, 0o755);
 		fs.chmodSync(uwsmApp, 0o755);
 	});
@@ -199,6 +208,8 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 	const agentsClient = JSON.stringify([{ class: "haoshoku-agents" }]);
 	const xClient = JSON.stringify([{ class: "chrome-x.com__-Default" }]);
 	const forwardedUrl = "https://example.test/forwarded";
+	const claudeClass = "com.anthropic.Claude";
+	const chatgptClass = "chrome-chatgpt.com__-Default";
 
 	it("forwards a generic browser URL without hiding it on the focused monitor", async () => {
 		const result = await run(["browser", "flux", forwardedUrl], {
@@ -452,6 +463,90 @@ printf 'kitty\\n' >> "$CALL_LOG"
 		expect(result.exitCode).toBe(0);
 		expect(dispatchCalls()).toEqual([
 			"dispatch togglespecialworkspace agents",
+		]);
+	});
+
+	it("guards both assistants with exact class regexes and no Chromium class override", () => {
+		const recipeScript = fs.readFileSync(script, "utf8");
+		const assistantsCase = recipeScript.match(
+			/^\s*assistants\)\n(?<body>[\s\S]*?)^\s*;;$/m,
+		)?.groups?.body;
+		expect(assistantsCase).toBeDefined();
+
+		const launchLines = (assistantsCase ?? "")
+			.split(/\r?\n/)
+			.map((line) => line.trim())
+			.filter((line) => line.startsWith("launch_if_missing "));
+		expect(launchLines).toHaveLength(2);
+		expect(launchLines[0]).toContain(String.raw`'^com\.anthropic\.Claude$'`);
+		expect(launchLines[1]).toBe(
+			String.raw`launch_if_missing "special:$workspace" '^chrome-chatgpt\.com__-Default$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/flux" --app=https://chatgpt.com`,
+		);
+		expect(launchLines.some((line) => line.includes("--class"))).toBe(false);
+
+		const chatgptPattern = launchLines[1]?.match(/'([^']+)'/)?.[1];
+		expect(chatgptPattern).toBeDefined();
+		expect("chrome-chatgptXcom__-Default").not.toMatch(
+			new RegExp(chatgptPattern),
+		);
+	});
+
+	it("does not relaunch either assistant when both exact classes are present", async () => {
+		const result = await run(["assistants"], {
+			clients: JSON.stringify([
+				{ class: claudeClass },
+				{ class: chatgptClass },
+			]),
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(fs.existsSync(browserCall)).toBe(false);
+		expect(
+			dispatchCalls().filter((call) => call.startsWith("dispatch exec")),
+		).toEqual([]);
+	});
+
+	it("launches only ChatGPT when Claude Desktop is already present", async () => {
+		const result = await run(["assistants"], {
+			clients: JSON.stringify([{ class: claudeClass }]),
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(await chromiumArguments()).toEqual([
+			`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+			"--app=https://chatgpt.com",
+		]);
+		expect(dispatchCalls().filter((call) => call === "claude")).toHaveLength(0);
+		expect(dispatchCalls().filter((call) => call === "chromium")).toHaveLength(
+			1,
+		);
+	});
+
+	it("launches only Claude Desktop when ChatGPT is already present", async () => {
+		const result = await run(["assistants"], {
+			clients: JSON.stringify([{ class: chatgptClass }]),
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(fs.existsSync(browserCall)).toBe(false);
+		expect(dispatchCalls().filter((call) => call === "claude")).toHaveLength(1);
+		expect(dispatchCalls().filter((call) => call === "chromium")).toHaveLength(
+			0,
+		);
+	});
+
+	it("launches ChatGPT when a decoy replaces the class's literal dot", async () => {
+		const result = await run(["assistants"], {
+			clients: JSON.stringify([
+				{ class: claudeClass },
+				{ class: "chrome-chatgptXcom__-Default" },
+			]),
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(await chromiumArguments()).toEqual([
+			`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+			"--app=https://chatgpt.com",
 		]);
 	});
 

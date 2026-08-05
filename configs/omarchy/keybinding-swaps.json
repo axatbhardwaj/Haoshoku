@@ -141,11 +141,11 @@
 		},
 		{
 			"config_file": "configs/omarchy/bindings.conf",
-			"key_combination_taken": "SHIFT SUPER, A",
+			"key_combination_taken": "SUPER SHIFT, A",
 			"previous_binding": "bindd = SUPER SHIFT, A, ChatGPT, exec, omarchy-launch-webapp \"https://chatgpt.com\"",
 			"moved_from_dispatcher": "exec",
 			"moved_from_arg": "omarchy-launch-webapp \"https://chatgpt.com\"",
-			"reason": "reclaimed_by_overlay"
+			"reason": "deleted_by_user"
 		},
 		{
 			"config_file": "configs/omarchy/bindings.conf",

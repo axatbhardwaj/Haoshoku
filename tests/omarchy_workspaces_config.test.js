@@ -44,7 +44,7 @@ describe("Omarchy workspace overlay", () => {
 	it("uses dedicated special-workspace toggles", () => {
 		const toggleBinds = [
 			"bindd = SUPER, A, Show/focus/hide agents workspace, exec, haoshoku-special-workspace agents",
-			"bindd = SUPER, I, Show/focus/hide Claude Desktop workspace, exec, haoshoku-special-workspace claude-desktop",
+			"bindd = SUPER, I, Show/focus/hide AI assistants workspace, exec, haoshoku-special-workspace assistants",
 			"bindd = SUPER, M, Show/focus/hide music workspace, exec, haoshoku-special-workspace music",
 			"bindd = SUPER, O, Show/focus/hide 1Password workspace, exec, haoshoku-special-workspace 1password",
 			"bindd = SUPER, G, Show/focus/hide communication workspace, exec, haoshoku-special-workspace communication",
@@ -95,6 +95,24 @@ describe("Omarchy workspace overlay", () => {
 		);
 		expect(config).not.toContain(
 			"windowrule = workspace 6 silent, match:class ^chrome-x\\.com__-Default$",
+		);
+	});
+
+	it("routes both AI assistants by exact class without silent placement", () => {
+		const expectedRules = [
+			String.raw`windowrule = workspace special:assistants, match:class ^com\.anthropic\.Claude$`,
+			String.raw`windowrule = workspace special:assistants, match:class ^chrome-chatgpt\.com__-Default$`,
+		];
+		const assistantRules = config
+			.split(/\r?\n/)
+			.filter((line) =>
+				line.startsWith("windowrule = workspace special:assistants,"),
+			);
+
+		expect(assistantRules).toEqual(expectedRules);
+		for (const rule of assistantRules) expect(rule).not.toContain(" silent");
+		expect("chrome-chatgptXcom__-Default").not.toMatch(
+			/^chrome-chatgpt\.com__-Default$/,
 		);
 	});
 
