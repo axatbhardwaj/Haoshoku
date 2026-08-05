@@ -30,6 +30,7 @@ export const MODE_FLAGS = [
 	"claudeStayAwakeBackup",
 	"prWatch",
 	"prWatchBackup",
+	"scripts",
 ];
 
 /**

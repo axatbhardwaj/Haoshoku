@@ -38,6 +38,7 @@ import {
 	backupWorktreeCleanup,
 	syncWorktreeCleanup,
 } from "./src/helpers/configure_worktree_cleanup.js";
+import { installUserScripts } from "./src/helpers/install_user_scripts.js";
 import {
 	CACHE_DIR,
 	printAvailableSkills,
@@ -115,6 +116,10 @@ program
 	.option(
 		"--pr-watch-backup",
 		"Backup the pr-watch PR watcher from ~/.local/bin/ to configs/pr-watch/",
+	)
+	.option(
+		"--scripts",
+		"Deploy user scripts (configs/scripts/ → ~/.local/bin/) and prune retired entries",
 	)
 	.action(async (options) => {
 		try {
@@ -254,6 +259,11 @@ async function runAction(options) {
 
 	if (options.prWatch) {
 		await syncPrWatch();
+		return;
+	}
+
+	if (options.scripts) {
+		await installUserScripts();
 		return;
 	}
 
