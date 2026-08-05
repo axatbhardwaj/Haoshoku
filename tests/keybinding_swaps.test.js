@@ -186,6 +186,18 @@ if (!omarchyAppBindingsAvailable)
 	);
 
 describe("Omarchy keybinding swaps", () => {
+	it("always opens a new Zed window instead of focusing an existing one", () => {
+		const zedBinding = fs
+			.readFileSync(bindingsConfigPath, "utf8")
+			.split(/\r?\n/)
+			.find((line) => line.startsWith("bindd = SUPER, Z,"));
+
+		expect(zedBinding).toBe(
+			"bindd = SUPER, Z, Zed, exec, uwsm-app -- zeditor --new",
+		);
+		expect(zedBinding).not.toContain("omarchy-launch-or-focus");
+	});
+
 	it("keeps the scratchpad special-workspace relocation faithful", () => {
 		const scratchpadSwap = swapsDocument.swaps.find(
 			(swap) => swap.key_combination_taken === "SUPER, S",
