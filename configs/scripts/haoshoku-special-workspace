@@ -37,7 +37,10 @@ if [[ "$recipe" == numbered ]]; then
       launch_if_missing "$workspace" '^teams-for-linux$' teams-for-linux
       launch_if_missing "$workspace" '^(TelegramDesktop|org\.telegram\.desktop)$' Telegram
       ;;
-    notion) launch_if_missing "$workspace" '^chromium-notion$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/notion" --class=chromium-notion --app=https://www.notion.so/ ;;
+    notion)
+      # Chromium ignores --class under --app and derives the class from the URL instead.
+      launch_if_missing "$workspace" '^chrome-www\.notion\.so__-Default$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/notion" --app=https://www.notion.so/
+      ;;
     *) echo "unknown numbered recipe: $app" >&2; exit 2 ;;
   esac
   exit 0

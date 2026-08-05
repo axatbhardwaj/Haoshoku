@@ -661,6 +661,61 @@ printf 'kitty\\n' >> "$CALL_LOG"
 		expect(fs.existsSync(browserCall)).toBe(false);
 	});
 
+	it("does not relaunch Notion when Chromium's app-derived class is already present", async () => {
+		const result = await run(["numbered", "10", "notion"], {
+			clients: JSON.stringify([
+				{ class: "chrome-www.notion.so__-Default" },
+			]),
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(fs.existsSync(browserCall)).toBe(false);
+	});
+
+	it("launches Notion when a lookalike class differs at its literal dots", async () => {
+		const result = await run(["numbered", "10", "notion"], {
+			clients: JSON.stringify([
+				{ class: "chrome-wwwXnotionXso__-Default" },
+			]),
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(await chromiumArguments()).toEqual([
+			`--user-data-dir=${directory}/.config/chromium-haoshoku/notion`,
+			"--app=https://www.notion.so/",
+		]);
+	});
+
+	it("does not relaunch Notion for its exact app-derived class", async () => {
+		const result = await run(["numbered", "10", "notion"], {
+			clients: JSON.stringify([
+				{ class: "chrome-www.notion.so__-Default" },
+			]),
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(fs.existsSync(browserCall)).toBe(false);
+	});
+
+	it("launches missing Notion with its exact app argv", async () => {
+		const result = await run(["numbered", "10", "notion"]);
+
+		expect(result.exitCode).toBe(0);
+		expect(await chromiumArguments()).toEqual([
+			`--user-data-dir=${directory}/.config/chromium-haoshoku/notion`,
+			"--app=https://www.notion.so/",
+		]);
+		expect(dispatchCalls().filter((call) => call === "chromium")).toHaveLength(1);
+	});
+
+	it("does not give missing Notion a Chromium class flag", async () => {
+		const result = await run(["numbered", "10", "notion"]);
+
+		expect(result.exitCode).toBe(0);
+		const argv = await chromiumArguments();
+		expect(argv.some((argument) => argument.startsWith("--class"))).toBe(false);
+	});
+
 	it("launches a missing WhatsApp once into the communication workspace", async () => {
 		const result = await run(["communication"], {
 			clients: JSON.stringify([{ class: "signal" }]),
@@ -675,6 +730,33 @@ printf 'kitty\\n' >> "$CALL_LOG"
 		expect(fs.readFileSync(log, "utf8")).toContain(
 			"dispatch exec [workspace special:communication silent] uwsm-app -- chromium",
 		);
+	});
+
+	it("launches WhatsApp when a lookalike class differs at its literal dots", async () => {
+		const result = await run(["communication"], {
+			clients: JSON.stringify([
+				{ class: "signal" },
+				{ class: "chrome-webXwhatsappXcom__-Default" },
+			]),
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(await chromiumArguments()).toEqual([
+			`--user-data-dir=${directory}/.config/chromium-haoshoku/whatsapp`,
+			"--app=https://web.whatsapp.com/",
+		]);
+	});
+
+	it("does not relaunch WhatsApp for its exact app-derived class", async () => {
+		const result = await run(["communication"], {
+			clients: JSON.stringify([
+				{ class: "signal" },
+				{ class: "chrome-web.whatsapp.com__-Default" },
+			]),
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(fs.existsSync(browserCall)).toBe(false);
 	});
 
 	it("continues launching a missing Signal into the communication workspace", async () => {

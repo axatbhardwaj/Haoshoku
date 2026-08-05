@@ -3,7 +3,7 @@ Version=1.0
 Type=Application
 Name=Genesis Block | Notion
 Comment=Open Notion in its isolated Chromium profile
-Exec=sh -lc 'exec chromium --user-data-dir="$HOME/.config/chromium-haoshoku/notion" --class=chromium-notion --app=https://www.notion.so/'
+Exec=sh -lc 'exec chromium --user-data-dir="$HOME/.config/chromium-haoshoku/notion" --app=https://www.notion.so/'
 Terminal=false
 Categories=Office;Utility;
-StartupWMClass=chromium-notion
+StartupWMClass=chrome-www.notion.so__-Default

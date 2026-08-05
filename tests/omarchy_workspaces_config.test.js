@@ -52,6 +52,26 @@ describe("Omarchy workspace overlay", () => {
 		);
 	});
 
+	it("routes Notion by its exact app-derived Chromium class", () => {
+		expect(config).toContain(
+			"windowrule = workspace 10 silent, match:class ^chrome-www\\.notion\\.so__-Default$",
+		);
+	});
+
+	it("routes WhatsApp by its exact app-derived Chromium class", () => {
+		expect(config).toContain(
+			"windowrule = workspace special:communication, match:class ^(signal|Signal|chrome-web\\.whatsapp\\.com__-Default)$",
+		);
+	});
+
+	it("does not retain the retired Notion Chromium class", () => {
+		expect(config).not.toContain("chromium-notion");
+	});
+
+	it("does not retain the retired WhatsApp Chromium class", () => {
+		expect(config).not.toContain("chromium-whatsapp");
+	});
+
 	it("keeps retired desktops, browsers, and visual ownership out", () => {
 		expect(config).not.toMatch(
 			/caelestia|brave|kde|opacity|blur|decoration|wallpaper/i,

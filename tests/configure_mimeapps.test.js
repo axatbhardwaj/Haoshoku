@@ -437,10 +437,10 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 
 		expect(desktop).toContain("Name=WhatsApp Web");
 		expect(desktop).toContain(
-			`Exec=sh -lc 'exec chromium --user-data-dir="$HOME/.config/chromium-haoshoku/whatsapp" --class=chromium-whatsapp --app=https://web.whatsapp.com/'`,
+			`Exec=sh -lc 'exec chromium --user-data-dir="$HOME/.config/chromium-haoshoku/whatsapp" --app=https://web.whatsapp.com/'`,
 		);
 		expect(desktop).toContain("Type=Application");
-		expect(desktop).toContain("StartupWMClass=chromium-whatsapp");
+		expect(desktop).toContain("StartupWMClass=chrome-web.whatsapp.com__-Default");
 	});
 
 	it("restores the working WhatsApp Exec on every later mimeapps sync", async () => {
@@ -466,7 +466,7 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 			"utf8",
 		);
 		expect(deployed).toContain(
-			`Exec=sh -lc 'exec chromium --user-data-dir="$HOME/.config/chromium-haoshoku/whatsapp" --class=chromium-whatsapp --app=https://web.whatsapp.com/'`,
+			`Exec=sh -lc 'exec chromium --user-data-dir="$HOME/.config/chromium-haoshoku/whatsapp" --app=https://web.whatsapp.com/'`,
 		);
 		expect(deployed).not.toContain("Exec=caelestia toggle communication");
 	});
@@ -542,9 +542,9 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 		expect(content).not.toContain("x-scheme-handler/notion=cohesion.desktop");
 		expect(desktop).toContain("Name=Genesis Block | Notion");
 		expect(desktop).toContain(
-			`Exec=sh -lc 'exec chromium --user-data-dir="$HOME/.config/chromium-haoshoku/notion" --class=chromium-notion --app=https://www.notion.so/'`,
+			`Exec=sh -lc 'exec chromium --user-data-dir="$HOME/.config/chromium-haoshoku/notion" --app=https://www.notion.so/'`,
 		);
-		expect(desktop).toContain("StartupWMClass=chromium-notion");
+		expect(desktop).toContain("StartupWMClass=chrome-www.notion.so__-Default");
 	});
 
 	it("covers every managed desktop entry with either a deployed handler or installed package", () => {
