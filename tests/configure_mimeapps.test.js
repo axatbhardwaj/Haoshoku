@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
+import { log } from "../src/common/utils.js";
 import * as mimeapps from "../src/helpers/configure_mimeapps.js";
 
 const PROJECT_ROOT = path.resolve(__dirname, "..");
@@ -159,6 +160,53 @@ describe("syncMimeappsConfig — deploys mimeapps.list to ~/.config/", () => {
 		expect(fs.readFileSync(handler, "utf8")).toContain(
 			"MimeType=x-scheme-handler/claude-cli;",
 		);
+	});
+
+	it("warns without failing when a bare desktop command is missing from ~/.local/bin", async () => {
+		seedRepoMimeapps();
+		const applicationsDir = path.join(
+			tmpProjectRoot,
+			"configs",
+			"mimeapps",
+			"applications",
+		);
+		fs.mkdirSync(applicationsDir, { recursive: true });
+		fs.writeFileSync(
+			path.join(applicationsDir, "chromium.desktop"),
+			"[Desktop Entry]\nExec=haoshoku-chromium-flux %U\n",
+		);
+		const warnings = [];
+		const originalWarning = log.warning;
+		log.warning = (message) => warnings.push(message);
+
+		try {
+			await mimeapps.syncMimeappsConfig({
+				home: tmpHome,
+				projectRoot: tmpProjectRoot,
+			});
+		} finally {
+			log.warning = originalWarning;
+		}
+
+		expect(
+			fs.existsSync(
+				path.join(
+					tmpHome,
+					".local",
+					"share",
+					"applications",
+					"chromium.desktop",
+				),
+			),
+		).toBe(true);
+		expect(
+			fs.existsSync(
+				path.join(tmpHome, ".local", "bin", "haoshoku-chromium-flux"),
+			),
+		).toBe(false);
+		expect(warnings).toHaveLength(1);
+		expect(warnings[0]).toContain("haoshoku-chromium-flux");
+		expect(warnings[0]).toContain("haoshoku --scripts");
 	});
 
 	it("removes retired streaming desktop entries from ~/.local/share/applications/", async () => {

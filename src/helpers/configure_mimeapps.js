@@ -56,10 +56,30 @@ function syncDesktopHandlers(repoApplicationsDir, liveApplicationsDir) {
 		withFileTypes: true,
 	})) {
 		if (!entry.isFile() || !entry.name.endsWith(".desktop")) continue;
-		fs.copyFileSync(
-			path.join(repoApplicationsDir, entry.name),
-			path.join(liveApplicationsDir, entry.name),
-		);
+		const sourcePath = path.join(repoApplicationsDir, entry.name);
+		const execLine = fs
+			.readFileSync(sourcePath, "utf8")
+			.split("\n")
+			.find((line) => line.startsWith("Exec="));
+		const execCommand = execLine
+			?.slice("Exec=".length)
+			.trim()
+			.match(/^\S+/)?.[0];
+		if (execCommand && path.basename(execCommand) === execCommand) {
+			const localBinCommand = path.resolve(
+				liveApplicationsDir,
+				"..",
+				"..",
+				"bin",
+				execCommand,
+			);
+			if (!fs.existsSync(localBinCommand)) {
+				log.warning(
+					`applications/${entry.name} requires ${execCommand} in ~/.local/bin; also run haoshoku --scripts`,
+				);
+			}
+		}
+		fs.copyFileSync(sourcePath, path.join(liveApplicationsDir, entry.name));
 		log.info(`Synced applications/${entry.name}`);
 	}
 }
