@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+# Zed transparency uses dotted `background.appearance` in each theme style plus alpha background colours; Hyprland supplies the blur behind transparent windows.
+set -euo pipefail
+
+theme_file="$HOME/.config/zed/themes/omazed.json"
+
+if [[ ! -f "$theme_file" ]]; then
+	exit 0
+fi
+
+if ! command -v jq >/dev/null 2>&1; then
+	echo "haoshoku-zed-glass: warning: jq is unavailable; leaving theme unchanged" >&2
+	exit 0
+fi
+
+theme_dir=$(dirname "$theme_file")
+tmp_file=""
+
+cleanup() {
+	if [[ -n "$tmp_file" ]]; then
+		rm -f "$tmp_file"
+	fi
+}
+
+trap cleanup EXIT INT TERM HUP
+
+if ! tmp_file=$(mktemp "$theme_dir/.omazed.json.XXXXXX"); then
+	echo "haoshoku-zed-glass: warning: could not create a temporary theme file" >&2
+	exit 0
+fi
+
+# Note: the underscore spelling "background_appearance" is NOT a real Zed setting
+# and must not be reintroduced. The dotted theme-style field is the only working mechanism.
+if ! jq -e '
+  def append_alpha($alpha):
+    if type == "string" and test("^#[0-9A-Fa-f]{6}$") then
+      . + $alpha
+    else
+      .
+    end;
+
+  def patch_alpha($keys; $alpha):
+    reduce $keys[] as $key (.;
+      if has($key) then
+        .[$key] |= append_alpha($alpha)
+      else
+        .
+      end
+    );
+
+  def patch_style:
+    .["background.appearance"] = "transparent"
+    | patch_alpha([
+        "background",
+        "surface.background",
+        "toolbar.background",
+        "editor.background",
+        "editor.gutter.background"
+      ]; "E6")
+    | patch_alpha([
+        "status_bar.background",
+        "title_bar.background",
+        "tab_bar.background",
+        "panel.background"
+      ]; "D9")
+    | if has("scrollbar.thumb.background") then
+      .["scrollbar.thumb.background"] as $thumb
+      | .border = $thumb
+      | .["border.variant"] = $thumb
+    else
+      .
+    end;
+
+  if type == "object"
+    and (.themes | type == "array")
+    and all(.themes[]; type == "object" and (.style | type == "object")) then
+    .themes |= map(.style |= patch_style)
+  else
+    error("expected theme entries with style objects")
+  end
+' "$theme_file" >"$tmp_file"; then
+	echo "haoshoku-zed-glass: warning: could not process theme; leaving it unchanged" >&2
+	exit 0
+fi
+
+mv "$tmp_file" "$theme_file"
+tmp_file=""
