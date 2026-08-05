@@ -634,4 +634,18 @@ printf 'kitty\\n' >> "$CALL_LOG"
 			expect(fs.existsSync(browserCall)).toBe(false);
 		});
 	}
+
+	// Mutation caught: confusing $monitor with $visible_monitor in the cross-monitor
+	// branch focuses the pinned monitor instead of the workspace's visible monitor.
+	it("focuses the monitor where a pinned workspace is actually visible", async () => {
+		const result = await run(["agents"], {
+			clients: agentsClient,
+			focusedMonitor: "DP-1",
+			visibleWorkspace: "agents",
+			visibleMonitor: "HDMI-A-1",
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(dispatchCalls()).toEqual(["dispatch focusmonitor HDMI-A-1"]);
+	});
 });
