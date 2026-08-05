@@ -97,6 +97,17 @@ toggle_special_workspace() {
   hyprctl dispatch togglespecialworkspace "$workspace" >/dev/null
 }
 
+focus_or_toggle_special_workspace() {
+  if [[ -z "$visible_monitor" ]]; then
+    hyprctl dispatch focusmonitor "$monitor" >/dev/null
+    hyprctl dispatch togglespecialworkspace "$workspace" >/dev/null
+  elif [[ "$visible_monitor" != "$focused_monitor" ]]; then
+    hyprctl dispatch focusmonitor "$visible_monitor" >/dev/null
+  else
+    hyprctl dispatch togglespecialworkspace "$workspace" >/dev/null
+  fi
+}
+
 reveal_special_workspace() {
   [[ -n "$visible_monitor" && "$visible_monitor" == "$focused_monitor" ]] || \
     toggle_special_workspace
@@ -129,7 +140,7 @@ if [[ -n "$browser_profile" ]]; then
   exit 0
 fi
 
-toggle_special_workspace
+focus_or_toggle_special_workspace
 
 case "$recipe" in
   agents) launch_if_missing "special:$workspace" '^haoshoku-agents$' kitty --class haoshoku-agents bash -lc claude ;;

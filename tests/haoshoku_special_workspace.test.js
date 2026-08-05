@@ -284,7 +284,7 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 		]);
 	});
 
-	it("pulls visible agents to the focused monitor without hiding it", async () => {
+	it("focuses visible agents on their monitor without moving them", async () => {
 		const result = await run(["agents"], {
 			clients: agentsClient,
 			focusedMonitor: "DP-1",
@@ -294,10 +294,36 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 
 		expect(result.exitCode).toBe(0);
 		expect(dispatchCalls()).toEqual([
-			"dispatch togglespecialworkspace agents",
+			"dispatch focusmonitor DP-2",
 		]);
 		expect(fs.readFileSync(specialState, "utf8")).toBe("agents");
-		expect(fs.readFileSync(specialMonitorState, "utf8")).toBe("DP-1");
+		expect(fs.readFileSync(specialMonitorState, "utf8")).toBe("DP-2");
+	});
+
+	// Mutation caught: returning after cross-monitor focus leaves a visible
+	// workspace empty when its client has died.
+	it("relaunches missing agents after focusing their visible workspace", async () => {
+		const kitty = path.join(directory, "kitty");
+		fs.writeFileSync(
+			kitty,
+			`#!/usr/bin/env bash
+printf 'kitty\\n' >> "$CALL_LOG"
+`,
+		);
+		fs.chmodSync(kitty, 0o755);
+
+		const result = await run(["agents"], {
+			focusedMonitor: "DP-1",
+			visibleWorkspace: "agents",
+			visibleMonitor: "DP-2",
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(dispatchCalls()).toEqual([
+			"dispatch focusmonitor DP-2",
+			"dispatch exec [workspace special:agents silent] uwsm-app -- kitty --class haoshoku-agents bash -lc claude",
+			"kitty",
+		]);
 	});
 
 	it("hides agents visible on the focused monitor", async () => {
