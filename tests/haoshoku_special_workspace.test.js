@@ -272,6 +272,71 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 		]);
 	});
 
+	for (const recipe of ["youtube", "crunchyroll"]) {
+		const clients = JSON.stringify([
+			{
+				class:
+					recipe === "youtube"
+						? "chrome-youtube.com__-Default"
+						: "chrome-www.crunchyroll.com__-Default",
+			},
+		]);
+
+		it(`opens hidden ${recipe} on the focused monitor`, async () => {
+			const result = await run([recipe], {
+				clients,
+				focusedMonitor: "DP-2",
+			});
+
+			expect(result.exitCode).toBe(0);
+			expect(dispatchCalls()).toContain("dispatch focusmonitor DP-2");
+			expect(dispatchCalls()).toContain(
+				`dispatch togglespecialworkspace ${recipe}`,
+			);
+		});
+
+		it(`moves visible ${recipe} to the focused monitor`, async () => {
+			const result = await run([recipe], {
+				clients,
+				focusedMonitor: "DP-2",
+				visibleWorkspace: recipe,
+				visibleMonitor: "DP-1",
+			});
+
+			expect(result.exitCode).toBe(0);
+			expect(dispatchCalls()).toContain(
+				`dispatch togglespecialworkspace ${recipe}`,
+			);
+			expect(fs.readFileSync(specialMonitorState, "utf8")).toBe("DP-2");
+		});
+
+		it(`hides ${recipe} visible on the focused monitor`, async () => {
+			const result = await run([recipe], {
+				clients,
+				focusedMonitor: "DP-1",
+				visibleWorkspace: recipe,
+				visibleMonitor: "DP-1",
+			});
+
+			expect(result.exitCode).toBe(0);
+			expect(dispatchCalls()).toContain(
+				`dispatch togglespecialworkspace ${recipe}`,
+			);
+		});
+	}
+
+	it("falls back to DP-1 for youtube when no monitor is focused", async () => {
+		const result = await run(["youtube"], {
+			clients: JSON.stringify([
+				{ class: "chrome-youtube.com__-Default" },
+			]),
+			focusedMonitor: "",
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(dispatchCalls()).toContain("dispatch focusmonitor DP-1");
+	});
+
 	it("opens hidden agents on its pinned monitor", async () => {
 		const result = await run(["agents"], {
 			clients: agentsClient,
@@ -390,7 +455,7 @@ printf 'kitty\\n' >> "$CALL_LOG"
 		},
 	]) {
 		it(`opens missing ${recipe} on DP-1 with the Flux app profile`, async () => {
-			const result = await run([recipe], { focusedMonitor: "DP-2" });
+			const result = await run([recipe], { focusedMonitor: "" });
 
 			expect(result.exitCode).toBe(0);
 			expect(await chromiumArguments()).toEqual([

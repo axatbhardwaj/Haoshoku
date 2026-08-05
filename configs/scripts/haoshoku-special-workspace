@@ -48,6 +48,7 @@ fi
 
 browser_profile=""
 browser_toggle=false
+follows_focus=false
 case "$recipe" in
   browser)
     [[ $# -ge 2 ]] || { echo "usage: haoshoku-special-workspace browser PROFILE_ID [URL ...]" >&2; exit 2; }
@@ -81,8 +82,8 @@ else
     communication) workspace=communication; monitor=HDMI-A-1 ;;
     stash) workspace=stash; monitor=DP-1 ;;
     x) workspace=x; monitor=DP-2 ;;
-    youtube) workspace=youtube; monitor=DP-1 ;;
-    crunchyroll) workspace=crunchyroll; monitor=DP-1 ;;
+    youtube) workspace=youtube; monitor=DP-1; follows_focus=true ;;
+    crunchyroll) workspace=crunchyroll; monitor=DP-1; follows_focus=true ;;
     *) echo "unknown workspace recipe: ${recipe:-<empty>}" >&2; exit 2 ;;
   esac
   [[ $# -eq 1 ]] || { echo "usage: haoshoku-special-workspace $recipe" >&2; exit 2; }
@@ -93,7 +94,7 @@ load_special_workspace_state() {
   monitors="$(hyprctl monitors -j)"
   focused_monitor="$(jq -r 'first(.[] | select(.focused == true) | .name) // empty' <<<"$monitors")"
   visible_monitor="$(jq -r --arg workspace "special:$workspace" 'first(.[] | select(.specialWorkspace.name == $workspace) | .name) // empty' <<<"$monitors")"
-  if [[ -n "$browser_profile" ]]; then
+  if [[ -n "$browser_profile" || "$follows_focus" == true ]]; then
     monitor="${focused_monitor:-$monitor}"
   fi
 }
@@ -144,9 +145,11 @@ if [[ -n "$browser_profile" ]]; then
     hyprctl dispatch exec "[workspace special:$workspace silent] uwsm-app -- $chromium_command" >/dev/null
   fi
   exit 0
+elif [[ "$follows_focus" == true ]]; then
+  toggle_special_workspace
+else
+  focus_or_toggle_special_workspace
 fi
-
-focus_or_toggle_special_workspace
 
 case "$recipe" in
   agents) launch_if_missing "special:$workspace" '^haoshoku-agents$' kitty --class haoshoku-agents bash -lc claude ;;
