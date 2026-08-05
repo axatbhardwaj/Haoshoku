@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Launch the agents special workspace in kitty instead of Alacritty, matching the
+  kitty-first terminal setup. `--class haoshoku-agents` still sets the Wayland
+  app_id, so the existing `match:class ^haoshoku-agents$` workspace rule continues
+  to match.
 - Complete the Chromium-only migration found during live E2E validation:
   remove Brave, Floorp, Google Chrome, and Thorium from the package set; make
   Chromium the default web handler; and replace the remaining Brave WhatsApp
