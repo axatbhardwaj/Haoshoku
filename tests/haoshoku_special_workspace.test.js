@@ -16,6 +16,55 @@ describe("haoshoku-special-workspace", () => {
 		expect(fs.readFileSync(script, "utf8")).not.toContain("/usr/bin/chromium");
 	});
 
+	it("guards every special-workspace recipe configuration", () => {
+		const recipeScript = fs.readFileSync(process.env.SCRIPT ?? script, "utf8");
+		const recipeCaseBlock = recipeScript.match(
+			/case "\$recipe" in\n(?<recipes>[\s\S]*?)\n\s*\*\)/,
+		)?.groups?.recipes;
+		expect(recipeCaseBlock).toBeDefined();
+
+		const recipes = Object.fromEntries(
+			[...recipeCaseBlock.matchAll(
+				/^\s*(?<recipe>[^)\s]+)\)\s*workspace=(?<workspace>[^;]+);\s*monitor=(?<monitor>[^;]+)(?:;\s*follows_focus=(?<followsFocus>true|false))?\s*;;$/gm,
+			)].map(({ groups }) => [
+				groups.recipe,
+				{
+					workspace: groups.workspace.trim(),
+					monitor: groups.monitor.trim(),
+					followsFocus: groups.followsFocus === "true",
+				},
+			]),
+		);
+		const expectedRecipes = {
+			agents: { workspace: "agents", monitor: "DP-2", followsFocus: false },
+			"claude-desktop": {
+				workspace: "claude-desktop",
+				monitor: "DP-2",
+				followsFocus: false,
+			},
+			music: { workspace: "music", monitor: "DP-1", followsFocus: false },
+			"1password": { workspace: "1password", monitor: "DP-1", followsFocus: false },
+			communication: {
+				workspace: "communication",
+				monitor: "HDMI-A-1",
+				followsFocus: false,
+			},
+			stash: { workspace: "stash", monitor: "DP-1", followsFocus: false },
+			x: { workspace: "x", monitor: "DP-2", followsFocus: false },
+			youtube: { workspace: "youtube", monitor: "DP-1", followsFocus: true },
+			crunchyroll: {
+				workspace: "crunchyroll",
+				monitor: "DP-1",
+				followsFocus: true,
+			},
+		};
+
+		expect(Object.keys(recipes).sort()).toEqual(Object.keys(expectedRecipes).sort());
+		for (const [recipe, expected] of Object.entries(expectedRecipes)) {
+			expect({ [recipe]: recipes[recipe] }).toEqual({ [recipe]: expected });
+		}
+	});
+
 	let directory;
 	let log;
 	let browserCall;
