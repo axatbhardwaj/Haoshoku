@@ -149,7 +149,8 @@ case "$recipe" in
   1password) launch_if_missing "special:$workspace" '^1password$' 1password ;;
   communication)
     launch_if_missing "special:$workspace" '^signal$' signal-desktop
-    launch_if_missing "special:$workspace" '^chromium-whatsapp$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/whatsapp" --class=chromium-whatsapp --app=https://web.whatsapp.com/
+    # Chromium ignores --class under --app and derives the class from the URL instead.
+    launch_if_missing "special:$workspace" '^chrome-web\.whatsapp\.com__-Default$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/whatsapp" --app=https://web.whatsapp.com/
     ;;
   stash) ;;
 esac

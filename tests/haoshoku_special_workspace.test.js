@@ -648,4 +648,55 @@ printf 'kitty\\n' >> "$CALL_LOG"
 		expect(result.exitCode).toBe(0);
 		expect(dispatchCalls()).toEqual(["dispatch focusmonitor HDMI-A-1"]);
 	});
+
+	it("does not relaunch WhatsApp when Chromium's app-derived class is already present", async () => {
+		const result = await run(["communication"], {
+			clients: JSON.stringify([
+				{ class: "signal" },
+				{ class: "chrome-web.whatsapp.com__-Default" },
+			]),
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(fs.existsSync(browserCall)).toBe(false);
+	});
+
+	it("launches a missing WhatsApp once into the communication workspace", async () => {
+		const result = await run(["communication"], {
+			clients: JSON.stringify([{ class: "signal" }]),
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(await chromiumArguments()).toEqual([
+			`--user-data-dir=${directory}/.config/chromium-haoshoku/whatsapp`,
+			"--app=https://web.whatsapp.com/",
+		]);
+		expect(dispatchCalls().filter((call) => call === "chromium")).toHaveLength(1);
+		expect(fs.readFileSync(log, "utf8")).toContain(
+			"dispatch exec [workspace special:communication silent] uwsm-app -- chromium",
+		);
+	});
+
+	it("continues launching a missing Signal into the communication workspace", async () => {
+		const signalDesktop = path.join(directory, "signal-desktop");
+		fs.writeFileSync(
+			signalDesktop,
+			`#!/usr/bin/env bash
+printf 'signal-desktop\\n' >> "$CALL_LOG"
+`,
+		);
+		fs.chmodSync(signalDesktop, 0o755);
+
+		const result = await run(["communication"], {
+			clients: JSON.stringify([
+				{ class: "chrome-web.whatsapp.com__-Default" },
+			]),
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(dispatchCalls()).toContain(
+			"dispatch exec [workspace special:communication silent] uwsm-app -- signal-desktop",
+		);
+		expect(dispatchCalls()).toContain("signal-desktop");
+	});
 });
