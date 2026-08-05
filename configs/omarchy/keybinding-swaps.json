@@ -1,0 +1,71 @@
+{
+	"schema_version": 2,
+	"swaps": [
+		{
+			"config_file": "configs/omarchy/workspaces.conf",
+			"key_combination_taken": "SUPER, G",
+			"previous_binding": "bindd = SUPER, G, Toggle window grouping, togglegroup",
+			"moved_from_dispatcher": "togglegroup",
+			"moved_from_arg": "",
+			"moved_to": "SUPER CTRL SHIFT, G",
+			"moved_to_dispatcher": "togglegroup",
+			"moved_to_arg": "",
+			"reason": "displaced_by_workspace_toggle"
+		},
+		{
+			"config_file": "configs/omarchy/workspaces.conf",
+			"key_combination_taken": "SUPER, O",
+			"previous_binding": "bindd = SUPER, O, Pop window out (float & pin), exec, omarchy-hyprland-window-pop",
+			"moved_from_dispatcher": "exec",
+			"moved_from_arg": "omarchy-hyprland-window-pop",
+			"moved_to": "SUPER CTRL SHIFT, O",
+			"moved_to_dispatcher": "exec",
+			"moved_to_arg": "omarchy-hyprland-window-pop",
+			"reason": "displaced_by_workspace_toggle"
+		},
+		{
+			"config_file": "configs/omarchy/workspaces.conf",
+			"key_combination_taken": "SUPER, S",
+			"previous_binding": "bindd = SUPER, S, Toggle scratchpad, togglespecialworkspace, scratchpad",
+			"moved_from_dispatcher": "togglespecialworkspace",
+			"moved_from_arg": "scratchpad",
+			"moved_to": "SUPER CTRL SHIFT, S",
+			"moved_to_dispatcher": "togglespecialworkspace",
+			"moved_to_arg": "scratchpad",
+			"reason": "displaced_by_workspace_toggle"
+		},
+		{
+			"config_file": "~/.config/hypr/bindings.conf",
+			"key_combination_taken": "SUPER, F",
+			"previous_binding": "bindd = SUPER, F, Full screen, fullscreen, 0",
+			"moved_from_dispatcher": "fullscreen",
+			"moved_from_arg": "0",
+			"moved_to": "SUPER CTRL SHIFT, F",
+			"moved_to_dispatcher": "fullscreen",
+			"moved_to_arg": "0",
+			"reason": "displaced_by_app_launcher"
+		},
+		{
+			"config_file": "~/.config/hypr/bindings.conf",
+			"key_combination_taken": "SUPER, P",
+			"previous_binding": "bindd = SUPER, P, Pseudo window, pseudo",
+			"moved_from_dispatcher": "pseudo",
+			"moved_from_arg": "",
+			"moved_to": "SUPER CTRL SHIFT, P",
+			"moved_to_dispatcher": "pseudo",
+			"moved_to_arg": "",
+			"reason": "displaced_by_app_launcher"
+		},
+		{
+			"config_file": "~/.config/hypr/bindings.conf",
+			"key_combination_taken": "SUPER, T",
+			"previous_binding": "bindd = SUPER, T, Toggle window floating/tiling, togglefloating",
+			"moved_from_dispatcher": "togglefloating",
+			"moved_from_arg": "",
+			"moved_to": "SUPER CTRL SHIFT, T",
+			"moved_to_dispatcher": "togglefloating",
+			"moved_to_arg": "",
+			"reason": "displaced_by_app_launcher"
+		}
+	]
+}

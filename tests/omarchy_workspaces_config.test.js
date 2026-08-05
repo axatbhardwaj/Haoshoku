@@ -37,18 +37,42 @@ describe("Omarchy workspace overlay", () => {
 		);
 	});
 
-	it("uses only the approved special-workspace key namespace", () => {
-		for (const key of ["A", "I", "M", "O", "G", "B", "D", "H"])
-			expect(config).toContain(`SUPER CTRL SHIFT, ${key}`);
-		expect(config).toContain("SUPER CTRL SHIFT ALT, H");
+	it("uses two-key special-workspace toggles", () => {
+		const toggleBinds = [
+			"bindd = SUPER, A, Show/focus/hide agents workspace, exec, haoshoku-special-workspace agents",
+			"bindd = SUPER, I, Show/focus/hide Claude Desktop workspace, exec, haoshoku-special-workspace claude-desktop",
+			"bindd = SUPER, M, Show/focus/hide music workspace, exec, haoshoku-special-workspace music",
+			"bindd = SUPER, O, Show/focus/hide 1Password workspace, exec, haoshoku-special-workspace 1password",
+			"bindd = SUPER, G, Show/focus/hide communication workspace, exec, haoshoku-special-workspace communication",
+			"bindd = SUPER, B, Toggle Flux Chromium workspace, exec, haoshoku-special-workspace browser-toggle flux",
+			"bindd = SUPER, D, Toggle DeFi Chromium workspace, exec, haoshoku-special-workspace browser-toggle defi",
+			"bindd = SUPER, S, Toggle stash workspace, togglespecialworkspace, stash",
+		];
+		for (const bind of toggleBinds) expect(config).toContain(bind);
+		expect(
+			config.split("\n").filter(
+				(line) =>
+					line.startsWith("bindd = SUPER, ") &&
+					!line.includes("haoshoku-special-workspace numbered ") &&
+					// Seven helper-backed toggles plus the stash toggle.
+					(line.includes("haoshoku-special-workspace") ||
+						line.endsWith("togglespecialworkspace, stash")),
+			),
+		).toHaveLength(8);
+		expect(config).toContain(
+			"bindd = SUPER SHIFT, S, Stash focused window, movetoworkspacesilent, special:stash",
+		);
+		expect(config).not.toMatch(
+			/^bindd = SUPER CTRL SHIFT(?: ALT)?, [A-Z], .*?(?:haoshoku-special-workspace|togglespecialworkspace, stash|movetoworkspacesilent, special:stash)$/m,
+		);
 	});
 
 	it("binds browser shortcuts to explicit toggle commands", () => {
 		expect(config).toContain(
-			"bindd = SUPER CTRL SHIFT, B, Toggle Flux Chromium workspace, exec, haoshoku-special-workspace browser-toggle flux",
+			"bindd = SUPER, B, Toggle Flux Chromium workspace, exec, haoshoku-special-workspace browser-toggle flux",
 		);
 		expect(config).toContain(
-			"bindd = SUPER CTRL SHIFT, D, Toggle DeFi Chromium workspace, exec, haoshoku-special-workspace browser-toggle defi",
+			"bindd = SUPER, D, Toggle DeFi Chromium workspace, exec, haoshoku-special-workspace browser-toggle defi",
 		);
 	});
 
@@ -76,6 +100,5 @@ describe("Omarchy workspace overlay", () => {
 		expect(config).not.toMatch(
 			/caelestia|brave|kde|opacity|blur|decoration|wallpaper/i,
 		);
-		expect(config).not.toContain("unbind =");
 	});
 });
