@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 7.4.0 - 2026-08-06
 
 - Make Email, Calendar, and Grok shortcuts focus-aware with exact web-app
   classes, so they stop opening a duplicate window on every press.
