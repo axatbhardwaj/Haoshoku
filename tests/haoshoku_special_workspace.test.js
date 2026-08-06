@@ -592,8 +592,8 @@ exec "$@"
 			dispatches: [
 				"dispatch focusmonitor DP-2",
 				"dispatch togglespecialworkspace haki",
-				`dispatch exec [workspace special:haki silent] uwsm-app -- kitty --class haoshoku-haki -d ${directory} claude -c`,
-				`terminal:--class haoshoku-haki -d ${directory} claude -c`,
+				`dispatch exec [workspace special:haki silent] uwsm-app -- kitty --class haoshoku-haki -d ${directory} claude -r io-haki`,
+				`terminal:--class haoshoku-haki -d ${directory} claude -r io-haki`,
 				"claude:started",
 			],
 			systemctlCalled: false,
@@ -640,8 +640,8 @@ exec "$@"
 			stderr: "",
 			dispatches: [
 				"dispatch focusmonitor DP-2",
-				`dispatch exec [workspace special:haki silent] uwsm-app -- kitty --class haoshoku-haki -d ${directory} claude -c`,
-				`terminal:--class haoshoku-haki -d ${directory} claude -c`,
+				`dispatch exec [workspace special:haki silent] uwsm-app -- kitty --class haoshoku-haki -d ${directory} claude -r io-haki`,
+				`terminal:--class haoshoku-haki -d ${directory} claude -r io-haki`,
 			],
 		});
 	});

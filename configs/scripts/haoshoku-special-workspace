@@ -184,13 +184,21 @@ elif [[ "$recipe" == haki ]]; then
   # Remote Control session: that session is driven from the phone and web, so
   # attaching to it locally yields a terminal you cannot type into.
   #
-  # `-c` continues the most recent conversation, with no picker. `-r <term>`
-  # was tried first and is wrong here: it opens a fuzzy search that needs a
-  # keypress and can offer a session that is still running elsewhere, which
-  # cannot be resumed. The `-d "$HOME"` is load-bearing -- "most recent" is
-  # per-directory, and without it kitty inherits whatever cwd the Hyprland
-  # dispatch happened to have, resuming an unrelated project's conversation.
-  launch "special:$workspace" kitty --class haoshoku-haki -d "$HOME" claude -c
+  # `-r io-haki` resumes that named session directly, with no picker: a name
+  # that resolves uniquely is treated as a session reference rather than a
+  # search term. A bare `-r io` was tried first and is wrong -- it fuzzy-matches,
+  # so it stops on a chooser and can offer a session running elsewhere, which
+  # cannot be resumed. Plain `-c` was also tried; it takes whatever conversation
+  # is newest in the directory, which is not necessarily this one once the
+  # Remote Control host starts creating its own sessions in $HOME.
+  #
+  # The `-d "$HOME"` is load-bearing: without it kitty inherits whatever cwd the
+  # Hyprland dispatch happened to carry, so the resumed session lands in an
+  # unrelated project directory.
+  #
+  # The name is deliberately hardcoded. Renaming the session in Claude Code
+  # breaks this binding until the name here is updated to match.
+  launch "special:$workspace" kitty --class haoshoku-haki -d "$HOME" claude -r io-haki
   exit 0
 elif [[ "$follows_focus" == true ]]; then
   toggle_special_workspace
