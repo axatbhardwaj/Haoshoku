@@ -50,10 +50,19 @@ if tmux -L "$socket" has-session -t "$instance" 2>/dev/null; then
   exit 1
 fi
 
-# Keep bypass explicit: if the global default changes, a background service
-# must not silently hang forever waiting for a permissions prompt.
+# Server mode: one persistent host per instance that spawns on-demand sessions
+# in $root (same-dir), capped at 5 concurrent. This is what makes the instance
+# a "server" the phone can start new sessions on, instead of a single fixed
+# session. bypassPermissions keeps the background service from hanging forever
+# on a permissions prompt if the global default changes.
 tmux -L "$socket" new-session -d -s "$instance" -c "$root" \
-  claude --remote-control "$instance" --dangerously-skip-permissions
+  claude remote-control --name "$instance" --spawn same-dir --capacity 5 \
+    --permission-mode bypassPermissions
+
+# A brand-new instance on a fresh account shows a one-time "Enable Remote
+# Control? (y/n)" prompt on first start; attach once (`... attach <instance>`)
+# and press 'y'. Acceptance persists per account, so later restarts — and every
+# already-accepted instance here — come up connected without prompting.
 
 # Detached creation returns immediately. Polling the real session keeps this
 # supervisor alive until Claude exits, so systemd can restart the lost session.

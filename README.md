@@ -95,8 +95,11 @@ normal terminal running Claude directly. An installed unit that cannot start or
 become ready fails visibly with a notification and a `systemctl --user status`
 hint instead of silently bypassing the broken service.
 
-These sessions explicitly launch Claude with `--dangerously-skip-permissions`.
-The Arch setup calls this out before installation. The user services enable
+These sessions run Claude Remote Control in **server mode**
+(`claude remote-control --spawn same-dir --capacity 5`): each is a persistent
+host that spawns up to five on-demand sessions in its own directory, launched
+with `--permission-mode bypassPermissions`. The Arch setup calls this out
+before installation. The user services enable
 systemd lingering when possible so sessions can survive logout; if lingering
 cannot be enabled automatically, setup prints the exact `loginctl` command to
 run.

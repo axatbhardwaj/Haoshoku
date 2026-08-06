@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Run the managed Claude Remote Control instances (`haki`, `dev`, `work`) in
+  server mode (`claude remote-control --spawn same-dir --capacity 5
+  --permission-mode bypassPermissions`) instead of a single fixed
+  `--remote-control` session. Each instance is now a persistent host that spawns
+  up to five on-demand sessions in its own directory — the phone can start new
+  sessions on it — rather than one fixed session. A fresh account shows a
+  one-time `Enable Remote Control? (y/n)` prompt on an instance's first start;
+  attach once and press `y` (acceptance persists per account).
+
 - Rename the home-root Claude Remote Control instance from `io` to `haki` and
   retire instances removed from the managed map by stopping and disabling their
   services before deleting their environment files. Retirement is derived from

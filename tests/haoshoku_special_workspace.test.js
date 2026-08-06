@@ -710,7 +710,7 @@ printf 'systemctl:%s\\n' "$*" >> "$CALL_LOG"
 				`dispatch exec [workspace special:haki silent] uwsm-app -- kitty --class haoshoku-haki ${helper} attach haki`,
 				`terminal:--class haoshoku-haki ${helper} attach haki`,
 			],
-			creation: `-L claude-haki ${createAction} -d -s haki -c ${directory} claude --remote-control haki --dangerously-skip-permissions`,
+			creation: `-L claude-haki ${createAction} -d -s haki -c ${directory} claude remote-control --name haki --spawn same-dir --capacity 5 --permission-mode bypassPermissions`,
 			terminal: `terminal:--class haoshoku-haki ${helper} attach haki`,
 		});
 	});
