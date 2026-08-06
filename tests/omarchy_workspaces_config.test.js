@@ -43,7 +43,7 @@ describe("Omarchy workspace overlay", () => {
 
 	it("uses dedicated special-workspace toggles", () => {
 		const toggleBinds = [
-			"bindd = SUPER, A, Show/focus/hide agents workspace, exec, haoshoku-special-workspace agents",
+			"bindd = SUPER, A, Show/focus/hide IO session, exec, haoshoku-special-workspace io",
 			"bindd = SUPER, I, Show/focus/hide AI assistants workspace, exec, haoshoku-special-workspace assistants",
 			"bindd = SUPER, M, Show/focus/hide music workspace, exec, haoshoku-special-workspace music",
 			"bindd = SUPER, O, Show/focus/hide 1Password workspace, exec, haoshoku-special-workspace 1password",

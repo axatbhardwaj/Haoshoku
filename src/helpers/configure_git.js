@@ -9,6 +9,45 @@ import {
 } from "../common/utils.js";
 
 const HOME = homedir();
+const GIT_PROFILES = Object.freeze({
+	personal: {
+		directory: "dev",
+		filename: ".gitconfig.dev",
+		legacyDirectory: "personal",
+		legacyFilename: ".gitconfig.personal",
+	},
+	work: {
+		directory: "Work",
+		filename: ".gitconfig.work",
+		legacyDirectory: "work",
+		legacyFilename: ".gitconfig.work",
+	},
+});
+
+function migrateLegacyProfiles(home) {
+	const availableProfiles = new Set();
+	for (const [profileType, profile] of Object.entries(GIT_PROFILES)) {
+		const legacyDirectory = path.join(home, profile.legacyDirectory);
+		const legacyProfile = path.join(legacyDirectory, profile.legacyFilename);
+		const destination = path.join(home, profile.directory, profile.filename);
+		if (
+			profileType === "work" &&
+			fs.existsSync(legacyProfile) &&
+			!fs.existsSync(destination)
+		) {
+			fs.mkdirSync(path.dirname(destination), { recursive: true });
+			fs.renameSync(legacyProfile, destination);
+			log.info(`Moved legacy Git profile ${legacyProfile} to ${destination}.`);
+		}
+		if (fs.existsSync(legacyProfile)) {
+			log.warning(
+				`Legacy Git profile found at ${legacyProfile}; move it to ${destination}.`,
+			);
+		}
+		if (fs.existsSync(destination)) availableProfiles.add(profileType);
+	}
+	return availableProfiles;
+}
 
 /**
  * Default runner: spawns an argv array via Bun.spawn and returns its exit code.
@@ -49,7 +88,7 @@ async function startSshAgent() {
 }
 
 /**
- * Create a single Git profile (email/name/signing key) under `${home}/${profileType}`.
+ * Create a single Git profile (email/name/signing key) under ~/dev or ~/Work.
  *
  * Key generation is guarded two ways:
  *   - If the key already exists, generation is SKIPPED (ssh-keygen would
@@ -64,7 +103,8 @@ async function startSshAgent() {
  */
 async function createProfile(profileType, { home, sshDir, promptFn, runner }) {
 	log.info(`--- Setting up ${profileType} Git profile ---`);
-	const profileDir = path.join(home, profileType);
+	const profile = GIT_PROFILES[profileType];
+	const profileDir = path.join(home, profile.directory);
 	fs.mkdirSync(profileDir, { recursive: true });
 
 	const response = await promptFn([
@@ -91,7 +131,7 @@ async function createProfile(profileType, { home, sshDir, promptFn, runner }) {
 	}
 
 	const keyPath = path.join(sshDir, `${profileType}_key`);
-	const gitConfigPath = path.join(profileDir, `.gitconfig.${profileType}`);
+	const gitConfigPath = path.join(profileDir, profile.filename);
 
 	// `signingOk` decides whether we emit the SSH-signing directives. It stays
 	// true when we reuse an existing key or generate one successfully, and flips
@@ -193,13 +233,14 @@ export async function configureGit(opts = {}) {
 	} = opts;
 
 	log.info("Configuring Git...");
+	const availableProfiles = migrateLegacyProfiles(home);
 	fs.mkdirSync(sshDir, { mode: 0o700, recursive: true });
 
 	await startAgent();
 
 	const ctx = { home, sshDir, promptFn, runner };
 
-	let workProfileCreated = false;
+	let workProfileCreated = availableProfiles.has("work");
 	if (await promptUser("Do you want to create a work Git profile?", true)) {
 		await createProfile("work", ctx);
 		workProfileCreated = true;
@@ -208,13 +249,15 @@ export async function configureGit(opts = {}) {
 	await createProfile("personal", ctx);
 
 	// Global Config
-	let globalConfigContent = `[includeIf "gitdir:~/personal/"]
-    path = ~/personal/.gitconfig.personal
+	const personalProfile = GIT_PROFILES.personal;
+	let globalConfigContent = `[includeIf "gitdir:~/${personalProfile.directory}/"]
+    path = ~/${personalProfile.directory}/${personalProfile.filename}
 `;
 
 	if (workProfileCreated) {
-		globalConfigContent += `[includeIf "gitdir:~/work/"]
-    path = ~/work/.gitconfig.work
+		const workProfile = GIT_PROFILES.work;
+		globalConfigContent += `[includeIf "gitdir:~/${workProfile.directory}/"]
+    path = ~/${workProfile.directory}/${workProfile.filename}
 `;
 	}
 

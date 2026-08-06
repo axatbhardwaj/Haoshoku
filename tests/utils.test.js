@@ -267,14 +267,14 @@ describe("safeCopyFile", () => {
 		const src = path.join(tmpDir, "new.conf");
 		const dest = path.join(tmpDir, "live.conf");
 		fs.writeFileSync(src, "bundle v2");
-		fs.writeFileSync(dest, '[includeIf "gitdir:~/work/"]');
+		fs.writeFileSync(dest, '[includeIf "gitdir:~/Work/"]');
 		fs.writeFileSync(`${dest}.bak`, "old managed bundle");
 
 		safeCopyFile(src, dest, { now: () => 1234567890 });
 
 		expect(fs.existsSync(`${dest}.haoshoku-first-capture`)).toBe(true);
 		expect(fs.readFileSync(`${dest}.haoshoku-first-capture`, "utf-8")).toBe(
-			'[includeIf "gitdir:~/work/"]',
+			'[includeIf "gitdir:~/Work/"]',
 		);
 		expect(fs.readFileSync(`${dest}.bak`, "utf-8")).toBe("old managed bundle");
 	});

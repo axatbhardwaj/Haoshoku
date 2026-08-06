@@ -53,7 +53,40 @@ elif [[ "$1" == "dispatch" ]]; then
 fi
 `,
 		);
-		fs.chmodSync(hyprctl, 0o755);
+		const helperDirectory = path.join(directory, ".local", "bin");
+		fs.mkdirSync(helperDirectory, { recursive: true });
+		const helper = path.join(helperDirectory, "haoshoku-claude-remote-control");
+		const unitDirectory = path.join(directory, ".config", "systemd", "user");
+		fs.mkdirSync(unitDirectory, { recursive: true });
+		fs.writeFileSync(
+			path.join(unitDirectory, "claude-remote-control@.service"),
+			"[Service]\n",
+		);
+		fs.writeFileSync(
+			helper,
+			`#!/usr/bin/env bash
+case "$1" in
+  has-session|attach) exit 0 ;;
+  *) exit 1 ;;
+esac
+`,
+		);
+		fs.writeFileSync(
+			path.join(commandDirectory, "systemctl"),
+			"#!/usr/bin/env bash\nexit 0\n",
+		);
+		fs.writeFileSync(
+			path.join(commandDirectory, "kitty"),
+			'#!/usr/bin/env bash\nshift 2\nexec "$@"\n',
+		);
+		for (const executable of [
+			hyprctl,
+			helper,
+			path.join(commandDirectory, "systemctl"),
+			path.join(commandDirectory, "kitty"),
+		]) {
+			fs.chmodSync(executable, 0o755);
+		}
 	});
 
 	afterEach(() => fs.rmSync(directory, { recursive: true, force: true }));
@@ -155,14 +188,20 @@ fi
 			});
 		});
 
-		it(`[${failure}] regex client probe falls back to launching agents`, async () => {
-			const result = await run(["agents"], "clients -j", failure);
+		it(`[${failure}] regex client probe falls back to launching the IO session`, async () => {
+			const result = await run(["io"], "clients -j", failure);
+			const helper = path.join(
+				directory,
+				".local",
+				"bin",
+				"haoshoku-claude-remote-control",
+			);
 
 			expect(result).toEqual({
 				dispatches: [
 					"dispatch focusmonitor DP-2",
-					"dispatch togglespecialworkspace agents",
-					"dispatch exec [workspace special:agents silent] uwsm-app -- kitty --class haoshoku-agents bash -lc claude",
+					"dispatch togglespecialworkspace io",
+					`dispatch exec [workspace special:io silent] uwsm-app -- kitty --class haoshoku-io ${helper} attach io`,
 				],
 				exitCode: 0,
 				stderr: "",
@@ -225,7 +264,7 @@ fi
 			{ name: "browser-toggle", args: ["browser-toggle", "flux"] },
 			{ name: "browser-flux", args: ["browser-flux"] },
 			{ name: "browser-defi", args: ["browser-defi"] },
-			{ name: "agents", args: ["agents"] },
+			{ name: "io", args: ["io"] },
 			{ name: "assistants", args: ["assistants"] },
 			{ name: "music", args: ["music"] },
 			{ name: "1password", args: ["1password"] },

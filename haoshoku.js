@@ -19,6 +19,10 @@ import {
 	updateClaudeConfig,
 } from "./src/helpers/configure_claude.js";
 import {
+	backupClaudeRemoteControl,
+	syncClaudeRemoteControl,
+} from "./src/helpers/configure_claude_remote_control.js";
+import {
 	backupClaudeStayAwake,
 	syncClaudeStayAwake,
 } from "./src/helpers/configure_claude_stay_awake.js";
@@ -65,6 +69,14 @@ program
 	.option(
 		"--claude-backup",
 		"Backup Claude Code personal files to configs/claude/",
+	)
+	.option(
+		"--claude-remote-control",
+		"Deploy Claude Remote Control supervisor and user services",
+	)
+	.option(
+		"--claude-remote-control-backup",
+		"Backup Claude Remote Control supervisor and user unit",
 	)
 	.option(
 		"--claude-bootstrap",
@@ -157,6 +169,16 @@ async function runAction(options) {
 
 	if (options.claudeBackup) {
 		await backupClaudeConfig();
+		return;
+	}
+
+	if (options.claudeRemoteControlBackup) {
+		if (!(await backupClaudeRemoteControl())) process.exit(1);
+		return;
+	}
+
+	if (options.claudeRemoteControl) {
+		if (!(await syncClaudeRemoteControl())) process.exit(1);
 		return;
 	}
 

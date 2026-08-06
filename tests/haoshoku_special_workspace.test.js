@@ -24,9 +24,11 @@ describe("haoshoku-special-workspace", () => {
 		expect(recipeCaseBlock).toBeDefined();
 
 		const recipes = Object.fromEntries(
-			[...recipeCaseBlock.matchAll(
-				/^\s*(?<recipe>[^)\s]+)\)\s*workspace=(?<workspace>[^;]+);\s*monitor=(?<monitor>[^;]+)(?:;\s*follows_focus=(?<followsFocus>true|false))?\s*;;$/gm,
-			)].map(({ groups }) => [
+			[
+				...recipeCaseBlock.matchAll(
+					/^\s*(?<recipe>[^)\s]+)\)\s*workspace=(?<workspace>[^;]+);\s*monitor=(?<monitor>[^;]+)(?:;\s*follows_focus=(?<followsFocus>true|false))?\s*;;$/gm,
+				),
+			].map(({ groups }) => [
 				groups.recipe,
 				{
 					workspace: groups.workspace.trim(),
@@ -36,14 +38,18 @@ describe("haoshoku-special-workspace", () => {
 			]),
 		);
 		const expectedRecipes = {
-			agents: { workspace: "agents", monitor: "DP-2", followsFocus: false },
+			io: { workspace: "io", monitor: "DP-2", followsFocus: false },
 			assistants: {
 				workspace: "assistants",
 				monitor: "DP-2",
 				followsFocus: false,
 			},
 			music: { workspace: "music", monitor: "DP-1", followsFocus: false },
-			"1password": { workspace: "1password", monitor: "DP-1", followsFocus: false },
+			"1password": {
+				workspace: "1password",
+				monitor: "DP-1",
+				followsFocus: false,
+			},
 			communication: {
 				workspace: "communication",
 				monitor: "HDMI-A-1",
@@ -64,7 +70,9 @@ describe("haoshoku-special-workspace", () => {
 			},
 		};
 
-		expect(Object.keys(recipes).sort()).toEqual(Object.keys(expectedRecipes).sort());
+		expect(Object.keys(recipes).sort()).toEqual(
+			Object.keys(expectedRecipes).sort(),
+		);
 		for (const [recipe, expected] of Object.entries(expectedRecipes)) {
 			expect({ [recipe]: recipes[recipe] }).toEqual({ [recipe]: expected });
 		}
@@ -78,6 +86,8 @@ describe("haoshoku-special-workspace", () => {
 	let focusedMonitorState;
 	let specialMonitorState;
 	let specialState;
+	let tmuxLog;
+	let tmuxState;
 	beforeEach(() => {
 		directory = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-special-"));
 		log = path.join(directory, "calls");
@@ -87,10 +97,21 @@ describe("haoshoku-special-workspace", () => {
 		focusedMonitorState = path.join(directory, "focused-monitor-state");
 		specialMonitorState = path.join(directory, "special-monitor-state");
 		specialState = path.join(directory, "special-workspace-state");
+		tmuxLog = path.join(directory, "tmux-call");
+		tmuxState = path.join(directory, "tmux-session");
 		fs.writeFileSync(focusedMonitorState, "DP-1");
 		fs.writeFileSync(specialMonitorState, "DP-1");
 		const hyprctl = path.join(directory, "hyprctl");
 		const uwsmApp = path.join(directory, "uwsm-app");
+		const helperDirectory = path.join(directory, ".local", "bin");
+		fs.mkdirSync(helperDirectory, { recursive: true });
+		const helper = path.join(helperDirectory, "haoshoku-claude-remote-control");
+		const unitDirectory = path.join(directory, ".config", "systemd", "user");
+		fs.mkdirSync(unitDirectory, { recursive: true });
+		fs.writeFileSync(
+			path.join(unitDirectory, "claude-remote-control@.service"),
+			"[Service]\n",
+		);
 		fs.writeFileSync(
 			hyprctl,
 			`#!/usr/bin/env bash
@@ -156,9 +177,24 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 printf 'claude\n' >> "$CALL_LOG"
 `,
 		);
+		fs.writeFileSync(
+			helper,
+			`#!/usr/bin/env bash
+case "$1" in
+  has-session|attach) exit 0 ;;
+  *) exit 1 ;;
+esac
+`,
+		);
+		fs.writeFileSync(
+			path.join(directory, "systemctl"),
+			"#!/usr/bin/env bash\nexit 0\n",
+		);
 		fs.chmodSync(hyprctl, 0o755);
 		fs.chmodSync(claudeDesktop, 0o755);
 		fs.chmodSync(chromium, 0o755);
+		fs.chmodSync(helper, 0o755);
+		fs.chmodSync(path.join(directory, "systemctl"), 0o755);
 		fs.chmodSync(uwsmApp, 0o755);
 	});
 	afterEach(() => fs.rmSync(directory, { recursive: true, force: true }));
@@ -168,6 +204,7 @@ printf 'claude\n' >> "$CALL_LOG"
 		{
 			clients = "[]",
 			chromiumProfiles,
+			env = {},
 			focusedMonitor = "DP-1",
 			visibleWorkspace,
 			visibleMonitor = "DP-1",
@@ -194,7 +231,10 @@ printf 'claude\n' >> "$CALL_LOG"
 				FOCUSED_MONITOR_STATE: focusedMonitorState,
 				SPECIAL_STATE: specialState,
 				SPECIAL_MONITOR_STATE: specialMonitorState,
+				TMUX_LOG: tmuxLog,
+				TMUX_STATE: tmuxState,
 				PATH: `${directory}:${process.env.PATH}`,
+				...env,
 			},
 			stdout: "pipe",
 			stderr: "pipe",
@@ -210,7 +250,7 @@ printf 'claude\n' >> "$CALL_LOG"
 	}
 
 	const fluxClient = JSON.stringify([{ class: "chromium-flux" }]);
-	const agentsClient = JSON.stringify([{ class: "haoshoku-agents" }]);
+	const ioClient = JSON.stringify([{ class: "haoshoku-io" }]);
 	const xClient = JSON.stringify([{ class: "chrome-x.com__-Default" }]);
 	const forwardedUrl = "https://example.test/forwarded";
 	const claudeClass = "com.anthropic.Claude";
@@ -462,9 +502,7 @@ printf 'claude\n' >> "$CALL_LOG"
 
 	it("falls back to DP-1 for youtube when no monitor is focused", async () => {
 		const result = await run(["youtube"], {
-			clients: JSON.stringify([
-				{ class: "chrome-youtube.com__-Default" },
-			]),
+			clients: JSON.stringify([{ class: "chrome-youtube.com__-Default" }]),
 			focusedMonitor: "",
 		});
 
@@ -474,9 +512,7 @@ printf 'claude\n' >> "$CALL_LOG"
 
 	it("toggles Re:ANIME on the focused monitor without relaunching its exact client", async () => {
 		const result = await run(["reanime"], {
-			clients: JSON.stringify([
-				{ class: "chrome-reanime.to__home-Default" },
-			]),
+			clients: JSON.stringify([{ class: "chrome-reanime.to__home-Default" }]),
 			focusedMonitor: "DP-2",
 		});
 
@@ -494,73 +530,327 @@ printf 'claude\n' >> "$CALL_LOG"
 		});
 	});
 
-	it("opens hidden agents on its pinned monitor", async () => {
-		const result = await run(["agents"], {
-			clients: agentsClient,
+	it("opens the hidden IO session on its pinned monitor", async () => {
+		const result = await run(["io"], {
+			clients: ioClient,
 			focusedMonitor: "DP-1",
 		});
 
 		expect(result.exitCode).toBe(0);
 		expect(dispatchCalls()).toEqual([
 			"dispatch focusmonitor DP-2",
-			"dispatch togglespecialworkspace agents",
+			"dispatch togglespecialworkspace io",
 		]);
 	});
 
-	it("focuses visible agents on their monitor without moving them", async () => {
-		const result = await run(["agents"], {
-			clients: agentsClient,
+	it("opens Claude directly with no error when Remote Control is not installed", async () => {
+		fs.rmSync(
+			path.join(
+				directory,
+				".config",
+				"systemd",
+				"user",
+				"claude-remote-control@.service",
+			),
+		);
+		const systemctlCall = path.join(directory, "systemctl-call");
+		fs.writeFileSync(
+			path.join(directory, "systemctl"),
+			`#!/usr/bin/env bash
+: > ${JSON.stringify(systemctlCall)}
+exit 17
+`,
+		);
+		fs.writeFileSync(
+			path.join(directory, "kitty"),
+			`#!/usr/bin/env bash
+printf 'terminal:%s\\n' "$*" >> "$CALL_LOG"
+shift 2
+exec "$@"
+`,
+		);
+		fs.writeFileSync(
+			path.join(directory, "claude"),
+			"#!/usr/bin/env bash\nprintf 'claude:started\\n' >> \"$CALL_LOG\"\n",
+		);
+		for (const executable of ["systemctl", "kitty", "claude"]) {
+			fs.chmodSync(path.join(directory, executable), 0o755);
+		}
+
+		const result = await run(["io"]);
+
+		expect({
+			exitCode: result.exitCode,
+			stderr: result.stderr,
+			dispatches: dispatchCalls(),
+			systemctlCalled: fs.existsSync(systemctlCall),
+		}).toEqual({
+			exitCode: 0,
+			stderr: "",
+			dispatches: [
+				"dispatch focusmonitor DP-2",
+				"dispatch togglespecialworkspace io",
+				"dispatch exec [workspace special:io silent] uwsm-app -- kitty --class haoshoku-io claude",
+				"terminal:--class haoshoku-io claude",
+				"claude:started",
+			],
+			systemctlCalled: false,
+		});
+	});
+
+	it("focuses visible IO on its monitor without moving it", async () => {
+		const result = await run(["io"], {
+			clients: ioClient,
 			focusedMonitor: "DP-1",
-			visibleWorkspace: "agents",
+			visibleWorkspace: "io",
 			visibleMonitor: "DP-2",
 		});
 
 		expect(result.exitCode).toBe(0);
-		expect(dispatchCalls()).toEqual([
-			"dispatch focusmonitor DP-2",
-		]);
-		expect(fs.readFileSync(specialState, "utf8")).toBe("agents");
+		expect(dispatchCalls()).toEqual(["dispatch focusmonitor DP-2"]);
+		expect(fs.readFileSync(specialState, "utf8")).toBe("io");
 		expect(fs.readFileSync(specialMonitorState, "utf8")).toBe("DP-2");
 	});
 
 	// Mutation caught: returning after cross-monitor focus leaves a visible
 	// workspace empty when its client has died.
-	it("relaunches missing agents after focusing their visible workspace", async () => {
+	it("reattaches missing IO after focusing its visible workspace", async () => {
+		const helperDirectory = path.join(directory, ".local", "bin");
+		fs.mkdirSync(helperDirectory, { recursive: true });
+		const helper = path.join(helperDirectory, "haoshoku-claude-remote-control");
+		fs.copyFileSync(
+			path.join(
+				import.meta.dir,
+				"..",
+				"configs",
+				"claude-remote-control",
+				"haoshoku-claude-remote-control",
+			),
+			helper,
+		);
 		const kitty = path.join(directory, "kitty");
+		const tmux = path.join(directory, "tmux");
+		const systemctl = path.join(directory, "systemctl");
+		const createAction = ["new", "session"].join("-");
 		fs.writeFileSync(
 			kitty,
 			`#!/usr/bin/env bash
-printf 'kitty\\n' >> "$CALL_LOG"
+printf 'terminal:%s\\n' "$*" >> "$CALL_LOG"
+shift 2
+exec "$@"
 `,
 		);
+		fs.writeFileSync(
+			tmux,
+			`#!/usr/bin/env bash
+operation="$3"
+printf '%s\\n' "$*" >> "$TMUX_LOG"
+case "$operation" in
+  has-session) [[ -f "$TMUX_STATE" ]] ;;
+  "$CREATE_ACTION") printf '%s\\n' "$*" > "$TMUX_STATE" ;;
+  attach-session) [[ -f "$TMUX_STATE" ]] && rm -f "$TMUX_STATE" ;;
+  kill-session) rm -f "$TMUX_STATE" ;;
+esac
+`,
+		);
+		fs.writeFileSync(
+			systemctl,
+			`#!/usr/bin/env bash
+printf 'systemctl:%s\\n' "$*" >> "$CALL_LOG"
+"$HOME/.local/bin/haoshoku-claude-remote-control" io >/dev/null 2>&1 &
+`,
+		);
+		fs.writeFileSync(
+			path.join(directory, "sleep"),
+			"#!/usr/bin/env bash\nexit 0\n",
+		);
+		fs.chmodSync(helper, 0o755);
 		fs.chmodSync(kitty, 0o755);
+		fs.chmodSync(tmux, 0o755);
+		fs.chmodSync(systemctl, 0o755);
+		fs.chmodSync(path.join(directory, "sleep"), 0o755);
 
-		const result = await run(["agents"], {
+		const result = await run(["io"], {
+			env: {
+				CLAUDE_REMOTE_CONTROL_ROOT: directory,
+				CREATE_ACTION: createAction,
+			},
 			focusedMonitor: "DP-1",
-			visibleWorkspace: "agents",
+			visibleWorkspace: "io",
 			visibleMonitor: "DP-2",
 		});
 
-		expect(result.exitCode).toBe(0);
-		expect(dispatchCalls()).toEqual([
-			"dispatch focusmonitor DP-2",
-			"dispatch exec [workspace special:agents silent] uwsm-app -- kitty --class haoshoku-agents bash -lc claude",
-			"kitty",
-		]);
+		expect({
+			exitCode: result.exitCode,
+			stderr: result.stderr,
+			dispatches: dispatchCalls(),
+			creation: fs
+				.readFileSync(tmuxLog, "utf8")
+				.trim()
+				.split("\n")
+				.find((line) => line.split(" ")[2] === createAction),
+			terminal: dispatchCalls().find((call) => call.startsWith("terminal:")),
+		}).toEqual({
+			exitCode: 0,
+			stderr: "",
+			dispatches: [
+				"dispatch focusmonitor DP-2",
+				"systemctl:--user start claude-remote-control@io.service",
+				`dispatch exec [workspace special:io silent] uwsm-app -- kitty --class haoshoku-io ${helper} attach io`,
+				`terminal:--class haoshoku-io ${helper} attach io`,
+			],
+			creation: `-L claude-io ${createAction} -d -s io -c ${directory} claude --remote-control io --dangerously-skip-permissions`,
+			terminal: `terminal:--class haoshoku-io ${helper} attach io`,
+		});
 	});
 
-	it("hides agents visible on the focused monitor", async () => {
-		const result = await run(["agents"], {
-			clients: agentsClient,
+	it("notifies and launches no terminal when the IO service fails to start", async () => {
+		const helperDirectory = path.join(directory, ".local", "bin");
+		fs.mkdirSync(helperDirectory, { recursive: true });
+		fs.writeFileSync(
+			path.join(helperDirectory, "haoshoku-claude-remote-control"),
+			"#!/usr/bin/env bash\nexit 1\n",
+		);
+		fs.writeFileSync(
+			path.join(directory, "systemctl"),
+			"#!/usr/bin/env bash\nexit 17\n",
+		);
+		fs.chmodSync(
+			path.join(helperDirectory, "haoshoku-claude-remote-control"),
+			0o755,
+		);
+		fs.chmodSync(path.join(directory, "systemctl"), 0o755);
+
+		const result = await run(["io"]);
+
+		expect({
+			exitCode: result.exitCode,
+			stderr: result.stderr,
+			terminalDispatches: dispatchCalls().filter((call) =>
+				call.includes("kitty"),
+			),
+			notification: dispatchCalls().find((call) => call.startsWith("notify ")),
+		}).toEqual({
+			exitCode: 1,
+			stderr:
+				"Could not start Claude Remote Control IO service; run: systemctl --user status claude-remote-control@io.service\n",
+			terminalDispatches: [],
+			notification:
+				"notify -1 5000 rgb(ff5555) Claude Remote Control: failed to start IO service",
+		});
+	});
+
+	it("notifies and launches no terminal when the supervisor helper is missing", async () => {
+		const systemctlLog = path.join(directory, "systemctl-call");
+		fs.writeFileSync(
+			path.join(directory, "systemctl"),
+			`#!/usr/bin/env bash
+printf '%s\n' "$*" > ${JSON.stringify(systemctlLog)}
+exit 0
+`,
+		);
+		fs.chmodSync(path.join(directory, "systemctl"), 0o755);
+		fs.rmSync(
+			path.join(directory, ".local", "bin", "haoshoku-claude-remote-control"),
+		);
+		const result = await run(["io"]);
+
+		expect({
+			exitCode: result.exitCode,
+			stderr: result.stderr,
+			terminalDispatches: dispatchCalls().filter((call) =>
+				call.includes("kitty"),
+			),
+			notification: dispatchCalls().find((call) => call.startsWith("notify ")),
+			systemctlStart: fs.existsSync(systemctlLog)
+				? fs.readFileSync(systemctlLog, "utf8").trim()
+				: undefined,
+		}).toEqual({
+			exitCode: 1,
+			stderr: `Claude Remote Control helper is missing or not executable: ${path.join(directory, ".local", "bin", "haoshoku-claude-remote-control")}\n`,
+			terminalDispatches: [],
+			notification:
+				"notify -1 5000 rgb(ff5555) Claude Remote Control: supervisor helper is missing",
+			systemctlStart: "--user start claude-remote-control@io.service",
+		});
+	});
+
+	it("times out visibly and launches no terminal when IO never becomes ready", async () => {
+		const helperDirectory = path.join(directory, ".local", "bin");
+		const pollLog = path.join(directory, "readiness-polls");
+		fs.mkdirSync(helperDirectory, { recursive: true });
+		fs.writeFileSync(
+			path.join(helperDirectory, "haoshoku-claude-remote-control"),
+			`#!/usr/bin/env bash
+printf 'poll\n' >> ${JSON.stringify(pollLog)}
+exit 1
+`,
+		);
+		fs.writeFileSync(
+			path.join(directory, "systemctl"),
+			"#!/usr/bin/env bash\nexit 0\n",
+		);
+		fs.writeFileSync(
+			path.join(directory, "sleep"),
+			"#!/usr/bin/env bash\nexit 0\n",
+		);
+		for (const executable of [
+			path.join(helperDirectory, "haoshoku-claude-remote-control"),
+			path.join(directory, "systemctl"),
+			path.join(directory, "sleep"),
+		]) {
+			fs.chmodSync(executable, 0o755);
+		}
+
+		const result = await run(["io"]);
+
+		expect({
+			exitCode: result.exitCode,
+			stderr: result.stderr,
+			terminalDispatches: dispatchCalls().filter((call) =>
+				call.includes("kitty"),
+			),
+			notification: dispatchCalls().find((call) => call.startsWith("notify ")),
+			polls: fs.readFileSync(pollLog, "utf8").trim().split("\n").length,
+		}).toEqual({
+			exitCode: 1,
+			stderr:
+				"Claude Remote Control IO session was not ready after 10 seconds; inspect: systemctl --user status claude-remote-control@io.service\n",
+			terminalDispatches: [],
+			notification:
+				"notify -1 5000 rgb(ff5555) Claude Remote Control: IO session readiness timed out",
+			polls: 50,
+		});
+	});
+
+	it("hides IO visible on the focused monitor", async () => {
+		const systemctlCall = path.join(directory, "systemctl-call");
+		fs.writeFileSync(
+			path.join(directory, "systemctl"),
+			`#!/usr/bin/env bash
+: > ${JSON.stringify(systemctlCall)}
+exit 17
+`,
+		);
+		fs.chmodSync(path.join(directory, "systemctl"), 0o755);
+		const result = await run(["io"], {
+			clients: ioClient,
 			focusedMonitor: "DP-2",
-			visibleWorkspace: "agents",
+			visibleWorkspace: "io",
 			visibleMonitor: "DP-2",
 		});
 
-		expect(result.exitCode).toBe(0);
-		expect(dispatchCalls()).toEqual([
-			"dispatch togglespecialworkspace agents",
-		]);
+		expect({
+			exitCode: result.exitCode,
+			stderr: result.stderr,
+			dispatches: dispatchCalls(),
+			systemctlCalled: fs.existsSync(systemctlCall),
+		}).toEqual({
+			exitCode: 0,
+			stderr: "",
+			dispatches: ["dispatch togglespecialworkspace io"],
+			systemctlCalled: false,
+		});
 	});
 
 	it("does not relaunch either assistant when both exact classes are present", async () => {
@@ -744,9 +1034,7 @@ printf 'kitty\\n' >> "$CALL_LOG"
 
 	it("launches a Re:ANIME lookalike through Flux with the exact app URL and class", async () => {
 		const result = await run(["reanime"], {
-			clients: JSON.stringify([
-				{ class: "chrome-reanimeXto__home-Default" },
-			]),
+			clients: JSON.stringify([{ class: "chrome-reanimeXto__home-Default" }]),
 			focusedMonitor: "",
 		});
 		const calls = fs.existsSync(log) ? dispatchCalls() : [];
@@ -816,9 +1104,7 @@ printf 'kitty\\n' >> "$CALL_LOG"
 	});
 
 	it("opens Flux in its isolated Chromium profile and class", async () => {
-		expect(
-			(await run(["browser-toggle", "flux"])).exitCode,
-		).toBe(0);
+		expect((await run(["browser-toggle", "flux"])).exitCode).toBe(0);
 		const calls = fs.readFileSync(log, "utf8");
 		expect(calls).toContain("dispatch focusmonitor DP-1");
 		expect(calls).toContain("dispatch togglespecialworkspace browser-flux");
@@ -829,9 +1115,7 @@ printf 'kitty\\n' >> "$CALL_LOG"
 	});
 
 	it("opens DeFi in a different Chromium profile", async () => {
-		expect(
-			(await run(["browser-toggle", "defi"])).exitCode,
-		).toBe(0);
+		expect((await run(["browser-toggle", "defi"])).exitCode).toBe(0);
 		expect(await chromiumArguments()).toEqual([
 			`--user-data-dir=${directory}/.config/chromium-haoshoku/defi`,
 			"--class=chromium-defi",
@@ -870,7 +1154,9 @@ printf 'kitty\\n' >> "$CALL_LOG"
 			"--class=chromium-research",
 			"https://research.example/brief",
 		]);
-		expect(fs.readFileSync(log, "utf8")).toContain("dispatch focusmonitor DP-1");
+		expect(fs.readFileSync(log, "utf8")).toContain(
+			"dispatch focusmonitor DP-1",
+		);
 		expect(fs.readFileSync(specialState, "utf8")).toBe("browser-research");
 	});
 
@@ -942,7 +1228,9 @@ printf 'kitty\\n' >> "$CALL_LOG"
 			`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
 			"--class=chromium-research",
 		]);
-		expect(fs.readFileSync(log, "utf8")).toContain("dispatch focusmonitor DP-1");
+		expect(fs.readFileSync(log, "utf8")).toContain(
+			"dispatch focusmonitor DP-1",
+		);
 	});
 
 	for (const [recipe, profile] of [
@@ -1024,8 +1312,7 @@ printf 'kitty\\n' >> "$CALL_LOG"
 			fs.writeFileSync(specialState, workspace);
 
 			expect(
-				(await run(["browser-toggle", profile], { clients: client }))
-					.exitCode,
+				(await run(["browser-toggle", profile], { clients: client })).exitCode,
 			).toBe(0);
 			expect(fs.readFileSync(specialState, "utf8")).toBe("");
 			expect(fs.existsSync(browserCall)).toBe(false);
@@ -1035,8 +1322,7 @@ printf 'kitty\\n' >> "$CALL_LOG"
 		// workspace creates a duplicate Chromium invocation instead of revealing it.
 		it(`reveals a hidden existing ${profile} browser without Chromium`, async () => {
 			expect(
-				(await run(["browser-toggle", profile], { clients: client }))
-					.exitCode,
+				(await run(["browser-toggle", profile], { clients: client })).exitCode,
 			).toBe(0);
 			expect(fs.readFileSync(specialState, "utf8")).toBe(workspace);
 			expect(fs.existsSync(browserCall)).toBe(false);
@@ -1045,9 +1331,7 @@ printf 'kitty\\n' >> "$CALL_LOG"
 		// Mutation caught: skipping the launch after revealing an empty workspace
 		// leaves the requested profile without a Chromium client.
 		it(`reveals and launches a missing ${profile} browser exactly once`, async () => {
-			expect(
-				(await run(["browser-toggle", profile])).exitCode,
-			).toBe(0);
+			expect((await run(["browser-toggle", profile])).exitCode).toBe(0);
 			expect(fs.readFileSync(specialState, "utf8")).toBe(workspace);
 			const calls = fs.readFileSync(log, "utf8").trim().split("\n");
 			expect(calls.filter((call) => call === "chromium")).toHaveLength(1);
@@ -1059,8 +1343,7 @@ printf 'kitty\\n' >> "$CALL_LOG"
 			fs.writeFileSync(specialState, workspace);
 
 			expect(
-				(await run(["browser", profile], { clients: client }))
-					.exitCode,
+				(await run(["browser", profile], { clients: client })).exitCode,
 			).toBe(0);
 			expect(fs.readFileSync(specialState, "utf8")).toBe(workspace);
 			expect(fs.existsSync(browserCall)).toBe(false);
@@ -1070,10 +1353,10 @@ printf 'kitty\\n' >> "$CALL_LOG"
 	// Mutation caught: confusing $monitor with $visible_monitor in the cross-monitor
 	// branch focuses the pinned monitor instead of the workspace's visible monitor.
 	it("focuses the monitor where a pinned workspace is actually visible", async () => {
-		const result = await run(["agents"], {
-			clients: agentsClient,
+		const result = await run(["io"], {
+			clients: ioClient,
 			focusedMonitor: "DP-1",
-			visibleWorkspace: "agents",
+			visibleWorkspace: "io",
 			visibleMonitor: "HDMI-A-1",
 		});
 
@@ -1095,9 +1378,7 @@ printf 'kitty\\n' >> "$CALL_LOG"
 
 	it("does not relaunch Notion when Chromium's app-derived class is already present", async () => {
 		const result = await run(["numbered", "10", "notion"], {
-			clients: JSON.stringify([
-				{ class: "chrome-www.notion.so__-Default" },
-			]),
+			clients: JSON.stringify([{ class: "chrome-www.notion.so__-Default" }]),
 		});
 
 		expect(result.exitCode).toBe(0);
@@ -1106,9 +1387,7 @@ printf 'kitty\\n' >> "$CALL_LOG"
 
 	it("launches Notion when a lookalike class differs at its literal dots", async () => {
 		const result = await run(["numbered", "10", "notion"], {
-			clients: JSON.stringify([
-				{ class: "chrome-wwwXnotionXso__-Default" },
-			]),
+			clients: JSON.stringify([{ class: "chrome-wwwXnotionXso__-Default" }]),
 		});
 
 		expect(result.exitCode).toBe(0);
@@ -1120,9 +1399,7 @@ printf 'kitty\\n' >> "$CALL_LOG"
 
 	it("does not relaunch Notion for its exact app-derived class", async () => {
 		const result = await run(["numbered", "10", "notion"], {
-			clients: JSON.stringify([
-				{ class: "chrome-www.notion.so__-Default" },
-			]),
+			clients: JSON.stringify([{ class: "chrome-www.notion.so__-Default" }]),
 		});
 
 		expect(result.exitCode).toBe(0);
@@ -1137,7 +1414,9 @@ printf 'kitty\\n' >> "$CALL_LOG"
 			`--user-data-dir=${directory}/.config/chromium-haoshoku/notion`,
 			"--app=https://www.notion.so/",
 		]);
-		expect(dispatchCalls().filter((call) => call === "chromium")).toHaveLength(1);
+		expect(dispatchCalls().filter((call) => call === "chromium")).toHaveLength(
+			1,
+		);
 	});
 
 	it("does not give missing Notion a Chromium class flag", async () => {
@@ -1158,7 +1437,9 @@ printf 'kitty\\n' >> "$CALL_LOG"
 			`--user-data-dir=${directory}/.config/chromium-haoshoku/whatsapp`,
 			"--app=https://web.whatsapp.com/",
 		]);
-		expect(dispatchCalls().filter((call) => call === "chromium")).toHaveLength(1);
+		expect(dispatchCalls().filter((call) => call === "chromium")).toHaveLength(
+			1,
+		);
 		expect(fs.readFileSync(log, "utf8")).toContain(
 			"dispatch exec [workspace special:communication silent] uwsm-app -- chromium",
 		);
@@ -1202,9 +1483,7 @@ printf 'signal-desktop\\n' >> "$CALL_LOG"
 		fs.chmodSync(signalDesktop, 0o755);
 
 		const result = await run(["communication"], {
-			clients: JSON.stringify([
-				{ class: "chrome-web.whatsapp.com__-Default" },
-			]),
+			clients: JSON.stringify([{ class: "chrome-web.whatsapp.com__-Default" }]),
 		});
 
 		expect(result.exitCode).toBe(0);

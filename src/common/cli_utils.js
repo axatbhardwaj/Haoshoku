@@ -11,6 +11,8 @@ import fs from "node:fs";
 export const MODE_FLAGS = [
 	"claude",
 	"claudeBackup",
+	"claudeRemoteControl",
+	"claudeRemoteControlBackup",
 	"claudeBootstrap",
 	"claudeUpdate",
 	"codex",

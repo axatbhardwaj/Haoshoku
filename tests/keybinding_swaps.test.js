@@ -304,6 +304,23 @@ describe("Omarchy keybinding swaps", () => {
 		expect(zedBinding).not.toContain("omarchy-launch-or-focus");
 	});
 
+	it("routes SUPER+A to the systemd-managed IO tmux session", () => {
+		const workspaces = fs.readFileSync(configPath, "utf8");
+		expect({
+			binding: activeBindingsFor(workspaces, "SUPER", "A"),
+			windowRule: workspaces
+				.split("\n")
+				.filter((line) => line.includes("haoshoku-io")),
+		}).toEqual({
+			binding: [
+				"bindd = SUPER, A, Show/focus/hide IO session, exec, haoshoku-special-workspace io",
+			],
+			windowRule: [
+				"windowrule = workspace special:io, match:class ^haoshoku-io$",
+			],
+		});
+	});
+
 	it("keeps the scratchpad special-workspace relocation faithful", () => {
 		const scratchpadSwap = swapsDocument.swaps.find(
 			(swap) => swap.key_combination_taken === "SUPER, S",

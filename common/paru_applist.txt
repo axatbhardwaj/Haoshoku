@@ -2,6 +2,7 @@ visual-studio-code-bin
 chromium
 zip
 kitty
+tmux
 signal-desktop
 thunderbird
 noisetorch-bin

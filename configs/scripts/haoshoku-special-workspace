@@ -42,6 +42,34 @@ launch_if_missing() {
   has_client "$pattern" || launch "$workspace" "$@"
 }
 
+notify_io_failure() {
+  local message="$1"
+  hyprctl notify -1 5000 "rgb(ff5555)" "$message" >/dev/null || true
+}
+
+prepare_io_session() {
+  local helper="$HOME/.local/bin/haoshoku-claude-remote-control"
+  if ! systemctl --user start claude-remote-control@io.service; then
+    echo "Could not start Claude Remote Control IO service; run: systemctl --user status claude-remote-control@io.service" >&2
+    notify_io_failure "Claude Remote Control: failed to start IO service"
+    return 1
+  fi
+  if [[ ! -x "$helper" ]]; then
+    echo "Claude Remote Control helper is missing or not executable: $helper" >&2
+    notify_io_failure "Claude Remote Control: supervisor helper is missing"
+    return 1
+  fi
+  for ((attempt = 0; attempt < 50; attempt += 1)); do
+    if "$helper" has-session io >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 0.2
+  done
+  echo "Claude Remote Control IO session was not ready after 10 seconds; inspect: systemctl --user status claude-remote-control@io.service" >&2
+  notify_io_failure "Claude Remote Control: IO session readiness timed out"
+  return 1
+}
+
 if [[ "$recipe" == numbered ]]; then
   [[ $# -eq 3 ]] || { echo "usage: haoshoku-special-workspace numbered WORKSPACE APP" >&2; exit 2; }
   workspace="$2" app="$3"
@@ -91,7 +119,7 @@ if [[ -n "$browser_profile" ]]; then
   workspace="browser-$profile"
 else
   case "$recipe" in
-    agents) workspace=agents; monitor=DP-2 ;;
+    io) workspace=io; monitor=DP-2 ;;
     assistants) workspace=assistants; monitor=DP-2 ;;
     music) workspace=music; monitor=DP-1 ;;
     1password) workspace=1password; monitor=DP-1 ;;
@@ -170,6 +198,25 @@ if [[ -n "$browser_profile" ]]; then
     dispatch exec "[workspace special:$workspace silent] uwsm-app -- $chromium_command"
   fi
   exit 0
+elif [[ "$recipe" == io ]]; then
+  io_client_present=false
+  if has_client '^haoshoku-io$'; then
+    io_client_present=true
+  fi
+  focus_or_toggle_special_workspace
+  if [[ "$io_client_present" == true ]]; then
+    exit 0
+  fi
+
+  unit="$HOME/.config/systemd/user/claude-remote-control@.service"
+  if [[ ! -f "$unit" ]]; then
+    launch "special:$workspace" kitty --class haoshoku-io claude
+    exit 0
+  fi
+
+  prepare_io_session || exit 1
+  launch "special:$workspace" kitty --class haoshoku-io "$HOME/.local/bin/haoshoku-claude-remote-control" attach io
+  exit 0
 elif [[ "$follows_focus" == true ]]; then
   toggle_special_workspace
 else
@@ -177,7 +224,6 @@ else
 fi
 
 case "$recipe" in
-  agents) launch_if_missing "special:$workspace" '^haoshoku-agents$' kitty --class haoshoku-agents bash -lc claude ;;
   assistants)
     launch_if_missing "special:$workspace" '^com\.anthropic\.Claude$' claude-desktop
     # App windows derive their class from the URL, but this process may own Flux's

@@ -17,6 +17,7 @@ import {
 	configureClaude,
 } from "../helpers/configure_claude.js";
 import { configureClaudeStayAwake } from "../helpers/configure_claude_stay_awake.js";
+import { configureClaudeRemoteControl } from "../helpers/configure_claude_remote_control.js";
 import { configureCodex } from "../helpers/configure_codex.js";
 import { configureChromiumProfiles } from "../helpers/configure_chromium_profiles.js";
 import { configureMimeapps } from "../helpers/configure_mimeapps.js";
@@ -540,6 +541,7 @@ export async function configureUserApps({
 	configureClaudeImpl = configureClaude,
 	bootstrapClaudePolicyImpl = bootstrapClaudePolicy,
 	configureClaudeStayAwakeImpl = configureClaudeStayAwake,
+	configureClaudeRemoteControlImpl = configureClaudeRemoteControl,
 	configurePrWatchImpl = configurePrWatch,
 	configureCodexImpl = configureCodex,
 	configureAgentOsImpl = configureAgentOs,
@@ -584,6 +586,14 @@ export async function configureUserApps({
 		}
 	}
 	await configureClaudeStayAwakeImpl();
+	if (
+		await promptUserImpl(
+			"Install Claude Remote Control services with all permission checks bypassed?",
+			false,
+		)
+	) {
+		await configureClaudeRemoteControlImpl();
+	}
 	if (configurePrWatchImpl === configurePrWatch) await configurePrWatch();
 	else await configurePrWatchImpl();
 	await configureCodexImpl();

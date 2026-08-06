@@ -78,6 +78,45 @@ describe("CachyOS browser integration", () => {
 		expect(calls).toContain("agent-os");
 	});
 
+	it("defaults remote-control services off and does nothing when declined", async () => {
+		const calls = [];
+		const prompts = [];
+		const record = (name) => async () => calls.push(name);
+
+		await configureUserApps({
+			promptUserImpl: async (message, initial) => {
+				prompts.push({ message, initial });
+				return false;
+			},
+			configureBrowserIntegrationImpl: record("browser-integration"),
+			configureAudioImpl: record("audio"),
+			configureBashImpl: () => calls.push("bash"),
+			configureFastfetchImpl: record("fastfetch"),
+			runCommandImpl: record("uosc"),
+			enableServicesImpl: record("services"),
+			configureClaudeImpl: record("claude"),
+			configureClaudeStayAwakeImpl: record("stay-awake"),
+			configureClaudeRemoteControlImpl: record("remote-control"),
+			configurePrWatchImpl: record("pr-watch"),
+			configureCodexImpl: record("codex"),
+			configureAgentOsImpl: record("agent-os"),
+		});
+
+		expect({
+			prompt: prompts.find(({ message }) =>
+				message.includes("Claude Remote Control"),
+			),
+			remoteCalls: calls.filter((call) => call === "remote-control"),
+		}).toEqual({
+			prompt: {
+				message:
+					"Install Claude Remote Control services with all permission checks bypassed?",
+				initial: false,
+			},
+			remoteCalls: [],
+		});
+	});
+
 	it("bootstraps private Claude policy after the public baseline", async () => {
 		const calls = [];
 		const prompts = [];

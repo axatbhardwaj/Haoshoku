@@ -1,0 +1,18 @@
+[Unit]
+Description=Claude Remote Control session (%i)
+# Disable systemd's start-rate budget: a crashed long-lived session must keep
+# retrying without requiring a manual reset-failed.
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+# Inherit the PATH imported by the login/graphical session so Claude and its
+# toolchains are not constrained to a static directory list.
+EnvironmentFile=%h/.config/haoshoku/claude-remote-control/%i.env
+ExecStart=%h/.local/bin/haoshoku-claude-remote-control %i
+ExecStop=-%h/.local/bin/haoshoku-claude-remote-control stop %i
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

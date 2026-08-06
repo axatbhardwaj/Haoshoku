@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
+import { log } from "../src/common/utils.js";
 import { configureGit } from "../src/helpers/configure_git.js";
 
 // Each test gets a throwaway HOME so we never touch the real ~/.gitconfig.
@@ -76,7 +77,7 @@ describe("configureGit — global ~/.gitconfig backup", () => {
 		expect(fs.readFileSync(bak, "utf8")).toBe("old user content\n");
 		// The live file was overwritten with the generated includeIf config.
 		expect(fs.readFileSync(gitConfigPath, "utf8")).toContain(
-			'[includeIf "gitdir:~/personal/"]',
+			'[includeIf "gitdir:~/dev/"]',
 		);
 	});
 
@@ -108,12 +109,57 @@ describe("configureGit — global ~/.gitconfig backup", () => {
 });
 
 describe("configureGit — includeIf global config content", () => {
+	it("moves the legacy work profile and keeps its include when work setup is declined", async () => {
+		const legacyWork = path.join(tmpHome, "work");
+		fs.mkdirSync(legacyWork);
+		const legacyProfile = path.join(legacyWork, ".gitconfig.work");
+		const migratedProfile = path.join(tmpHome, "Work", ".gitconfig.work");
+		fs.writeFileSync(
+			legacyProfile,
+			"[user]\n    email = legacy@work.example\n",
+		);
+		const infos = [];
+		const warnings = [];
+		const originalInfo = log.info;
+		const originalWarning = log.warning;
+		log.info = (message) => infos.push(message);
+		log.warning = (message) => warnings.push(message);
+		try {
+			await runNoWork();
+		} finally {
+			log.info = originalInfo;
+			log.warning = originalWarning;
+		}
+
+		expect({
+			legacyExists: fs.existsSync(legacyProfile),
+			migratedContent: fs.existsSync(migratedProfile)
+				? fs.readFileSync(migratedProfile, "utf8")
+				: undefined,
+			moveLog: infos.find((message) =>
+				message.includes("Moved legacy Git profile"),
+			),
+			legacyWarning: warnings.some((message) => message.includes(legacyWork)),
+			globalConfig: fs.readFileSync(path.join(tmpHome, ".gitconfig"), "utf8"),
+		}).toEqual({
+			legacyExists: false,
+			migratedContent: "[user]\n    email = legacy@work.example\n",
+			moveLog: `Moved legacy Git profile ${legacyProfile} to ${migratedProfile}.`,
+			legacyWarning: false,
+			globalConfig: `[includeIf "gitdir:~/dev/"]
+    path = ~/dev/.gitconfig.dev
+[includeIf "gitdir:~/Work/"]
+    path = ~/Work/.gitconfig.work
+`,
+		});
+	});
+
 	it("emits only the personal includeIf when no work profile is created", async () => {
 		await runNoWork();
 		const content = fs.readFileSync(path.join(tmpHome, ".gitconfig"), "utf8");
-		expect(content).toContain('[includeIf "gitdir:~/personal/"]');
-		expect(content).toContain("path = ~/personal/.gitconfig.personal");
-		expect(content).not.toContain('[includeIf "gitdir:~/work/"]');
+		expect(content).toBe(`[includeIf "gitdir:~/dev/"]
+    path = ~/dev/.gitconfig.dev
+`);
 	});
 
 	it("emits both personal and work includeIf when a work profile is created", async () => {
@@ -126,9 +172,11 @@ describe("configureGit — includeIf global config content", () => {
 			startAgent: async () => {},
 		});
 		const content = fs.readFileSync(path.join(tmpHome, ".gitconfig"), "utf8");
-		expect(content).toContain('[includeIf "gitdir:~/personal/"]');
-		expect(content).toContain('[includeIf "gitdir:~/work/"]');
-		expect(content).toContain("path = ~/work/.gitconfig.work");
+		expect(content).toBe(`[includeIf "gitdir:~/dev/"]
+    path = ~/dev/.gitconfig.dev
+[includeIf "gitdir:~/Work/"]
+    path = ~/Work/.gitconfig.work
+`);
 	});
 });
 
@@ -167,11 +215,7 @@ describe("createProfile — SSH keygen guards", () => {
 			runner,
 			startAgent: async () => {},
 		});
-		const profilePath = path.join(
-			tmpHome,
-			"personal",
-			".gitconfig.personal",
-		);
+		const profilePath = path.join(tmpHome, "dev", ".gitconfig.dev");
 		const content = fs.readFileSync(profilePath, "utf8");
 		expect(content).toContain("signingkey =");
 		expect(content).toContain("gpgsign = true");
@@ -189,11 +233,7 @@ describe("createProfile — SSH keygen guards", () => {
 			runner,
 			startAgent: async () => {},
 		});
-		const profilePath = path.join(
-			tmpHome,
-			"personal",
-			".gitconfig.personal",
-		);
+		const profilePath = path.join(tmpHome, "dev", ".gitconfig.dev");
 		const content = fs.readFileSync(profilePath, "utf8");
 		// User identity still written...
 		expect(content).toContain("email = me@personal.example");
@@ -228,7 +268,7 @@ describe("createProfile — SSH keygen guards", () => {
 		expect(fs.readFileSync(keyPath, "utf8")).toBe("PRE-EXISTING KEY\n");
 		// Signing config is still written (we keep using the existing key).
 		const content = fs.readFileSync(
-			path.join(tmpHome, "personal", ".gitconfig.personal"),
+			path.join(tmpHome, "dev", ".gitconfig.dev"),
 			"utf8",
 		);
 		expect(content).toContain("signingkey =");

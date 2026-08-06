@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  echo "usage: haoshoku-claude-remote-control [{has-session|attach|stop}] INSTANCE" >&2
+  exit 2
+}
+
+resolve_instance() {
+  instance="$1"
+  [[ "$instance" =~ ^[a-z][a-z0-9-]*$ ]] || usage
+  socket="claude-$instance"
+}
+
+action="run"
+case "${1:-}" in
+  has-session|attach|stop)
+    [[ $# -eq 2 ]] || usage
+    action="$1"
+    resolve_instance "$2"
+    ;;
+  *)
+    [[ $# -eq 1 ]] || usage
+    resolve_instance "$1"
+    ;;
+esac
+
+case "$action" in
+  has-session)
+    exec tmux -L "$socket" has-session -t "$instance"
+    ;;
+  attach)
+    exec tmux -L "$socket" attach-session -t "$instance"
+    ;;
+  stop)
+    tmux -L "$socket" has-session -t "$instance" 2>/dev/null || exit 0
+    if tmux -L "$socket" kill-session -t "$instance"; then
+      exit 0
+    fi
+    tmux -L "$socket" has-session -t "$instance" 2>/dev/null || exit 0
+    exit 1
+    ;;
+esac
+
+root="${CLAUDE_REMOTE_CONTROL_ROOT:-}"
+[[ -n "$root" ]] || { echo "Claude Remote Control root is not configured for instance: $instance" >&2; exit 1; }
+[[ -d "$root" ]] || { echo "Claude Remote Control root does not exist: $root" >&2; exit 1; }
+if tmux -L "$socket" has-session -t "$instance" 2>/dev/null; then
+  echo "Refusing to adopt pre-existing tmux session: $instance on $socket" >&2
+  exit 1
+fi
+
+# Keep bypass explicit: if the global default changes, a background service
+# must not silently hang forever waiting for a permissions prompt.
+tmux -L "$socket" new-session -d -s "$instance" -c "$root" \
+  claude --remote-control "$instance" --dangerously-skip-permissions
+
+# Detached creation returns immediately. Polling the real session keeps this
+# supervisor alive until Claude exits, so systemd can restart the lost session.
+while tmux -L "$socket" has-session -t "$instance" 2>/dev/null; do
+  sleep 1
+done
