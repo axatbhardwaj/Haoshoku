@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 7.5.0 - 2026-08-06
 
 - Make `Super+B` toggle the existing Flux Chromium window instead of opening a new
   window on every press: the normal Flux-owner launch routes started it without an
