@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -99,6 +100,36 @@ function bindingOperation(line) {
 	};
 }
 
+function activeBindingsFor(config, modifiers, key) {
+	const keyCombination = canonicalKeyCombination(modifiers, key);
+	return config.split(/\r?\n/).filter((line) => {
+		const operation = bindingOperation(line);
+		return (
+			(operation?.type === "bind" || operation?.type === "bindd") &&
+			operation.keyCombination === keyCombination
+		);
+	});
+}
+
+function trackedTextFiles() {
+	const trackedFiles = execFileSync("git", ["ls-files", "-z"], {
+		cwd: repoRoot,
+		encoding: "buffer",
+	})
+		.toString("utf8")
+		.split("\0")
+		.filter(Boolean);
+	return execFileSync(
+		"git",
+		["grep", "-I", "-l", "-z", "-e", ".", "--", ...trackedFiles],
+		{ cwd: repoRoot, encoding: "buffer" },
+	)
+		.toString("utf8")
+		.split("\0")
+		.filter(Boolean)
+		.map((file) => path.join(repoRoot, file));
+}
+
 function resurrectedStockBindings(defaultLines, overlayText) {
 	const overlayKeys = new Set(
 		overlayText
@@ -186,6 +217,81 @@ if (!omarchyAppBindingsAvailable)
 	);
 
 describe("Omarchy keybinding swaps", () => {
+	it("moves the file manager to SUPER+E, claims SUPER+F, and fully removes Hey", () => {
+		const bindings = fs.readFileSync(bindingsConfigPath, "utf8");
+		const workspaces = fs.readFileSync(configPath, "utf8");
+		const bindingLines = bindings.split(/\r?\n/);
+		const fullscreenUnbindIndex = bindingLines.indexOf("unbind = SUPER, F");
+		const removedHost = ["hey", "com"].join(".");
+		const releaseHistoryPath = path.join(repoRoot, "CHANGELOG.md");
+		const scanFiles = trackedTextFiles().filter(
+			// Release history is exempt because it must preserve removed behavior accurately.
+			(file) => file !== releaseHistoryPath,
+		);
+		const removedHostReferences = scanFiles.flatMap((file) =>
+			fs.readFileSync(file, "utf8").includes(removedHost)
+				? [path.relative(repoRoot, file)]
+				: [],
+		);
+		const superFSwap = swapsDocument.swaps.find(
+			(swap) => swap.key_combination_taken === "SUPER, F",
+		);
+
+		expect({
+			fileManager: activeBindingsFor(bindings, "SUPER", "E"),
+			removedHostReferences,
+			superFClaim: activeBindingsFor(
+				`${bindings}\n${workspaces}`,
+				"SUPER",
+				"F",
+			),
+			superFRegistry: {
+				configFile: superFSwap?.config_file,
+				movedTo: superFSwap?.moved_to,
+				reason: superFSwap?.reason,
+			},
+			cwdFileManager: activeBindingsFor(
+				bindings,
+				"SUPER ALT SHIFT",
+				"F",
+			),
+			fullscreenRelocation: bindingLines.slice(
+				fullscreenUnbindIndex,
+				fullscreenUnbindIndex + 2,
+			),
+			removedCalendar: activeBindingsFor(bindings, "SUPER SHIFT", "C"),
+			calendarSuppression: bindingLines.filter(
+				(line) => line === "unbind = SUPER SHIFT, C",
+			),
+			stockEmailSuppression: bindingLines.filter(
+				(line) => line === "unbind = SUPER SHIFT, E",
+			),
+		}).toEqual({
+			fileManager: [
+				"bindd = SUPER, E, File manager, exec, uwsm-app -- nautilus --new-window",
+			],
+			removedHostReferences: [],
+			superFClaim: [
+				"bindd = SUPER, F, Show/focus/hide Re:ANIME workspace, exec, haoshoku-special-workspace reanime",
+			],
+			superFRegistry: {
+				configFile: "configs/omarchy/bindings.conf",
+				movedTo: "SUPER CTRL SHIFT, F",
+				reason: "displaced_by_workspace_toggle",
+			},
+			cwdFileManager: [
+				'bindd = SUPER ALT SHIFT, F, File manager (cwd), exec, uwsm-app -- nautilus --new-window "$(omarchy-cmd-terminal-cwd)"',
+			],
+			fullscreenRelocation: [
+				"unbind = SUPER, F",
+				"bindd = SUPER CTRL SHIFT, F, Full screen, fullscreen, 0",
+			],
+			removedCalendar: [],
+			calendarSuppression: ["unbind = SUPER SHIFT, C"],
+			stockEmailSuppression: ["unbind = SUPER SHIFT, E"],
+		});
+	});
+
 	it("always opens a new Zed window instead of focusing an existing one", () => {
 		const zedBinding = fs
 			.readFileSync(bindingsConfigPath, "utf8")
@@ -296,12 +402,6 @@ describe("Omarchy keybinding swaps", () => {
 			'# bindd = SUPER SHIFT ALT, A, Grok, exec, omarchy-launch-webapp "https://grok.com"',
 		);
 		expect(activeBindings).toContain(
-			'bindd = SUPER, E, Email, exec, omarchy-launch-or-focus-webapp "chrome-app\\.hey\\.com__-Default" "https://app.hey.com"',
-		);
-		expect(activeBindings).toContain(
-			'bindd = SUPER SHIFT, C, Calendar, exec, omarchy-launch-or-focus-webapp "chrome-app\\.hey\\.com__calendar_weeks_-Default" "https://app.hey.com/calendar/weeks/"',
-		);
-		expect(activeBindings).toContain(
 			'bindd = SUPER SHIFT ALT, X, X Post, exec, omarchy-launch-webapp "https://x.com/compose/post"',
 		);
 	});
@@ -335,6 +435,23 @@ describe("Omarchy keybinding swaps", () => {
 				});
 				expect(omarchyBinding).toBeDefined();
 				const omarchy = parseBinding(omarchyBinding);
+
+				if (swap.previous_binding_redacted) {
+					expect({
+						reason: swap.reason,
+						recordedDispatcher: recorded.dispatcher,
+						recordedArgument: recorded.argument,
+						movedFromDispatcher: swap.moved_from_dispatcher,
+						movedFromArgument: swap.moved_from_arg,
+					}).toEqual({
+						reason: "deleted_by_user",
+						recordedDispatcher: omarchy.dispatcher,
+						recordedArgument: "<removed>",
+						movedFromDispatcher: omarchy.dispatcher,
+						movedFromArgument: "<removed>",
+					});
+					continue;
+				}
 
 				expect(swap.previous_binding).toBe(omarchyBinding);
 				expect(swap.moved_from_dispatcher).toBe(omarchy.dispatcher);
@@ -484,7 +601,18 @@ describe("Omarchy keybinding swaps", () => {
 
 			expect(unbindIndex).toBeGreaterThan(-1);
 			expect(relocationIndex).toBe(unbindIndex + 1);
-			expect(claimedSlotIndex).toBeGreaterThan(relocationIndex);
+			if (claimedSlotIndex >= 0) {
+				expect(claimedSlotIndex).toBeGreaterThan(relocationIndex);
+				return;
+			}
+
+			const workspaceClaim = fs
+				.readFileSync(configPath, "utf8")
+				.split("\n")
+				.find((line) =>
+					line.startsWith(`bindd = ${swap.key_combination_taken},`),
+				);
+			expect(workspaceClaim).toBeDefined();
 		});
 	}
 

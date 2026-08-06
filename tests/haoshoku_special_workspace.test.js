@@ -57,6 +57,11 @@ describe("haoshoku-special-workspace", () => {
 				monitor: "DP-1",
 				followsFocus: true,
 			},
+			reanime: {
+				workspace: "reanime",
+				monitor: "DP-1",
+				followsFocus: true,
+			},
 		};
 
 		expect(Object.keys(recipes).sort()).toEqual(Object.keys(expectedRecipes).sort());
@@ -467,6 +472,28 @@ printf 'claude\n' >> "$CALL_LOG"
 		expect(dispatchCalls()).toContain("dispatch focusmonitor DP-1");
 	});
 
+	it("toggles Re:ANIME on the focused monitor without relaunching its exact client", async () => {
+		const result = await run(["reanime"], {
+			clients: JSON.stringify([
+				{ class: "chrome-reanime.to__home-Default" },
+			]),
+			focusedMonitor: "DP-2",
+		});
+
+		expect({
+			exitCode: result.exitCode,
+			chromiumStarted: fs.existsSync(browserCall),
+			dispatches: fs.existsSync(log) ? dispatchCalls() : [],
+		}).toEqual({
+			exitCode: 0,
+			chromiumStarted: false,
+			dispatches: [
+				"dispatch focusmonitor DP-2",
+				"dispatch togglespecialworkspace reanime",
+			],
+		});
+	});
+
 	it("opens hidden agents on its pinned monitor", async () => {
 		const result = await run(["agents"], {
 			clients: agentsClient,
@@ -714,6 +741,36 @@ printf 'kitty\\n' >> "$CALL_LOG"
 			]);
 		});
 	}
+
+	it("launches a Re:ANIME lookalike through Flux with the exact app URL and class", async () => {
+		const result = await run(["reanime"], {
+			clients: JSON.stringify([
+				{ class: "chrome-reanimeXto__home-Default" },
+			]),
+			focusedMonitor: "",
+		});
+		const calls = fs.existsSync(log) ? dispatchCalls() : [];
+
+		expect({
+			exitCode: result.exitCode,
+			chromiumArguments: fs.existsSync(browserCall)
+				? await chromiumArguments()
+				: [],
+			focusedFallback: calls.includes("dispatch focusmonitor DP-1"),
+			toggled: calls.includes("dispatch togglespecialworkspace reanime"),
+			chromiumLaunches: calls.filter((call) => call === "chromium").length,
+		}).toEqual({
+			exitCode: 0,
+			chromiumArguments: [
+				`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+				"--class=chromium-flux",
+				"--app=https://reanime.to/home",
+			],
+			focusedFallback: true,
+			toggled: true,
+			chromiumLaunches: 1,
+		});
+	});
 
 	// Mutation caught: directly backgrounding Chromium after revealing its workspace
 	// lets it land on the active workspace; unescaped URL data can also become shell

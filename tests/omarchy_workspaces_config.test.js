@@ -52,6 +52,7 @@ describe("Omarchy workspace overlay", () => {
 			"bindd = SUPER, D, Toggle DeFi Chromium workspace, exec, haoshoku-special-workspace browser-toggle defi",
 			"bindd = SUPER, Y, Show/focus/hide YouTube workspace, exec, haoshoku-special-workspace youtube",
 			"bindd = SUPER, R, Show/focus/hide Crunchyroll workspace, exec, haoshoku-special-workspace crunchyroll",
+			"bindd = SUPER, F, Show/focus/hide Re:ANIME workspace, exec, haoshoku-special-workspace reanime",
 			"bindd = SUPER, S, Toggle stash workspace, togglespecialworkspace, stash",
 			"bindd = SUPER SHIFT, X, Show/focus/hide X workspace, exec, haoshoku-special-workspace x",
 		];
@@ -61,11 +62,11 @@ describe("Omarchy workspace overlay", () => {
 				(line) =>
 					line.startsWith("bindd = SUPER, ") &&
 					!line.includes("haoshoku-special-workspace numbered ") &&
-					// Nine helper-backed toggles plus the stash toggle.
+					// Ten helper-backed toggles plus the stash toggle.
 					(line.includes("haoshoku-special-workspace") ||
 						line.endsWith("togglespecialworkspace, stash")),
 			),
-		).toHaveLength(10);
+		).toHaveLength(11);
 		expect(config).toContain(
 			"bindd = SUPER SHIFT, S, Stash focused window, movetoworkspacesilent, special:stash",
 		);
@@ -127,6 +128,11 @@ describe("Omarchy workspace overlay", () => {
 			classPattern: "^chrome-www\\.crunchyroll\\.com__-Default$",
 			decoyClass: "chrome-wwwXcrunchyrollXcom__-Default",
 		},
+		{
+			workspace: "reanime",
+			classPattern: "^chrome-reanime\\.to__home-Default$",
+			decoyClass: "chrome-reanimeXto__home-Default",
+		},
 	]) {
 		it(`routes ${workspace} by its escaped app-derived Chromium class without silent placement`, () => {
 			const rule = config
@@ -140,7 +146,7 @@ describe("Omarchy workspace overlay", () => {
 		});
 	}
 
-	it("owns SUPER+Y and SUPER+R exactly once across both overlays", () => {
+	it("owns SUPER+Y, SUPER+R, and SUPER+F exactly once across both overlays", () => {
 		const overlayLines = `${bindingsConfig}\n${config}`.split(/\r?\n/);
 		for (const [key, expected] of [
 			[
@@ -150,6 +156,10 @@ describe("Omarchy workspace overlay", () => {
 			[
 				"R",
 				"bindd = SUPER, R, Show/focus/hide Crunchyroll workspace, exec, haoshoku-special-workspace crunchyroll",
+			],
+			[
+				"F",
+				"bindd = SUPER, F, Show/focus/hide Re:ANIME workspace, exec, haoshoku-special-workspace reanime",
 			],
 		]) {
 			expect(

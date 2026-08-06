@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- Make `Super+B` toggle the existing Flux Chromium window instead of opening a new
+  window on every press: the normal Flux-owner launch routes started it without an
+  explicit window class, so plain windows were born as `chromium` while the
+  workspace probe matched `chromium-flux` exactly.
+- Remove the Hey Email and Calendar shortcuts at the user's request, leaving both
+  stock keys unbound and removing the service from active configuration.
+- Move the file manager shortcut from `Super+F` to `Super+E`.
+- Add a Re:ANIME special workspace on `Super+F` with the same focused-monitor
+  show, focus, and hide behavior as YouTube and Crunchyroll.
+
 ## 7.4.0 - 2026-08-06
 
 - Make Email, Calendar, and Grok shortcuts focus-aware with exact web-app

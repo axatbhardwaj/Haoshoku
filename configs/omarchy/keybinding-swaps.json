@@ -43,7 +43,7 @@
 			"moved_to": "SUPER CTRL SHIFT, F",
 			"moved_to_dispatcher": "fullscreen",
 			"moved_to_arg": "0",
-			"reason": "displaced_by_app_launcher"
+			"reason": "displaced_by_workspace_toggle"
 		},
 		{
 			"config_file": "configs/omarchy/bindings.conf",
@@ -157,11 +157,12 @@
 		},
 		{
 			"config_file": "configs/omarchy/bindings.conf",
-			"key_combination_taken": "SHIFT SUPER, C",
-			"previous_binding": "bindd = SUPER SHIFT, C, Calendar, exec, omarchy-launch-webapp \"https://app.hey.com/calendar/weeks/\"",
+			"key_combination_taken": "SUPER SHIFT, C",
+			"previous_binding": "bindd = SUPER SHIFT, C, Calendar, exec, <removed>",
 			"moved_from_dispatcher": "exec",
-			"moved_from_arg": "omarchy-launch-webapp \"https://app.hey.com/calendar/weeks/\"",
-			"reason": "reclaimed_by_overlay"
+			"moved_from_arg": "<removed>",
+			"previous_binding_redacted": true,
+			"reason": "deleted_by_user"
 		},
 		{
 			"config_file": "configs/omarchy/bindings.conf",
@@ -246,9 +247,10 @@
 		{
 			"config_file": "configs/omarchy/bindings.conf",
 			"key_combination_taken": "SUPER SHIFT, E",
-			"previous_binding": "bindd = SUPER SHIFT, E, Email, exec, omarchy-launch-webapp \"https://app.hey.com\"",
+			"previous_binding": "bindd = SUPER SHIFT, E, Email, exec, <removed>",
 			"moved_from_dispatcher": "exec",
-			"moved_from_arg": "omarchy-launch-webapp \"https://app.hey.com\"",
+			"moved_from_arg": "<removed>",
+			"previous_binding_redacted": true,
 			"reason": "deleted_by_user"
 		},
 		{

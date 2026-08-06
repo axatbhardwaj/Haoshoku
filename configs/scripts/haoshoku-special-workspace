@@ -100,6 +100,7 @@ else
     x) workspace=x; monitor=DP-2 ;;
     youtube) workspace=youtube; monitor=DP-1; follows_focus=true ;;
     crunchyroll) workspace=crunchyroll; monitor=DP-1; follows_focus=true ;;
+    reanime) workspace=reanime; monitor=DP-1; follows_focus=true ;;
     *) echo "unknown workspace recipe: ${recipe:-<empty>}" >&2; exit 2 ;;
   esac
   [[ $# -eq 1 ]] || { echo "usage: haoshoku-special-workspace $recipe" >&2; exit 2; }
@@ -194,4 +195,5 @@ case "$recipe" in
   x) launch_if_missing "special:$workspace" '^chrome-x\.com__-Default$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/flux" --class=chromium-flux --app=https://x.com/ ;;
   youtube) launch_if_missing "special:$workspace" '^chrome-youtube\.com__-Default$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/flux" --class=chromium-flux --app=https://youtube.com/ ;;
   crunchyroll) launch_if_missing "special:$workspace" '^chrome-www\.crunchyroll\.com__-Default$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/flux" --class=chromium-flux --app=https://www.crunchyroll.com/ ;;
+  reanime) launch_if_missing "special:$workspace" '^chrome-reanime\.to__home-Default$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/flux" --class=chromium-flux --app=https://reanime.to/home ;;
 esac

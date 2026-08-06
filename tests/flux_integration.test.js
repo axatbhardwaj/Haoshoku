@@ -17,6 +17,61 @@ const wrapperPath = path.join(
 	"scripts",
 	"haoshoku-chromium-flux",
 );
+const scriptsPath = path.join(repoRoot, "configs", "scripts");
+
+function filesUnder(directory) {
+	return fs
+		.readdirSync(directory, { withFileTypes: true })
+		.flatMap((entry) => {
+			const entryPath = path.join(directory, entry.name);
+			if (entry.isDirectory()) return filesUnder(entryPath);
+			return entry.isFile() ? [entryPath] : [];
+		});
+}
+
+function sourceCommands(source) {
+	const commands = [];
+	let command = "";
+	let commandLine = 1;
+
+	for (const [index, line] of source.split(/\r?\n/).entries()) {
+		const fragment = line.replace(/\s+#.*$/, "").trim();
+		if (!command) commandLine = index + 1;
+		const trailingBackslashes = fragment.match(/\\+$/)?.[0].length ?? 0;
+		const continued = trailingBackslashes % 2 === 1;
+		const part = continued ? fragment.slice(0, -1).trimEnd() : fragment;
+		command = [command, part].filter(Boolean).join(" ");
+
+		if (!continued) {
+			if (command) commands.push({ command, line: commandLine });
+			command = "";
+		}
+	}
+
+	if (command) commands.push({ command, line: commandLine });
+	return commands;
+}
+
+function fluxLaunchSitesInSource(source, sourceName) {
+	return sourceCommands(source).flatMap(({ command, line }) => {
+		if (
+			command.startsWith("#") ||
+			!/(?:^|\s)(?:\/usr\/bin\/)?chromium(?=\s|$)/.test(command) ||
+			!/--user-data-dir=(?:"[^"]*chromium-haoshoku\/flux"|'[^']*chromium-haoshoku\/flux'|[^\s;]*chromium-haoshoku\/flux)(?=\s|;|$)/.test(
+				command,
+			)
+		)
+			return [];
+
+		return [{ command, source: `${sourceName}:${line}` }];
+	});
+}
+
+function hasFluxClass(command) {
+	return /(?:^|\s)(?:--class(?:=chromium-flux|=(?:"chromium-flux"|'chromium-flux')|\s+(?:chromium-flux|"chromium-flux"|'chromium-flux'))|"--class=chromium-flux"|'--class=chromium-flux')(?=\s|[;&|)]|$)/.test(
+		command,
+	);
+}
 
 describe("Flux Chromium integration", () => {
 	let directory;
@@ -44,6 +99,70 @@ describe("Flux Chromium integration", () => {
 		expect(execFirstField).toMatch(/^\S+$/);
 		expect(path.isAbsolute(execFirstField)).toBe(false);
 		expect(execFirstField).toBe(path.basename(wrapperPath));
+	});
+
+	it("stamps every literal Flux-profile Chromium launch with the Flux class", () => {
+		const fluxLaunchSites = filesUnder(scriptsPath).flatMap((file) =>
+			fluxLaunchSitesInSource(
+				fs.readFileSync(file, "utf8"),
+				path.relative(repoRoot, file),
+			),
+		);
+
+		expect(fluxLaunchSites.length).toBeGreaterThan(0);
+		expect(
+			fluxLaunchSites.filter(({ command }) => !hasFluxClass(command)),
+		).toEqual([]);
+	});
+
+	it("rejects suffixed Flux class values at literal launch sites", () => {
+		const command =
+			'chromium --user-data-dir="$HOME/.config/chromium-haoshoku/flux" --class=chromium-flux-wrong';
+		const sites = fluxLaunchSitesInSource(command, "fixture");
+
+		expect(sites).toHaveLength(1);
+		expect(
+			[
+				"--class=chromium-flux",
+				"--class chromium-flux",
+				'"--class=chromium-flux"',
+				'--class="chromium-flux"',
+			].map((flag) => hasFluxClass(`chromium ${flag}`)),
+		).toEqual([true, true, true, true]);
+		expect(
+			[
+				"--class=chromium-flux-wrong",
+				'--class="chromium-flux)wrong"',
+				"--class='chromium-flux;wrong'",
+			].map((flag) => hasFluxClass(`chromium ${flag}`)),
+		).toEqual([false, false, false]);
+		expect(sites.filter((site) => !hasFluxClass(site.command))).toEqual([
+			{ command, source: "fixture:1" },
+		]);
+	});
+
+	it("treats backslash-continued Flux launches as logical commands", () => {
+		const classedCommand =
+			'chromium --user-data-dir="$HOME/.config/chromium-haoshoku/flux" --class=chromium-flux';
+		const classlessCommand =
+			'chromium --user-data-dir="$HOME/.config/chromium-haoshoku/flux" --app=https://example.invalid/';
+		const source = [
+			"chromium \\",
+			'  --user-data-dir="$HOME/.config/chromium-haoshoku/flux" \\',
+			"  --class=chromium-flux",
+			"chromium \\",
+			'  --user-data-dir="$HOME/.config/chromium-haoshoku/flux" \\',
+			"  --app=https://example.invalid/",
+		].join("\n");
+		const sites = fluxLaunchSitesInSource(source, "fixture");
+
+		expect(sites).toEqual([
+			{ command: classedCommand, source: "fixture:1" },
+			{ command: classlessCommand, source: "fixture:4" },
+		]);
+		expect(sites.filter((site) => !hasFluxClass(site.command))).toEqual([
+			{ command: classlessCommand, source: "fixture:4" },
+		]);
 	});
 
 	// Mutation caught: placing the injected class after "$@" prevents an

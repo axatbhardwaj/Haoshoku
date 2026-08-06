@@ -37,3 +37,28 @@ binary acts as a PATH-shadow wrapper for that binary.
   but browser workspaces normally follow the focused monitor instead of that
   value. It is used only as a fallback when Hyprland transiently reports no
   focused monitor.
+- A Chromium profile `.class` is effectively fixed, despite the registry
+  accepting any value. Every command that can start the Flux profile's
+  Chromium singleton owner must pass `--class=chromium-flux`; otherwise the
+  owner stamps the default class onto later plain windows, the workspace class
+  probe misses them, and each `Super+B` press opens another window.
+  `tests/flux_integration.test.js` derives the literal Flux-profile launch
+  sites from source and enforces this invariant. From this directory, inspect
+  the sites with:
+
+  ```bash
+  grep -RIn --exclude='CLAUDE.md' -- 'chromium-haoshoku/flux' .
+  ```
+
+  Keep the `chromium-flux` and `chromium-defi` windowrules in
+  `configs/omarchy/workspaces.conf`; they are deployed byte-for-byte, without
+  templating, by `src/helpers/configure_omarchy_workspaces.js`.
+  `FALLBACK_PROFILES` in `configs/scripts/haoshoku-chromium-profiles` covers
+  the no-registry case. `DEFAULT_CHROMIUM_PROFILES` in
+  `src/helpers/configure_chromium_profiles.js` seeds the registry on first
+  run. They are not interchangeable. An already-seeded valid
+  `~/.haoshoku.json` is never migrated because `configureChromiumProfiles`
+  returns early with `{ changed: false }`. A class rename therefore needs an
+  explicit registry migration; changing either default alone does not affect
+  existing installs. Registry-emitted windowrules for custom `.class` values
+  were considered and deliberately deferred.
