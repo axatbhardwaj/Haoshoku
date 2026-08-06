@@ -567,7 +567,7 @@ exit 17
 			path.join(directory, "kitty"),
 			`#!/usr/bin/env bash
 printf 'terminal:%s\\n' "$*" >> "$CALL_LOG"
-shift 2
+shift 4
 exec "$@"
 `,
 		);
@@ -592,8 +592,8 @@ exec "$@"
 			dispatches: [
 				"dispatch focusmonitor DP-2",
 				"dispatch togglespecialworkspace haki",
-				"dispatch exec [workspace special:haki silent] uwsm-app -- kitty --class haoshoku-haki claude -r io",
-				"terminal:--class haoshoku-haki claude -r io",
+				`dispatch exec [workspace special:haki silent] uwsm-app -- kitty --class haoshoku-haki -d ${directory} claude -c`,
+				`terminal:--class haoshoku-haki -d ${directory} claude -c`,
 				"claude:started",
 			],
 			systemctlCalled: false,
@@ -640,8 +640,8 @@ exec "$@"
 			stderr: "",
 			dispatches: [
 				"dispatch focusmonitor DP-2",
-				"dispatch exec [workspace special:haki silent] uwsm-app -- kitty --class haoshoku-haki claude -r io",
-				"terminal:--class haoshoku-haki claude -r io",
+				`dispatch exec [workspace special:haki silent] uwsm-app -- kitty --class haoshoku-haki -d ${directory} claude -c`,
+				`terminal:--class haoshoku-haki -d ${directory} claude -c`,
 			],
 		});
 	});

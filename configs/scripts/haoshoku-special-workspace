@@ -181,11 +181,16 @@ elif [[ "$recipe" == haki ]]; then
   fi
 
   # Deliberately a local chat terminal, NOT an attach to the systemd-managed
-  # Remote Control session. That session is driven from the phone and web, so
-  # attaching to it locally yields a terminal you cannot type into. `-r` resumes
-  # the named conversation instead, matching the existing `claude -r io` pattern
-  # used by the KDE and Warp agent launchers.
-  launch "special:$workspace" kitty --class haoshoku-haki claude -r io
+  # Remote Control session: that session is driven from the phone and web, so
+  # attaching to it locally yields a terminal you cannot type into.
+  #
+  # `-c` continues the most recent conversation, with no picker. `-r <term>`
+  # was tried first and is wrong here: it opens a fuzzy search that needs a
+  # keypress and can offer a session that is still running elsewhere, which
+  # cannot be resumed. The `-d "$HOME"` is load-bearing -- "most recent" is
+  # per-directory, and without it kitty inherits whatever cwd the Hyprland
+  # dispatch happened to have, resuming an unrelated project's conversation.
+  launch "special:$workspace" kitty --class haoshoku-haki -d "$HOME" claude -c
   exit 0
 elif [[ "$follows_focus" == true ]]; then
   toggle_special_workspace
