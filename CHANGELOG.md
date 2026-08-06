@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 7.6.0 - 2026-08-07
 
 - Run the managed Claude Remote Control instances (`haki`, `dev`, `work`) in
   server mode (`claude remote-control --spawn same-dir --capacity 5
