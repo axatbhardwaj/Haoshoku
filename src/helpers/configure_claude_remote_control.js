@@ -11,7 +11,7 @@ const SCRIPT = "haoshoku-claude-remote-control";
 const UNIT = "claude-remote-control@.service";
 const TRUST_WRITE_ATTEMPTS = 3;
 export const CLAUDE_REMOTE_CONTROL_INSTANCES = Object.freeze([
-	Object.freeze({ instance: "io", relativeRoot: "." }),
+	Object.freeze({ instance: "haki", relativeRoot: "." }),
 	Object.freeze({ instance: "dev", relativeRoot: "dev" }),
 	Object.freeze({ instance: "work", relativeRoot: "Work" }),
 ]);
@@ -193,6 +193,28 @@ function sessionInstances(home) {
 		root: path.resolve(home, relativeRoot),
 		unit: `claude-remote-control@${instance}.service`,
 	}));
+}
+
+function installedEnvironmentInstances(environmentDirectory, fsImpl) {
+	if (!fsImpl.existsSync(environmentDirectory)) return [];
+	return fsImpl
+		.readdirSync(environmentDirectory, { withFileTypes: true })
+		.filter(
+			(entry) =>
+				entry.isFile() &&
+				entry.name.endsWith(".env") &&
+				/^[a-z][a-z0-9-]*\.env$/.test(entry.name),
+		)
+		.map((entry) => entry.name.slice(0, -".env".length))
+		.sort();
+}
+
+function tmuxSocketInstance(environment) {
+	const socketPath = environment.TMUX?.split(",", 1)[0];
+	if (!socketPath) return undefined;
+	const socket = path.basename(socketPath);
+	if (!socket.startsWith("claude-")) return undefined;
+	return socket.slice("claude-".length);
 }
 
 function trustState(roots) {
@@ -411,6 +433,7 @@ function enableServices(runner, user, enabledUnits, disabledUnits) {
 /** Deploy the tmux supervisor and systemd user-unit template. */
 export async function syncClaudeRemoteControl(opts = {}) {
 	const {
+		environment = process.env,
 		home = HOME_DEFAULT,
 		projectRoot = PROJECT_ROOT_DEFAULT,
 		fsImpl = fs,
@@ -425,10 +448,38 @@ export async function syncClaudeRemoteControl(opts = {}) {
 		log.warning(`Claude Remote Control sources are missing from ${repoDir}.`);
 		return false;
 	}
+	const instances = sessionInstances(home);
+	const liveEnvironmentDir = path.join(
+		home,
+		".config",
+		"haoshoku",
+		"claude-remote-control",
+	);
+	const configuredInstances = new Set(
+		instances.map(({ instance }) => instance),
+	);
+	const retiredInstances = installedEnvironmentInstances(
+		liveEnvironmentDir,
+		fsImpl,
+	)
+		.filter((instance) => !configuredInstances.has(instance))
+		.map((instance) => ({
+			instance,
+			unit: `claude-remote-control@${instance}.service`,
+		}));
+	const currentTmuxInstance = tmuxSocketInstance(environment);
+	if (
+		enable &&
+		retiredInstances.some(({ instance }) => instance === currentTmuxInstance)
+	) {
+		log.warning(
+			`Refusing to retire Claude Remote Control instance ${currentTmuxInstance} while this installer is running inside its tmux session. Detach and run Haoshoku from another terminal.`,
+		);
+		return false;
+	}
 	if (!claudeStateCanBeUpdated(home, fsImpl)) return false;
 	if (!dependenciesAvailable(runner)) return false;
 
-	const instances = sessionInstances(home);
 	const enabledInstances = instances.filter(({ root }) =>
 		fsImpl.existsSync(root),
 	);
@@ -450,12 +501,6 @@ export async function syncClaudeRemoteControl(opts = {}) {
 
 	const liveScriptDir = path.join(home, ".local", "bin");
 	const liveSystemdDir = path.join(home, ".config", "systemd", "user");
-	const liveEnvironmentDir = path.join(
-		home,
-		".config",
-		"haoshoku",
-		"claude-remote-control",
-	);
 	fsImpl.mkdirSync(liveScriptDir, { recursive: true });
 	fsImpl.mkdirSync(liveSystemdDir, { recursive: true });
 	fsImpl.mkdirSync(liveEnvironmentDir, { recursive: true });
@@ -472,15 +517,19 @@ export async function syncClaudeRemoteControl(opts = {}) {
 		);
 		fsImpl.chmodSync(environmentPath, 0o600);
 	}
-	for (const { instance } of disabledInstances) {
+	const enabledUnits = enabledInstances.map(({ unit }) => unit);
+	const disabledUnits = [...disabledInstances, ...retiredInstances].map(
+		({ unit }) => unit,
+	);
+	if (enable && !enableServices(runner, user, enabledUnits, disabledUnits))
+		return false;
+	for (const { instance } of [
+		...disabledInstances,
+		...(enable ? retiredInstances : []),
+	]) {
 		const environmentPath = path.join(liveEnvironmentDir, `${instance}.env`);
 		if (fsImpl.existsSync(environmentPath)) fsImpl.unlinkSync(environmentPath);
 	}
-
-	const enabledUnits = enabledInstances.map(({ unit }) => unit);
-	const disabledUnits = disabledInstances.map(({ unit }) => unit);
-	if (enable && !enableServices(runner, user, enabledUnits, disabledUnits))
-		return false;
 	return true;
 }
 

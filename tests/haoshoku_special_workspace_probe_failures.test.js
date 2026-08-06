@@ -62,6 +62,17 @@ fi
 			path.join(unitDirectory, "claude-remote-control@.service"),
 			"[Service]\n",
 		);
+		const environmentDirectory = path.join(
+			directory,
+			".config",
+			"haoshoku",
+			"claude-remote-control",
+		);
+		fs.mkdirSync(environmentDirectory, { recursive: true });
+		fs.writeFileSync(
+			path.join(environmentDirectory, "haki.env"),
+			`CLAUDE_REMOTE_CONTROL_ROOT=${JSON.stringify(directory)}\n`,
+		);
 		fs.writeFileSync(
 			helper,
 			`#!/usr/bin/env bash
@@ -188,8 +199,8 @@ esac
 			});
 		});
 
-		it(`[${failure}] regex client probe falls back to launching the IO session`, async () => {
-			const result = await run(["io"], "clients -j", failure);
+		it(`[${failure}] regex client probe falls back to launching the Haki session`, async () => {
+			const result = await run(["haki"], "clients -j", failure);
 			const helper = path.join(
 				directory,
 				".local",
@@ -200,8 +211,8 @@ esac
 			expect(result).toEqual({
 				dispatches: [
 					"dispatch focusmonitor DP-2",
-					"dispatch togglespecialworkspace io",
-					`dispatch exec [workspace special:io silent] uwsm-app -- kitty --class haoshoku-io ${helper} attach io`,
+					"dispatch togglespecialworkspace haki",
+					`dispatch exec [workspace special:haki silent] uwsm-app -- kitty --class haoshoku-haki ${helper} attach haki`,
 				],
 				exitCode: 0,
 				stderr: "",
@@ -264,7 +275,7 @@ esac
 			{ name: "browser-toggle", args: ["browser-toggle", "flux"] },
 			{ name: "browser-flux", args: ["browser-flux"] },
 			{ name: "browser-defi", args: ["browser-defi"] },
-			{ name: "io", args: ["io"] },
+			{ name: "haki", args: ["haki"] },
 			{ name: "assistants", args: ["assistants"] },
 			{ name: "music", args: ["music"] },
 			{ name: "1password", args: ["1password"] },

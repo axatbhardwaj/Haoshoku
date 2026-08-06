@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- Rename the home-root Claude Remote Control instance from `io` to `haki` and
+  retire instances removed from the managed map by stopping and disabling their
+  services before deleting their environment files. Retirement is derived from
+  Haoshoku's installed state, refuses to kill the tmux session running the
+  installer, and leaves unrelated template units untouched; the launcher now
+  reports an uninstalled Haki instance accurately while the unit tolerates its
+  environment file being absent during migration.
+
 ## 7.5.0 - 2026-08-06
 
 - Make `Super+B` toggle the existing Flux Chromium window instead of opening a new

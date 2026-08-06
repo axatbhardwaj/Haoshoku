@@ -304,19 +304,19 @@ describe("Omarchy keybinding swaps", () => {
 		expect(zedBinding).not.toContain("omarchy-launch-or-focus");
 	});
 
-	it("routes SUPER+A to the systemd-managed IO tmux session", () => {
+	it("routes SUPER+A to the systemd-managed Haki tmux session", () => {
 		const workspaces = fs.readFileSync(configPath, "utf8");
 		expect({
 			binding: activeBindingsFor(workspaces, "SUPER", "A"),
 			windowRule: workspaces
 				.split("\n")
-				.filter((line) => line.includes("haoshoku-io")),
+				.filter((line) => line.includes("haoshoku-haki")),
 		}).toEqual({
 			binding: [
-				"bindd = SUPER, A, Show/focus/hide IO session, exec, haoshoku-special-workspace io",
+				"bindd = SUPER, A, Show/focus/hide Haki session, exec, haoshoku-special-workspace haki",
 			],
 			windowRule: [
-				"windowrule = workspace special:io, match:class ^haoshoku-io$",
+				"windowrule = workspace special:haki, match:class ^haoshoku-haki$",
 			],
 		});
 	});

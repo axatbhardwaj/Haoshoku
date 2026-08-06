@@ -38,7 +38,7 @@ describe("haoshoku-special-workspace", () => {
 			]),
 		);
 		const expectedRecipes = {
-			io: { workspace: "io", monitor: "DP-2", followsFocus: false },
+			haki: { workspace: "haki", monitor: "DP-2", followsFocus: false },
 			assistants: {
 				workspace: "assistants",
 				monitor: "DP-2",
@@ -111,6 +111,17 @@ describe("haoshoku-special-workspace", () => {
 		fs.writeFileSync(
 			path.join(unitDirectory, "claude-remote-control@.service"),
 			"[Service]\n",
+		);
+		const environmentDirectory = path.join(
+			directory,
+			".config",
+			"haoshoku",
+			"claude-remote-control",
+		);
+		fs.mkdirSync(environmentDirectory, { recursive: true });
+		fs.writeFileSync(
+			path.join(environmentDirectory, "haki.env"),
+			`CLAUDE_REMOTE_CONTROL_ROOT=${JSON.stringify(directory)}\n`,
 		);
 		fs.writeFileSync(
 			hyprctl,
@@ -250,7 +261,7 @@ esac
 	}
 
 	const fluxClient = JSON.stringify([{ class: "chromium-flux" }]);
-	const ioClient = JSON.stringify([{ class: "haoshoku-io" }]);
+	const hakiClient = JSON.stringify([{ class: "haoshoku-haki" }]);
 	const xClient = JSON.stringify([{ class: "chrome-x.com__-Default" }]);
 	const forwardedUrl = "https://example.test/forwarded";
 	const claudeClass = "com.anthropic.Claude";
@@ -530,16 +541,16 @@ esac
 		});
 	});
 
-	it("opens the hidden IO session on its pinned monitor", async () => {
-		const result = await run(["io"], {
-			clients: ioClient,
+	it("opens the hidden Haki session on its pinned monitor", async () => {
+		const result = await run(["haki"], {
+			clients: hakiClient,
 			focusedMonitor: "DP-1",
 		});
 
 		expect(result.exitCode).toBe(0);
 		expect(dispatchCalls()).toEqual([
 			"dispatch focusmonitor DP-2",
-			"dispatch togglespecialworkspace io",
+			"dispatch togglespecialworkspace haki",
 		]);
 	});
 
@@ -577,7 +588,7 @@ exec "$@"
 			fs.chmodSync(path.join(directory, executable), 0o755);
 		}
 
-		const result = await run(["io"]);
+		const result = await run(["haki"]);
 
 		expect({
 			exitCode: result.exitCode,
@@ -589,32 +600,32 @@ exec "$@"
 			stderr: "",
 			dispatches: [
 				"dispatch focusmonitor DP-2",
-				"dispatch togglespecialworkspace io",
-				"dispatch exec [workspace special:io silent] uwsm-app -- kitty --class haoshoku-io claude",
-				"terminal:--class haoshoku-io claude",
+				"dispatch togglespecialworkspace haki",
+				"dispatch exec [workspace special:haki silent] uwsm-app -- kitty --class haoshoku-haki claude",
+				"terminal:--class haoshoku-haki claude",
 				"claude:started",
 			],
 			systemctlCalled: false,
 		});
 	});
 
-	it("focuses visible IO on its monitor without moving it", async () => {
-		const result = await run(["io"], {
-			clients: ioClient,
+	it("focuses visible Haki on its monitor without moving it", async () => {
+		const result = await run(["haki"], {
+			clients: hakiClient,
 			focusedMonitor: "DP-1",
-			visibleWorkspace: "io",
+			visibleWorkspace: "haki",
 			visibleMonitor: "DP-2",
 		});
 
 		expect(result.exitCode).toBe(0);
 		expect(dispatchCalls()).toEqual(["dispatch focusmonitor DP-2"]);
-		expect(fs.readFileSync(specialState, "utf8")).toBe("io");
+		expect(fs.readFileSync(specialState, "utf8")).toBe("haki");
 		expect(fs.readFileSync(specialMonitorState, "utf8")).toBe("DP-2");
 	});
 
 	// Mutation caught: returning after cross-monitor focus leaves a visible
 	// workspace empty when its client has died.
-	it("reattaches missing IO after focusing its visible workspace", async () => {
+	it("reattaches missing Haki after focusing its visible workspace", async () => {
 		const helperDirectory = path.join(directory, ".local", "bin");
 		fs.mkdirSync(helperDirectory, { recursive: true });
 		const helper = path.join(helperDirectory, "haoshoku-claude-remote-control");
@@ -657,7 +668,7 @@ esac
 			systemctl,
 			`#!/usr/bin/env bash
 printf 'systemctl:%s\\n' "$*" >> "$CALL_LOG"
-"$HOME/.local/bin/haoshoku-claude-remote-control" io >/dev/null 2>&1 &
+"$HOME/.local/bin/haoshoku-claude-remote-control" haki >/dev/null 2>&1 &
 `,
 		);
 		fs.writeFileSync(
@@ -670,13 +681,13 @@ printf 'systemctl:%s\\n' "$*" >> "$CALL_LOG"
 		fs.chmodSync(systemctl, 0o755);
 		fs.chmodSync(path.join(directory, "sleep"), 0o755);
 
-		const result = await run(["io"], {
+		const result = await run(["haki"], {
 			env: {
 				CLAUDE_REMOTE_CONTROL_ROOT: directory,
 				CREATE_ACTION: createAction,
 			},
 			focusedMonitor: "DP-1",
-			visibleWorkspace: "io",
+			visibleWorkspace: "haki",
 			visibleMonitor: "DP-2",
 		});
 
@@ -695,16 +706,16 @@ printf 'systemctl:%s\\n' "$*" >> "$CALL_LOG"
 			stderr: "",
 			dispatches: [
 				"dispatch focusmonitor DP-2",
-				"systemctl:--user start claude-remote-control@io.service",
-				`dispatch exec [workspace special:io silent] uwsm-app -- kitty --class haoshoku-io ${helper} attach io`,
-				`terminal:--class haoshoku-io ${helper} attach io`,
+				"systemctl:--user start claude-remote-control@haki.service",
+				`dispatch exec [workspace special:haki silent] uwsm-app -- kitty --class haoshoku-haki ${helper} attach haki`,
+				`terminal:--class haoshoku-haki ${helper} attach haki`,
 			],
-			creation: `-L claude-io ${createAction} -d -s io -c ${directory} claude --remote-control io --dangerously-skip-permissions`,
-			terminal: `terminal:--class haoshoku-io ${helper} attach io`,
+			creation: `-L claude-haki ${createAction} -d -s haki -c ${directory} claude --remote-control haki --dangerously-skip-permissions`,
+			terminal: `terminal:--class haoshoku-haki ${helper} attach haki`,
 		});
 	});
 
-	it("notifies and launches no terminal when the IO service fails to start", async () => {
+	it("notifies and launches no terminal when the Haki service fails to start", async () => {
 		const helperDirectory = path.join(directory, ".local", "bin");
 		fs.mkdirSync(helperDirectory, { recursive: true });
 		fs.writeFileSync(
@@ -721,7 +732,7 @@ printf 'systemctl:%s\\n' "$*" >> "$CALL_LOG"
 		);
 		fs.chmodSync(path.join(directory, "systemctl"), 0o755);
 
-		const result = await run(["io"]);
+		const result = await run(["haki"]);
 
 		expect({
 			exitCode: result.exitCode,
@@ -733,10 +744,50 @@ printf 'systemctl:%s\\n' "$*" >> "$CALL_LOG"
 		}).toEqual({
 			exitCode: 1,
 			stderr:
-				"Could not start Claude Remote Control IO service; run: systemctl --user status claude-remote-control@io.service\n",
+				"Could not start Claude Remote Control Haki service; run: systemctl --user status claude-remote-control@haki.service\n",
 			terminalDispatches: [],
 			notification:
-				"notify -1 5000 rgb(ff5555) Claude Remote Control: failed to start IO service",
+				"notify -1 5000 rgb(ff5555) Claude Remote Control: failed to start Haki service",
+		});
+	});
+
+	it("reports Haki as not installed before asking systemd to start it", async () => {
+		const environmentFile = path.join(
+			directory,
+			".config",
+			"haoshoku",
+			"claude-remote-control",
+			"haki.env",
+		);
+		fs.rmSync(environmentFile);
+		const systemctlLog = path.join(directory, "systemctl-call");
+		fs.writeFileSync(
+			path.join(directory, "systemctl"),
+			`#!/usr/bin/env bash
+printf '%s\n' "$*" > ${JSON.stringify(systemctlLog)}
+exit 17
+`,
+		);
+		fs.chmodSync(path.join(directory, "systemctl"), 0o755);
+
+		const result = await run(["haki"]);
+
+		expect({
+			exitCode: result.exitCode,
+			stderr: result.stderr,
+			terminalDispatches: dispatchCalls().filter((call) =>
+				call.includes("kitty"),
+			),
+			notification: dispatchCalls().find((call) => call.startsWith("notify ")),
+			systemctlCalled: fs.existsSync(systemctlLog),
+		}).toEqual({
+			exitCode: 1,
+			stderr:
+				"Claude Remote Control Haki is not installed; run: haoshoku --claude-remote-control\n",
+			terminalDispatches: [],
+			notification:
+				"notify -1 5000 rgb(ff5555) Claude Remote Control: Haki is not installed",
+			systemctlCalled: false,
 		});
 	});
 
@@ -753,7 +804,7 @@ exit 0
 		fs.rmSync(
 			path.join(directory, ".local", "bin", "haoshoku-claude-remote-control"),
 		);
-		const result = await run(["io"]);
+		const result = await run(["haki"]);
 
 		expect({
 			exitCode: result.exitCode,
@@ -771,11 +822,11 @@ exit 0
 			terminalDispatches: [],
 			notification:
 				"notify -1 5000 rgb(ff5555) Claude Remote Control: supervisor helper is missing",
-			systemctlStart: "--user start claude-remote-control@io.service",
+			systemctlStart: "--user start claude-remote-control@haki.service",
 		});
 	});
 
-	it("times out visibly and launches no terminal when IO never becomes ready", async () => {
+	it("times out visibly and launches no terminal when Haki never becomes ready", async () => {
 		const helperDirectory = path.join(directory, ".local", "bin");
 		const pollLog = path.join(directory, "readiness-polls");
 		fs.mkdirSync(helperDirectory, { recursive: true });
@@ -802,7 +853,7 @@ exit 1
 			fs.chmodSync(executable, 0o755);
 		}
 
-		const result = await run(["io"]);
+		const result = await run(["haki"]);
 
 		expect({
 			exitCode: result.exitCode,
@@ -815,15 +866,15 @@ exit 1
 		}).toEqual({
 			exitCode: 1,
 			stderr:
-				"Claude Remote Control IO session was not ready after 10 seconds; inspect: systemctl --user status claude-remote-control@io.service\n",
+				"Claude Remote Control Haki session was not ready after 10 seconds; inspect: systemctl --user status claude-remote-control@haki.service\n",
 			terminalDispatches: [],
 			notification:
-				"notify -1 5000 rgb(ff5555) Claude Remote Control: IO session readiness timed out",
+				"notify -1 5000 rgb(ff5555) Claude Remote Control: Haki session readiness timed out",
 			polls: 50,
 		});
 	});
 
-	it("hides IO visible on the focused monitor", async () => {
+	it("hides Haki visible on the focused monitor", async () => {
 		const systemctlCall = path.join(directory, "systemctl-call");
 		fs.writeFileSync(
 			path.join(directory, "systemctl"),
@@ -833,10 +884,10 @@ exit 17
 `,
 		);
 		fs.chmodSync(path.join(directory, "systemctl"), 0o755);
-		const result = await run(["io"], {
-			clients: ioClient,
+		const result = await run(["haki"], {
+			clients: hakiClient,
 			focusedMonitor: "DP-2",
-			visibleWorkspace: "io",
+			visibleWorkspace: "haki",
 			visibleMonitor: "DP-2",
 		});
 
@@ -848,7 +899,7 @@ exit 17
 		}).toEqual({
 			exitCode: 0,
 			stderr: "",
-			dispatches: ["dispatch togglespecialworkspace io"],
+			dispatches: ["dispatch togglespecialworkspace haki"],
 			systemctlCalled: false,
 		});
 	});
@@ -1353,10 +1404,10 @@ exit 17
 	// Mutation caught: confusing $monitor with $visible_monitor in the cross-monitor
 	// branch focuses the pinned monitor instead of the workspace's visible monitor.
 	it("focuses the monitor where a pinned workspace is actually visible", async () => {
-		const result = await run(["io"], {
-			clients: ioClient,
+		const result = await run(["haki"], {
+			clients: hakiClient,
 			focusedMonitor: "DP-1",
-			visibleWorkspace: "io",
+			visibleWorkspace: "haki",
 			visibleMonitor: "HDMI-A-1",
 		});
 

@@ -51,7 +51,7 @@ The Arch setup:
 - adds a behavior-only workspace overlay: workspaces 1–3 use DP-1, 4–5 use
   HDMI-A-1, and 6, 7, and 10 use DP-2;
 - adds two-key special-workspace toggles under `Super`: A Claude Remote Control
-  IO, I AI assistants,
+  Haki, I AI assistants,
   M music, O 1Password, G communication, B Flux Chromium, D DeFi Chromium,
   S stash, and `Super+Shift+X` X (`Super+Shift+S` stashes the focused window);
   see the canonical swaps JSON above for every Omarchy default relocated or
@@ -86,10 +86,10 @@ does not run `git clean`, so Omarchy's managed
 ## Claude Remote Control
 
 The optional Claude Remote Control setup runs persistent Claude sessions from
-three fixed roots: `io` at `$HOME`, `dev` at `$HOME/dev`, and `work` at
+three fixed roots: `haki` at `$HOME`, `dev` at `$HOME/dev`, and `work` at
 `$HOME/Work`. Instances whose roots do not exist are skipped with a warning.
 When Remote Control is installed, `Super+A` opens or reattaches the
-systemd-managed `io` session after waiting up to 10 seconds for it to become
+systemd-managed `haki` session after waiting up to 10 seconds for it to become
 ready. If the opt-in was declined (and the unit is absent), the same key opens a
 normal terminal running Claude directly. An installed unit that cannot start or
 become ready fails visibly with a notification and a `systemctl --user status`
@@ -104,7 +104,7 @@ run.
 Attach to any enabled managed session from a terminal with:
 
 ```bash
-~/.local/bin/haoshoku-claude-remote-control attach io
+~/.local/bin/haoshoku-claude-remote-control attach haki
 ~/.local/bin/haoshoku-claude-remote-control attach dev
 ~/.local/bin/haoshoku-claude-remote-control attach work
 ```

@@ -512,7 +512,7 @@ it("deploys the executable supervisor and template, then enables all three insta
 		unitContract: [
 			"StartLimitIntervalSec=0",
 			"Type=simple",
-			"EnvironmentFile=%h/.config/haoshoku/claude-remote-control/%i.env",
+			"EnvironmentFile=-%h/.config/haoshoku/claude-remote-control/%i.env",
 			"ExecStart=%h/.local/bin/haoshoku-claude-remote-control %i",
 			"ExecStop=-%h/.local/bin/haoshoku-claude-remote-control stop %i",
 			"Restart=always",
@@ -529,7 +529,7 @@ it("deploys the executable supervisor and template, then enables all three insta
 				"--user",
 				"enable",
 				"--now",
-				"claude-remote-control@io.service",
+				"claude-remote-control@haki.service",
 				"claude-remote-control@dev.service",
 				"claude-remote-control@work.service",
 			],
@@ -591,15 +591,15 @@ it("derives trust, runtime roots, and enabled units from one frozen instance map
 		result: true,
 		frozen: true,
 		definitions: [
-			{ instance: "io", relativeRoot: "." },
+			{ instance: "haki", relativeRoot: "." },
 			{ instance: "dev", relativeRoot: "dev" },
 			{ instance: "work", relativeRoot: "Work" },
 		],
 		trustedRoots: [home, path.join(home, "dev"), path.join(home, "Work")],
-		environmentFiles: ["dev.env", "io.env", "work.env"],
+		environmentFiles: ["dev.env", "haki.env", "work.env"],
 		environmentRoots: [path.join(home, "dev"), home, path.join(home, "Work")],
 		enabledUnits: [
-			"claude-remote-control@io.service",
+			"claude-remote-control@haki.service",
 			"claude-remote-control@dev.service",
 			"claude-remote-control@work.service",
 		],
@@ -654,7 +654,7 @@ it("disables stale units for every missing root before enabling valid instances"
 				"--user",
 				"enable",
 				"--now",
-				"claude-remote-control@io.service",
+				"claude-remote-control@haki.service",
 			],
 			["loginctl", "enable-linger", "alice"],
 		],
@@ -663,6 +663,129 @@ it("disables stale units for every missing root before enabling valid instances"
 			`Skipping Claude Remote Control instance work: root does not exist: ${path.join(home, "Work")}`,
 		],
 		trustedRoots: [home],
+	});
+});
+
+it("retires stale managed instances idempotently without touching unmanaged template units", async () => {
+	const home = temporaryDirectory("haoshoku-remote-retired-");
+	createSessionRoots(home);
+	const environmentDirectory = path.join(
+		home,
+		".config",
+		"haoshoku",
+		"claude-remote-control",
+	);
+	fs.mkdirSync(environmentDirectory, { recursive: true });
+	const retiredEnvironment = path.join(environmentDirectory, "io.env");
+	fs.writeFileSync(retiredEnvironment, `CLAUDE_REMOTE_CONTROL_ROOT=${JSON.stringify(home)}\n`);
+	const wantsDirectory = path.join(
+		home,
+		".config",
+		"systemd",
+		"user",
+		"default.target.wants",
+	);
+	fs.mkdirSync(wantsDirectory, { recursive: true });
+	const unmanagedUnit = path.join(
+		wantsDirectory,
+		"claude-remote-control@unmanaged.service",
+	);
+	fs.symlinkSync("../claude-remote-control@.service", unmanagedUnit);
+	const calls = [];
+	const runner = (args) => {
+		calls.push(args);
+		return { exitCode: 0 };
+	};
+
+	const first = await remote.syncClaudeRemoteControl({
+		environment: {},
+		home,
+		projectRoot: PROJECT_ROOT,
+		runner,
+		user: "alice",
+	});
+	const second = await remote.syncClaudeRemoteControl({
+		environment: {},
+		home,
+		projectRoot: PROJECT_ROOT,
+		runner,
+		user: "alice",
+	});
+
+	expect({
+		results: [first, second],
+		disableCalls: calls.filter((args) => args[2] === "disable"),
+		retiredEnvironmentExists: fs.existsSync(retiredEnvironment),
+		unmanagedUnitStillExists: fs.lstatSync(unmanagedUnit).isSymbolicLink(),
+		unmanagedUnitTouched: calls.some((args) =>
+			args.includes("claude-remote-control@unmanaged.service"),
+		),
+	}).toEqual({
+		results: [true, true],
+		disableCalls: [
+			[
+				"systemctl",
+				"--user",
+				"disable",
+				"--now",
+				"claude-remote-control@io.service",
+			],
+		],
+		retiredEnvironmentExists: false,
+		unmanagedUnitStillExists: true,
+		unmanagedUnitTouched: false,
+	});
+});
+
+it("refuses to retire the tmux instance running the installer", async () => {
+	const home = temporaryDirectory("haoshoku-remote-current-session-");
+	createSessionRoots(home);
+	const environmentDirectory = path.join(
+		home,
+		".config",
+		"haoshoku",
+		"claude-remote-control",
+	);
+	fs.mkdirSync(environmentDirectory, { recursive: true });
+	const retiredEnvironment = path.join(environmentDirectory, "io.env");
+	fs.writeFileSync(retiredEnvironment, `CLAUDE_REMOTE_CONTROL_ROOT=${JSON.stringify(home)}\n`);
+	const calls = [];
+	const warnings = [];
+	const originalWarning = log.warning;
+	log.warning = (message) => warnings.push(message);
+	let result;
+	try {
+		result = await remote.syncClaudeRemoteControl({
+			home,
+			projectRoot: PROJECT_ROOT,
+			environment: {
+				...process.env,
+				TMUX: "/tmp/tmux-1000/claude-io,123,0",
+			},
+			runner: (args) => {
+				calls.push(args);
+				return { exitCode: 0 };
+			},
+		});
+	} finally {
+		log.warning = originalWarning;
+	}
+
+	expect({
+		result,
+		calls,
+		warning: warnings.at(-1),
+		retiredEnvironmentExists: fs.existsSync(retiredEnvironment),
+		artifactsDeployed: fs.existsSync(
+			path.join(home, ".local", "bin", "haoshoku-claude-remote-control"),
+		),
+	}).toEqual({
+		result: false,
+		calls: [],
+		warning:
+			"Refusing to retire Claude Remote Control instance io while this installer is running inside its tmux session. Detach and run Haoshoku from another terminal.",
+		retiredEnvironmentExists: true,
+		artifactsDeployed: false,
 	});
 });
 
@@ -884,7 +1007,7 @@ esac
 		TMUX_LOG: tmuxLog,
 		TMUX_STATE: tmuxState,
 	};
-	const runMode = Bun.spawn([supervisor, "io"], {
+	const runMode = Bun.spawn([supervisor, "haki"], {
 		env,
 		stderr: "pipe",
 		stdout: "pipe",
@@ -896,9 +1019,9 @@ esac
 	) {
 		await Bun.sleep(10);
 	}
-	const readiness = Bun.spawnSync([supervisor, "has-session", "io"], { env });
-	const attach = Bun.spawnSync([supervisor, "attach", "io"], { env });
-	const stop = Bun.spawnSync([supervisor, "stop", "io"], { env });
+	const readiness = Bun.spawnSync([supervisor, "has-session", "haki"], { env });
+	const attach = Bun.spawnSync([supervisor, "attach", "haki"], { env });
+	const stop = Bun.spawnSync([supervisor, "stop", "haki"], { env });
 	const exitCode = await runMode.exited;
 	const calls = fs.readFileSync(tmuxLog, "utf8").trim().split("\n");
 
@@ -918,8 +1041,8 @@ esac
 		readiness: 0,
 		attach: 0,
 		stop: 0,
-		sockets: ["claude-io"],
-		creation: `-L claude-io ${createAction} -d -s io -c ${home} claude --remote-control io --dangerously-skip-permissions`,
+		sockets: ["claude-haki"],
+		creation: `-L claude-haki ${createAction} -d -s haki -c ${home} claude --remote-control haki --dangerously-skip-permissions`,
 		lifecycle: ["attach-session", "kill-session", createAction].sort(),
 	});
 });
@@ -947,7 +1070,7 @@ exit 1
 		"claude-remote-control",
 		"haoshoku-claude-remote-control",
 	);
-	const result = Bun.spawnSync([supervisor, "io"], {
+	const result = Bun.spawnSync([supervisor, "haki"], {
 		env: {
 			...process.env,
 			CLAUDE_REMOTE_CONTROL_ROOT: home,
@@ -968,8 +1091,8 @@ exit 1
 		created: fs.existsSync(created),
 	}).toEqual({
 		exitCode: 1,
-		stderr: "Refusing to adopt pre-existing tmux session: io on claude-io\n",
-		calls: ["-L claude-io has-session -t io"],
+		stderr: "Refusing to adopt pre-existing tmux session: haki on claude-haki\n",
+		calls: ["-L claude-haki has-session -t haki"],
 		created: false,
 	});
 });
@@ -998,7 +1121,7 @@ esac
 		"claude-remote-control",
 		"haoshoku-claude-remote-control",
 	);
-	const result = Bun.spawnSync([supervisor, "stop", "io"], {
+	const result = Bun.spawnSync([supervisor, "stop", "haki"], {
 		env: {
 			...process.env,
 			HOME: home,
@@ -1017,9 +1140,9 @@ esac
 	}).toEqual({
 		exitCode: 0,
 		calls: [
-			"-L claude-io has-session -t io",
-			"-L claude-io kill-session -t io",
-			"-L claude-io has-session -t io",
+			"-L claude-haki has-session -t haki",
+			"-L claude-haki kill-session -t haki",
+			"-L claude-haki has-session -t haki",
 		],
 		stopped: true,
 	});
