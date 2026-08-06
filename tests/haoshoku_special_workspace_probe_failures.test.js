@@ -201,18 +201,12 @@ esac
 
 		it(`[${failure}] regex client probe falls back to launching the Haki session`, async () => {
 			const result = await run(["haki"], "clients -j", failure);
-			const helper = path.join(
-				directory,
-				".local",
-				"bin",
-				"haoshoku-claude-remote-control",
-			);
 
 			expect(result).toEqual({
 				dispatches: [
 					"dispatch focusmonitor DP-2",
 					"dispatch togglespecialworkspace haki",
-					`dispatch exec [workspace special:haki silent] uwsm-app -- kitty --class haoshoku-haki ${helper} attach haki`,
+					"dispatch exec [workspace special:haki silent] uwsm-app -- kitty --class haoshoku-haki claude -r io",
 				],
 				exitCode: 0,
 				stderr: "",

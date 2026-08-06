@@ -554,16 +554,7 @@ esac
 		]);
 	});
 
-	it("opens Claude directly with no error when Remote Control is not installed", async () => {
-		fs.rmSync(
-			path.join(
-				directory,
-				".config",
-				"systemd",
-				"user",
-				"claude-remote-control@.service",
-			),
-		);
+	it("resumes the io conversation locally and never touches systemd", async () => {
 		const systemctlCall = path.join(directory, "systemctl-call");
 		fs.writeFileSync(
 			path.join(directory, "systemctl"),
@@ -601,8 +592,8 @@ exec "$@"
 			dispatches: [
 				"dispatch focusmonitor DP-2",
 				"dispatch togglespecialworkspace haki",
-				"dispatch exec [workspace special:haki silent] uwsm-app -- kitty --class haoshoku-haki claude",
-				"terminal:--class haoshoku-haki claude",
+				"dispatch exec [workspace special:haki silent] uwsm-app -- kitty --class haoshoku-haki claude -r io",
+				"terminal:--class haoshoku-haki claude -r io",
 				"claude:started",
 			],
 			systemctlCalled: false,
@@ -625,67 +616,16 @@ exec "$@"
 
 	// Mutation caught: returning after cross-monitor focus leaves a visible
 	// workspace empty when its client has died.
-	it("reattaches missing Haki after focusing its visible workspace", async () => {
-		const helperDirectory = path.join(directory, ".local", "bin");
-		fs.mkdirSync(helperDirectory, { recursive: true });
-		const helper = path.join(helperDirectory, "haoshoku-claude-remote-control");
-		fs.copyFileSync(
-			path.join(
-				import.meta.dir,
-				"..",
-				"configs",
-				"claude-remote-control",
-				"haoshoku-claude-remote-control",
-			),
-			helper,
-		);
-		const kitty = path.join(directory, "kitty");
-		const tmux = path.join(directory, "tmux");
-		const systemctl = path.join(directory, "systemctl");
-		const createAction = ["new", "session"].join("-");
+	it("relaunches missing Haki after focusing its visible workspace", async () => {
+		// The harness executes the dispatched command, so stub the terminal:
+		// otherwise this launches a real interactive claude and hangs.
 		fs.writeFileSync(
-			kitty,
-			`#!/usr/bin/env bash
-printf 'terminal:%s\\n' "$*" >> "$CALL_LOG"
-shift 2
-exec "$@"
-`,
+			path.join(directory, "kitty"),
+			'#!/usr/bin/env bash\nprintf \'terminal:%s\\n\' "$*" >> "$CALL_LOG"\n',
 		);
-		fs.writeFileSync(
-			tmux,
-			`#!/usr/bin/env bash
-operation="$3"
-printf '%s\\n' "$*" >> "$TMUX_LOG"
-case "$operation" in
-  has-session) [[ -f "$TMUX_STATE" ]] ;;
-  "$CREATE_ACTION") printf '%s\\n' "$*" > "$TMUX_STATE" ;;
-  attach-session) [[ -f "$TMUX_STATE" ]] && rm -f "$TMUX_STATE" ;;
-  kill-session) rm -f "$TMUX_STATE" ;;
-esac
-`,
-		);
-		fs.writeFileSync(
-			systemctl,
-			`#!/usr/bin/env bash
-printf 'systemctl:%s\\n' "$*" >> "$CALL_LOG"
-"$HOME/.local/bin/haoshoku-claude-remote-control" haki >/dev/null 2>&1 &
-`,
-		);
-		fs.writeFileSync(
-			path.join(directory, "sleep"),
-			"#!/usr/bin/env bash\nexit 0\n",
-		);
-		fs.chmodSync(helper, 0o755);
-		fs.chmodSync(kitty, 0o755);
-		fs.chmodSync(tmux, 0o755);
-		fs.chmodSync(systemctl, 0o755);
-		fs.chmodSync(path.join(directory, "sleep"), 0o755);
+		fs.chmodSync(path.join(directory, "kitty"), 0o755);
 
 		const result = await run(["haki"], {
-			env: {
-				CLAUDE_REMOTE_CONTROL_ROOT: directory,
-				CREATE_ACTION: createAction,
-			},
 			focusedMonitor: "DP-1",
 			visibleWorkspace: "haki",
 			visibleMonitor: "DP-2",
@@ -695,182 +635,14 @@ printf 'systemctl:%s\\n' "$*" >> "$CALL_LOG"
 			exitCode: result.exitCode,
 			stderr: result.stderr,
 			dispatches: dispatchCalls(),
-			creation: fs
-				.readFileSync(tmuxLog, "utf8")
-				.trim()
-				.split("\n")
-				.find((line) => line.split(" ")[2] === createAction),
-			terminal: dispatchCalls().find((call) => call.startsWith("terminal:")),
 		}).toEqual({
 			exitCode: 0,
 			stderr: "",
 			dispatches: [
 				"dispatch focusmonitor DP-2",
-				"systemctl:--user start claude-remote-control@haki.service",
-				`dispatch exec [workspace special:haki silent] uwsm-app -- kitty --class haoshoku-haki ${helper} attach haki`,
-				`terminal:--class haoshoku-haki ${helper} attach haki`,
+				"dispatch exec [workspace special:haki silent] uwsm-app -- kitty --class haoshoku-haki claude -r io",
+				"terminal:--class haoshoku-haki claude -r io",
 			],
-			creation: `-L claude-haki ${createAction} -d -s haki -c ${directory} claude remote-control --name haki --spawn same-dir --capacity 5 --permission-mode bypassPermissions`,
-			terminal: `terminal:--class haoshoku-haki ${helper} attach haki`,
-		});
-	});
-
-	it("notifies and launches no terminal when the Haki service fails to start", async () => {
-		const helperDirectory = path.join(directory, ".local", "bin");
-		fs.mkdirSync(helperDirectory, { recursive: true });
-		fs.writeFileSync(
-			path.join(helperDirectory, "haoshoku-claude-remote-control"),
-			"#!/usr/bin/env bash\nexit 1\n",
-		);
-		fs.writeFileSync(
-			path.join(directory, "systemctl"),
-			"#!/usr/bin/env bash\nexit 17\n",
-		);
-		fs.chmodSync(
-			path.join(helperDirectory, "haoshoku-claude-remote-control"),
-			0o755,
-		);
-		fs.chmodSync(path.join(directory, "systemctl"), 0o755);
-
-		const result = await run(["haki"]);
-
-		expect({
-			exitCode: result.exitCode,
-			stderr: result.stderr,
-			terminalDispatches: dispatchCalls().filter((call) =>
-				call.includes("kitty"),
-			),
-			notification: dispatchCalls().find((call) => call.startsWith("notify ")),
-		}).toEqual({
-			exitCode: 1,
-			stderr:
-				"Could not start Claude Remote Control Haki service; run: systemctl --user status claude-remote-control@haki.service\n",
-			terminalDispatches: [],
-			notification:
-				"notify -1 5000 rgb(ff5555) Claude Remote Control: failed to start Haki service",
-		});
-	});
-
-	it("reports Haki as not installed before asking systemd to start it", async () => {
-		const environmentFile = path.join(
-			directory,
-			".config",
-			"haoshoku",
-			"claude-remote-control",
-			"haki.env",
-		);
-		fs.rmSync(environmentFile);
-		const systemctlLog = path.join(directory, "systemctl-call");
-		fs.writeFileSync(
-			path.join(directory, "systemctl"),
-			`#!/usr/bin/env bash
-printf '%s\n' "$*" > ${JSON.stringify(systemctlLog)}
-exit 17
-`,
-		);
-		fs.chmodSync(path.join(directory, "systemctl"), 0o755);
-
-		const result = await run(["haki"]);
-
-		expect({
-			exitCode: result.exitCode,
-			stderr: result.stderr,
-			terminalDispatches: dispatchCalls().filter((call) =>
-				call.includes("kitty"),
-			),
-			notification: dispatchCalls().find((call) => call.startsWith("notify ")),
-			systemctlCalled: fs.existsSync(systemctlLog),
-		}).toEqual({
-			exitCode: 1,
-			stderr:
-				"Claude Remote Control Haki is not installed; run: haoshoku --claude-remote-control\n",
-			terminalDispatches: [],
-			notification:
-				"notify -1 5000 rgb(ff5555) Claude Remote Control: Haki is not installed",
-			systemctlCalled: false,
-		});
-	});
-
-	it("notifies and launches no terminal when the supervisor helper is missing", async () => {
-		const systemctlLog = path.join(directory, "systemctl-call");
-		fs.writeFileSync(
-			path.join(directory, "systemctl"),
-			`#!/usr/bin/env bash
-printf '%s\n' "$*" > ${JSON.stringify(systemctlLog)}
-exit 0
-`,
-		);
-		fs.chmodSync(path.join(directory, "systemctl"), 0o755);
-		fs.rmSync(
-			path.join(directory, ".local", "bin", "haoshoku-claude-remote-control"),
-		);
-		const result = await run(["haki"]);
-
-		expect({
-			exitCode: result.exitCode,
-			stderr: result.stderr,
-			terminalDispatches: dispatchCalls().filter((call) =>
-				call.includes("kitty"),
-			),
-			notification: dispatchCalls().find((call) => call.startsWith("notify ")),
-			systemctlStart: fs.existsSync(systemctlLog)
-				? fs.readFileSync(systemctlLog, "utf8").trim()
-				: undefined,
-		}).toEqual({
-			exitCode: 1,
-			stderr: `Claude Remote Control helper is missing or not executable: ${path.join(directory, ".local", "bin", "haoshoku-claude-remote-control")}\n`,
-			terminalDispatches: [],
-			notification:
-				"notify -1 5000 rgb(ff5555) Claude Remote Control: supervisor helper is missing",
-			systemctlStart: "--user start claude-remote-control@haki.service",
-		});
-	});
-
-	it("times out visibly and launches no terminal when Haki never becomes ready", async () => {
-		const helperDirectory = path.join(directory, ".local", "bin");
-		const pollLog = path.join(directory, "readiness-polls");
-		fs.mkdirSync(helperDirectory, { recursive: true });
-		fs.writeFileSync(
-			path.join(helperDirectory, "haoshoku-claude-remote-control"),
-			`#!/usr/bin/env bash
-printf 'poll\n' >> ${JSON.stringify(pollLog)}
-exit 1
-`,
-		);
-		fs.writeFileSync(
-			path.join(directory, "systemctl"),
-			"#!/usr/bin/env bash\nexit 0\n",
-		);
-		fs.writeFileSync(
-			path.join(directory, "sleep"),
-			"#!/usr/bin/env bash\nexit 0\n",
-		);
-		for (const executable of [
-			path.join(helperDirectory, "haoshoku-claude-remote-control"),
-			path.join(directory, "systemctl"),
-			path.join(directory, "sleep"),
-		]) {
-			fs.chmodSync(executable, 0o755);
-		}
-
-		const result = await run(["haki"]);
-
-		expect({
-			exitCode: result.exitCode,
-			stderr: result.stderr,
-			terminalDispatches: dispatchCalls().filter((call) =>
-				call.includes("kitty"),
-			),
-			notification: dispatchCalls().find((call) => call.startsWith("notify ")),
-			polls: fs.readFileSync(pollLog, "utf8").trim().split("\n").length,
-		}).toEqual({
-			exitCode: 1,
-			stderr:
-				"Claude Remote Control Haki session was not ready after 10 seconds; inspect: systemctl --user status claude-remote-control@haki.service\n",
-			terminalDispatches: [],
-			notification:
-				"notify -1 5000 rgb(ff5555) Claude Remote Control: Haki session readiness timed out",
-			polls: 50,
 		});
 	});
 

@@ -1042,7 +1042,7 @@ esac
 		attach: 0,
 		stop: 0,
 		sockets: ["claude-haki"],
-		creation: `-L claude-haki ${createAction} -d -s haki -c ${home} claude remote-control --name haki --spawn same-dir --capacity 5 --permission-mode bypassPermissions`,
+		creation: `-L claude-haki ${createAction} -d -s haki -c ${home} claude remote-control --name haki --spawn same-dir --capacity 5 --no-create-session-in-dir --permission-mode bypassPermissions`,
 		lifecycle: ["attach-session", "kill-session", createAction].sort(),
 	});
 });

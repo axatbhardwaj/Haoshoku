@@ -55,9 +55,15 @@ fi
 # a "server" the phone can start new sessions on, instead of a single fixed
 # session. bypassPermissions keeps the background service from hanging forever
 # on a permissions prompt if the global default changes.
+#
+# --no-create-session-in-dir is load-bearing: that flag defaults ON, so each
+# server would otherwise pre-create a chat session at startup that nobody asked
+# for. Three idle services then mean three live sessions consuming usage before
+# any phone has connected. Off, the host stays ready and creates nothing until
+# a session is actually requested.
 tmux -L "$socket" new-session -d -s "$instance" -c "$root" \
   claude remote-control --name "$instance" --spawn same-dir --capacity 5 \
-    --permission-mode bypassPermissions
+    --no-create-session-in-dir --permission-mode bypassPermissions
 
 # A brand-new instance on a fresh account shows a one-time "Enable Remote
 # Control? (y/n)" prompt on first start; attach once (`... attach <instance>`)
