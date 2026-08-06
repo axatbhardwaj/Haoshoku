@@ -179,8 +179,9 @@ case "$recipe" in
   agents) launch_if_missing "special:$workspace" '^haoshoku-agents$' kitty --class haoshoku-agents bash -lc claude ;;
   assistants)
     launch_if_missing "special:$workspace" '^com\.anthropic\.Claude$' claude-desktop
-    # Chromium ignores --class under --app and derives the class from the URL instead.
-    launch_if_missing "special:$workspace" '^chrome-chatgpt\.com__-Default$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/flux" --app=https://chatgpt.com
+    # App windows derive their class from the URL, but this process may own Flux's
+    # singleton; --class=chromium-flux makes later plain windows use its registry class.
+    launch_if_missing "special:$workspace" '^chrome-chatgpt\.com__-Default$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/flux" --class=chromium-flux --app=https://chatgpt.com
     ;;
   music) launch_if_missing "special:$workspace" '^[Ss]potify$' spotify ;;
   1password) launch_if_missing "special:$workspace" '^1password$' 1password ;;
@@ -190,7 +191,7 @@ case "$recipe" in
     launch_if_missing "special:$workspace" '^chrome-web\.whatsapp\.com__-Default$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/whatsapp" --app=https://web.whatsapp.com/
     ;;
   stash) ;;
-  x) launch_if_missing "special:$workspace" '^chrome-x\.com__-Default$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/flux" --app=https://x.com/ ;;
-  youtube) launch_if_missing "special:$workspace" '^chrome-youtube\.com__-Default$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/flux" --app=https://youtube.com/ ;;
-  crunchyroll) launch_if_missing "special:$workspace" '^chrome-www\.crunchyroll\.com__-Default$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/flux" --app=https://www.crunchyroll.com/ ;;
+  x) launch_if_missing "special:$workspace" '^chrome-x\.com__-Default$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/flux" --class=chromium-flux --app=https://x.com/ ;;
+  youtube) launch_if_missing "special:$workspace" '^chrome-youtube\.com__-Default$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/flux" --class=chromium-flux --app=https://youtube.com/ ;;
+  crunchyroll) launch_if_missing "special:$workspace" '^chrome-www\.crunchyroll\.com__-Default$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/flux" --class=chromium-flux --app=https://www.crunchyroll.com/ ;;
 esac

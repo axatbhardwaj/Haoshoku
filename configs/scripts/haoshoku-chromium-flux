@@ -6,4 +6,4 @@
 # is silently dropped. Carrying the profile inside the binary is the only way it
 # survives that parse, which is why this wrapper exists rather than a flag.
 set -euo pipefail
-exec /usr/bin/chromium --user-data-dir="$HOME/.config/chromium-haoshoku/flux" "$@"
+exec /usr/bin/chromium --user-data-dir="$HOME/.config/chromium-haoshoku/flux" --class=chromium-flux "$@"

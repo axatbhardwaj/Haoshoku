@@ -536,31 +536,6 @@ printf 'kitty\\n' >> "$CALL_LOG"
 		]);
 	});
 
-	it("guards both assistants with exact class regexes and no Chromium class override", () => {
-		const recipeScript = fs.readFileSync(script, "utf8");
-		const assistantsCase = recipeScript.match(
-			/^\s*assistants\)\n(?<body>[\s\S]*?)^\s*;;$/m,
-		)?.groups?.body;
-		expect(assistantsCase).toBeDefined();
-
-		const launchLines = (assistantsCase ?? "")
-			.split(/\r?\n/)
-			.map((line) => line.trim())
-			.filter((line) => line.startsWith("launch_if_missing "));
-		expect(launchLines).toHaveLength(2);
-		expect(launchLines[0]).toContain(String.raw`'^com\.anthropic\.Claude$'`);
-		expect(launchLines[1]).toBe(
-			String.raw`launch_if_missing "special:$workspace" '^chrome-chatgpt\.com__-Default$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/flux" --app=https://chatgpt.com`,
-		);
-		expect(launchLines.some((line) => line.includes("--class"))).toBe(false);
-
-		const chatgptPattern = launchLines[1]?.match(/'([^']+)'/)?.[1];
-		expect(chatgptPattern).toBeDefined();
-		expect("chrome-chatgptXcom__-Default").not.toMatch(
-			new RegExp(chatgptPattern),
-		);
-	});
-
 	it("does not relaunch either assistant when both exact classes are present", async () => {
 		const result = await run(["assistants"], {
 			clients: JSON.stringify([
@@ -584,6 +559,7 @@ printf 'kitty\\n' >> "$CALL_LOG"
 		expect(result.exitCode).toBe(0);
 		expect(await chromiumArguments()).toEqual([
 			`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+			"--class=chromium-flux",
 			"--app=https://chatgpt.com",
 		]);
 		expect(dispatchCalls().filter((call) => call === "claude")).toHaveLength(0);
@@ -616,9 +592,34 @@ printf 'kitty\\n' >> "$CALL_LOG"
 		expect(result.exitCode).toBe(0);
 		expect(await chromiumArguments()).toEqual([
 			`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+			"--class=chromium-flux",
 			"--app=https://chatgpt.com",
 		]);
 	});
+
+	for (const { recipe, url } of [
+		{ recipe: "assistants", url: "https://chatgpt.com" },
+		{ recipe: "x", url: "https://x.com/" },
+		{ recipe: "youtube", url: "https://youtube.com/" },
+		{ recipe: "crunchyroll", url: "https://www.crunchyroll.com/" },
+	]) {
+		// Mutation caught: omitting --class from this app launch lets it become
+		// the Flux singleton owner that creates later plain windows as "chromium".
+		it(`starts the Flux singleton owner with its registered class for ${recipe}`, async () => {
+			await run(
+				[recipe],
+				recipe === "assistants"
+					? { clients: JSON.stringify([{ class: claudeClass }]) }
+					: undefined,
+			);
+
+			expect(await chromiumArguments()).toEqual([
+				`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+				"--class=chromium-flux",
+				`--app=${url}`,
+			]);
+		});
+	}
 
 	it("opens missing X on the portrait monitor with the Flux app profile", async () => {
 		const result = await run(["x"]);
@@ -626,6 +627,7 @@ printf 'kitty\\n' >> "$CALL_LOG"
 		expect(result.exitCode).toBe(0);
 		expect(await chromiumArguments()).toEqual([
 			`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+			"--class=chromium-flux",
 			"--app=https://x.com/",
 		]);
 		expect(dispatchCalls()).toContain("dispatch focusmonitor DP-2");
@@ -650,6 +652,7 @@ printf 'kitty\\n' >> "$CALL_LOG"
 		expect(result.exitCode).toBe(0);
 		expect(await chromiumArguments()).toEqual([
 			`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+			"--class=chromium-flux",
 			"--app=https://x.com/",
 		]);
 	});
@@ -674,6 +677,7 @@ printf 'kitty\\n' >> "$CALL_LOG"
 			expect(result.exitCode).toBe(0);
 			expect(await chromiumArguments()).toEqual([
 				`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+				"--class=chromium-flux",
 				`--app=${url}`,
 			]);
 			expect(dispatchCalls()).toContain("dispatch focusmonitor DP-1");
@@ -705,6 +709,7 @@ printf 'kitty\\n' >> "$CALL_LOG"
 			expect(result.exitCode).toBe(0);
 			expect(await chromiumArguments()).toEqual([
 				`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+				"--class=chromium-flux",
 				`--app=${url}`,
 			]);
 		});
