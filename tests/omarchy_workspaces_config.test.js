@@ -154,12 +154,12 @@ describe("Omarchy workspace overlay", () => {
 		const lines = config.split(/\r?\n/);
 		for (const rule of ["float", "pin", "center"]) {
 			expect(lines).toContain(
-				`windowrule = ${rule}, match:class ${portalClass}`,
+				`windowrule = ${rule} on, match:class ${portalClass}`,
 			);
 		}
 		// Scoped to the portal only — Nautilus on SUPER+E must not be pinned.
-		const pinned = lines.filter((line) => line.startsWith("windowrule = pin,"));
-		expect(pinned).toEqual([`windowrule = pin, match:class ${portalClass}`]);
+		const pinned = lines.filter((line) => line.startsWith("windowrule = pin "));
+		expect(pinned).toEqual([`windowrule = pin on, match:class ${portalClass}`]);
 		expect("nautilus").not.toMatch(new RegExp(portalClass));
 	});
 
