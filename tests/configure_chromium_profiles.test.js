@@ -3,9 +3,10 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
+import { log } from "../src/common/utils.js";
 import {
-	DEFAULT_CHROMIUM_PROFILES,
 	configureChromiumProfiles,
+	DEFAULT_CHROMIUM_PROFILES,
 } from "../src/helpers/configure_chromium_profiles.js";
 
 describe("configureChromiumProfiles", () => {
@@ -45,6 +46,7 @@ describe("configureChromiumProfiles", () => {
   "chromiumProfiles": [
     {"id":"markets","class":"chromium-markets","monitor":"DP-2","default":true}
   ],
+	"claudeSessionName": null,
   "theme": "ocean"
 }\n`;
 		fs.writeFileSync(configFile, customConfig);
@@ -62,6 +64,7 @@ describe("configureChromiumProfiles", () => {
   "chromiumProfiles": [
     {"id":"research","class":"chromium-research","monitor":"DP-2"}
   ],
+	"claudeSessionName": null,
   "theme": "ocean"
 }\n`;
 		fs.writeFileSync(configFile, customConfig);
@@ -149,5 +152,132 @@ describe("configureChromiumProfiles", () => {
 		expect(first).toEqual({ changed: true, skipped: false });
 		expect(second).toEqual({ changed: false, skipped: false });
 		expect(fs.readFileSync(configFile, "utf8")).toBe(afterFirst);
+	});
+
+	it("does not add a redundant session seed and preserves a valid session name", () => {
+		const freshFirst = configureChromiumProfiles({ home });
+		const freshAfterFirst = fs.readFileSync(configFile, "utf8");
+		const freshSecond = configureChromiumProfiles({ home });
+		const freshAfterSecond = fs.readFileSync(configFile, "utf8");
+		const freshConfig = JSON.parse(freshAfterSecond);
+
+		const customConfig = `${JSON.stringify(
+			{
+				claudeSessionName: "portable-haki",
+				chromiumProfiles: DEFAULT_CHROMIUM_PROFILES,
+				theme: "ocean",
+			},
+			null,
+			2,
+		)}\n`;
+		fs.writeFileSync(configFile, customConfig);
+		const customFirst = configureChromiumProfiles({ home });
+		const customSecond = configureChromiumProfiles({ home });
+
+		expect({
+			fresh: {
+				first: freshFirst,
+				second: freshSecond,
+				hasSessionName: Object.hasOwn(freshConfig, "claudeSessionName"),
+				unchangedOnSecondRun: freshAfterSecond === freshAfterFirst,
+			},
+			custom: {
+				first: customFirst,
+				second: customSecond,
+				contents: fs.readFileSync(configFile, "utf8"),
+			},
+		}).toEqual({
+			fresh: {
+				first: { changed: true, skipped: false },
+				second: { changed: false, skipped: false },
+				hasSessionName: false,
+				unchangedOnSecondRun: true,
+			},
+			custom: {
+				first: { changed: false, skipped: false },
+				second: { changed: false, skipped: false },
+				contents: customConfig,
+			},
+		});
+	});
+
+	// Mutations caught: assigning null changes the bytes/value; omitting either
+	// warning detail leaves the user unable to identify the rejected setting.
+	it("preserves a rejected session name and logs its key and value", () => {
+		const rejectedValue = "team session; keep me";
+		const customConfig = `${JSON.stringify(
+			{
+				chromiumProfiles: DEFAULT_CHROMIUM_PROFILES,
+				claudeSessionName: rejectedValue,
+				theme: "ocean",
+			},
+			null,
+			2,
+		)}\n`;
+		fs.writeFileSync(configFile, customConfig);
+		const warnings = [];
+		const originalWarning = log.warning;
+		log.warning = (message) => warnings.push(message);
+
+		let result;
+		try {
+			result = configureChromiumProfiles({ home });
+		} finally {
+			log.warning = originalWarning;
+		}
+
+		expect({
+			result,
+			contents: fs.readFileSync(configFile, "utf8"),
+			warningNamesKey: warnings.some((message) =>
+				message.includes("claudeSessionName"),
+			),
+			warningNamesValue: warnings.some((message) =>
+				message.includes(JSON.stringify(rejectedValue)),
+			),
+		}).toEqual({
+			result: { changed: false, skipped: true },
+			contents: customConfig,
+			warningNamesKey: true,
+			warningNamesValue: true,
+		});
+	});
+
+	// Mutations caught: continuing after rejection rewrites Infinity as null;
+	// JSON.stringify alone also misreports the rejected value as null.
+	it("refuses all setup writes when a rejected numeric value cannot round-trip", () => {
+		const customConfig = '{"claudeSessionName":1e400,"theme":"ocean"}\n';
+		fs.writeFileSync(configFile, customConfig);
+		const warnings = [];
+		const originalWarning = log.warning;
+		log.warning = (message) => warnings.push(message);
+
+		let result;
+		try {
+			result = configureChromiumProfiles({ home });
+		} finally {
+			log.warning = originalWarning;
+		}
+
+		expect({
+			result,
+			contents: fs.readFileSync(configFile, "utf8"),
+			warningNamesKey: warnings.some((message) =>
+				message.includes("claudeSessionName"),
+			),
+			warningNamesValue: warnings.some((message) =>
+				message.includes("Infinity"),
+			),
+			warningExplainsRefusal: warnings.some(
+				(message) =>
+					message.includes("Refusing") && message.includes("unchanged"),
+			),
+		}).toEqual({
+			result: { changed: false, skipped: true },
+			contents: customConfig,
+			warningNamesKey: true,
+			warningNamesValue: true,
+			warningExplainsRefusal: true,
+		});
 	});
 });

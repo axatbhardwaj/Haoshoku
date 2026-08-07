@@ -13,6 +13,45 @@ has_client() {
   hyprctl clients -j 2>/dev/null | jq -e --arg pattern "$pattern" 'any(.[]; ((.class // "") | test($pattern; "i")))' >/dev/null 2>&1 || return 1
 }
 
+load_claude_session_name() {
+  local config="$HOME/.haoshoku.json"
+  local lookup rejected session_name status
+  [[ -r "$config" ]] || return 0
+  if session_name="$(jq -ser '
+    if length == 1
+      and (.[0] | type == "object")
+      and (.[0].claudeSessionName? | type == "string" and test("\\A[A-Za-z0-9][A-Za-z0-9_-]*\\z"))
+    then .[0].claudeSessionName else empty end
+  ' "$config" 2>/dev/null)"; then
+    printf '%s\n' "$session_name"
+    return 0
+  fi
+
+  if ! lookup="$(jq -cs '
+    if length != 1 or (.[0] | type != "object") then
+      {status: "invalid-config"}
+    elif ((.[0] | has("claudeSessionName") | not) or .[0].claudeSessionName == null) then
+      {status: "unset"}
+    else
+      {status: "invalid-value", value: .[0].claudeSessionName}
+    end
+  ' "$config" 2>/dev/null)"; then
+    echo "Ignoring claudeSessionName in ~/.haoshoku.json: the file is not valid JSON. Set claudeSessionName to one name using letters, digits, underscores, or hyphens, or set it to null." >&2
+    return 0
+  fi
+
+  status="$(jq -r '.status' <<<"$lookup")"
+  case "$status" in
+    invalid-config)
+      echo "Ignoring claudeSessionName in ~/.haoshoku.json: the file must contain exactly one JSON object. Set claudeSessionName there to one name using letters, digits, underscores, or hyphens, or set it to null." >&2
+      ;;
+    invalid-value)
+      rejected="$(jq -c '.value' <<<"$lookup")"
+      echo "Ignoring claudeSessionName=$rejected in ~/.haoshoku.json. Set claudeSessionName to one name using letters, digits, underscores, or hyphens, or set it to null." >&2
+      ;;
+  esac
+}
+
 has_client_class() {
   # Return 0/1/2 as data (present/absent/probe failure). Under set -e, call
   # only in a condition or as `has_client_class x || status=$?`; never bare.
@@ -32,8 +71,10 @@ has_client_class() {
 
 launch() {
   local workspace="$1"
+  local launch_command
   shift
-  dispatch exec "[workspace ${workspace} silent] uwsm-app -- $*"
+  printf -v launch_command '%q ' "$@"
+  dispatch exec "[workspace ${workspace} silent] uwsm-app -- $launch_command"
 }
 
 launch_if_missing() {
@@ -184,21 +225,24 @@ elif [[ "$recipe" == haki ]]; then
   # Remote Control session: that session is driven from the phone and web, so
   # attaching to it locally yields a terminal you cannot type into.
   #
-  # `-r io-haki` resumes that named session directly, with no picker: a name
-  # that resolves uniquely is treated as a session reference rather than a
-  # search term. A bare `-r io` was tried first and is wrong -- it fuzzy-matches,
-  # so it stops on a chooser and can offer a session running elsewhere, which
-  # cannot be resumed. Plain `-c` was also tried; it takes whatever conversation
-  # is newest in the directory, which is not necessarily this one once the
-  # Remote Control host starts creating its own sessions in $HOME.
+  # A configured claudeSessionName is passed to `claude -r`. It resumes directly
+  # only when the name resolves uniquely; a broad or non-unique name is treated
+  # as a fuzzy search, opens a picker, and can offer a session running elsewhere
+  # that cannot be resumed. Plain `-c` was also tried and is wrong here: it takes
+  # whichever conversation is newest in the directory, which is not necessarily
+  # this one once the Remote Control host creates sessions in $HOME. With no
+  # usable configured name, plain `claude` starts a fresh session.
   #
   # The `-d "$HOME"` is load-bearing: without it kitty inherits whatever cwd the
   # Hyprland dispatch happened to carry, so the resumed session lands in an
   # unrelated project directory.
   #
-  # The name is deliberately hardcoded. Renaming the session in Claude Code
-  # breaks this binding until the name here is updated to match.
-  launch "special:$workspace" kitty --class haoshoku-haki -d "$HOME" claude -r io-haki
+  claude_command=(claude)
+  claude_session_name="$(load_claude_session_name)"
+  if [[ -n "$claude_session_name" ]]; then
+    claude_command+=(-r "$claude_session_name")
+  fi
+  launch "special:$workspace" kitty --class haoshoku-haki -d "$HOME" "${claude_command[@]}"
   exit 0
 elif [[ "$follows_focus" == true ]]; then
   toggle_special_workspace

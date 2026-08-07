@@ -588,7 +588,7 @@ export async function configureUserApps({
 	await configureClaudeStayAwakeImpl();
 	if (
 		await promptUserImpl(
-			"Install Claude Remote Control services with all permission checks bypassed?",
+			"Install Claude Remote Control services with all permission checks bypassed? This permanently sets bypassPermissionsModeAccepted: true in ~/.claude.json for every Claude Code session on this machine, not only these services. To undo it, edit ~/.claude.json and remove the flag or set it to false.",
 			false,
 		)
 	) {

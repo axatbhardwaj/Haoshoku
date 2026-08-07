@@ -110,7 +110,7 @@ describe("CachyOS browser integration", () => {
 		}).toEqual({
 			prompt: {
 				message:
-					"Install Claude Remote Control services with all permission checks bypassed?",
+					"Install Claude Remote Control services with all permission checks bypassed? This permanently sets bypassPermissionsModeAccepted: true in ~/.claude.json for every Claude Code session on this machine, not only these services. To undo it, edit ~/.claude.json and remove the flag or set it to false.",
 				initial: false,
 			},
 			remoteCalls: [],

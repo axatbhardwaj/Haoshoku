@@ -20,6 +20,7 @@ export const DEFAULT_CHROMIUM_PROFILES = Object.freeze([
 
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 const SAFE_VALUE = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
+const SAFE_CLAUDE_SESSION_NAME = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 
 function isObject(value) {
 	return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -56,10 +57,18 @@ function defaultProfiles() {
 	return DEFAULT_CHROMIUM_PROFILES.map((profile) => ({ ...profile }));
 }
 
+export function isValidClaudeSessionName(value) {
+	return (
+		value === null ||
+		(typeof value === "string" && SAFE_CLAUDE_SESSION_NAME.test(value))
+	);
+}
+
 /**
- * Seed the Chromium profile registry used by the managed browser scripts.
- * Valid user registries are left byte-for-byte unchanged; malformed JSON is
- * left untouched so the runtime scripts can safely use their shipped fallback.
+ * Seed the shared config used by the managed browser and session launch scripts.
+ * Existing files are rewritten only when the Chromium profile registry needs
+ * seeding or repair. Malformed JSON is left untouched so the runtime scripts can
+ * safely use their shipped fallbacks.
  *
  * @param {{ home?: string, fsImpl?: typeof fs }} opts
  */
@@ -82,13 +91,32 @@ export function configureChromiumProfiles({
 			return { changed: false, skipped: true };
 		}
 	}
+	if (
+		Object.hasOwn(config, "claudeSessionName") &&
+		!isValidClaudeSessionName(config.claudeSessionName)
+	) {
+		const rejectedValue =
+			typeof config.claudeSessionName === "number" &&
+			!Number.isFinite(config.claudeSessionName)
+				? String(config.claudeSessionName)
+				: JSON.stringify(config.claudeSessionName);
+		log.warning(
+			`Refusing to update ~/.haoshoku.json because claudeSessionName has rejected value ${rejectedValue}; leaving the file unchanged. Set claudeSessionName to one name using letters, digits, underscores, or hyphens, or set it to null.`,
+		);
+		return { changed: false, skipped: true };
+	}
 
-	if (isValidChromiumProfileRegistry(config.chromiumProfiles)) {
+	let changed = false;
+	if (!isValidChromiumProfileRegistry(config.chromiumProfiles)) {
+		config.chromiumProfiles = defaultProfiles();
+		changed = true;
+	}
+
+	if (!changed) {
 		return { changed: false, skipped: false };
 	}
 
-	config.chromiumProfiles = defaultProfiles();
 	fsImpl.writeFileSync(configFile, `${JSON.stringify(config, null, "\t")}\n`);
-	log.info("Seeded Haoshoku Chromium profile registry.");
+	log.info("Seeded Haoshoku setup configuration.");
 	return { changed: true, skipped: false };
 }

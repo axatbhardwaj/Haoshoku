@@ -3,6 +3,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
+import * as chromiumProfileConfig from "../src/helpers/configure_chromium_profiles.js";
+
 const script = path.join(
 	import.meta.dir,
 	"..",
@@ -84,6 +86,7 @@ describe("haoshoku-special-workspace", () => {
 	let chromium;
 	let claudeDesktop;
 	let focusedMonitorState;
+	let kittyCall;
 	let specialMonitorState;
 	let specialState;
 	let tmuxLog;
@@ -95,6 +98,7 @@ describe("haoshoku-special-workspace", () => {
 		chromium = path.join(directory, "chromium");
 		claudeDesktop = path.join(directory, ["claude", "desktop"].join("-"));
 		focusedMonitorState = path.join(directory, "focused-monitor-state");
+		kittyCall = path.join(directory, "kitty-call");
 		specialMonitorState = path.join(directory, "special-monitor-state");
 		specialState = path.join(directory, "special-workspace-state");
 		tmuxLog = path.join(directory, "tmux-call");
@@ -122,6 +126,10 @@ describe("haoshoku-special-workspace", () => {
 		fs.writeFileSync(
 			path.join(environmentDirectory, "haki.env"),
 			`CLAUDE_REMOTE_CONTROL_ROOT=${JSON.stringify(directory)}\n`,
+		);
+		fs.writeFileSync(
+			path.join(directory, ".haoshoku.json"),
+			JSON.stringify({ claudeSessionName: "io-haki" }),
 		);
 		fs.writeFileSync(
 			hyprctl,
@@ -240,6 +248,7 @@ esac
 				BROWSER_CALL: browserCall,
 				CALL_LOG: log,
 				FOCUSED_MONITOR_STATE: focusedMonitorState,
+				KITTY_CALL: kittyCall,
 				SPECIAL_STATE: specialState,
 				SPECIAL_MONITOR_STATE: specialMonitorState,
 				TMUX_LOG: tmuxLog,
@@ -258,6 +267,49 @@ esac
 
 	function dispatchCalls() {
 		return fs.readFileSync(log, "utf8").trim().split("\n");
+	}
+
+	function installKittyArgumentRecorder() {
+		fs.writeFileSync(
+			path.join(directory, "kitty"),
+			'#!/usr/bin/env bash\nprintf \'%s\\0\' "$@" > "$KITTY_CALL"\n',
+		);
+		fs.chmodSync(path.join(directory, "kitty"), 0o755);
+	}
+
+	function kittyArguments() {
+		if (!fs.existsSync(kittyCall)) return null;
+		const argv = fs.readFileSync(kittyCall, "utf8").split("\0");
+		if (argv.at(-1) === "") argv.pop();
+		return argv;
+	}
+
+	function installRawSessionNameJqBypass() {
+		const realJq = Bun.which("jq");
+		if (!realJq) throw new Error("missing test dependency: jq");
+		fs.writeFileSync(
+			path.join(directory, "jq"),
+			`#!/usr/bin/env bash
+if (( $# > 0 )) && [[ "\${!#}" == "$HOME/.haoshoku.json" ]]; then
+  printf '%s\\n' "$RAW_CLAUDE_SESSION_NAME"
+else
+  exec ${JSON.stringify(realJq)} "$@"
+fi
+`,
+		);
+		fs.chmodSync(path.join(directory, "jq"), 0o755);
+	}
+
+	function printableArguments(argv) {
+		return argv?.map((argument) =>
+			argument.length > 80
+				? {
+						length: argument.length,
+						prefix: argument.slice(0, 24),
+						suffix: argument.slice(-24),
+					}
+				: argument,
+		);
 	}
 
 	const fluxClient = JSON.stringify([{ class: "chromium-flux" }]);
@@ -554,7 +606,7 @@ esac
 		]);
 	});
 
-	it("resumes the io conversation locally and never touches systemd", async () => {
+	it("resumes the configured io-haki conversation locally and never touches systemd", async () => {
 		const systemctlCall = path.join(directory, "systemctl-call");
 		fs.writeFileSync(
 			path.join(directory, "systemctl"),
@@ -592,12 +644,249 @@ exec "$@"
 			dispatches: [
 				"dispatch focusmonitor DP-2",
 				"dispatch togglespecialworkspace haki",
-				`dispatch exec [workspace special:haki silent] uwsm-app -- kitty --class haoshoku-haki -d ${directory} claude -r io-haki`,
+				`dispatch exec [workspace special:haki silent] uwsm-app -- kitty --class haoshoku-haki -d ${directory} claude -r io-haki `,
 				`terminal:--class haoshoku-haki -d ${directory} claude -r io-haki`,
 				"claude:started",
 			],
 			systemctlCalled: false,
 		});
+	});
+
+	it("honors a portable configured Haki session name", async () => {
+		fs.writeFileSync(
+			path.join(directory, ".haoshoku.json"),
+			JSON.stringify({ claudeSessionName: "portable-haki" }),
+		);
+		fs.writeFileSync(
+			path.join(directory, "kitty"),
+			'#!/usr/bin/env bash\nprintf \'terminal:%s\\n\' "$*" >> "$CALL_LOG"\n',
+		);
+		fs.chmodSync(path.join(directory, "kitty"), 0o755);
+
+		const result = await run(["haki"]);
+
+		expect({
+			exitCode: result.exitCode,
+			stderr: result.stderr,
+			dispatches: dispatchCalls(),
+		}).toEqual({
+			exitCode: 0,
+			stderr: "",
+			dispatches: [
+				"dispatch focusmonitor DP-2",
+				"dispatch togglespecialworkspace haki",
+				`dispatch exec [workspace special:haki silent] uwsm-app -- kitty --class haoshoku-haki -d ${directory} claude -r portable-haki `,
+				`terminal:--class haoshoku-haki -d ${directory} claude -r portable-haki`,
+			],
+		});
+	});
+
+	it("starts a useful plain Claude session when no Haki session is configured", async () => {
+		fs.rmSync(path.join(directory, ".haoshoku.json"));
+		fs.writeFileSync(
+			path.join(directory, "kitty"),
+			'#!/usr/bin/env bash\nprintf \'terminal:%s\\n\' "$*" >> "$CALL_LOG"\n',
+		);
+		fs.chmodSync(path.join(directory, "kitty"), 0o755);
+
+		const result = await run(["haki"]);
+
+		expect({
+			exitCode: result.exitCode,
+			stderr: result.stderr,
+			dispatches: dispatchCalls(),
+		}).toEqual({
+			exitCode: 0,
+			stderr: "",
+			dispatches: [
+				"dispatch focusmonitor DP-2",
+				"dispatch togglespecialworkspace haki",
+				`dispatch exec [workspace special:haki silent] uwsm-app -- kitty --class haoshoku-haki -d ${directory} claude `,
+				`terminal:--class haoshoku-haki -d ${directory} claude`,
+			],
+		});
+	});
+
+	// Mutations caught: removing whole-stream cardinality admits multi-document
+	// input; restoring jq's ^/$ anchors admits a trailing newline; dropping the
+	// fallback diagnostic makes rejected names impossible to diagnose.
+	it("maps awkward config inputs to one exact Haki launch argv", async () => {
+		installKittyArgumentRecorder();
+		const executionMarker = path.join(directory, "session-name-executed");
+		const longSessionName = `long-${"a".repeat(8192)}`;
+		const cases = [
+			{ label: "single-letter", value: "A", accepted: true },
+			{ label: "single-digit", value: "7", accepted: true },
+			{ label: "hyphenated", value: "portable-haki", accepted: true },
+			{ label: "underscored", value: "under_score", accepted: true },
+			{
+				label: "multi-document",
+				rawConfig: '{"claudeSessionName":"first"}\n{"theme":"ocean"}\n',
+				accepted: false,
+			},
+			{
+				label: "newline",
+				value: "portable-haki\n",
+				accepted: false,
+			},
+			{ label: "space", value: "portable haki", accepted: false },
+			{
+				label: "semicolon",
+				value: `portable; touch ${executionMarker}`,
+				accepted: false,
+			},
+			{
+				label: "command-substitution",
+				value: `portable$(touch ${executionMarker})`,
+				accepted: false,
+			},
+			{
+				label: "backticks",
+				value: `portable\`touch ${executionMarker}\``,
+				accepted: false,
+			},
+			{
+				label: "array-valued-key",
+				value: ["first", "second"],
+				accepted: false,
+			},
+			{
+				label: "duplicate-key-across-stream",
+				rawConfig:
+					'{"claudeSessionName":"first"}\n{"claudeSessionName":"second"}\n',
+				accepted: false,
+			},
+			{
+				label: "top-level-array",
+				rawConfig: '[{"claudeSessionName":"array-entry"}]\n',
+				accepted: false,
+			},
+			{
+				label: "very-long",
+				value: longSessionName,
+				accepted: true,
+			},
+		];
+		const baseArgv = ["--class", "haoshoku-haki", "-d", directory, "claude"];
+		const validator = chromiumProfileConfig.isValidClaudeSessionName;
+		const observations = [];
+
+		for (const testCase of cases) {
+			const hasValue = Object.hasOwn(testCase, "value");
+			fs.rmSync(executionMarker, { force: true });
+			fs.rmSync(kittyCall, { force: true });
+			fs.rmSync(log, { force: true });
+			fs.writeFileSync(specialState, "");
+			fs.writeFileSync(
+				path.join(directory, ".haoshoku.json"),
+				testCase.rawConfig ??
+					JSON.stringify({ claudeSessionName: testCase.value }),
+			);
+
+			const result = await run(["haki"]);
+			const argv = kittyArguments();
+			const observation = {
+				label: testCase.label,
+				exitCode: result.exitCode,
+				argv,
+				jsAccepted: hasValue
+					? typeof validator === "function"
+						? validator(testCase.value)
+						: "validator missing"
+					: null,
+				diagnostic:
+					result.stderr === ""
+						? ""
+						: {
+								namesKey: result.stderr.includes("claudeSessionName"),
+								namesConfig: result.stderr.includes("~/.haoshoku.json"),
+								namesValue: hasValue
+									? result.stderr.includes(JSON.stringify(testCase.value))
+									: null,
+								actionable: result.stderr.includes("Set claudeSessionName"),
+							},
+				markerCreated: fs.existsSync(executionMarker),
+			};
+			observations.push(observation);
+			console.log(
+				`CORPUS_RESULT ${JSON.stringify({ ...observation, argv: printableArguments(argv) })}`,
+			);
+		}
+
+		expect(observations).toEqual(
+			cases.map((testCase) => {
+				const hasValue = Object.hasOwn(testCase, "value");
+				return {
+					label: testCase.label,
+					exitCode: 0,
+					argv: testCase.accepted
+						? [...baseArgv, "-r", testCase.value]
+						: baseArgv,
+					jsAccepted: hasValue ? testCase.accepted : null,
+					diagnostic: testCase.accepted
+						? ""
+						: {
+								namesKey: true,
+								namesConfig: true,
+								namesValue: hasValue ? true : null,
+								actionable: true,
+							},
+					markerCreated: false,
+				};
+			}),
+		);
+	});
+
+	// Mutation caught: this replaces the bounded jq lookup with arbitrary raw
+	// output, so only launch's per-element quoting can preserve the final argv.
+	it("preserves raw session-name elements when the jq bound is bypassed", async () => {
+		installKittyArgumentRecorder();
+		installRawSessionNameJqBypass();
+		const executionMarker = path.join(directory, "quoting-bypass-executed");
+		const cases = [
+			{ label: "multi-line", value: "first\nsecond" },
+			{ label: "space", value: "name with space" },
+			{ label: "semicolon", value: `name; touch ${executionMarker}` },
+			{
+				label: "command-substitution",
+				value: `name$(touch ${executionMarker})`,
+			},
+			{ label: "backticks", value: `name\`touch ${executionMarker}\`` },
+		];
+		const baseArgv = ["--class", "haoshoku-haki", "-d", directory, "claude"];
+		const observations = [];
+
+		for (const testCase of cases) {
+			fs.rmSync(executionMarker, { force: true });
+			fs.rmSync(kittyCall, { force: true });
+			fs.rmSync(log, { force: true });
+			fs.writeFileSync(specialState, "");
+
+			const result = await run(["haki"], {
+				env: { RAW_CLAUDE_SESSION_NAME: testCase.value },
+			});
+			const observation = {
+				label: testCase.label,
+				exitCode: result.exitCode,
+				argv: kittyArguments(),
+				stderr: result.stderr,
+				markerCreated: fs.existsSync(executionMarker),
+			};
+			observations.push(observation);
+			console.log(
+				`QUOTING_BYPASS_RESULT ${JSON.stringify({ ...observation, argv: printableArguments(observation.argv) })}`,
+			);
+		}
+
+		expect(observations).toEqual(
+			cases.map((testCase) => ({
+				label: testCase.label,
+				exitCode: 0,
+				argv: [...baseArgv, "-r", testCase.value],
+				stderr: "",
+				markerCreated: false,
+			})),
+		);
 	});
 
 	it("focuses visible Haki on its monitor without moving it", async () => {
@@ -640,7 +929,7 @@ exec "$@"
 			stderr: "",
 			dispatches: [
 				"dispatch focusmonitor DP-2",
-				`dispatch exec [workspace special:haki silent] uwsm-app -- kitty --class haoshoku-haki -d ${directory} claude -r io-haki`,
+				`dispatch exec [workspace special:haki silent] uwsm-app -- kitty --class haoshoku-haki -d ${directory} claude -r io-haki `,
 				`terminal:--class haoshoku-haki -d ${directory} claude -r io-haki`,
 			],
 		});
@@ -1311,7 +1600,7 @@ printf 'signal-desktop\\n' >> "$CALL_LOG"
 
 		expect(result.exitCode).toBe(0);
 		expect(dispatchCalls()).toContain(
-			"dispatch exec [workspace special:communication silent] uwsm-app -- signal-desktop",
+			"dispatch exec [workspace special:communication silent] uwsm-app -- signal-desktop ",
 		);
 		expect(dispatchCalls()).toContain("signal-desktop");
 	});

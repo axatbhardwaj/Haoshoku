@@ -50,8 +50,8 @@ The Arch setup:
   content first;
 - adds a behavior-only workspace overlay: workspaces 1–3 use DP-1, 4–5 use
   HDMI-A-1, and 6, 7, and 10 use DP-2;
-- adds two-key special-workspace toggles under `Super`: A Claude Remote Control
-  Haki, I AI assistants,
+- adds two-key special-workspace toggles under `Super`: A Haki (local Claude
+  workspace), I AI assistants,
   M music, O 1Password, G communication, B Flux Chromium, D DeFi Chromium,
   S stash, and `Super+Shift+X` X (`Super+Shift+S` stashes the focused window);
   see the canonical swaps JSON above for every Omarchy default relocated or
@@ -88,12 +88,14 @@ does not run `git clean`, so Omarchy's managed
 The optional Claude Remote Control setup runs persistent Claude sessions from
 three fixed roots: `haki` at `$HOME`, `dev` at `$HOME/dev`, and `work` at
 `$HOME/Work`. Instances whose roots do not exist are skipped with a warning.
-When Remote Control is installed, `Super+A` opens or reattaches the
-systemd-managed `haki` session after waiting up to 10 seconds for it to become
-ready. If the opt-in was declined (and the unit is absent), the same key opens a
-normal terminal running Claude directly. An installed unit that cannot start or
-become ready fails visibly with a notification and a `systemctl --user status`
-hint instead of silently bypassing the broken service.
+`Super+A` always opens a local kitty terminal rooted at `$HOME`, separate from
+the managed services. Set `claudeSessionName` in `~/.haoshoku.json` to a named
+Claude session to resume it. A missing or null value starts plain Claude; a
+syntactically invalid value is preserved, reported, and ignored. A valid name is
+passed as one literal argument to `claude -r`, but it resumes directly only when
+the name resolves uniquely; otherwise Claude may open its picker. This
+keybinding never attaches to tmux
+or calls systemd.
 
 These sessions run Claude Remote Control in **server mode**
 (`claude remote-control --spawn same-dir --capacity 5`): each is a persistent
@@ -103,6 +105,12 @@ before installation. The user services enable
 systemd lingering when possible so sessions can survive logout; if lingering
 cannot be enabled automatically, setup prints the exact `loginctl` command to
 run.
+
+Installation sets `bypassPermissionsModeAccepted: true` in `~/.claude.json`.
+This machine-wide acceptance affects every Claude Code session, not only the
+three managed services, and persists until manually reverted. To undo it, edit
+`~/.claude.json` and remove `bypassPermissionsModeAccepted` or set it to
+`false`.
 
 Attach to any enabled managed session from a terminal with:
 

@@ -74,6 +74,10 @@ fi
 			`CLAUDE_REMOTE_CONTROL_ROOT=${JSON.stringify(directory)}\n`,
 		);
 		fs.writeFileSync(
+			path.join(directory, ".haoshoku.json"),
+			JSON.stringify({ claudeSessionName: "io-haki" }),
+		);
+		fs.writeFileSync(
 			helper,
 			`#!/usr/bin/env bash
 case "$1" in

@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+- Make `Super+A` open a local kitty terminal rooted at home instead of attaching
+  to a managed Remote Control session. A configured, syntactically valid Claude
+  session name is passed literally to `claude -r`; direct resume still requires
+  that name to resolve uniquely. Missing or null values start plain Claude, while
+  rejected values are preserved and reported instead of being silently nulled.
+- Disclose before Remote Control installation that accepting bypass permissions
+  permanently changes Claude Code's machine-wide safety acceptance for every
+  session, and explain how to reverse it manually.
+- Quote every argument the special-workspace launcher hands to Hyprland, so app
+  and browser shortcuts keep their arguments intact instead of letting the shell
+  re-split anything containing spaces or punctuation.
+
 ## 7.6.0 - 2026-08-07
 
 - Run the managed Claude Remote Control instances (`haki`, `dev`, `work`) in
