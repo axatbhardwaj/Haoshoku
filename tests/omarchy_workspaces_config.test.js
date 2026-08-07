@@ -146,6 +146,23 @@ describe("Omarchy workspace overlay", () => {
 		});
 	}
 
+	// Portal file dialogs open tiled on the workspace underneath, so a revealed
+	// special workspace draws over them. `pin` is what rescues them: a pinned
+	// floating window renders above whichever workspace is showing.
+	it("floats, pins and centers portal file dialogs so special workspaces cannot bury them", () => {
+		const portalClass = String.raw`^xdg-desktop-portal-gtk$`;
+		const lines = config.split(/\r?\n/);
+		for (const rule of ["float", "pin", "center"]) {
+			expect(lines).toContain(
+				`windowrule = ${rule}, match:class ${portalClass}`,
+			);
+		}
+		// Scoped to the portal only — Nautilus on SUPER+E must not be pinned.
+		const pinned = lines.filter((line) => line.startsWith("windowrule = pin,"));
+		expect(pinned).toEqual([`windowrule = pin, match:class ${portalClass}`]);
+		expect("nautilus").not.toMatch(new RegExp(portalClass));
+	});
+
 	it("owns SUPER+Y, SUPER+R, and SUPER+F exactly once across both overlays", () => {
 		const overlayLines = `${bindingsConfig}\n${config}`.split(/\r?\n/);
 		for (const [key, expected] of [
