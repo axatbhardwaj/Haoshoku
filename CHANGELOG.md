@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- Keep browser upload and download pickers visible while special workspaces
+  are open by applying `float on`, `pin on`, and `center on` to the
+  `xdg-desktop-portal-gtk` dialog class. Scope the rules to the portal class so
+  Nautilus remains unaffected.
+- Recalibrate Zed's generated glass theme from two alpha tiers (`E6`/`D9`) to
+  six calibrated tiers, accounting for stacked surfaces so the docked panes
+  and agent panel remain visibly translucent instead of effectively opaque.
+  Keep `elevated_surface.background` densest at `CC` so translucent context
+  menus remain readable.
+
 ## 7.7.0 - 2026-08-07
 
 - Make `Super+A` open a local kitty terminal rooted at home instead of attaching
