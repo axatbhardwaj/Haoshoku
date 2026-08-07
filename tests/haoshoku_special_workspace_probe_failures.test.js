@@ -34,7 +34,15 @@ describe("haoshoku-special-workspace failed hyprctl probes", () => {
 			hyprctl,
 			`#!/usr/bin/env bash
 probe="$1 $2"
+matching_probe_call=0
 if [[ "$probe" == "$FAILED_PROBE" ]]; then
+  if [[ -r "$PROBE_CALL_COUNT" ]]; then
+    read -r matching_probe_call < "$PROBE_CALL_COUNT"
+  fi
+  ((matching_probe_call += 1))
+  printf '%s\n' "$matching_probe_call" > "$PROBE_CALL_COUNT"
+fi
+if [[ "$probe" == "$FAILED_PROBE" && ( -z "$FAILED_PROBE_CALL" || "$matching_probe_call" == "$FAILED_PROBE_CALL" ) ]]; then
   case "$PROBE_FAILURE" in
     invalid-json) printf '{not-json\n' ;;
     empty-output) : ;;
@@ -114,6 +122,7 @@ esac
 		dispatchDiagnostic = "",
 		clientsJson = "[]",
 		chromiumLog = "",
+		failedProbeCall = "",
 	) {
 		const proc = Bun.spawn([script, ...args], {
 			env: {
@@ -124,7 +133,9 @@ esac
 				CHROMIUM_LOG: chromiumLog,
 				DISPATCH_LOG: log,
 				FAILED_PROBE: failedProbe,
+				FAILED_PROBE_CALL: failedProbeCall,
 				PATH: commandDirectory,
+				PROBE_CALL_COUNT: path.join(directory, "probe-call-count"),
 				PROBE_FAILURE: failure,
 				VISIBLE_WORKSPACE: visibleWorkspace
 					? `special:${visibleWorkspace}`
@@ -254,6 +265,38 @@ esac
 		});
 	}
 
+	for (const { probe, failedProbeCall } of [
+		{ probe: "occupancy", failedProbeCall: "1" },
+		{ probe: "stray-address", failedProbeCall: "2" },
+	]) {
+		for (const failure of ["non-zero-exit", "invalid-json"]) {
+			it(`[${failure}] workspace-7 ${probe} probe failure causes no kitty action`, async () => {
+				const result = await run(
+					["numbered-login", "7", "kitty"],
+					"clients -j",
+					failure,
+					"",
+					"",
+					"[]",
+					"",
+					failedProbeCall,
+				);
+
+				expect(result.exitCode).toBe(0);
+				expect(result.stderr).toBe("");
+				expect(
+					result.dispatches.filter((dispatch) =>
+						[
+							"dispatch exec ",
+							"dispatch focuswindow",
+							"dispatch movetoworkspace",
+						].some((prefix) => dispatch.startsWith(prefix)),
+					),
+				).toEqual([]);
+			});
+		}
+	}
+
 	it("exits successfully for every accepted recipe when Hyprland is unavailable", async () => {
 		fs.writeFileSync(
 			path.join(commandDirectory, "hyprctl"),
@@ -267,6 +310,11 @@ esac
 			{
 				name: "numbered communication",
 				args: ["numbered", "3", "communication-numbered"],
+			},
+			{ name: "numbered kitty", args: ["numbered", "7", "kitty"] },
+			{
+				name: "numbered-login kitty",
+				args: ["numbered-login", "7", "kitty"],
 			},
 			{ name: "numbered notion", args: ["numbered", "4", "notion"] },
 			{ name: "browser", args: ["browser", "flux"] },
@@ -282,6 +330,7 @@ esac
 			{ name: "x", args: ["x"] },
 			{ name: "youtube", args: ["youtube"] },
 			{ name: "crunchyroll", args: ["crunchyroll"] },
+			{ name: "reanime", args: ["reanime"] },
 		]) {
 			const result = await run(args, "", "non-zero-exit");
 			expect(result.exitCode, name).toBe(0);

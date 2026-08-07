@@ -16,6 +16,10 @@ const SOURCE_LINE = "source = ~/.config/hypr/haoshoku-workspaces.conf";
 const OMARCHY_BINDINGS_SOURCE = "source = ~/.config/hypr/bindings.conf";
 const BINDINGS_SOURCE_LINE = "source = ~/.config/hypr/haoshoku-bindings.conf";
 
+function shellEscape(value) {
+	return `'${String(value).replace(/'/g, `'\\''`)}'`;
+}
+
 function ensureSourceAfter(mainText, sourceLine, precedingSourceLine) {
 	let lines =
 		mainText
@@ -147,6 +151,11 @@ export async function configureOmarchyWorkspaces({
 		validated =
 			Boolean(await runCommandImpl("hyprctl reload")) &&
 			Boolean(await runCommandImpl("hyprctl configerrors"));
+		// exec-once is not replayed by reload, so ensure the managed workspace is
+		// populated during this install as well as on the next full login.
+		await runCommandImpl(
+			`${shellEscape(scriptDestination)} numbered-login 7 kitty`,
+		);
 	} else
 		log.info(
 			"Hyprland is not active; workspace validation is deferred to login.",

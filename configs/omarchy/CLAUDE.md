@@ -25,6 +25,12 @@ values, which `haoshoku-special-workspace` expands as `browser-$profile`. See
 the `configs/scripts/CLAUDE.md` convention; rename neither from this side
 alone.
 
+Workspace 7 is owned by the `haoshoku-ws7` class and the
+`haoshoku-special-workspace` numbered kitty recipe. `exec-once` covers fresh
+logins; `configure_omarchy_workspaces.js` invokes the same idempotent login
+recipe after reload so the installing session is populated immediately. Keep
+the dedicated class, windowrule, login recipe, and `SUPER+7` binding aligned.
+
 The sole appearance carve-out is **`hooks/theme-set.d/`**: its post-processing
 hooks run AFTER Omarchy sets a theme. They do not author Omarchy appearance;
 they adjust downstream artifacts that Omarchy generates.

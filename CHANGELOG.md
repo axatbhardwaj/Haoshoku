@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Keep one dedicated home-rooted kitty terminal on workspace 7, starting it at
+  login and reclaiming it if it moves without launching duplicates.
+- Run fastfetch when an interactive terminal launches, while keeping
+  non-interactive and non-TTY shells quiet.
+
 ## 7.8.0 - 2026-08-07
 
 - Keep browser upload and download pickers visible while special workspaces

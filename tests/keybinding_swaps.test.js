@@ -50,6 +50,7 @@ const intentionalAdditiveBindings = new Set([
 	canonicalKeyCombination("SUPER", "code:11"),
 	canonicalKeyCombination("SUPER", "code:13"),
 	canonicalKeyCombination("SUPER", "code:14"),
+	canonicalKeyCombination("SUPER", "code:16"),
 	canonicalKeyCombination("SUPER", "code:19"),
 ]);
 // Stock app binds intentionally left unchanged must be listed here with a reason.

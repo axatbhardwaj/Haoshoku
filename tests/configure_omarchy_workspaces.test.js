@@ -192,7 +192,119 @@ describe("configureOmarchyWorkspaces", () => {
 				return true;
 			},
 		});
-		expect(commands).toEqual(["hyprctl reload", "hyprctl configerrors"]);
+		expect(commands).toEqual([
+			"hyprctl reload",
+			"hyprctl configerrors",
+			`'${path.join(home, ".local", "bin", "haoshoku-special-workspace")}' numbered-login 7 kitty`,
+		]);
 		expect(result.validated).toBe(true);
+	});
+
+	it("shell-quotes the live workspace helper path", async () => {
+		const originalHome = home;
+		home = `${originalHome} space;$literal`;
+		fs.renameSync(originalHome, home);
+		const commandDirectory = path.join(home, "test-commands");
+		const dispatchLog = path.join(home, "dispatches.log");
+		fs.mkdirSync(commandDirectory);
+		fs.writeFileSync(
+			path.join(commandDirectory, "hyprctl"),
+			`#!/usr/bin/env bash
+if [[ "$1 $2" == "clients -j" ]]; then
+  printf '%s\\n' '[]'
+elif [[ "$1" == "dispatch" ]]; then
+  printf '%s\\n' "$*" >> "$DISPATCH_LOG"
+fi
+`,
+		);
+		fs.chmodSync(path.join(commandDirectory, "hyprctl"), 0o755);
+		const runCommandImpl = async (command) => {
+			const proc = Bun.spawn(["bash", "-c", command], {
+				env: {
+					...process.env,
+					DISPATCH_LOG: dispatchLog,
+					PATH: `${commandDirectory}:${process.env.PATH}`,
+				},
+				stdout: "pipe",
+				stderr: "pipe",
+			});
+			return (await proc.exited) === 0;
+		};
+
+		await configureOmarchyWorkspaces({
+			home,
+			env: { HYPRLAND_INSTANCE_SIGNATURE: "test" },
+			runCommandImpl,
+		});
+
+		expect(fs.readFileSync(dispatchLog, "utf8")).toContain(
+			"dispatch exec [workspace 7 silent] uwsm-app -- kitty --class haoshoku-ws7",
+		);
+	});
+
+	it("ensures exactly one workspace-7 terminal across repeated live installs", async () => {
+		const commandDirectory = path.join(home, "test-commands");
+		const clientsState = path.join(home, "clients.json");
+		const dispatchLog = path.join(home, "dispatches.log");
+		fs.mkdirSync(commandDirectory);
+		fs.writeFileSync(clientsState, "[]\n");
+		fs.writeFileSync(
+			path.join(commandDirectory, "hyprctl"),
+			`#!/usr/bin/env bash
+if [[ "$1 $2" == "clients -j" ]]; then
+  cat "$CLIENTS_STATE"
+elif [[ "$1" == "dispatch" ]]; then
+  printf '%s\\n' "$*" >> "$DISPATCH_LOG"
+  if [[ "$2" == "exec" ]]; then
+    printf '%s\\n' '[{"address":"0xinstall","class":"haoshoku-ws7","workspace":{"name":"7"}}]' > "$CLIENTS_STATE"
+  fi
+fi
+`,
+		);
+		fs.chmodSync(path.join(commandDirectory, "hyprctl"), 0o755);
+		let ensureRuns = 0;
+		const runCommandImpl = async (command) => {
+			if (command === "hyprctl reload" || command === "hyprctl configerrors")
+				return true;
+			if (!command.endsWith(" numbered-login 7 kitty")) return false;
+			ensureRuns += 1;
+			const proc = Bun.spawn(
+				[
+					path.join(home, ".local", "bin", "haoshoku-special-workspace"),
+					"numbered-login",
+					"7",
+					"kitty",
+				],
+				{
+					env: {
+						...process.env,
+						HOME: home,
+						CLIENTS_STATE: clientsState,
+						DISPATCH_LOG: dispatchLog,
+						PATH: `${commandDirectory}:${process.env.PATH}`,
+					},
+					stdout: "pipe",
+					stderr: "pipe",
+				},
+			);
+			return (await proc.exited) === 0;
+		};
+
+		await configureOmarchyWorkspaces({
+			home,
+			env: { HYPRLAND_INSTANCE_SIGNATURE: "test" },
+			runCommandImpl,
+		});
+		await configureOmarchyWorkspaces({
+			home,
+			env: { HYPRLAND_INSTANCE_SIGNATURE: "test" },
+			runCommandImpl,
+		});
+
+		expect(ensureRuns).toBe(2);
+		const dispatches = fs.readFileSync(dispatchLog, "utf8").trim().split("\n");
+		expect(
+			dispatches.filter((dispatch) => dispatch.startsWith("dispatch exec ")),
+		).toHaveLength(1);
 	});
 });

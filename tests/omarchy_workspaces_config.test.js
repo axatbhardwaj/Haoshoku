@@ -90,6 +90,18 @@ describe("Omarchy workspace overlay", () => {
 		);
 	});
 
+	it("keeps workspace 7's dedicated home kitty routed, bound, and started through the managed overlay", () => {
+		expect(config).toContain(
+			"windowrule = workspace 7 silent, match:class ^haoshoku-ws7$",
+		);
+		expect(config).toContain(
+			"bindd = SUPER, code:16, Workspace 7 and Kitty, exec, haoshoku-special-workspace numbered 7 kitty",
+		);
+		expect(config).toContain(
+			"exec-once = haoshoku-special-workspace numbered-login 7 kitty",
+		);
+	});
+
 	it("routes X by its exact app-derived Chromium class to its special workspace", () => {
 		expect(config).toContain(
 			"windowrule = workspace special:x, match:class ^chrome-x\\.com__-Default$",

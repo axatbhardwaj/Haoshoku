@@ -711,8 +711,12 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		);
 		expect(conf).toContain("unbind = $kbGoToWs, 7");
 		expect(conf).toContain(
-			"bind = $kbGoToWs, 7, exec, hyprctl dispatch focusmonitor DP-2 && /home/xzat/.local/bin/kitty-workspace-7",
+			"bind = $kbGoToWs, 7, exec, hyprctl dispatch focusmonitor DP-2 && /home/xzat/.local/bin/haoshoku-special-workspace numbered 7 kitty",
 		);
+		expect(conf).toContain(
+			"windowrule = workspace 7 silent, match:class ^haoshoku-ws7$",
+		);
+		expect(conf).not.toContain("kitty-workspace-7");
 	});
 
 	it("ships hypr-user-laptop.conf with eDP-1 + no monitor: pins + no NVIDIA exec-once", () => {
@@ -832,7 +836,8 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 			'hyprctl dispatch exec "[workspace 2 silent] app2unit -- steam"',
 			'hyprctl dispatch exec "[workspace 4 silent] app2unit -- discord"',
 			"bind = $kbGoToWs, 6, exec, hyprctl dispatch workspace 6",
-			"bind = $kbGoToWs, 7, exec, /home/xzat/.local/bin/kitty-workspace-7",
+			"bind = $kbGoToWs, 7, exec, /home/xzat/.local/bin/haoshoku-special-workspace numbered 7 kitty",
+			"windowrule = workspace 7 silent, match:class ^haoshoku-ws7$",
 			"hyprshot -m output -m active",
 		];
 

@@ -12,7 +12,7 @@ binary acts as a PATH-shadow wrapper for that binary.
 | `haoshoku-browser` | Routes URLs to the most recently focused managed Chromium profile, falling back to the configured default. | Changing browser dispatch or focused-profile selection |
 | `haoshoku-chromium-flux` | Launches Chromium on the isolated Flux profile and preserves that profile through Omarchy web-app launch parsing. | Changing the Flux profile, wrapper name, or paired desktop entry |
 | `haoshoku-chromium-profiles` | Validates and queries the configured Chromium profile registry, with portable Flux and DeFi fallbacks. | Changing registry validation, defaults, or profile lookup |
-| `haoshoku-special-workspace` | Implements numbered-app launchers and focus/show/hide behavior for named app and browser special workspaces. | Changing workspace recipes, placement, launch-if-missing behavior, or browser toggles |
+| `haoshoku-special-workspace` | Implements numbered-app launchers (including the dedicated `haoshoku-ws7` home kitty), stranded-window reclaim, and focus/show/hide behavior for named app and browser special workspaces. | Changing workspace recipes, placement, reclaim/launch-if-missing behavior, or browser toggles |
 | `haoshoku-zed-glass` | Post-processes Omazed's generated Zed theme with dotted `background.appearance`, alpha-adjusted surfaces, and neutral borders. | Changing Zed transparency, Omazed hooks, or protected theme surfaces |
 | `mic-toggle` | Toggles the default microphone through `wpctl` or `pactl` and reports the resulting state. | Changing microphone controls or notifications |
 
@@ -30,9 +30,11 @@ binary acts as a PATH-shadow wrapper for that binary.
 - Retired AI web-app launcher `ai-webapps-toggle` is intentionally removed and
   cleaned from `~/.local/bin/`; `Super+I` now routes through
   `haoshoku-special-workspace`.
-- Retired workspace-7 helpers are cleaned from `~/.local/bin/`. Warp itself is
-  still installed and still has its `configs/warp/` tab config; nothing
-  launches it from a keybind any more.
+- Retired standalone workspace-7 helpers are cleaned from `~/.local/bin/`.
+  Workspace 7 is now owned by `haoshoku-special-workspace numbered 7 kitty`,
+  which identifies its terminal by the dedicated `haoshoku-ws7` class and
+  reclaims that window if it was moved away. Warp itself remains installed but
+  is no longer launched from a keybind.
 - Chromium profile `.monitor` remains required for registry schema stability,
   but browser workspaces normally follow the focused monitor instead of that
   value. It is used only as a fallback when Hyprland transiently reports no
