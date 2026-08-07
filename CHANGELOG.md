@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 7.9.0 - 2026-08-08
 
 - Keep one dedicated home-rooted kitty terminal on workspace 7, starting it at
   login and reclaiming it if it moves without launching duplicates.
