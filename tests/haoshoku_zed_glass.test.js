@@ -97,16 +97,21 @@ function stderr(result) {
 function realisticTheme() {
 	const style = {
 		background: "#010203",
+		"terminal.background": "#050607",
 		"surface.background": "#111213",
 		"toolbar.background": "#212223",
 		"editor.background": "#313233",
 		"editor.gutter.background": "#414243",
+		"editor.subheader.background": "#454647",
+		"scrollbar.track.background": "#48494A",
 		"status_bar.background": "#515253",
 		"title_bar.background": "#616263",
 		"tab_bar.background": "#717273",
 		"panel.background": "#818283",
 		"elevated_surface.background": "#919293",
 		"tab.active_background": "#A1A2A3",
+		"tab.inactive_background": "#A4A5A6",
+		"element.background": "#A7A8A9",
 		"popover.background": "#B1B2B3",
 		"editor.active_line.background": "#C1C2C3",
 		"scrollbar.thumb.background": "#D1D2D3",
@@ -159,26 +164,67 @@ describe("haoshoku-zed-glass", () => {
 		).themes.map((theme) => theme.style);
 		expect(style["background.appearance"]).toBe("transparent");
 		expect(secondStyle["background.appearance"]).toBe("transparent");
-		for (const key of [
-			"background",
-			"surface.background",
-			"toolbar.background",
-			"editor.background",
-			"editor.gutter.background",
-		]) {
-			expect(style[key]).toMatch(/^#[0-9A-Fa-f]{6}E6$/);
-		}
-		for (const key of [
-			"status_bar.background",
-			"title_bar.background",
-			"tab_bar.background",
-			"panel.background",
-		]) {
-			expect(style[key]).toMatch(/^#[0-9A-Fa-f]{6}D9$/);
-		}
-		expect(style["editor.background"]).toBe("#313233E6");
-		expect(style["elevated_surface.background"]).toBe("#919293");
-		expect(style["tab.active_background"]).toBe("#A1A2A3");
+		expect(
+			[style, secondStyle].map((themeStyle) =>
+				Object.fromEntries(
+					[
+						"panel.background",
+						"terminal.background",
+						"elevated_surface.background",
+						"editor.subheader.background",
+						"scrollbar.track.background",
+						"tab.inactive_background",
+						"toolbar.background",
+						"status_bar.background",
+						"tab_bar.background",
+						"title_bar.background",
+						"surface.background",
+						"background",
+						"editor.background",
+						"editor.gutter.background",
+						"element.background",
+						"tab.active_background",
+					].map((key) => [key, themeStyle[key]]),
+				),
+			),
+		).toEqual([
+			{
+				"panel.background": "#81828300",
+				"terminal.background": "#0506070D",
+				"elevated_surface.background": "#919293CC",
+				"editor.subheader.background": "#4546478C",
+				"scrollbar.track.background": "#48494A8C",
+				"tab.inactive_background": "#A4A5A68C",
+				"toolbar.background": "#2122238C",
+				"status_bar.background": "#51525399",
+				"tab_bar.background": "#71727399",
+				"title_bar.background": "#61626399",
+				"surface.background": "#11121399",
+				background: "#01020380",
+				"editor.background": "#31323380",
+				"editor.gutter.background": "#41424380",
+				"element.background": "#A7A8A980",
+				"tab.active_background": "#A1A2A380",
+			},
+			{
+				"panel.background": "#81828300",
+				"terminal.background": "#0506070D",
+				"elevated_surface.background": "#919293CC",
+				"editor.subheader.background": "#4546478C",
+				"scrollbar.track.background": "#48494A8C",
+				"tab.inactive_background": "#A4A5A68C",
+				"toolbar.background": "#2122238C",
+				"status_bar.background": "#51525399",
+				"tab_bar.background": "#71727399",
+				"title_bar.background": "#61626399",
+				"surface.background": "#11121399",
+				background: "#A0A1A280",
+				"editor.background": "#B0B1B280",
+				"editor.gutter.background": "#41424380",
+				"element.background": "#A7A8A980",
+				"tab.active_background": "#A1A2A380",
+			},
+		]);
 		expect(style["popover.background"]).toBe("#B1B2B3");
 		expect(style["editor.active_line.background"]).toBe("#C1C2C3");
 		expect(style.border).toBe("#D1D2D3");
@@ -189,7 +235,6 @@ describe("haoshoku-zed-glass", () => {
 		expect(style["border.selected"]).toBe("#020202");
 		expect(style["panel.focused_border"]).toBe("#030303");
 		expect(style["pane.focused_border"]).toBe("#040404");
-		expect(secondStyle.background).toBe("#A0A1A2E6");
 		expect(secondStyle.border).toBe("#C0C1C2");
 		expect(secondStyle["border.variant"]).toBe("#C0C1C2");
 	});
@@ -306,7 +351,7 @@ describe("haoshoku-zed-glass", () => {
 		const style = JSON.parse(fs.readFileSync(themePath(), "utf8")).themes[0]
 			.style;
 		expect(style["background.appearance"]).toBe("transparent");
-		expect(style.background).toBe("#111111E6");
+		expect(style.background).toBe("#11111180");
 		expect(style.border).toBe("#222222");
 		expect(style["border.variant"]).toBe("#333333");
 	});

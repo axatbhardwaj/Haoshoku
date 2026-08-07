@@ -31,6 +31,20 @@ fi
 
 # Note: the underscore spelling "background_appearance" is NOT a real Zed setting
 # and must not be reintroduced. The dotted theme-style field is the only working mechanism.
+# Zed composites surfaces: a docked pane draws its content over panel.background,
+# which itself draws over background. Alphas therefore multiply when layers stack,
+# so a value that looks moderate alone becomes opaque when stacked. panel.background
+# is fully clear and terminal.background is near-clear because other content sits on
+# those layers; they are not surfaces viewed on their own.
+#
+# The agent panel thread view uses editor.background, the same key as the real code
+# editor, but it is drawn inside a panel over other translucent layers. The shared
+# key therefore leaves roughly 50% wallpaper visible in the editor and roughly 22%
+# in the thread view purely through stacking. Zed has no agent-, assistant-, or
+# thread-specific style key; this was confirmed against the v0.2.0 theme schema at
+# https://zed.dev/schema/themes/v0.2.0.json. panel.background stays fully transparent
+# to keep the total stack as thin as possible. Do not tidy or average these tiers:
+# their calibrated asymmetry is intentional, not an inconsistency.
 if ! jq -e '
   def append_alpha($alpha):
     if type == "string" and test("^#[0-9A-Fa-f]{6}$") then
@@ -51,18 +65,40 @@ if ! jq -e '
   def patch_style:
     .["background.appearance"] = "transparent"
     | patch_alpha([
-        "background",
-        "surface.background",
-        "toolbar.background",
-        "editor.background",
-        "editor.gutter.background"
-      ]; "E6")
+        "panel.background"
+      ]; "00")
+    | patch_alpha([
+        "terminal.background"
+      ]; "0D")
+    # elevated_surface.background drives Zed context menus, popups, and dialogs
+    # (confirmed by https://zed.dev/schema/themes/v0.2.0.json). Commit 930a8c5
+    # deliberately kept this key opaque because translucent menus over code are
+    # unreadable; 1A came from unrelated debugging and silently reversed that.
+    # CC is the human-chosen compromise: visibly glass but dense enough to read.
+    # This is intentionally the densest alpha tier in this file; do not normalise
+    # it toward the other lower-alpha tiers in a future edit.
+    | patch_alpha([
+        "elevated_surface.background"
+      ]; "CC")
+    | patch_alpha([
+        "editor.subheader.background",
+        "scrollbar.track.background",
+        "tab.inactive_background",
+        "toolbar.background"
+      ]; "8C")
     | patch_alpha([
         "status_bar.background",
-        "title_bar.background",
         "tab_bar.background",
-        "panel.background"
-      ]; "D9")
+        "title_bar.background",
+        "surface.background"
+      ]; "99")
+    | patch_alpha([
+        "background",
+        "editor.background",
+        "editor.gutter.background",
+        "element.background",
+        "tab.active_background"
+      ]; "80")
     | if has("scrollbar.thumb.background") then
       .["scrollbar.thumb.background"] as $thumb
       | .border = $thumb
