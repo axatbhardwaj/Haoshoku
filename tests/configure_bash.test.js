@@ -59,6 +59,200 @@ describe("configureBash", () => {
 		);
 	});
 
+	it("configures non-interactive shells without running fastfetch", () => {
+		configureBash({ home });
+		const bin = path.join(home, "bin");
+		fs.mkdirSync(bin, { recursive: true });
+		const fastfetch = path.join(bin, "fastfetch");
+		fs.writeFileSync(fastfetch, "#!/bin/sh\nprintf 'fastfetch ran\\n'\n");
+		fs.chmodSync(fastfetch, 0o755);
+		for (const command of [
+			"starship",
+			"direnv",
+			"zoxide",
+			"pyenv",
+			"thefuck",
+		]) {
+			const executable = path.join(bin, command);
+			fs.writeFileSync(executable, "#!/bin/sh\nexit 0\n");
+			fs.chmodSync(executable, 0o755);
+		}
+		const conda = path.join(home, "anaconda3", "bin", "conda");
+		fs.mkdirSync(path.dirname(conda), { recursive: true });
+		fs.writeFileSync(conda, "#!/bin/sh\nexit 0\n");
+		fs.chmodSync(conda, 0o755);
+		for (const directory of [
+			path.join(home, ".bun", "bin"),
+			path.join(home, ".lmstudio", "bin"),
+			path.join(home, "go", "bin"),
+			path.join(home, ".cargo", "bin"),
+			path.join(home, ".config", ".foundry", "bin"),
+			path.join(home, ".claude", "tmp"),
+		]) {
+			fs.mkdirSync(directory, { recursive: true });
+		}
+		const secrets = path.join(home, ".config", "haoshoku", "secrets.bash");
+		fs.writeFileSync(secrets, "export HAOSHOKU_TEST_SECRET=loaded\n");
+		const environmentFile = path.join(home, "environment");
+
+		const result = spawnSync(
+			"bash",
+			[
+				"--noprofile",
+				"--norc",
+				"-c",
+				'source "$1"; env > "$2"',
+				"bash",
+				path.join(home, ".config", "haoshoku", "bashrc"),
+				environmentFile,
+			],
+			{
+				encoding: "utf8",
+				env: { HOME: home, PATH: `${bin}:/usr/bin:/bin` },
+			},
+		);
+
+		expect(result.status).toBe(0);
+		expect(result.stdout).toBe("");
+		const environment = new Map(
+			fs
+				.readFileSync(environmentFile, "utf8")
+				.trim()
+				.split("\n")
+				.map((line) => {
+					const separator = line.indexOf("=");
+					return [line.slice(0, separator), line.slice(separator + 1)];
+				}),
+		);
+		expect(environment.get("BUN_INSTALL")).toBe(path.join(home, ".bun"));
+		expect(environment.get("PATH")?.split(":")[0]).toBe(
+			path.join(home, ".bun", "bin"),
+		);
+		expect(environment.get("PATH")?.split(":")).toEqual(
+			expect.arrayContaining([
+				path.join(home, ".bun", "bin"),
+				path.join(home, ".lmstudio", "bin"),
+				path.join(home, "go", "bin"),
+				path.join(home, ".cargo", "bin"),
+				path.join(home, ".config", ".foundry", "bin"),
+			]),
+		);
+		expect(environment.get("TMPDIR")).toBe(path.join(home, ".claude", "tmp"));
+		expect(environment.get("HAOSHOKU_TEST_SECRET")).toBe("loaded");
+	});
+
+	it("runs fastfetch from managed Bun PATH in nested interactive TTY shells", () => {
+		configureBash({ home });
+		const bin = path.join(home, ".bun", "bin");
+		fs.mkdirSync(bin, { recursive: true });
+		const fastfetch = path.join(bin, "fastfetch");
+		const fastfetchCall = path.join(home, "fastfetch-call");
+		fs.writeFileSync(
+			fastfetch,
+			"#!/bin/sh\nprintf '%s\\n' \"$SHLVL\" > \"$FASTFETCH_CALL\"\n",
+		);
+		fs.chmodSync(fastfetch, 0o755);
+		const fragment = path.join(home, ".config", "haoshoku", "bashrc");
+		const script = Bun.which("script");
+		expect(script).not.toBeNull();
+
+		const result = spawnSync(
+			script,
+			[
+				"-qec",
+				'bash --noprofile --norc -ic \'source "$HAOSHOKU_FRAGMENT"; :\'',
+				"/dev/null",
+			],
+			{
+				encoding: "utf8",
+				env: {
+					HOME: home,
+					PATH: "/usr/bin:/bin",
+					FASTFETCH_CALL: fastfetchCall,
+					HAOSHOKU_FRAGMENT: fragment,
+					SHLVL: "9",
+				},
+			},
+		);
+
+		expect(result.status).toBe(0);
+		expect(fs.existsSync(fastfetchCall)).toBe(true);
+		expect(Number(fs.readFileSync(fastfetchCall, "utf8").trim())).toBeGreaterThan(
+			9,
+		);
+	});
+
+	it("suppresses fastfetch when an interactive shell stdout is not a TTY", () => {
+		configureBash({ home });
+		const bin = path.join(home, "bin");
+		fs.mkdirSync(bin, { recursive: true });
+		const fastfetchCall = path.join(home, "fastfetch-call");
+		const fastfetch = path.join(bin, "fastfetch");
+		fs.writeFileSync(
+			fastfetch,
+			"#!/bin/sh\nprintf 'called\\n' > \"$FASTFETCH_CALL\"\n",
+		);
+		fs.chmodSync(fastfetch, 0o755);
+
+		const result = spawnSync(
+			"bash",
+			[
+				"--noprofile",
+				"--norc",
+				"-ic",
+				'source "$1"; :',
+				"bash",
+				path.join(home, ".config", "haoshoku", "bashrc"),
+			],
+			{
+				encoding: "utf8",
+				env: {
+					HOME: home,
+					PATH: `${bin}:/usr/bin:/bin`,
+					FASTFETCH_CALL: fastfetchCall,
+				},
+			},
+		);
+
+		expect(result.status).toBe(0);
+		expect(fs.existsSync(fastfetchCall)).toBe(false);
+	});
+
+	it("stays silent in interactive shells when fastfetch is unavailable", () => {
+		configureBash({ home });
+		const bin = path.join(home, "empty-bin");
+		fs.mkdirSync(bin, { recursive: true });
+		const dirname = path.join(bin, "dirname");
+		fs.writeFileSync(dirname, "#!/bin/sh\nexit 0\n");
+		fs.chmodSync(dirname, 0o755);
+		const conda = path.join(home, "anaconda3", "bin", "conda");
+		fs.mkdirSync(path.dirname(conda), { recursive: true });
+		fs.writeFileSync(conda, "#!/bin/sh\nexit 0\n");
+		fs.chmodSync(conda, 0o755);
+
+		const bash = Bun.which("bash");
+		expect(bash).not.toBeNull();
+		const result = spawnSync(
+			bash,
+			[
+				"--noprofile",
+				"--norc",
+				"-ic",
+				'source "$1"; :',
+				"bash",
+				path.join(home, ".config", "haoshoku", "bashrc"),
+			],
+			{
+				encoding: "utf8",
+				env: { HOME: home, PATH: bin },
+			},
+		);
+
+		expect(result.status).toBe(0);
+		expect(result.stdout).toBe("");
+		expect(result.stderr).not.toMatch(/fastfetch|command not found/i);
+	});
+
 	it("exposes a user-installed Bun in a clean Bash environment", () => {
 		configureBash({ home });
 		const fragment = fs.readFileSync(

@@ -70,5 +70,9 @@ done
 unset haoshoku_path
 export PATH
 
+if [[ $- == *i* && -t 1 ]] && command -v fastfetch >/dev/null 2>&1; then
+  fastfetch
+fi
+
 [[ -d "$HOME/.claude/tmp" ]] && export TMPDIR="$HOME/.claude/tmp"
 [[ -r "$HOME/.config/haoshoku/secrets.bash" ]] && source "$HOME/.config/haoshoku/secrets.bash"
