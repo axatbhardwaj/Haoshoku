@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 7.7.0 - 2026-08-07
 
 - Make `Super+A` open a local kitty terminal rooted at home instead of attaching
   to a managed Remote Control session. A configured, syntactically valid Claude

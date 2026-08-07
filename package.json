@@ -1,6 +1,6 @@
 {
   "name": "haoshoku",
-  "version": "7.6.0",
+  "version": "7.7.0",
   "module": "haoshoku.js",
   "type": "module",
   "bin": {
