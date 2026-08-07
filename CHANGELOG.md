@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 7.8.0 - 2026-08-07
 
 - Keep browser upload and download pickers visible while special workspaces
   are open by applying `float on`, `pin on`, and `center on` to the
