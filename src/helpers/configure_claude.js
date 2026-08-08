@@ -152,6 +152,17 @@ function readClaudeBootstrapUrl(configPath) {
   }
 }
 
+function isSuperpowersEnabled(settingsPath) {
+  if (!fs.existsSync(settingsPath)) return false;
+
+  try {
+    const settings = JSON.parse(fs.readFileSync(settingsPath, "utf-8"));
+    return settings?.enabledPlugins?.[SUPERPOWERS_PLUGIN_ID] === true;
+  } catch {
+    return false;
+  }
+}
+
 /** Bootstrap the configured private policy repository in ~/.claude/. */
 export async function bootstrapClaudePolicy(options = {}) {
   const {
@@ -160,6 +171,8 @@ export async function bootstrapClaudePolicy(options = {}) {
     strict = true,
   } = options;
   const claudeDir = path.join(claudeHome, ".claude");
+  const settingsPath = path.join(claudeDir, "settings.json");
+  const preserveSuperpowers = isSuperpowersEnabled(settingsPath);
   const url = readClaudeBootstrapUrl(configPath);
 
   let reachable;
@@ -246,6 +259,24 @@ export async function bootstrapClaudePolicy(options = {}) {
     branch,
     `origin/${branch}`,
   ]);
+
+  if (preserveSuperpowers) {
+    try {
+      await installSuperpowers(settingsPath);
+    } catch (error) {
+      log.error(
+        `Claude policy bootstrap replaced the Superpowers registration and could not restore it (${error?.message ?? error}).`,
+      );
+    }
+    if (!isSuperpowersEnabled(settingsPath)) {
+      log.error(
+        "Claude policy bootstrap removed the existing Superpowers registration and could not restore it. Fix ~/.claude/settings.json, then rerun: haoshoku --superpowers",
+      );
+      if (strict) process.exitCode = 1;
+      return false;
+    }
+  }
+
   if (checkout.exitCode !== 0) {
     throw new Error(`Failed to check out Claude policy branch ${branch}`);
   }
@@ -381,23 +412,43 @@ export async function backupClaudeConfig(options = {}) {
 
 /** Idempotently enable the Superpowers plugin in ~/.claude/settings.json. */
 export async function installSuperpowers(settingsPath = SETTINGS_PATH) {
-  if (!fs.existsSync(settingsPath)) {
+  let settings = {};
+  if (fs.existsSync(settingsPath)) {
+    try {
+      settings = JSON.parse(fs.readFileSync(settingsPath, "utf-8"));
+    } catch (err) {
+      log.error(
+        `settings.json is not valid JSON (${err?.message ?? err}) — fix it before retrying`,
+      );
+      return;
+    }
+  } else {
+    fs.mkdirSync(path.dirname(settingsPath), { recursive: true });
+  }
+
+  if (
+    settings === null ||
+    typeof settings !== "object" ||
+    Array.isArray(settings)
+  ) {
     log.error(
-      `${settingsPath} not found. Run Claude Code once to create it, then retry.`,
+      `settings.json must be an object (${settingsPath}) — fix it before retrying`,
+    );
+    return;
+  }
+  if (
+    settings.enabledPlugins !== undefined &&
+    (settings.enabledPlugins === null ||
+      typeof settings.enabledPlugins !== "object" ||
+      Array.isArray(settings.enabledPlugins))
+  ) {
+    log.error(
+      `settings.json enabledPlugins must be an object (${settingsPath}) — fix it before retrying`,
     );
     return;
   }
 
   log.info("Enabling Superpowers plugin in ~/.claude/settings.json...");
-  let settings;
-  try {
-    settings = JSON.parse(fs.readFileSync(settingsPath, "utf-8"));
-  } catch (err) {
-    log.error(
-      `settings.json is not valid JSON (${err?.message ?? err}) — fix it before retrying`,
-    );
-    return;
-  }
   settings.enabledPlugins ??= {};
 
   if (settings.enabledPlugins[SUPERPOWERS_PLUGIN_ID] === true) {

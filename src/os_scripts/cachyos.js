@@ -17,16 +17,19 @@ import { configureChromiumProfiles } from "../helpers/configure_chromium_profile
 import {
 	bootstrapClaudePolicy,
 	configureClaude,
+	installSuperpowers,
 } from "../helpers/configure_claude.js";
 import { configureClaudeStayAwake } from "../helpers/configure_claude_stay_awake.js";
 import { configureClaudeRemoteControl } from "../helpers/configure_claude_remote_control.js";
 import { configureCodex } from "../helpers/configure_codex.js";
+import { installGhStack } from "../helpers/configure_gh_stack.js";
 import { configureMimeapps } from "../helpers/configure_mimeapps.js";
 import { promptDeviceType } from "../helpers/configure_hyprland.js";
 import { configureOmarchyMonitors } from "../helpers/configure_omarchy_monitors.js";
 import { configureOmarchyWorkspaces } from "../helpers/configure_omarchy_workspaces.js";
 import { configureOmazed } from "../helpers/configure_omazed.js";
 import { configurePrWatch } from "../helpers/configure_pr_watch.js";
+import { syncWorktreeCleanup } from "../helpers/configure_worktree_cleanup.js";
 import { installUserScripts } from "../helpers/install_user_scripts.js";
 
 // URLs
@@ -311,7 +314,9 @@ async function installPackagesFromFile(filePath, installerCmd) {
 export async function prepareArchPackageManager({
 	runCommandImpl = runCommand,
 } = {}) {
-	log.info("Refreshing package databases and performing a full system upgrade...");
+	log.info(
+		"Refreshing package databases and performing a full system upgrade...",
+	);
 	if (!(await runCommandImpl("sudo pacman -Syu --noconfirm"))) {
 		log.error(
 			"Pacman refresh and full upgrade failed. Aborting Arch setup before package installation.",
@@ -319,7 +324,9 @@ export async function prepareArchPackageManager({
 		return false;
 	}
 
-	log.info("Installing base-devel and git (required for makepkg / AUR builds)...");
+	log.info(
+		"Installing base-devel and git (required for makepkg / AUR builds)...",
+	);
 	if (
 		!(await runCommandImpl(
 			"sudo pacman -S --needed --noconfirm base-devel git",
@@ -541,10 +548,13 @@ export async function configureUserApps({
 	runCommandImpl = runCommand,
 	enableServicesImpl = enableServices,
 	configureClaudeImpl = configureClaude,
+	installGhStackImpl = installGhStack,
+	installSuperpowersImpl = installSuperpowers,
 	bootstrapClaudePolicyImpl = bootstrapClaudePolicy,
 	configureClaudeStayAwakeImpl = configureClaudeStayAwake,
 	configureClaudeRemoteControlImpl = configureClaudeRemoteControl,
 	configurePrWatchImpl = configurePrWatch,
+	syncWorktreeCleanupImpl = syncWorktreeCleanup,
 	configureCodexImpl = configureCodex,
 	configureAgentOsImpl = configureAgentOs,
 } = {}) {
@@ -572,6 +582,13 @@ export async function configureUserApps({
 
 	await enableServicesImpl();
 	await configureClaudeImpl();
+	try {
+		await installGhStackImpl();
+	} catch (err) {
+		log.warning(
+			`GitHub gh-stack extension installation failed (${err?.message ?? err}) — continuing with remaining app setup.`,
+		);
+	}
 	if (
 		await promptUserImpl("Bootstrap private Claude policy repository?", true)
 	) {
@@ -587,6 +604,19 @@ export async function configureUserApps({
 			);
 		}
 	}
+	if (
+		await promptUserImpl("Enable Superpowers plugin for Claude Code?", false)
+	) {
+		try {
+			await installSuperpowersImpl();
+		} catch (err) {
+			log.warning(
+				`Superpowers plugin installation failed (${err?.message ?? err}) — continuing with remaining app setup.`,
+			);
+		}
+	}
+	// These two portable helpers predate the confirmation expansion and were
+	// intentionally unconditional. Keep unattended setup behavior stable.
 	await configureClaudeStayAwakeImpl();
 	if (
 		await promptUserImpl(
@@ -598,6 +628,20 @@ export async function configureUserApps({
 	}
 	if (configurePrWatchImpl === configurePrWatch) await configurePrWatch();
 	else await configurePrWatchImpl();
+	if (
+		await promptUserImpl(
+			"Enable automatic git worktree cleanup? This enables a persistent weekly timer that runs cleanup-worktrees.sh --apply and deletes eligible worktrees.",
+			false,
+		)
+	) {
+		try {
+			await syncWorktreeCleanupImpl();
+		} catch (err) {
+			log.warning(
+				`Worktree cleanup setup failed (${err?.message ?? err}) — continuing with remaining app setup.`,
+			);
+		}
+	}
 	await configureCodexImpl();
 	await configureAgentOsImpl();
 }
@@ -622,13 +666,13 @@ export async function runCachyOSSetup({
 	const configureOmarchyWorkspaces = configureOmarchyWorkspacesImpl;
 	const configureOmazed = configureOmazedImpl;
 
+	await promptDeviceTypeImpl();
 	if (!(await prepareArchPackageManagerImpl())) return false;
 	await ensureRustToolchainImpl();
 	const aurHelper = await ensureAurHelperImpl();
 	await installDevToolsImpl();
 
 	const isOmarchy = await commandExistsImpl("omarchy");
-	if (isOmarchy) await promptDeviceTypeImpl();
 	await installSystemPackagesImpl(aurHelper, isOmarchy);
 	await installFlatpakAppsImpl();
 	await configureUserAppsImpl();

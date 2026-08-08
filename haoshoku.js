@@ -31,6 +31,7 @@ import {
 	syncCodexConfig,
 } from "./src/helpers/configure_codex.js";
 import { configureBraveManagedPolicies } from "./src/helpers/configure_brave_managed_policies.js";
+import { installGhStack } from "./src/helpers/configure_gh_stack.js";
 import { promptDeviceType } from "./src/helpers/configure_hyprland.js";
 import {
 	backupMimeappsConfig,
@@ -96,6 +97,10 @@ program
 	.option("--skills-update", "Update cached skill sources")
 	.option("--skills-list", "List available skills")
 	.option("--superpowers", "Enable the Superpowers plugin for Claude Code")
+	.option(
+		"--gh-stack",
+		"Install GitHub's gh-stack extension for stacked pull requests",
+	)
 	.option("--audio", "Sync audio config from configs/audio/ to ~/.config/")
 	.option(
 		"--audio-backup",
@@ -219,6 +224,14 @@ async function runAction(options) {
 		return;
 	}
 
+	if (options.ghStack) {
+		const result = await installGhStack();
+		if (result !== "installed" && result !== "already-installed") {
+			process.exitCode = 1;
+		}
+		return;
+	}
+
 	if (options.skillsUpdate) {
 		const result = syncSkills({ update: true });
 		if (result.status === "all-failed") process.exit(1);
@@ -308,7 +321,6 @@ async function runAction(options) {
 			return;
 		}
 		await promptDeviceType({
-			force: true,
 			isTTY: true,
 			promptFn: async () => ({ device: options.deviceType }),
 		});
@@ -348,6 +360,13 @@ async function runAction(options) {
 			osType = detected;
 			osAutoDetected = true;
 		} else {
+			if (!process.stdin.isTTY) {
+				log.warning(
+					"Interactive OS selection unavailable; declining setup. Re-run with --os arch or --os debian-server.",
+				);
+				process.exitCode = 1;
+				return;
+			}
 			const response = await prompts({
 				type: "select",
 				name: "os",
@@ -400,14 +419,9 @@ async function runAction(options) {
 			process.exit(1);
 	}
 
-	const syncResponse = await prompts({
-		type: "confirm",
-		name: "syncSkills",
-		message: "Sync Claude Code skills from configured sources?",
-		initial: true,
-	});
-
-	if (syncResponse.syncSkills) {
+	if (
+		await promptUser("Sync Claude Code skills from configured sources?", true)
+	) {
 		syncSkills({ update: false });
 	}
 }

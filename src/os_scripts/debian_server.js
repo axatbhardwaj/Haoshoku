@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { homedir, userInfo } from "node:os";
+import { homedir, tmpdir, userInfo } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { withSpinner } from "../common/ui.js";
@@ -10,9 +10,19 @@ import {
 	runCommand,
 	safeCopyFile,
 } from "../common/utils.js";
-import { configureClaude } from "../helpers/configure_claude.js";
+import {
+	bootstrapClaudePolicy,
+	configureClaude,
+	installSuperpowers,
+} from "../helpers/configure_claude.js";
+import { configureClaudeRemoteControl } from "../helpers/configure_claude_remote_control.js";
+import { configureClaudeStayAwake } from "../helpers/configure_claude_stay_awake.js";
 import { configureCodex } from "../helpers/configure_codex.js";
 import { configureAgentOs } from "../helpers/configure_agent_os.js";
+import { configureGit } from "../helpers/configure_git.js";
+import { installGhStack } from "../helpers/configure_gh_stack.js";
+import { configurePrWatch } from "../helpers/configure_pr_watch.js";
+import { syncWorktreeCleanup } from "../helpers/configure_worktree_cleanup.js";
 
 // --- Constants ---
 const HOME = homedir();
@@ -275,11 +285,12 @@ findtime = 600
 
 async function configureFail2ban() {
 	log.info("Configuring Fail2ban for SSH protection...");
+	const stagingPath = path.join(tmpdir(), "jail.local");
 
-	fs.writeFileSync("/tmp/jail.local", buildFail2banJail());
+	fs.writeFileSync(stagingPath, buildFail2banJail());
 
 	const moved = await runCommand(
-		"sudo mv /tmp/jail.local /etc/fail2ban/jail.local",
+		`sudo mv ${stagingPath} /etc/fail2ban/jail.local`,
 	);
 	if (!moved) {
 		log.warning(
@@ -312,7 +323,68 @@ export async function runDebianServerSetup() {
 	await installDocker();
 	await setupFirewall();
 	await configureFail2ban();
+
+	// Debian Server deliberately receives only portable/headless developer tools.
+	// Device type is not asked because it routes audio and Hyprland/Omarchy
+	// desktop variants only. Browser/MIME, Brave policy, user-script, audio,
+	// monitor, workspace, and Omazed configuration therefore remain Arch-only.
+	if (await promptUser("Configure git?", true)) await configureGit();
 	await configureClaude();
+	if (await promptUser("Bootstrap private Claude policy repository?", true)) {
+		try {
+			if (!(await bootstrapClaudePolicy({ strict: false }))) {
+				log.warning(
+					"Claude policy bootstrap failed — continuing. Retry with: haoshoku --claude-bootstrap",
+				);
+			}
+		} catch (err) {
+			log.warning(
+				`Claude policy bootstrap failed (${err?.message ?? err}) — continuing. Retry with: haoshoku --claude-bootstrap`,
+			);
+		}
+	}
+	try {
+		await installGhStack();
+	} catch (err) {
+		log.warning(
+			`GitHub gh-stack extension installation failed (${err?.message ?? err}) — continuing with remaining server setup.`,
+		);
+	}
+	if (await promptUser("Enable Superpowers plugin for Claude Code?", false)) {
+		try {
+			await installSuperpowers();
+		} catch (err) {
+			log.warning(
+				`Superpowers plugin installation failed (${err?.message ?? err}) — continuing with remaining server setup.`,
+			);
+		}
+	}
+	if (await promptUser("Enable Claude stay-awake service?", true)) {
+		await configureClaudeStayAwake();
+	}
+	if (
+		await promptUser(
+			"Install Claude Remote Control services with all permission checks bypassed? This permanently sets bypassPermissionsModeAccepted: true in ~/.claude.json for every Claude Code session on this machine, not only these services. To undo it, edit ~/.claude.json and remove the flag or set it to false.",
+			false,
+		)
+	) {
+		await configureClaudeRemoteControl();
+	}
+	await configurePrWatch();
+	if (
+		await promptUser(
+			"Enable automatic git worktree cleanup? This enables a persistent weekly timer that runs cleanup-worktrees.sh --apply and deletes eligible worktrees.",
+			false,
+		)
+	) {
+		try {
+			await syncWorktreeCleanup();
+		} catch (err) {
+			log.warning(
+				`Worktree cleanup setup failed (${err?.message ?? err}) — continuing with remaining server setup.`,
+			);
+		}
+	}
 	await configureCodex();
 	await configureAgentOs();
 

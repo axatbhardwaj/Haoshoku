@@ -29,25 +29,6 @@ describe("Omarchy workspace overlay", () => {
 		}
 	});
 
-	it("prompts before device routing and restores monitors before workspaces", () => {
-		const installer = fs.readFileSync(
-			path.join(import.meta.dir, "..", "src", "os_scripts", "cachyos.js"),
-			"utf8",
-		);
-		const promptCall = "if (isOmarchy) await promptDeviceTypeImpl();";
-		const monitorCall = "await configureOmarchyMonitors();";
-		const workspaceCall = "await configureOmarchyWorkspaces();";
-		expect(installer).toContain(promptCall);
-		expect(installer).toContain(monitorCall);
-		expect(installer).toContain(workspaceCall);
-		expect(installer.indexOf(monitorCall)).toBeGreaterThan(
-			installer.indexOf(promptCall),
-		);
-		expect(installer.indexOf(workspaceCall)).toBeGreaterThan(
-			installer.indexOf(monitorCall),
-		);
-	});
-
 	it("uses dedicated special-workspace toggles", () => {
 		const toggleBinds = [
 			"bindd = SUPER, A, Show/focus/hide Haki session, exec, haoshoku-special-workspace haki",

@@ -22,6 +22,7 @@ export const MODE_FLAGS = [
 	"skillsUpdate",
 	"skillsList",
 	"superpowers",
+	"ghStack",
 	"audio",
 	"audioBackup",
 	"mimeapps",

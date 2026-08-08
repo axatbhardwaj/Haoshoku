@@ -46,11 +46,24 @@ The Arch setup:
 - ships refresh-safe app bindings from
   [`configs/omarchy/bindings.conf`](configs/omarchy/bindings.conf) instead of
   replacing Omarchy's `~/.config/hypr/bindings.conf`;
-- asks for a `pc` or `laptop` `deviceType` when no valid value is stored, then
-  saves an accepted selection in `~/.haoshoku.json` before device-routed audio
-  and Hyprland configuration. Choosing Skip, or using the PC fallback when the
-  prompt cannot run, leaves device-specific audio unset, uses the PC Hyprland
-  fallback for that run, and asks again on the next full setup;
+- asks for a `pc` or `laptop` `deviceType` on every full Arch-family setup,
+  preselecting any stored valid value, then saves an accepted selection in
+  `~/.haoshoku.json` before device-routed audio and Hyprland configuration.
+  Choosing Skip persists nothing; Hyprland routing retains a valid stored
+  value or uses its own PC default when none is stored. When the prompt cannot
+  run, no fallback is persisted or wired through as run state; each downstream
+  helper reads the persisted config independently. Device-specific audio stays
+  unset without an explicitly persisted selection, and the next interactive
+  full setup asks again;
+- keeps Claude stay-awake and PR watch as unconditional portable setup steps,
+  matching their behavior before confirmations were expanded. Full setup asks
+  before the private Claude policy, Superpowers, Claude Remote Control, and
+  automatic git worktree cleanup. Superpowers, Remote Control, and worktree
+  cleanup default to No. The worktree offer explains that it enables a
+  persistent weekly timer running
+  `cleanup-worktrees.sh --apply`, which deletes eligible worktrees. Without
+  interactive confirmation—including piped stdin—Haoshoku declines these real
+  user decisions immediately and does not treat input as answers;
 - restores a device-routed `~/.config/hypr/monitors.conf`, backing up different
   existing content first. The PC variant restores the three-monitor layout;
   the laptop variant uses the internal panel's preferred mode and automatic
@@ -180,12 +193,16 @@ haoshoku --skills
 haoshoku --skills-update
 haoshoku --skills-list
 haoshoku --superpowers
+haoshoku --gh-stack
+haoshoku --claude-stay-awake
+haoshoku --pr-watch
+haoshoku --worktree-cleanup
 haoshoku --workspaces
 haoshoku --monitors
 ```
 
-Use `haoshoku --device-type pc` to switch back. The full Omarchy setup does not
-re-prompt when either valid value is already stored.
+Use `haoshoku --device-type pc` to switch back. Every full Arch-family setup
+asks for device type and preselects either valid stored value.
 
 Run `haoshoku --help` for the complete current list.
 
@@ -195,8 +212,19 @@ Run `haoshoku --help` for the complete current list.
 haoshoku --os debian-server
 ```
 
-The Debian path remains separate and continues to provide its existing server
-hardening and developer setup.
+The Debian path remains deliberately headless. In addition to its server
+hardening, it installs the portable Claude, Codex, Agent OS, and PR-watch
+configuration; asks about Git, the private Claude policy, Superpowers, Claude
+stay-awake, Claude Remote Control, and automatic worktree cleanup; then reaches
+the common skills-sync offer. Superpowers is applied after any accepted policy
+checkout so the checkout cannot erase its registration.
+
+Debian Server does not ask for `deviceType`: that value only selects desktop
+audio and Hyprland/Omarchy variants. For the same reason the Debian path does
+not deploy audio, browser/MIME integration, the desktop-oriented user-script
+bundle, Brave managed policies, Hyprland monitors/workspaces, or Omazed. Those
+steps remain on the Arch/Omarchy path instead of being installed onto a
+headless server for superficial symmetry.
 
 ## Development
 

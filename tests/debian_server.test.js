@@ -1,4 +1,7 @@
 import { describe, expect, it } from "bun:test";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import {
 	buildFail2banJail,
 	setupFirewall,
@@ -26,6 +29,92 @@ function makeFakePrompt(value = true) {
 		return value;
 	};
 	return { prompt, calls };
+}
+
+function runDefaultSetupWithSafeDoubles() {
+	const home = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-debian-path-"));
+	const modulePath = (relativePath) =>
+		path.resolve(import.meta.dir, "..", relativePath);
+	const debianModule = modulePath("src/os_scripts/debian_server.js");
+	const childScript = `
+		import { mock } from "bun:test";
+		import actualFs from "node:fs";
+		import path from "node:path";
+		const events = [];
+		const record = (name, result) => async () => {
+			events.push({ type: "helper", name });
+			return result;
+		};
+		const promptAnswers = new Set([
+			"Configure git?",
+			"Bootstrap private Claude policy repository?",
+			"Enable Superpowers plugin for Claude Code?",
+			"Enable Claude stay-awake service?",
+			"Install Claude Remote Control services with all permission checks bypassed? This permanently sets bypassPermissionsModeAccepted: true in ~/.claude.json for every Claude Code session on this machine, not only these services. To undo it, edit ~/.claude.json and remove the flag or set it to false.",
+			"Enable automatic git worktree cleanup? This enables a persistent weekly timer that runs cleanup-worktrees.sh --apply and deletes eligible worktrees.",
+		]);
+		const writeFileSync = actualFs.writeFileSync.bind(actualFs);
+		actualFs.writeFileSync = (target, ...args) => {
+			const tempRoot = path.resolve(process.env.TMPDIR);
+			const resolvedTarget = path.resolve(target);
+			if (!resolvedTarget.startsWith(tempRoot + path.sep)) {
+				throw new Error("test attempted a write outside its temp directory: " + resolvedTarget);
+			}
+			return writeFileSync(target, ...args);
+		};
+		mock.module(${JSON.stringify(modulePath("src/common/utils.js"))}, () => ({
+			commandExists: async () => false,
+			log: { dim() {}, error() {}, info() {}, success() {}, warning() {} },
+			promptUser: async (message, initial) => {
+				events.push({ type: "prompt", message, initial });
+				return promptAnswers.has(message);
+			},
+			runCommand: async () => true,
+			safeCopyFile() {},
+		}));
+		mock.module(${JSON.stringify(modulePath("src/common/ui.js"))}, () => ({
+			withSpinner: async (_message, action) => action(),
+		}));
+		mock.module(${JSON.stringify(modulePath("src/helpers/configure_git.js"))}, () => ({ configureGit: record("git") }));
+		mock.module(${JSON.stringify(modulePath("src/helpers/configure_claude.js"))}, () => ({
+			configureClaude: record("claude"),
+			bootstrapClaudePolicy: record("bootstrap", true),
+			installSuperpowers: record("superpowers"),
+		}));
+		mock.module(${JSON.stringify(modulePath("src/helpers/configure_gh_stack.js"))}, () => ({ installGhStack: record("gh-stack") }));
+		mock.module(${JSON.stringify(modulePath("src/helpers/configure_claude_stay_awake.js"))}, () => ({ configureClaudeStayAwake: record("stay-awake") }));
+		mock.module(${JSON.stringify(modulePath("src/helpers/configure_claude_remote_control.js"))}, () => ({ configureClaudeRemoteControl: record("remote-control") }));
+		mock.module(${JSON.stringify(modulePath("src/helpers/configure_pr_watch.js"))}, () => ({ configurePrWatch: record("pr-watch") }));
+		mock.module(${JSON.stringify(modulePath("src/helpers/configure_worktree_cleanup.js"))}, () => ({ syncWorktreeCleanup: record("worktree-cleanup") }));
+		mock.module(${JSON.stringify(modulePath("src/helpers/configure_codex.js"))}, () => ({ configureCodex: record("codex") }));
+		mock.module(${JSON.stringify(modulePath("src/helpers/configure_agent_os.js"))}, () => ({ configureAgentOs: record("agent-os") }));
+		const { runDebianServerSetup } = await import(${JSON.stringify(debianModule)} + "?default-path-test");
+		await runDebianServerSetup();
+		console.log("DEBIAN_EVENTS=" + JSON.stringify(events));
+	`;
+
+	try {
+		const child = Bun.spawnSync([process.execPath, "--eval", childScript], {
+			env: {
+				...process.env,
+				HOME: home,
+				TMPDIR: home,
+				USER: "haoshoku-test",
+			},
+			stderr: "pipe",
+			stdout: "pipe",
+		});
+		const output = `${new TextDecoder().decode(child.stdout)}\n${new TextDecoder().decode(child.stderr)}`;
+		expect(child.exitCode, output).toBe(0);
+		const encodedEvents = output.match(/DEBIAN_EVENTS=(.*)/)?.[1];
+		expect(encodedEvents).toBeDefined();
+		expect(fs.readFileSync(path.join(home, "jail.local"), "utf8")).toBe(
+			buildFail2banJail(),
+		);
+		return JSON.parse(encodedEvents);
+	} finally {
+		fs.rmSync(home, { recursive: true, force: true });
+	}
 }
 
 describe("buildFail2banJail", () => {
@@ -90,5 +179,65 @@ describe("setupFirewall (UFW lockout gate)", () => {
 		await setupFirewall({ run, prompt });
 
 		expect(calls.some((c) => c.includes("ufw allow ssh"))).toBe(true);
+	});
+});
+
+describe("Debian default path", () => {
+	it("runs every server-applicable developer component in deliberate order", () => {
+		const events = runDefaultSetupWithSafeDoubles();
+		const prompts = events.filter(({ type }) => type === "prompt");
+		const helpers = events
+			.filter(({ type }) => type === "helper")
+			.map(({ name }) => name);
+
+		expect(prompts).toContainEqual({
+			type: "prompt",
+			message: "Configure git?",
+			initial: true,
+		});
+		expect(prompts).toContainEqual({
+			type: "prompt",
+			message: "Bootstrap private Claude policy repository?",
+			initial: true,
+		});
+		expect(prompts.some(({ message }) => message.includes("gh-stack"))).toBe(
+			false,
+		);
+		expect(prompts).toContainEqual({
+			type: "prompt",
+			message: "Enable Superpowers plugin for Claude Code?",
+			initial: false,
+		});
+		expect(prompts).toContainEqual({
+			type: "prompt",
+			message: "Enable Claude stay-awake service?",
+			initial: true,
+		});
+		expect(prompts).toContainEqual({
+			type: "prompt",
+			message: expect.stringContaining("Claude Remote Control"),
+			initial: false,
+		});
+		expect(prompts).toContainEqual({
+			type: "prompt",
+			message: expect.stringContaining("automatic git worktree cleanup"),
+			initial: false,
+		});
+		expect(prompts.some(({ message }) => message.includes("device"))).toBe(
+			false,
+		);
+		expect(helpers).toEqual([
+			"git",
+			"claude",
+			"bootstrap",
+			"gh-stack",
+			"superpowers",
+			"stay-awake",
+			"remote-control",
+			"pr-watch",
+			"worktree-cleanup",
+			"codex",
+			"agent-os",
+		]);
 	});
 });

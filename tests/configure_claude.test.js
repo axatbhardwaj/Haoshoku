@@ -63,14 +63,17 @@ describe("bootstrapClaudePolicy()", () => {
 		return new TextDecoder().decode(result.stdout).trim();
 	}
 
-	function createRemote(name, contents = `# ${name}\n`) {
+	function createRemote(name, contents = `# ${name}\n`, extraFiles = {}) {
 		const remote = path.join(tmpDir, `${name}.git`);
 		const seed = path.join(tmpDir, `${name}-seed`);
 		runGit(["init", "--bare", "--initial-branch=main", remote]);
 		fs.mkdirSync(seed);
 		runGit(["init", "--initial-branch=main"], seed);
 		fs.writeFileSync(path.join(seed, "CLAUDE.md"), contents);
-		runGit(["add", "CLAUDE.md"], seed);
+		for (const [file, fileContents] of Object.entries(extraFiles)) {
+			fs.writeFileSync(path.join(seed, file), fileContents);
+		}
+		runGit(["add", "."], seed);
 		runGit(
 			[
 				"-c",
@@ -258,6 +261,32 @@ describe("bootstrapClaudePolicy()", () => {
 			origin: runGit(["remote", "get-url", "origin"], claudeDir),
 			policy: fs.readFileSync(path.join(claudeDir, "CLAUDE.md"), "utf-8"),
 		}).toEqual(firstState);
+	});
+
+	it("preserves an accepted Superpowers registration across a later bootstrap", async () => {
+		const remote = createRemote("superpowers-policy", "# Policy\n", {
+			"settings.json": `${JSON.stringify({ enabledPlugins: { "policy@example": true } }, null, 2)}\n`,
+		});
+		writeConfig(remote);
+		const settingsPath = path.join(claudeHome, ".claude", "settings.json");
+
+		await claudeConfig.installSuperpowers(settingsPath);
+		expect(
+			JSON.parse(fs.readFileSync(settingsPath, "utf-8")).enabledPlugins[
+				"superpowers@claude-plugins-official"
+			],
+		).toBe(true);
+
+		expect(
+			await claudeConfig.bootstrapClaudePolicy({ claudeHome, configPath }),
+		).toBe(true);
+
+		expect(
+			JSON.parse(fs.readFileSync(settingsPath, "utf-8")).enabledPlugins,
+		).toEqual({
+			"policy@example": true,
+			"superpowers@claude-plugins-official": true,
+		});
 	});
 });
 

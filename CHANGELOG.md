@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+- Provision GitHub's `gh-stack` extension without a prompt on both default
+  setup paths. Detection now recognizes the real alias-first, tab-separated
+  `gh extension list` output; existing installs remain silent, missing `gh`
+  skips cleanly, and installation failures warn without aborting setup. The
+  standalone `--gh-stack` mode now exits non-zero when provisioning fails.
+- Ask for device type on every Arch-family full setup, including non-Omarchy
+  systems, with a valid stored value preselected and PC—not Skip—preselected
+  when stored config contains `null`. Keep the returned non-interactive value
+  explicitly advisory: full-setup helpers route from persisted config instead.
+  Offer every applicable portable developer component on both default OS paths,
+  while keeping desktop-only audio, browser/MIME, scripts, Brave, Hyprland, and
+  Omazed configuration off headless Debian servers. Preserve an accepted
+  Superpowers registration across every later forced policy checkout by merging
+  it back into the freshly checked-out settings. Preserve the
+  previously unconditional Claude stay-awake and PR-watch behavior on Arch;
+  non-interactive confirmations still decline genuine user decisions without
+  hanging.
+
 ## 8.0.0 - 2026-08-08
 
 - Make Omarchy's `deviceType` routing reachable: full setup now asks when no

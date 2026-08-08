@@ -95,6 +95,15 @@ export async function promptUser(message, initial = false, opts = {}) {
 	};
 
 	let promptFn = opts.promptFn;
+	const isTTY =
+		opts.isTTY ?? (Boolean(promptFn) || Boolean(process.stdin.isTTY));
+	if (!isTTY) {
+		log.warning(
+			`Interactive confirmation unavailable; declining ${JSON.stringify(message)}.`,
+		);
+		return false;
+	}
+
 	if (!promptFn) {
 		await drainStdin();
 		promptFn = (await import("prompts")).default;

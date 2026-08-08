@@ -522,8 +522,10 @@ describe("safeCopyFile", () => {
 
 		const readyDeadline = Date.now() + 3000;
 		while (
-			fs.readdirSync(tmpDir).filter((candidate) => candidate.startsWith("ready-"))
-				.length < processCount
+			fs
+				.readdirSync(tmpDir)
+				.filter((candidate) => candidate.startsWith("ready-")).length <
+			processCount
 		) {
 			if (Date.now() > readyDeadline) {
 				for (const child of children) child.subprocess.kill();
@@ -557,9 +559,9 @@ describe("safeCopyFile", () => {
 			"initial live content",
 			...Array.from({ length: processCount }, (_, index) => `bundle ${index}`),
 		]);
-		expect(
-			backupContents.every((content) => writerContents.has(content)),
-		).toBe(true);
+		expect(backupContents.every((content) => writerContents.has(content))).toBe(
+			true,
+		);
 		expect(backups).toHaveLength(processCount);
 	}, 10000);
 
@@ -669,6 +671,99 @@ describe("copyDirRecursive symlink handling", () => {
 });
 
 describe("promptUser cancellation", () => {
+	function promptScript(body) {
+		const modulePath = path.join(process.cwd(), "src", "common", "utils.js");
+		return [
+			`import { promptUser } from ${JSON.stringify(modulePath)};`,
+			body,
+		].join("\n");
+	}
+
+	function runChild(command, input = "") {
+		const child = Bun.spawnSync(command, {
+			stdin: new TextEncoder().encode(input),
+			stdout: "pipe",
+			stderr: "pipe",
+		});
+		return {
+			exitCode: child.exitCode,
+			stdout: new TextDecoder().decode(child.stdout),
+			stderr: new TextDecoder().decode(child.stderr),
+		};
+	}
+
+	function runPipedPrompt(input, initial) {
+		return runChild(
+			[
+				process.execPath,
+				"-e",
+				promptScript(
+					`const value = await promptUser("Enable unattended feature?", ${initial});\nprocess.stdout.write('RESULT:' + value + '\\n');`,
+				),
+			],
+			input,
+		);
+	}
+
+	it("declines without a TTY answer even when the offered default is yes", () => {
+		const result = runPipedPrompt("", true);
+
+		expect(result.exitCode).toBe(0);
+		expect(result.stdout).toContain("RESULT:false");
+		expect(result.stdout).toContain(
+			'Interactive confirmation unavailable; declining "Enable unattended feature?".',
+		);
+		expect(result.stderr).toBe("");
+	});
+
+	it("declines piped answers instead of treating stdin as a prompt", () => {
+		const result = runPipedPrompt("yes\n", true);
+
+		expect(result.exitCode).toBe(0);
+		expect(result.stdout).toContain("RESULT:false");
+		expect(result.stdout).toContain(
+			'Interactive confirmation unavailable; declining "Enable unattended feature?".',
+		);
+		expect(result.stderr).toBe("");
+	});
+
+	it("declines every non-TTY confirmation without consuming piped answers", () => {
+		const result = runChild(
+			[
+				process.execPath,
+				"-e",
+				promptScript(
+					"const first = await promptUser('First?', false);\nconst second = await promptUser('Second?', true);\nprocess.stdout.write('RESULT:' + first + ',' + second + '\\n');",
+				),
+			],
+			"yes\nno\n",
+		);
+
+		expect(result.exitCode).toBe(0);
+		expect(result.stdout).toContain("RESULT:false,false");
+		expect(result.stderr).toBe("");
+	});
+
+	it("exits promptly while a non-TTY writer is still producing input", () => {
+		const script = promptScript(
+			"const value = await promptUser('Piped?', true);\nprocess.stdout.write('RESULT:' + value + '\\n');",
+		);
+		const result = runChild([
+			"timeout",
+			"1",
+			"bash",
+			"-c",
+			'yes | "$1" -e "$2"',
+			"bash",
+			process.execPath,
+			script,
+		]);
+
+		expect(result.exitCode).toBe(0);
+		expect(result.stdout).toContain("RESULT:false");
+		expect(result.stderr).toBe("");
+	});
+
 	it("returns the resolved value for a normal yes answer", async () => {
 		const value = await promptUser("Proceed?", false, {
 			promptFn: async () => ({ value: true }),
@@ -681,6 +776,20 @@ describe("promptUser cancellation", () => {
 			promptFn: async () => ({ value: false }),
 		});
 		expect(value).toBe(false);
+	});
+
+	it("does not invoke an injected prompt when explicitly non-interactive", async () => {
+		let promptCalls = 0;
+		const value = await promptUser("Unattended?", true, {
+			isTTY: false,
+			promptFn: async () => {
+				promptCalls += 1;
+				return { value: true };
+			},
+		});
+
+		expect(value).toBe(false);
+		expect(promptCalls).toBe(0);
 	});
 
 	it("aborts with exit(130) when the prompt is cancelled (Ctrl+C)", async () => {

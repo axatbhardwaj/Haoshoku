@@ -18,6 +18,28 @@ describe("installSuperpowers()", () => {
 		fs.rmSync(tmpDir, { recursive: true, force: true });
 	});
 
+	async function expectInvalidSettingsToRemainUntouched(content) {
+		fs.writeFileSync(settingsPath, content);
+
+		const messages = [];
+		const originalError = console.error;
+		const originalLog = console.log;
+		console.error = (...args) => messages.push(args.join(" "));
+		console.log = (...args) => messages.push(args.join(" "));
+		try {
+			await expect(installSuperpowers(settingsPath)).resolves.toBeUndefined();
+		} finally {
+			console.error = originalError;
+			console.log = originalLog;
+		}
+
+		expect(fs.readFileSync(settingsPath, "utf-8")).toBe(content);
+		expect(messages.join("\n")).toMatch(
+			/must be an object.*fix it before retrying/i,
+		);
+		expect(messages.join("\n")).not.toMatch(/Superpowers plugin enabled/i);
+	}
+
 	it("enables the plugin when the key is missing", async () => {
 		const initial = {
 			permissions: { allow: [] },
@@ -47,19 +69,20 @@ describe("installSuperpowers()", () => {
 		expect(fs.readFileSync(settingsPath, "utf-8")).toBe(initialContent);
 	});
 
-	it("does not throw or create a stub when settings.json is missing", async () => {
-		const messages = [];
-		const originalError = console.error;
-		console.error = (...args) => messages.push(args.join(" "));
-		try {
-			await expect(installSuperpowers(settingsPath)).resolves.toBeUndefined();
-		} finally {
-			console.error = originalError;
-		}
+	it("creates missing parent directories and enables the plugin in fresh settings", async () => {
+		settingsPath = path.join(
+			tmpDir,
+			"fresh-machine",
+			".claude",
+			"settings.json",
+		);
 
-		expect(fs.existsSync(settingsPath)).toBe(false);
-		expect(messages.join("\n")).toMatch(/Run Claude Code once/i);
-		expect(messages.join("\n")).not.toMatch(/haoshoku --claude/);
+		await installSuperpowers(settingsPath);
+
+		const result = JSON.parse(fs.readFileSync(settingsPath, "utf-8"));
+		expect(result.enabledPlugins["superpowers@claude-plugins-official"]).toBe(
+			true,
+		);
 	});
 
 	it("returns without throwing when settings.json is not valid JSON", async () => {
@@ -70,9 +93,7 @@ describe("installSuperpowers()", () => {
 		const originalError = console.error;
 		console.error = (...args) => messages.push(args.join(" "));
 		try {
-			await expect(
-				installSuperpowers(settingsPath),
-			).resolves.toBeUndefined();
+			await expect(installSuperpowers(settingsPath)).resolves.toBeUndefined();
 		} finally {
 			console.error = originalError;
 		}
@@ -83,4 +104,28 @@ describe("installSuperpowers()", () => {
 		expect(messages.join("\n")).toMatch(/settings\.json is not valid JSON/i);
 		expect(messages.join("\n")).not.toMatch(/haoshoku --claude/);
 	});
+
+	for (const [name, value] of [
+		["an array", []],
+		["null", null],
+		["a primitive", true],
+	]) {
+		it(`leaves settings.json untouched when its root is ${name}`, async () => {
+			await expectInvalidSettingsToRemainUntouched(
+				`${JSON.stringify(value, null, 2)}\n`,
+			);
+		});
+	}
+
+	for (const [name, value] of [
+		["an array", []],
+		["null", null],
+		["a primitive", true],
+	]) {
+		it(`leaves settings.json untouched when enabledPlugins is ${name}`, async () => {
+			await expectInvalidSettingsToRemainUntouched(
+				`${JSON.stringify({ enabledPlugins: value }, null, 2)}\n`,
+			);
+		});
+	}
 });

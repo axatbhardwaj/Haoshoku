@@ -163,9 +163,7 @@ describe("batched Arch package installation", () => {
 		);
 
 		expect(metadataQueries).toEqual(["repo-one"]);
-		expect(commands).toEqual([
-			"sudo pacman -S --needed --noconfirm repo-one",
-		]);
+		expect(commands).toEqual(["sudo pacman -S --needed --noconfirm repo-one"]);
 		expect(result.invalid).toEqual(["--help", ".hidden"]);
 	});
 
@@ -285,7 +283,9 @@ describe("batched Arch package installation", () => {
 			packageInAurImpl: async () => true,
 			runCommandImpl: async (command) => {
 				commands.push(command);
-				return command === "paru -S --needed --noconfirm --batchinstall aur-one";
+				return (
+					command === "paru -S --needed --noconfirm --batchinstall aur-one"
+				);
 			},
 		});
 
@@ -391,12 +391,7 @@ describe("batched Arch package installation", () => {
 		);
 
 		expect(result).toEqual({
-			installed: [
-				"repo-present",
-				"repo-success",
-				"aur-present",
-				"aur-success",
-			],
+			installed: ["repo-present", "repo-success", "aur-present", "aur-success"],
 			failed: ["repo-fail", "aur-fail"],
 			missing: ["missing"],
 			invalid: ["bad;name"],
@@ -413,7 +408,8 @@ describe("system package installation orchestration", () => {
 
 		await installSystemPackages("yay", false, {
 			refreshSudoImpl: async () => true,
-			readFileImpl: () => "# Applications\n chromium \n\nvisual-studio-code-bin\n",
+			readFileImpl: () =>
+				"# Applications\n chromium \n\nvisual-studio-code-bin\n",
 			installArchPackageBatchImpl: async (packages, options) => {
 				events.push("batch");
 				batchRequests.push({ packages, options });
@@ -548,16 +544,17 @@ describe("Arch package-manager preflight", () => {
 	});
 
 	it("stops the full setup when package-manager preparation fails", async () => {
-		let preflightCalls = 0;
+		const events = [];
 		const result = await runCachyOSSetup({
+			promptDeviceTypeImpl: async () => events.push("device-type"),
 			prepareArchPackageManagerImpl: async () => {
-				preflightCalls += 1;
+				events.push("prepare");
 				return false;
 			},
 		});
 
 		expect(result).toBe(false);
-		expect(preflightCalls).toBe(1);
+		expect(events).toEqual(["device-type", "prepare"]);
 	});
 
 	it("runs Brave policy provisioning only for Omarchy in the plain setup flow", async () => {
@@ -591,11 +588,11 @@ describe("Arch package-manager preflight", () => {
 		expect(await runSetup(true)).toEqual({
 			result: true,
 			events: [
+				"device-type",
 				"prepare",
 				"rust",
 				"aur",
 				"dev-tools",
-				"device-type",
 				"system-packages",
 				"flatpaks",
 				"user-apps",
@@ -608,6 +605,7 @@ describe("Arch package-manager preflight", () => {
 		expect(await runSetup(false)).toEqual({
 			result: true,
 			events: [
+				"device-type",
 				"prepare",
 				"rust",
 				"aur",
@@ -700,9 +698,7 @@ describe("Arch package-manager preflight", () => {
 				expect(result).toBe(true);
 				expect(events).toEqual(["monitors", "workspaces", "omazed"]);
 				expect(warnings).toHaveLength(1);
-				expect(warnings[0]).toContain(
-					`missing ${failingStep}-laptop.conf`,
-				);
+				expect(warnings[0]).toContain(`missing ${failingStep}-laptop.conf`);
 				expect(warnings[0]).toContain("continuing");
 			} finally {
 				log.warning = originalWarning;
