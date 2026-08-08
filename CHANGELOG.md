@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 8.0.0 - 2026-08-08
 
 - Make Omarchy's `deviceType` routing reachable: full setup now asks when no
   valid value is stored and persists an accepted `pc` or `laptop` selection in
