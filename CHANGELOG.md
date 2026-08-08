@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 8.1.0 - 2026-08-08
 
 - Provision GitHub's `gh-stack` extension without a prompt on both default
   setup paths. Detection now recognizes the real alias-first, tab-separated
