@@ -9,9 +9,9 @@ binary acts as a PATH-shadow wrapper for that binary.
 
 | File | What | When to read |
 | ---- | ---- | ------------ |
-| `haoshoku-browser` | Routes URLs to the most recently focused managed Chromium profile, falling back to the configured default. | Changing browser dispatch or focused-profile selection |
-| `haoshoku-chromium-flux` | Launches Chromium on the isolated Flux profile and preserves that profile through Omarchy web-app launch parsing. | Changing the Flux profile, wrapper name, or paired desktop entry |
-| `haoshoku-chromium-profiles` | Validates and queries the configured Chromium profile registry, with portable Flux and DeFi fallbacks. | Changing registry validation, defaults, or profile lookup |
+| `haoshoku-browser` | Routes URLs to the most recently focused managed browser profile, falling back to the configured default. | Changing browser dispatch or focused-profile selection |
+| `haoshoku-chromium-flux` | Launches Brave Origin on the isolated Flux profile and preserves that profile through Omarchy web-app launch parsing. | Changing the Flux profile, wrapper name, or paired desktop entry |
+| `haoshoku-chromium-profiles` | Validates and queries the configured browser profile registry, with portable Flux and DeFi fallbacks. | Changing registry validation, defaults, or profile lookup |
 | `haoshoku-special-workspace` | Implements numbered-app launchers (including the dedicated `haoshoku-ws7` home kitty), stranded-window reclaim, and focus/show/hide behavior for named app and browser special workspaces. | Changing workspace recipes, placement, reclaim/launch-if-missing behavior, or browser toggles |
 | `haoshoku-zed-glass` | Post-processes Omazed's generated Zed theme with dotted `background.appearance`, alpha-adjusted surfaces, and neutral borders. | Changing Zed transparency, Omazed hooks, or protected theme surfaces |
 | `mic-toggle` | Toggles the default microphone through `wpctl` or `pactl` and reports the resulting state. | Changing microphone controls or notifications |
@@ -35,13 +35,13 @@ binary acts as a PATH-shadow wrapper for that binary.
   which identifies its terminal by the dedicated `haoshoku-ws7` class and
   reclaims that window if it was moved away. Warp itself remains installed but
   is no longer launched from a keybind.
-- Chromium profile `.monitor` remains required for registry schema stability,
+- A managed browser profile `.monitor` remains required for registry schema stability,
   but browser workspaces normally follow the focused monitor instead of that
   value. It is used only as a fallback when Hyprland transiently reports no
   focused monitor.
-- A Chromium profile `.class` is effectively fixed, despite the registry
+- A managed browser profile `.class` is effectively fixed, despite the registry
   accepting any value. Every command that can start the Flux profile's
-  Chromium singleton owner must pass `--class=chromium-flux`; otherwise the
+  Brave Origin singleton owner must pass `--class=chromium-flux`; otherwise the
   owner stamps the default class onto later plain windows, the workspace class
   probe misses them, and each `Super+B` press opens another window.
   `tests/flux_integration.test.js` derives the literal Flux-profile launch
@@ -49,11 +49,21 @@ binary acts as a PATH-shadow wrapper for that binary.
   the sites with:
 
   ```bash
-  grep -RIn --exclude='CLAUDE.md' -- 'chromium-haoshoku/flux' .
+  grep -RIn --exclude='CLAUDE.md' -- 'brave-haoshoku/flux' .
   ```
 
+- Profile window-class decision: retain `chromium-flux` and `chromium-defi`
+  unchanged even though the browser is now Brave Origin. These are opaque
+  Wayland class strings, not brand labels. Brave Origin launched with
+  `--class=chromium-flux` or `--class=chromium-defi` stamps that exact string
+  as its window class, identically to how Chromium did. Keeping the existing
+  literal class strings avoids a registry migration that could trigger a
+  duplicate-class validation hazard. Future maintainers must not “correct”
+  this apparent naming mismatch: the existing strings are intentional and
+  both `configs/omarchy/workspaces-*.conf` variants depend on them.
+
   Keep the `chromium-flux` and `chromium-defi` windowrules in
-  `configs/omarchy/workspaces.conf`; they are deployed byte-for-byte, without
+  both `configs/omarchy/workspaces-*.conf` variants; they are deployed byte-for-byte, without
   templating, by `src/helpers/configure_omarchy_workspaces.js`.
   `FALLBACK_PROFILES` in `configs/scripts/haoshoku-chromium-profiles` covers
   the no-registry case. `DEFAULT_CHROMIUM_PROFILES` in

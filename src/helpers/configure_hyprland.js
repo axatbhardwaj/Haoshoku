@@ -421,38 +421,31 @@ export async function promptDesktopEnvironment({
 }
 
 /**
- * Prompt the user for which device type this machine is (PC / laptop / other /
- * skip). On PC/laptop/other, persists `{ deviceType: <value> }` into
+ * Prompt the user for which device type this machine is (PC / laptop / skip).
+ * On PC/laptop, persists `{ deviceType: <value> }` into
  * ~/.haoshoku.json (merged with any existing keys — e.g. skillSources).
- * On skip or cancel, returns null and does NOT touch the file.
+ * On skip/cancel or an unavailable prompt, does NOT touch the file.
  *
- * The answer routes Caelestia monitor/workspace prefs and device-specific
- * audio tuning; skip/cancel leaves those device-routed paths unset.
+ * The answer routes Omarchy and Caelestia monitor/workspace prefs plus
+ * device-specific audio tuning; skip/cancel leaves those paths unset.
  */
 export async function promptDeviceType({
 	configPath = path.join(HOME, ".haoshoku.json"),
 	promptFn = promptsLib,
+	isTTY,
+	force = false,
 } = {}) {
-	const response = await promptFn({
-		type: "select",
-		name: "device",
-		message: "Which device is this? (used to scope future monitor configs)",
-		choices: [
-			{ title: "Main PC", value: "pc" },
-			{ title: "Laptop", value: "laptop" },
-			{ title: "Other", value: "other" },
-			{ title: "Skip — don't persist", value: null },
-		],
-	});
-
-	if (!response || response.device === undefined || response.device === null) {
-		return null;
-	}
-
 	let config = {};
 	if (fs.existsSync(configPath)) {
 		try {
-			config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+			const parsed = JSON.parse(fs.readFileSync(configPath, "utf8"));
+			if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+				config = parsed;
+			} else {
+				log.warning(
+					`~/.haoshoku.json at ${configPath} must contain an object; replacing it while saving deviceType.`,
+				);
+			}
 		} catch (err) {
 			log.warning(
 				`Malformed ~/.haoshoku.json at ${configPath}; replacing it while saving deviceType (${err?.message ?? err})`,
@@ -460,8 +453,50 @@ export async function promptDeviceType({
 			config = {};
 		}
 	}
-	config.deviceType = response.device;
-	fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
 
-	return response.device;
+	if (
+		!force &&
+		(config.deviceType === "pc" || config.deviceType === "laptop")
+	) {
+		return config.deviceType;
+	}
+
+	const persist = (deviceType) => {
+		config.deviceType = deviceType;
+		fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
+		return deviceType;
+	};
+	const canPrompt =
+		isTTY ?? (promptFn !== promptsLib || Boolean(process.stdin.isTTY));
+	if (!canPrompt) {
+		log.warning(
+			"No interactive terminal available; defaulting deviceType to pc for this run without saving it.",
+		);
+		return "pc";
+	}
+
+	let response;
+	try {
+		response = await promptFn({
+			type: "select",
+			name: "device",
+			message: "Which device is this? (routes monitor, workspace, and audio configs)",
+			choices: [
+				{ title: "Main PC", value: "pc" },
+				{ title: "Laptop", value: "laptop" },
+				{ title: "Skip — don't persist", value: null },
+			],
+		});
+	} catch (err) {
+		log.warning(
+			`Device type prompt failed (${err?.message ?? err}); defaulting to pc for this run without saving it.`,
+		);
+		return "pc";
+	}
+
+	if (!response || response.device === undefined || response.device === null) {
+		return null;
+	}
+
+	return persist(response.device);
 }

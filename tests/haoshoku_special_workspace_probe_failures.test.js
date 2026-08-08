@@ -12,7 +12,6 @@ const script =
 		"scripts",
 		"haoshoku-special-workspace",
 	);
-
 describe("haoshoku-special-workspace failed hyprctl probes", () => {
 	let directory;
 	let log;
@@ -49,7 +48,7 @@ if [[ "$probe" == "$FAILED_PROBE" && ( -z "$FAILED_PROBE_CALL" || "$matching_pro
     non-zero-exit) exit 23 ;;
   esac
 elif [[ "$probe" == "monitors -j" ]]; then
-  printf '[{"name":"DP-1","focused":true,"specialWorkspace":{"name":"%s"}}]\n' "$VISIBLE_WORKSPACE"
+  printf '[{"name":"DP-1","focused":true,"specialWorkspace":{"name":"%s"}},{"name":"DP-2","focused":false,"specialWorkspace":{"name":""}},{"name":"HDMI-A-1","focused":false,"specialWorkspace":{"name":""}}]\n' "$VISIBLE_WORKSPACE"
 elif [[ "$probe" == "clients -j" ]]; then
   printf '%s\n' "$CLIENTS_JSON"
 elif [[ "$1" == "dispatch" ]]; then
@@ -102,11 +101,16 @@ esac
 			path.join(commandDirectory, "kitty"),
 			'#!/usr/bin/env bash\nshift 2\nexec "$@"\n',
 		);
+		fs.writeFileSync(
+			path.join(commandDirectory, "brave-origin"),
+			'#!/usr/bin/env bash\n[[ -z "${CHROMIUM_LOG:-}" ]] || printf \'%s\\n\' "$*" >> "$CHROMIUM_LOG"\n',
+		);
 		for (const executable of [
 			hyprctl,
 			helper,
 			path.join(commandDirectory, "systemctl"),
 			path.join(commandDirectory, "kitty"),
+			path.join(commandDirectory, "brave-origin"),
 		]) {
 			fs.chmodSync(executable, 0o755);
 		}
@@ -165,8 +169,8 @@ esac
 		});
 	});
 
-	it("reveals a warm browser workspace when Chromium URL forwarding fails", async () => {
-		const chromium = path.join(commandDirectory, "chromium");
+	it("reveals a warm browser workspace when Brave Origin URL forwarding fails", async () => {
+		const chromium = path.join(commandDirectory, "brave-origin");
 		const chromiumLog = path.join(directory, "chromium");
 		fs.writeFileSync(
 			chromium,
@@ -193,7 +197,7 @@ esac
 			stderr: "",
 		});
 		expect(fs.readFileSync(chromiumLog, "utf8")).toContain(
-			`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+			`--user-data-dir=${directory}/.config/brave-haoshoku/flux`,
 		);
 		expect(fs.readFileSync(chromiumLog, "utf8")).toContain(
 			"https://example.test/warm-forward",
@@ -228,7 +232,7 @@ esac
 			});
 		});
 
-		it(`[${failure}] exact-class client probe falls back to launching Chromium`, async () => {
+		it(`[${failure}] exact-class client probe falls back to launching Brave Origin`, async () => {
 			const result = await run(
 				["browser-toggle", "flux"],
 				"clients -j",
@@ -242,7 +246,7 @@ esac
 				"dispatch togglespecialworkspace browser-flux",
 			]);
 			expect(result.dispatches[2]).toStartWith(
-				"dispatch exec [workspace special:browser-flux silent] uwsm-app -- chromium ",
+				"dispatch exec [workspace special:browser-flux silent] uwsm-app -- brave-origin ",
 			);
 			expect(result.dispatches[2]).toContain("--class=chromium-flux");
 		});

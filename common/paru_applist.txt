@@ -1,5 +1,6 @@
 visual-studio-code-bin
 chromium
+brave-origin-bin
 zip
 kitty
 tmux

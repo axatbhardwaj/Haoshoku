@@ -12,6 +12,8 @@ import {
 import { configureAgentOs } from "../helpers/configure_agent_os.js";
 import { configureAudio } from "../helpers/configure_audio.js";
 import { configureBash } from "../helpers/configure_bash.js";
+import { configureBraveManagedPolicies } from "../helpers/configure_brave_managed_policies.js";
+import { configureChromiumProfiles } from "../helpers/configure_chromium_profiles.js";
 import {
 	bootstrapClaudePolicy,
 	configureClaude,
@@ -19,8 +21,8 @@ import {
 import { configureClaudeStayAwake } from "../helpers/configure_claude_stay_awake.js";
 import { configureClaudeRemoteControl } from "../helpers/configure_claude_remote_control.js";
 import { configureCodex } from "../helpers/configure_codex.js";
-import { configureChromiumProfiles } from "../helpers/configure_chromium_profiles.js";
 import { configureMimeapps } from "../helpers/configure_mimeapps.js";
+import { promptDeviceType } from "../helpers/configure_hyprland.js";
 import { configureOmarchyMonitors } from "../helpers/configure_omarchy_monitors.js";
 import { configureOmarchyWorkspaces } from "../helpers/configure_omarchy_workspaces.js";
 import { configureOmazed } from "../helpers/configure_omazed.js";
@@ -602,18 +604,59 @@ export async function configureUserApps({
 
 export async function runCachyOSSetup({
 	prepareArchPackageManagerImpl = prepareArchPackageManager,
+	ensureRustToolchainImpl = ensureRustToolchain,
+	ensureAurHelperImpl = ensureAurHelper,
+	installDevToolsImpl = installDevTools,
+	commandExistsImpl = commandExists,
+	installSystemPackagesImpl = installSystemPackages,
+	installFlatpakAppsImpl = installFlatpakApps,
+	configureUserAppsImpl = configureUserApps,
+	promptDeviceTypeImpl = promptDeviceType,
+	configureBraveManagedPoliciesImpl = configureBraveManagedPolicies,
+	configureOmarchyMonitorsImpl = configureOmarchyMonitors,
+	configureOmarchyWorkspacesImpl = configureOmarchyWorkspaces,
+	configureOmazedImpl = configureOmazed,
 } = {}) {
-	if (!(await prepareArchPackageManagerImpl())) return false;
-	await ensureRustToolchain();
-	const aurHelper = await ensureAurHelper();
-	await installDevTools();
+	const configureBraveManagedPolicies = configureBraveManagedPoliciesImpl;
+	const configureOmarchyMonitors = configureOmarchyMonitorsImpl;
+	const configureOmarchyWorkspaces = configureOmarchyWorkspacesImpl;
+	const configureOmazed = configureOmazedImpl;
 
-	const isOmarchy = await commandExists("omarchy");
-	await installSystemPackages(aurHelper, isOmarchy);
-	await installFlatpakApps();
-	await configureUserApps();
-	if (isOmarchy) await configureOmarchyMonitors();
-	if (isOmarchy) await configureOmarchyWorkspaces();
+	if (!(await prepareArchPackageManagerImpl())) return false;
+	await ensureRustToolchainImpl();
+	const aurHelper = await ensureAurHelperImpl();
+	await installDevToolsImpl();
+
+	const isOmarchy = await commandExistsImpl("omarchy");
+	if (isOmarchy) await promptDeviceTypeImpl();
+	await installSystemPackagesImpl(aurHelper, isOmarchy);
+	await installFlatpakAppsImpl();
+	await configureUserAppsImpl();
+	if (isOmarchy) {
+		try {
+			await configureBraveManagedPolicies();
+		} catch (err) {
+			log.warning(
+				`Brave managed-policy configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
+			);
+		}
+	}
+	if (isOmarchy) {
+		try {
+			await configureOmarchyMonitors();
+		} catch (err) {
+			log.warning(
+				`Omarchy monitor configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
+			);
+		}
+		try {
+			await configureOmarchyWorkspaces();
+		} catch (err) {
+			log.warning(
+				`Omarchy workspace configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
+			);
+		}
+	}
 	if (isOmarchy) await configureOmazed();
 
 	log.success("Arch setup finished. Please restart your terminal or log out.");

@@ -477,7 +477,7 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 		}
 	});
 
-	it("ships a WhatsApp desktop entry with an isolated Chromium profile", () => {
+	it("ships a WhatsApp desktop entry with an isolated Brave Origin profile", () => {
 		const desktop = fs.readFileSync(
 			path.join(CONFIGS_MIMEAPPS_DIR, "applications", "whatsapp-web.desktop"),
 			"utf8",
@@ -485,10 +485,10 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 
 		expect(desktop).toContain("Name=WhatsApp Web");
 		expect(desktop).toContain(
-			`Exec=sh -lc 'exec chromium --user-data-dir="$HOME/.config/chromium-haoshoku/whatsapp" --app=https://web.whatsapp.com/'`,
+			`Exec=sh -lc 'exec brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/whatsapp" --app=https://web.whatsapp.com/'`,
 		);
 		expect(desktop).toContain("Type=Application");
-		expect(desktop).toContain("StartupWMClass=chrome-web.whatsapp.com__-Default");
+		expect(desktop).toContain("StartupWMClass=brave-web.whatsapp.com__-Default");
 	});
 
 	it("restores the working WhatsApp Exec on every later mimeapps sync", async () => {
@@ -514,7 +514,7 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 			"utf8",
 		);
 		expect(deployed).toContain(
-			`Exec=sh -lc 'exec chromium --user-data-dir="$HOME/.config/chromium-haoshoku/whatsapp" --app=https://web.whatsapp.com/'`,
+			`Exec=sh -lc 'exec brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/whatsapp" --app=https://web.whatsapp.com/'`,
 		);
 		expect(deployed).not.toContain("Exec=caelestia toggle communication");
 	});
@@ -546,6 +546,10 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 			"utf8",
 		);
 
+		expect(handler).toContain(
+			"Comment=Open links in the most recently focused Haoshoku Brave Origin profile",
+		);
+		expect(handler).not.toContain("Chromium");
 		expect(handler).toContain("Exec=haoshoku-browser %U");
 		expect(handler).toContain(
 			"MimeType=text/html;x-scheme-handler/http;x-scheme-handler/https;x-scheme-handler/about;x-scheme-handler/unknown;",
@@ -570,7 +574,7 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 		expect(content).toContain("inode/directory=org.gnome.Nautilus.desktop");
 	});
 
-	it("routes notion:// links to the isolated Chromium Notion app", () => {
+	it("routes notion:// links to the isolated Brave Origin Notion app", () => {
 		const content = fs.readFileSync(
 			path.join(CONFIGS_MIMEAPPS_DIR, "mimeapps.list"),
 			"utf8",
@@ -590,9 +594,9 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 		expect(content).not.toContain("x-scheme-handler/notion=cohesion.desktop");
 		expect(desktop).toContain("Name=Genesis Block | Notion");
 		expect(desktop).toContain(
-			`Exec=sh -lc 'exec chromium --user-data-dir="$HOME/.config/chromium-haoshoku/notion" --app=https://www.notion.so/'`,
+			`Exec=sh -lc 'exec brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/notion" --app=https://www.notion.so/'`,
 		);
-		expect(desktop).toContain("StartupWMClass=chrome-www.notion.so__-Default");
+		expect(desktop).toContain("StartupWMClass=brave-www.notion.so__-Default");
 	});
 
 	it("covers every managed desktop entry with either a deployed handler or installed package", () => {

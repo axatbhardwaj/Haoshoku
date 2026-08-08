@@ -30,10 +30,13 @@ import {
 	backupCodexConfig,
 	syncCodexConfig,
 } from "./src/helpers/configure_codex.js";
+import { configureBraveManagedPolicies } from "./src/helpers/configure_brave_managed_policies.js";
+import { promptDeviceType } from "./src/helpers/configure_hyprland.js";
 import {
 	backupMimeappsConfig,
 	syncMimeappsConfig,
 } from "./src/helpers/configure_mimeapps.js";
+import { configureOmarchyMonitors } from "./src/helpers/configure_omarchy_monitors.js";
 import { configureOmarchyWorkspaces } from "./src/helpers/configure_omarchy_workspaces.js";
 import {
 	backupPrWatch,
@@ -130,6 +133,7 @@ program
 		"--pr-watch-backup",
 		"Backup the pr-watch PR watcher from ~/.local/bin/ to configs/pr-watch/",
 	)
+	.option("--device-type <type>", "Set device type (pc or laptop)")
 	.option(
 		"--scripts",
 		"Deploy user scripts (configs/scripts/ → ~/.local/bin/) and prune retired entries",
@@ -137,6 +141,14 @@ program
 	.option(
 		"--workspaces",
 		"Deploy workspace config to ~/.config/hypr/, install helper script to ~/.local/bin/, add source line to ~/.config/hypr/hyprland.conf, and reload Hyprland",
+	)
+	.option(
+		"--monitors",
+		"Deploy the device-routed monitor config to ~/.config/hypr/monitors.conf and reload Hyprland",
+	)
+	.option(
+		"--brave-managed-policies",
+		"Configure Brave managed policies used by Omarchy browser theming",
 	)
 	.action(async (options) => {
 		try {
@@ -289,6 +301,20 @@ async function runAction(options) {
 		return;
 	}
 
+	if (options.deviceType !== undefined) {
+		if (!["pc", "laptop"].includes(options.deviceType)) {
+			log.error("Device type must be pc or laptop.");
+			process.exitCode = 2;
+			return;
+		}
+		await promptDeviceType({
+			force: true,
+			isTTY: true,
+			promptFn: async () => ({ device: options.deviceType }),
+		});
+		return;
+	}
+
 	if (options.scripts) {
 		await installUserScripts();
 		return;
@@ -296,6 +322,16 @@ async function runAction(options) {
 
 	if (options.workspaces) {
 		await configureOmarchyWorkspaces();
+		return;
+	}
+
+	if (options.monitors) {
+		await configureOmarchyMonitors();
+		return;
+	}
+
+	if (options.braveManagedPolicies) {
+		if (!(await configureBraveManagedPolicies())) process.exit(1);
 		return;
 	}
 

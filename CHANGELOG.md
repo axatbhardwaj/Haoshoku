@@ -1,5 +1,41 @@
 # Changelog
 
+## Unreleased
+
+- Make Omarchy's `deviceType` routing reachable: full setup now asks when no
+  valid value is stored and persists an accepted `pc` or `laptop` selection in
+  `~/.haoshoku.json` before audio, monitor, and workspace deployment. A laptop
+  receives single-monitor workspace and monitor variants while keeping the PC
+  workspace behavior otherwise identical; its monitor variant deliberately
+  leaves GTK scaling to the panel. Choosing Skip, or using the PC fallback when
+  the prompt cannot run, leaves device-specific audio unset, uses the PC
+  fallback for Hyprland only for that run, and asks again next setup. Set or
+  change the value with `haoshoku --device-type laptop` (or `pc`), and redeploy
+  either half of the topology with `--workspaces` or `--monitors`.
+- Pin workspace 8 to the primary monitor (DP-1) and workspace 9 to the
+  rightmost monitor (HDMI-A-1) in the PC Omarchy workspace layout.
+- Move `Super+B` (Flux), `Super+D` (DeFi), Notion, WhatsApp, ChatGPT, X,
+  YouTube, Crunchyroll, Re:ANIME, Google Photos, Grok, and the default
+  `http`/`https` desktop entry from Chromium to Brave Origin, and add
+  `brave-origin-bin` to the Arch package set.
+- Brave profiles start empty under `~/.config/brave-haoshoku/`: WhatsApp needs
+  a fresh QR pairing from the phone, and every other migrated app needs a fresh
+  login. Existing Chromium profiles remain untouched at
+  `~/.config/chromium-haoshoku/`; nothing is deleted.
+- During Omarchy setup, automatically keep Brave's managed-policy parents
+  root-owned but deliberately user-own the leaf directory and both policy files
+  so Omarchy can update `color.json` on every theme switch. Repair unsafe
+  Brave/Chromium directory modes, write only incorrect policy files without
+  sudo, and keep the anti-hijack policy in its own file so Omarchy never
+  overwrites it.
+- Give the DeFi browser profile a distinct violet window border (`#9762e2`) so
+  its windows are identifiable at a glance against the Flux profile, which
+  keeps the theme default. Implement this with a `border_color` window rule in
+  `configs/omarchy/workspaces-pc.conf` and its laptop counterpart, matching the
+  `chromium-defi` window class.
+  Because Hyprland applies window rules when a window is created, an already-
+  open browser keeps its old border until it is reopened.
+
 ## 7.9.0 - 2026-08-08
 
 - Keep one dedicated home-rooted kitty terminal on workspace 7, starting it at

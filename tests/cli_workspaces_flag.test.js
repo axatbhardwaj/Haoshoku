@@ -100,12 +100,110 @@ describe("--workspaces CLI mode", () => {
 		expect(result.exitCode).toBe(0);
 		expect(fs.readFileSync(destination, "utf8")).toBe(
 			fs.readFileSync(
-				path.join(PROJECT_ROOT, "configs", "omarchy", "workspaces.conf"),
+				path.join(
+					PROJECT_ROOT,
+					"configs",
+					"omarchy",
+					"workspaces-pc.conf",
+				),
 				"utf8",
 			),
 		);
 		expect(fs.readFileSync(hyprlandConfig(), "utf8")).toContain(
 			"source = ~/.config/hypr/haoshoku-workspaces.conf",
+		);
+	});
+
+	it("sets or changes deviceType through the standalone CLI mode", () => {
+		fs.writeFileSync(
+			path.join(tmpHome, ".haoshoku.json"),
+			`${JSON.stringify({ deviceType: "pc", preserved: true })}\n`,
+		);
+		const result = Bun.spawnSync([CLI, "--device-type", "laptop"], {
+			env: { ...process.env, HOME: tmpHome },
+			stderr: "pipe",
+			stdout: "pipe",
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(
+			JSON.parse(
+				fs.readFileSync(path.join(tmpHome, ".haoshoku.json"), "utf8"),
+			),
+		).toEqual({ deviceType: "laptop", preserved: true });
+	});
+
+	it("rejects an unroutable standalone deviceType", () => {
+		const result = Bun.spawnSync([CLI, "--device-type", "tablet"], {
+			env: { ...process.env, HOME: tmpHome },
+			stderr: "pipe",
+			stdout: "pipe",
+		});
+
+		expect(result.exitCode).toBe(2);
+		expect(result.stderr.toString()).toContain(
+			"Device type must be pc or laptop",
+		);
+		expect(fs.existsSync(path.join(tmpHome, ".haoshoku.json"))).toBe(false);
+	});
+
+	it("rejects an explicitly empty standalone deviceType instead of entering setup", () => {
+		const result = Bun.spawnSync(
+			[CLI, "--device-type", "", "--os", "unsupported"],
+			{
+				env: { ...process.env, HOME: tmpHome },
+				stderr: "pipe",
+				stdout: "pipe",
+			},
+		);
+
+		expect(result.exitCode).toBe(2);
+		expect(result.stderr.toString()).toContain(
+			"Device type must be pc or laptop",
+		);
+		expect(fs.existsSync(path.join(tmpHome, ".haoshoku.json"))).toBe(false);
+	});
+
+	it("keeps an empty deviceType mutually exclusive with --monitors", () => {
+		const result = Bun.spawnSync([CLI, "--device-type", "", "--monitors"], {
+			env: { ...process.env, HOME: tmpHome },
+			stderr: "pipe",
+			stdout: "pipe",
+		});
+
+		expect(result.exitCode).toBe(2);
+		expect(
+			`${result.stdout.toString()}\n${result.stderr.toString()}`,
+		).toContain("mutually exclusive");
+		expect(fs.existsSync(path.join(hyprDir(), "monitors.conf"))).toBe(false);
+	});
+
+	it("deploys the selected laptop monitor config through --monitors", () => {
+		fs.writeFileSync(
+			path.join(tmpHome, ".haoshoku.json"),
+			`${JSON.stringify({ deviceType: "laptop" })}\n`,
+		);
+		const { HYPRLAND_INSTANCE_SIGNATURE: _session, ...isolatedEnv } =
+			process.env;
+		const result = Bun.spawnSync([CLI, "--monitors"], {
+			env: { ...isolatedEnv, HOME: tmpHome },
+			stderr: "pipe",
+			stdout: "pipe",
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(
+			fs.readFileSync(path.join(hyprDir(), "monitors.conf"), "utf8"),
+		).toBe(
+			fs.readFileSync(
+				path.join(
+					PROJECT_ROOT,
+					"configs",
+					"omarchy",
+					"monitors-laptop.conf",
+				),
+				"utf8",
+			),
 		);
 	});
 });

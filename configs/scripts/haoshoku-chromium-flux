@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Chromium pinned to the flux profile.
+# Brave Origin pinned to the flux profile.
 #
 # omarchy-launch-webapp extracts only the FIRST FIELD of a .desktop Exec line
 # (sed 's/^Exec=\([^ ]*\).*/\1/'), so any --user-data-dir written as a flag there
 # is silently dropped. Carrying the profile inside the binary is the only way it
 # survives that parse, which is why this wrapper exists rather than a flag.
 set -euo pipefail
-exec /usr/bin/chromium --user-data-dir="$HOME/.config/chromium-haoshoku/flux" --class=chromium-flux "$@"
+exec brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/flux" --class=chromium-flux "$@"

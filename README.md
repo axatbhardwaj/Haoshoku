@@ -46,18 +46,29 @@ The Arch setup:
 - ships refresh-safe app bindings from
   [`configs/omarchy/bindings.conf`](configs/omarchy/bindings.conf) instead of
   replacing Omarchy's `~/.config/hypr/bindings.conf`;
-- restores `~/.config/hypr/monitors.conf`, backing up different existing
-  content first;
-- adds a behavior-only workspace overlay: workspaces 1–3 use DP-1, 4–5 use
-  HDMI-A-1, and 6, 7, and 10 use DP-2;
+- asks for a `pc` or `laptop` `deviceType` when no valid value is stored, then
+  saves an accepted selection in `~/.haoshoku.json` before device-routed audio
+  and Hyprland configuration. Choosing Skip, or using the PC fallback when the
+  prompt cannot run, leaves device-specific audio unset, uses the PC Hyprland
+  fallback for that run, and asks again on the next full setup;
+- restores a device-routed `~/.config/hypr/monitors.conf`, backing up different
+  existing content first. The PC variant restores the three-monitor layout;
+  the laptop variant uses the internal panel's preferred mode and automatic
+  scale instead of forcing the PC's 2x GTK scale;
+- adds a device-routed behavior-only workspace overlay. The PC variant puts
+  workspaces 1–3 and 8 on DP-1, 4–5 and 9 on HDMI-A-1, and 6, 7, and 10 on
+  DP-2. The laptop variant removes monitor pins for a single-monitor layout
+  while keeping the same workspace behavior, window rules, and bindings;
 - adds two-key special-workspace toggles under `Super`: A Haki (local Claude
   workspace), I AI assistants,
-  M music, O 1Password, G communication, B Flux Chromium, D DeFi Chromium,
+  M music, O 1Password, G communication, B Flux Brave Origin,
+  D DeFi Brave Origin,
   S stash, and `Super+Shift+X` X (`Super+Shift+S` stashes the focused window);
   see the canonical swaps JSON above for every Omarchy default relocated or
   superseded to make room;
-- isolates Flux, DeFi, WhatsApp, and Notion below
-  `~/.config/chromium-haoshoku/`;
+- starts Flux, DeFi, WhatsApp, and Notion with empty Brave Origin profiles
+  below `~/.config/brave-haoshoku/`; existing Chromium profile data remains
+  untouched at `~/.config/chromium-haoshoku/` for manual import;
 - installs packaged Omazed and safely points Zed at its generated theme so Zed
   follows the active Omarchy palette. Haoshoku never runs Omazed's manual
   installer or deletes unrelated Zed themes;
@@ -160,6 +171,7 @@ haoshoku --claude-update
 haoshoku --claude-bootstrap
 haoshoku --codex
 haoshoku --codex-backup
+haoshoku --device-type laptop
 haoshoku --audio
 haoshoku --audio-backup
 haoshoku --mimeapps
@@ -168,7 +180,12 @@ haoshoku --skills
 haoshoku --skills-update
 haoshoku --skills-list
 haoshoku --superpowers
+haoshoku --workspaces
+haoshoku --monitors
 ```
+
+Use `haoshoku --device-type pc` to switch back. The full Omarchy setup does not
+re-prompt when either valid value is already stored.
 
 Run `haoshoku --help` for the complete current list.
 

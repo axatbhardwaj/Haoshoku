@@ -108,6 +108,13 @@ describe("findActiveModeFlags", () => {
 		expect(result).toContain("audio");
 	});
 
+	it("treats device type and monitor deployment as mutually exclusive modes", () => {
+		expect(
+			findActiveModeFlags({ deviceType: "laptop", monitors: true }),
+		).toEqual(["deviceType", "monitors"]);
+		expect(findActiveModeFlags({ deviceType: "" })).toEqual(["deviceType"]);
+	});
+
 	it("covers every Commander one-shot option and excludes only --os", () => {
 		const source = fs.readFileSync(
 			path.resolve(import.meta.dir, "..", "haoshoku.js"),

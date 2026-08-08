@@ -2,7 +2,7 @@
 	"schema_version": 2,
 	"swaps": [
 		{
-			"config_file": "configs/omarchy/workspaces.conf",
+			"config_file": "configs/omarchy/workspaces-pc.conf",
 			"key_combination_taken": "SUPER, G",
 			"previous_binding": "bindd = SUPER, G, Toggle window grouping, togglegroup",
 			"moved_from_dispatcher": "togglegroup",
@@ -13,7 +13,7 @@
 			"reason": "displaced_by_workspace_toggle"
 		},
 		{
-			"config_file": "configs/omarchy/workspaces.conf",
+			"config_file": "configs/omarchy/workspaces-pc.conf",
 			"key_combination_taken": "SUPER, O",
 			"previous_binding": "bindd = SUPER, O, Pop window out (float & pin), exec, omarchy-hyprland-window-pop",
 			"moved_from_dispatcher": "exec",
@@ -24,7 +24,7 @@
 			"reason": "displaced_by_workspace_toggle"
 		},
 		{
-			"config_file": "configs/omarchy/workspaces.conf",
+			"config_file": "configs/omarchy/workspaces-pc.conf",
 			"key_combination_taken": "SUPER, S",
 			"previous_binding": "bindd = SUPER, S, Toggle scratchpad, togglespecialworkspace, scratchpad",
 			"moved_from_dispatcher": "togglespecialworkspace",

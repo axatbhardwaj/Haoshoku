@@ -4,7 +4,12 @@ import fs from "node:fs";
 import path from "node:path";
 
 const repoRoot = path.join(import.meta.dir, "..");
-const configPath = path.join(repoRoot, "configs", "omarchy", "workspaces.conf");
+const configPath = path.join(
+	repoRoot,
+	"configs",
+	"omarchy",
+	"workspaces-pc.conf",
+);
 const bindingsConfigPath = path.join(
 	repoRoot,
 	"configs",
@@ -414,7 +419,7 @@ describe("Omarchy keybinding swaps", () => {
 		expect(bindings).toContain("unbind = SUPER SHIFT, A");
 		expect(bindings).not.toContain(deletedChatgpt?.previous_binding);
 		expect(activeBindings).toContain(
-			'bindd = SUPER SHIFT ALT, A, Grok, exec, omarchy-launch-or-focus-webapp "chrome-grok\\.com__-Default" "https://grok.com"',
+			'bindd = SUPER SHIFT ALT, A, Grok, exec, omarchy-launch-or-focus "brave-grok\\.com__-Default" "haoshoku-chromium-flux --app=https://grok.com"',
 		);
 		expect(bindings).not.toContain(
 			'# bindd = SUPER SHIFT ALT, A, Grok, exec, omarchy-launch-webapp "https://grok.com"',
@@ -496,7 +501,7 @@ describe("Omarchy keybinding swaps", () => {
 	it("keeps every deleted_by_user key unbound across both overlays", () => {
 		const overlays = [
 			["configs/omarchy/bindings.conf", bindingsConfigPath],
-			["configs/omarchy/workspaces.conf", configPath],
+			["configs/omarchy/workspaces-pc.conf", configPath],
 		];
 
 		for (const swap of swapsDocument.swaps.filter(

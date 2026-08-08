@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const config = fs.readFileSync(
-	path.join(import.meta.dir, "..", "configs", "omarchy", "workspaces.conf"),
+	path.join(import.meta.dir, "..", "configs", "omarchy", "workspaces-pc.conf"),
 	"utf8",
 );
 const bindingsConfig = fs.readFileSync(
@@ -21,21 +21,28 @@ describe("Omarchy workspace overlay", () => {
 			[5, "HDMI-A-1"],
 			[6, "DP-2"],
 			[7, "DP-2"],
+			[8, "DP-1"],
+			[9, "HDMI-A-1"],
 			[10, "DP-2"],
 		]) {
 			expect(config).toContain(`workspace = ${workspace}, monitor:${monitor}`);
 		}
 	});
 
-	it("is deployed only in the Omarchy branch and after monitor restoration", () => {
+	it("prompts before device routing and restores monitors before workspaces", () => {
 		const installer = fs.readFileSync(
 			path.join(import.meta.dir, "..", "src", "os_scripts", "cachyos.js"),
 			"utf8",
 		);
-		const monitorCall = "if (isOmarchy) await configureOmarchyMonitors();";
-		const workspaceCall = "if (isOmarchy) await configureOmarchyWorkspaces();";
+		const promptCall = "if (isOmarchy) await promptDeviceTypeImpl();";
+		const monitorCall = "await configureOmarchyMonitors();";
+		const workspaceCall = "await configureOmarchyWorkspaces();";
+		expect(installer).toContain(promptCall);
 		expect(installer).toContain(monitorCall);
 		expect(installer).toContain(workspaceCall);
+		expect(installer.indexOf(monitorCall)).toBeGreaterThan(
+			installer.indexOf(promptCall),
+		);
 		expect(installer.indexOf(workspaceCall)).toBeGreaterThan(
 			installer.indexOf(monitorCall),
 		);
@@ -48,8 +55,8 @@ describe("Omarchy workspace overlay", () => {
 			"bindd = SUPER, M, Show/focus/hide music workspace, exec, haoshoku-special-workspace music",
 			"bindd = SUPER, O, Show/focus/hide 1Password workspace, exec, haoshoku-special-workspace 1password",
 			"bindd = SUPER, G, Show/focus/hide communication workspace, exec, haoshoku-special-workspace communication",
-			"bindd = SUPER, B, Toggle Flux Chromium workspace, exec, haoshoku-special-workspace browser-toggle flux",
-			"bindd = SUPER, D, Toggle DeFi Chromium workspace, exec, haoshoku-special-workspace browser-toggle defi",
+			"bindd = SUPER, B, Toggle Flux Brave Origin workspace, exec, haoshoku-special-workspace browser-toggle flux",
+			"bindd = SUPER, D, Toggle DeFi Brave Origin workspace, exec, haoshoku-special-workspace browser-toggle defi",
 			"bindd = SUPER, Y, Show/focus/hide YouTube workspace, exec, haoshoku-special-workspace youtube",
 			"bindd = SUPER, R, Show/focus/hide Crunchyroll workspace, exec, haoshoku-special-workspace crunchyroll",
 			"bindd = SUPER, F, Show/focus/hide Re:ANIME workspace, exec, haoshoku-special-workspace reanime",
@@ -77,16 +84,44 @@ describe("Omarchy workspace overlay", () => {
 
 	it("binds browser shortcuts to explicit toggle commands", () => {
 		expect(config).toContain(
-			"bindd = SUPER, B, Toggle Flux Chromium workspace, exec, haoshoku-special-workspace browser-toggle flux",
+			"bindd = SUPER, B, Toggle Flux Brave Origin workspace, exec, haoshoku-special-workspace browser-toggle flux",
 		);
 		expect(config).toContain(
-			"bindd = SUPER, D, Toggle DeFi Chromium workspace, exec, haoshoku-special-workspace browser-toggle defi",
+			"bindd = SUPER, D, Toggle DeFi Brave Origin workspace, exec, haoshoku-special-workspace browser-toggle defi",
 		);
 	});
 
-	it("routes Notion by its exact app-derived Chromium class", () => {
+	it("keeps the DEFI profile violet in both border states while Flux inherits the theme", () => {
+		const profileBorderRules = config
+			.split(/\r?\n/)
+			.filter((line) => line.includes("match:class ^chromium-"));
+
+		expect(profileBorderRules).toContain(
+			"windowrule = border_color rgb(9762e2) rgb(9762e2), match:class ^chromium-defi$",
+		);
+		expect(profileBorderRules).not.toContain(
+			"windowrule = border_color rgb(9762e2) rgb(9762e2), match:class ^chromium-flux$",
+		);
+		expect(profileBorderRules).not.toContain(
+			"windowrule = border_color rgb(62e2a4) rgb(62e2a4), match:class ^chromium-flux$",
+		);
+	});
+
+	it("restricts every border-color rule to a Haoshoku-owned browser profile class", () => {
+		const borderRules = config
+			.split(/\r?\n/)
+			.filter((line) => line.startsWith("windowrule = border_color "));
+
+		expect(borderRules.length).toBeGreaterThan(0);
+		for (const rule of borderRules) {
+			const classPattern = rule.match(/, match:class (\S+)$/)?.[1];
+			expect(["^chromium-flux$", "^chromium-defi$"]).toContain(classPattern);
+		}
+	});
+
+	it("routes Notion by its exact app-derived Brave class", () => {
 		expect(config).toContain(
-			"windowrule = workspace 10 silent, match:class ^chrome-www\\.notion\\.so__-Default$",
+			"windowrule = workspace 10 silent, match:class ^brave-www\\.notion\\.so__-Default$",
 		);
 	});
 
@@ -102,19 +137,19 @@ describe("Omarchy workspace overlay", () => {
 		);
 	});
 
-	it("routes X by its exact app-derived Chromium class to its special workspace", () => {
+	it("routes X by its exact app-derived Brave class to its special workspace", () => {
 		expect(config).toContain(
-			"windowrule = workspace special:x, match:class ^chrome-x\\.com__-Default$",
+			"windowrule = workspace special:x, match:class ^brave-x\\.com__-Default$",
 		);
 		expect(config).not.toContain(
-			"windowrule = workspace 6 silent, match:class ^chrome-x\\.com__-Default$",
+			"windowrule = workspace 6 silent, match:class ^brave-x\\.com__-Default$",
 		);
 	});
 
 	it("routes both AI assistants by exact class without silent placement", () => {
 		const expectedRules = [
 			String.raw`windowrule = workspace special:assistants, match:class ^com\.anthropic\.Claude$`,
-			String.raw`windowrule = workspace special:assistants, match:class ^chrome-chatgpt\.com__-Default$`,
+			String.raw`windowrule = workspace special:assistants, match:class ^brave-chatgpt\.com__-Default$`,
 		];
 		const assistantRules = config
 			.split(/\r?\n/)
@@ -124,29 +159,29 @@ describe("Omarchy workspace overlay", () => {
 
 		expect(assistantRules).toEqual(expectedRules);
 		for (const rule of assistantRules) expect(rule).not.toContain(" silent");
-		expect("chrome-chatgptXcom__-Default").not.toMatch(
-			/^chrome-chatgpt\.com__-Default$/,
+		expect("brave-chatgptXcom__-Default").not.toMatch(
+			/^brave-chatgpt\.com__-Default$/,
 		);
 	});
 
 	for (const { workspace, classPattern, decoyClass } of [
 		{
 			workspace: "youtube",
-			classPattern: "^chrome-youtube\\.com__-Default$",
-			decoyClass: "chrome-youtubeXcom__-Default",
+			classPattern: "^brave-youtube\\.com__-Default$",
+			decoyClass: "brave-youtubeXcom__-Default",
 		},
 		{
 			workspace: "crunchyroll",
-			classPattern: "^chrome-www\\.crunchyroll\\.com__-Default$",
-			decoyClass: "chrome-wwwXcrunchyrollXcom__-Default",
+			classPattern: "^brave-www\\.crunchyroll\\.com__-Default$",
+			decoyClass: "brave-wwwXcrunchyrollXcom__-Default",
 		},
 		{
 			workspace: "reanime",
-			classPattern: "^chrome-reanime\\.to__home-Default$",
-			decoyClass: "chrome-reanimeXto__home-Default",
+			classPattern: "^brave-reanime\\.to__home-Default$",
+			decoyClass: "brave-reanimeXto__home-Default",
 		},
 	]) {
-		it(`routes ${workspace} by its escaped app-derived Chromium class without silent placement`, () => {
+		it(`routes ${workspace} by its escaped app-derived Brave class without silent placement`, () => {
 			const rule = config
 				.split(/\r?\n/)
 				.find((line) => line.includes(`match:class ${classPattern}`));
@@ -204,16 +239,16 @@ describe("Omarchy workspace overlay", () => {
 			/^windowrule = workspace special:x, match:class (.+)$/m,
 		)?.[1];
 		expect(rule).toBeDefined();
-		expect("chrome-xXcom__-Default").not.toMatch(new RegExp(rule));
+		expect("brave-xXcom__-Default").not.toMatch(new RegExp(rule));
 	});
 
 	it("keeps workspace 6 pinned to the portrait monitor", () => {
 		expect(config).toContain("workspace = 6, monitor:DP-2");
 	});
 
-	it("routes WhatsApp by its exact app-derived Chromium class", () => {
+	it("routes WhatsApp by its exact app-derived Brave class", () => {
 		expect(config).toContain(
-			"windowrule = workspace special:communication, match:class ^(signal|Signal|chrome-web\\.whatsapp\\.com__-Default)$",
+			"windowrule = workspace special:communication, match:class ^(signal|Signal|brave-web\\.whatsapp\\.com__-Default)$",
 		);
 	});
 
@@ -226,7 +261,19 @@ describe("Omarchy workspace overlay", () => {
 	});
 
 	it("keeps retired desktops, browsers, and visual ownership out", () => {
-		expect(config).not.toMatch(
+		const visualPolicy = config
+			.split(/\r?\n/)
+			.map((line) =>
+				line.startsWith("bindd = ")
+					? line.replace(
+							/^(bindd = [^,]+, [^,]+), [^,]+,/,
+							"$1, <description>,",
+						)
+					: line,
+			)
+			.join("\n")
+			.replace(/brave-[^\s$]*__[^\s$]*-Default/g, "");
+		expect(visualPolicy).not.toMatch(
 			/caelestia|brave|kde|opacity|blur|decoration|wallpaper/i,
 		);
 	});

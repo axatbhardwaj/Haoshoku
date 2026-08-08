@@ -238,8 +238,8 @@ export function readConfiguredDeviceType(home) {
 }
 
 /**
- * Read deviceType from ~/.haoshoku.json (populated by `haoshoku --hyprland`'s
- * promptDeviceType). Returns the literal string if it's a known variant
+ * Read deviceType from ~/.haoshoku.json (populated during Omarchy setup or by
+ * `haoshoku --device-type`). Returns the literal string if it's a known variant
  * (`"pc"` or `"laptop"`); otherwise returns `DEFAULT_DEVICE_TYPE` (`"pc"`).
  * This fallback is for config families where the PC variant is the safest
  * mainstream default. Hardware-specific flows that must not guess (for example

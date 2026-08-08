@@ -119,8 +119,8 @@ if [[ "$recipe" == numbered || "$recipe" == numbered-login ]]; then
       ;;
     kitty) ensure_numbered_kitty "$workspace" ;;
     notion)
-      # Chromium ignores --class under --app and derives the class from the URL instead.
-      launch_if_missing "$workspace" '^chrome-www\.notion\.so__-Default$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/notion" --app=https://www.notion.so/
+      # Brave Origin ignores --class under --app and derives the class from the URL instead.
+      launch_if_missing "$workspace" '^brave-www\.notion\.so__-Default$' brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/notion" --app=https://www.notion.so/
       ;;
     *) echo "unknown numbered recipe: $app" >&2; exit 2 ;;
   esac
@@ -176,6 +176,9 @@ load_special_workspace_state() {
   monitors="$(hyprctl monitors -j 2>/dev/null || true)"
   focused_monitor="$(jq -r 'first(.[] | select(.focused == true) | .name) // empty' <<<"$monitors" 2>/dev/null || true)"
   visible_monitor="$(jq -r --arg workspace "special:$workspace" 'first(.[] | select(.specialWorkspace.name == $workspace) | .name) // empty' <<<"$monitors" 2>/dev/null || true)"
+  if [[ -n "$focused_monitor" ]] && ! jq -e --arg monitor "$monitor" 'any(.[]; .name == $monitor)' <<<"$monitors" >/dev/null 2>&1; then
+    monitor="$focused_monitor"
+  fi
   if [[ -n "$browser_profile" || "$follows_focus" == true ]]; then
     monitor="${focused_monitor:-$monitor}"
   fi
@@ -220,13 +223,13 @@ if [[ -n "$browser_profile" ]]; then
 
   if [[ "$browser_client_state" == present ]]; then
     if (( ${#urls[@]} )); then
-      chromium "--user-data-dir=$HOME/.config/chromium-haoshoku/$profile" "${urls[@]}" || true
+      brave-origin "--user-data-dir=$HOME/.config/brave-haoshoku/$profile" "${urls[@]}" || true
     fi
     reveal_special_workspace
   else
     chromium=(
-      chromium
-      "--user-data-dir=$HOME/.config/chromium-haoshoku/$profile"
+      brave-origin
+      "--user-data-dir=$HOME/.config/brave-haoshoku/$profile"
       "--class=$class"
       "${urls[@]}"
     )
@@ -279,18 +282,18 @@ case "$recipe" in
     launch_if_missing "special:$workspace" '^com\.anthropic\.Claude$' claude-desktop
     # App windows derive their class from the URL, but this process may own Flux's
     # singleton; --class=chromium-flux makes later plain windows use its registry class.
-    launch_if_missing "special:$workspace" '^chrome-chatgpt\.com__-Default$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/flux" --class=chromium-flux --app=https://chatgpt.com
+    launch_if_missing "special:$workspace" '^brave-chatgpt\.com__-Default$' brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/flux" --class=chromium-flux --app=https://chatgpt.com
     ;;
   music) launch_if_missing "special:$workspace" '^[Ss]potify$' spotify ;;
   1password) launch_if_missing "special:$workspace" '^1password$' 1password ;;
   communication)
     launch_if_missing "special:$workspace" '^signal$' signal-desktop
-    # Chromium ignores --class under --app and derives the class from the URL instead.
-    launch_if_missing "special:$workspace" '^chrome-web\.whatsapp\.com__-Default$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/whatsapp" --app=https://web.whatsapp.com/
+    # Brave Origin ignores --class under --app and derives the class from the URL instead.
+    launch_if_missing "special:$workspace" '^brave-web\.whatsapp\.com__-Default$' brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/whatsapp" --app=https://web.whatsapp.com/
     ;;
   stash) ;;
-  x) launch_if_missing "special:$workspace" '^chrome-x\.com__-Default$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/flux" --class=chromium-flux --app=https://x.com/ ;;
-  youtube) launch_if_missing "special:$workspace" '^chrome-youtube\.com__-Default$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/flux" --class=chromium-flux --app=https://youtube.com/ ;;
-  crunchyroll) launch_if_missing "special:$workspace" '^chrome-www\.crunchyroll\.com__-Default$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/flux" --class=chromium-flux --app=https://www.crunchyroll.com/ ;;
-  reanime) launch_if_missing "special:$workspace" '^chrome-reanime\.to__home-Default$' chromium --user-data-dir="$HOME/.config/chromium-haoshoku/flux" --class=chromium-flux --app=https://reanime.to/home ;;
+  x) launch_if_missing "special:$workspace" '^brave-x\.com__-Default$' brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/flux" --class=chromium-flux --app=https://x.com/ ;;
+  youtube) launch_if_missing "special:$workspace" '^brave-youtube\.com__-Default$' brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/flux" --class=chromium-flux --app=https://youtube.com/ ;;
+  crunchyroll) launch_if_missing "special:$workspace" '^brave-www\.crunchyroll\.com__-Default$' brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/flux" --class=chromium-flux --app=https://www.crunchyroll.com/ ;;
+  reanime) launch_if_missing "special:$workspace" '^brave-reanime\.to__home-Default$' brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/flux" --class=chromium-flux --app=https://reanime.to/home ;;
 esac

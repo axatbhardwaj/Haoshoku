@@ -32,8 +32,11 @@ export const MODE_FLAGS = [
 	"claudeStayAwakeBackup",
 	"prWatch",
 	"prWatchBackup",
+	"deviceType",
 	"scripts",
 	"workspaces",
+	"monitors",
+	"braveManagedPolicies",
 ];
 
 /**
@@ -88,5 +91,7 @@ export function detectOS(osReleasePath = "/etc/os-release") {
  * @returns {string[]} set mode-flag names, in MODE_FLAGS order
  */
 export function findActiveModeFlags(options = {}) {
-	return MODE_FLAGS.filter((flag) => options[flag]);
+	return MODE_FLAGS.filter(
+		(flag) => options[flag] !== undefined && options[flag] !== false,
+	);
 }

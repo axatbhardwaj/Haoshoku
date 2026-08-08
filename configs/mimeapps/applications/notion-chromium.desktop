@@ -2,8 +2,8 @@
 Version=1.0
 Type=Application
 Name=Genesis Block | Notion
-Comment=Open Notion in its isolated Chromium profile
-Exec=sh -lc 'exec chromium --user-data-dir="$HOME/.config/chromium-haoshoku/notion" --app=https://www.notion.so/'
+Comment=Open Notion in its isolated Brave Origin profile
+Exec=sh -lc 'exec brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/notion" --app=https://www.notion.so/'
 Terminal=false
 Categories=Office;Utility;
-StartupWMClass=chrome-www.notion.so__-Default
+StartupWMClass=brave-www.notion.so__-Default

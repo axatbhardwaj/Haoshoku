@@ -1,25 +1,32 @@
 import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
-import { log, runCommand } from "../common/utils.js";
+import { log, readDeviceType, runCommand } from "../common/utils.js";
 
 const PROJECT_ROOT = path.resolve(import.meta.dir, "..", "..");
-const MONITOR_TEMPLATE = path.join(
-	PROJECT_ROOT,
-	"configs",
-	"omarchy",
-	"monitors.conf",
-);
 
+/**
+ * Deploy the device-specific monitor template to the generic live filename.
+ * `pc` and `laptop` select monitors-pc.conf and monitors-laptop.conf;
+ * unknown, unset, or malformed deviceType falls back to `pc` (safer default).
+ */
 export async function configureOmarchyMonitors({
 	home = homedir(),
+	projectRoot = PROJECT_ROOT,
 	fsImpl = fs,
 	now = Date.now,
 	runCommandImpl = runCommand,
 	env = process.env,
 } = {}) {
+	const deviceType = readDeviceType(home);
+	const monitorTemplate = path.join(
+		projectRoot,
+		"configs",
+		"omarchy",
+		`monitors-${deviceType}.conf`,
+	);
 	const destination = path.join(home, ".config", "hypr", "monitors.conf");
-	const desired = fsImpl.readFileSync(MONITOR_TEMPLATE);
+	const desired = fsImpl.readFileSync(monitorTemplate);
 	fsImpl.mkdirSync(path.dirname(destination), { recursive: true });
 
 	let changed = false;

@@ -1,17 +1,9 @@
 import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
-import { log, runCommand } from "../common/utils.js";
+import { log, readDeviceType, runCommand } from "../common/utils.js";
 
 const ROOT = path.resolve(import.meta.dir, "..", "..");
-const OVERLAY = path.join(ROOT, "configs", "omarchy", "workspaces.conf");
-const BINDINGS = path.join(ROOT, "configs", "omarchy", "bindings.conf");
-const SCRIPT = path.join(
-	ROOT,
-	"configs",
-	"scripts",
-	"haoshoku-special-workspace",
-);
 const SOURCE_LINE = "source = ~/.config/hypr/haoshoku-workspaces.conf";
 const OMARCHY_BINDINGS_SOURCE = "source = ~/.config/hypr/bindings.conf";
 const BINDINGS_SOURCE_LINE = "source = ~/.config/hypr/haoshoku-bindings.conf";
@@ -58,20 +50,45 @@ function ensureSourceAfter(mainText, sourceLine, precedingSourceLine) {
 	return { text: lines.join(""), changed: true };
 }
 
+/**
+ * Deploy the device-specific workspace overlay to the generic live filename.
+ * `pc` and `laptop` select workspaces-pc.conf and workspaces-laptop.conf;
+ * unknown, unset, or malformed deviceType falls back to `pc` (safer default).
+ */
 export async function configureOmarchyWorkspaces({
 	home = homedir(),
+	projectRoot = ROOT,
 	fsImpl = fs,
 	now = Date.now,
 	runCommandImpl = runCommand,
 	env = process.env,
 } = {}) {
+	const deviceType = readDeviceType(home);
+	const overlay = path.join(
+		projectRoot,
+		"configs",
+		"omarchy",
+		`workspaces-${deviceType}.conf`,
+	);
+	const bindings = path.join(
+		projectRoot,
+		"configs",
+		"omarchy",
+		"bindings.conf",
+	);
+	const script = path.join(
+		projectRoot,
+		"configs",
+		"scripts",
+		"haoshoku-special-workspace",
+	);
 	const hyprDir = path.join(home, ".config", "hypr");
 	const main = path.join(hyprDir, "hyprland.conf");
 	if (!fsImpl.existsSync(main))
 		throw new Error(`Omarchy Hyprland config not found: ${main}`);
 
 	const bindingsDestination = path.join(hyprDir, "haoshoku-bindings.conf");
-	const bindingsDesired = fsImpl.readFileSync(BINDINGS);
+	const bindingsDesired = fsImpl.readFileSync(bindings);
 	if (
 		!fsImpl.existsSync(bindingsDestination) ||
 		!fsImpl.readFileSync(bindingsDestination).equals(bindingsDesired)
@@ -85,7 +102,7 @@ export async function configureOmarchyWorkspaces({
 	}
 
 	const destination = path.join(hyprDir, "haoshoku-workspaces.conf");
-	const desired = fsImpl.readFileSync(OVERLAY);
+	const desired = fsImpl.readFileSync(overlay);
 	let overlayChanged = false;
 	if (
 		!fsImpl.existsSync(destination) ||
@@ -124,7 +141,7 @@ export async function configureOmarchyWorkspaces({
 	const binDir = path.join(home, ".local", "bin");
 	const scriptDestination = path.join(binDir, "haoshoku-special-workspace");
 	fsImpl.mkdirSync(binDir, { recursive: true });
-	const scriptDesired = fsImpl.readFileSync(SCRIPT);
+	const scriptDesired = fsImpl.readFileSync(script);
 	const scriptChanged =
 		!fsImpl.existsSync(scriptDestination) ||
 		!fsImpl.readFileSync(scriptDestination).equals(scriptDesired);

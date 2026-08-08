@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=Haoshoku Browser
-Comment=Open links in the most recently focused Haoshoku Chromium profile
+Comment=Open links in the most recently focused Haoshoku Brave Origin profile
 Exec=haoshoku-browser %U
 Type=Application
 Terminal=false

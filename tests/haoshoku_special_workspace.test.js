@@ -13,7 +13,7 @@ const script = path.join(
 	"haoshoku-special-workspace",
 );
 const workspacesConfig = fs.readFileSync(
-	path.join(import.meta.dir, "..", "configs", "omarchy", "workspaces.conf"),
+	path.join(import.meta.dir, "..", "configs", "omarchy", "workspaces-pc.conf"),
 	"utf8",
 );
 const caelestiaConfigDirectory = path.join(
@@ -43,8 +43,10 @@ function configuredCaelestiaWorkspaceArgs(file) {
 }
 
 describe("haoshoku-special-workspace", () => {
-	it("resolves browser profile Chromium through PATH", () => {
-		expect(fs.readFileSync(script, "utf8")).not.toContain("/usr/bin/chromium");
+	it("resolves browser profile Brave Origin through PATH", () => {
+		const source = fs.readFileSync(script, "utf8");
+		expect(source).not.toContain("/usr/bin/brave-origin");
+		expect(source).not.toContain("/usr/bin/chromium");
 	});
 
 	it("guards every special-workspace recipe configuration", () => {
@@ -124,7 +126,7 @@ describe("haoshoku-special-workspace", () => {
 		directory = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-special-"));
 		log = path.join(directory, "calls");
 		browserCall = path.join(directory, "chromium-call");
-		chromium = path.join(directory, "chromium");
+		chromium = path.join(directory, "brave-origin");
 		claudeDesktop = path.join(directory, ["claude", "desktop"].join("-"));
 		focusedMonitorState = path.join(directory, "focused-monitor-state");
 		kittyCall = path.join(directory, "kitty-call");
@@ -171,7 +173,7 @@ if [[ "$1 $2" == "clients -j" ]]; then
 elif [[ "$1 $2" == "monitors -j" ]]; then
   separator=""
   printf '['
-  for monitor in DP-1 DP-2 HDMI-A-1; do
+  for monitor in $LIVE_MONITORS; do
     if [[ "$monitor" == "$focused_monitor" ]]; then focused=true; else focused=false; fi
     if [[ -n "$state" && "$monitor" == "$special_monitor" ]]; then special="special:$state"; else special=""; fi
     printf '%s{"name":"%s","focused":%s,"specialWorkspace":{"name":"%s"}}' "$separator" "$monitor" "$focused" "$special"
@@ -215,7 +217,7 @@ exec "$@"
 		fs.writeFileSync(
 			chromium,
 			`#!/usr/bin/env bash
-printf 'chromium\\n' >> "$CALL_LOG"
+printf 'brave-origin\\n' >> "$CALL_LOG"
 printf '%s\\0' "$@" > "$BROWSER_CALL"
 `,
 		);
@@ -254,6 +256,7 @@ esac
 			chromiumProfiles,
 			env = {},
 			focusedMonitor = "DP-1",
+			liveMonitors = ["DP-1", "DP-2", "HDMI-A-1"],
 			visibleWorkspace,
 			visibleMonitor = "DP-1",
 		} = {},
@@ -278,6 +281,7 @@ esac
 				CALL_LOG: log,
 				FOCUSED_MONITOR_STATE: focusedMonitorState,
 				KITTY_CALL: kittyCall,
+				LIVE_MONITORS: liveMonitors.join(" "),
 				SPECIAL_STATE: specialState,
 				SPECIAL_MONITOR_STATE: specialMonitorState,
 				TMUX_LOG: tmuxLog,
@@ -343,10 +347,10 @@ fi
 
 	const fluxClient = JSON.stringify([{ class: "chromium-flux" }]);
 	const hakiClient = JSON.stringify([{ class: "haoshoku-haki" }]);
-	const xClient = JSON.stringify([{ class: "chrome-x.com__-Default" }]);
+	const xClient = JSON.stringify([{ class: "brave-x.com__-Default" }]);
 	const forwardedUrl = "https://example.test/forwarded";
 	const claudeClass = "com.anthropic.Claude";
-	const chatgptClass = "chrome-chatgpt.com__-Default";
+	const chatgptClass = "brave-chatgpt.com__-Default";
 
 	it("forwards a generic browser URL without hiding it on the focused monitor", async () => {
 		const result = await run(["browser", "flux", forwardedUrl], {
@@ -358,10 +362,10 @@ fi
 
 		expect(result.exitCode).toBe(0);
 		expect(await chromiumArguments()).toEqual([
-			`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+			`--user-data-dir=${directory}/.config/brave-haoshoku/flux`,
 			forwardedUrl,
 		]);
-		expect(dispatchCalls()).toEqual(["chromium"]);
+		expect(dispatchCalls()).toEqual(["brave-origin"]);
 		expect(fs.readFileSync(specialState, "utf8")).toBe("browser-flux");
 	});
 
@@ -375,11 +379,11 @@ fi
 
 		expect(result.exitCode).toBe(0);
 		expect(await chromiumArguments()).toEqual([
-			`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+			`--user-data-dir=${directory}/.config/brave-haoshoku/flux`,
 			forwardedUrl,
 		]);
 		expect(dispatchCalls()).toEqual([
-			"chromium",
+			"brave-origin",
 			"dispatch togglespecialworkspace browser-flux",
 		]);
 		expect(fs.readFileSync(specialState, "utf8")).toBe("browser-flux");
@@ -395,7 +399,7 @@ fi
 
 		expect(result.exitCode).toBe(0);
 		expect(await chromiumArguments()).toEqual([
-			`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+			`--user-data-dir=${directory}/.config/brave-haoshoku/flux`,
 			"--class=chromium-flux",
 			forwardedUrl,
 		]);
@@ -462,15 +466,15 @@ fi
 
 		expect(result.exitCode).toBe(0);
 		expect(await chromiumArguments()).toEqual([
-			`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+			`--user-data-dir=${directory}/.config/brave-haoshoku/flux`,
 			...urls,
 		]);
-		expect(dispatchCalls()).toEqual(["chromium"]);
+		expect(dispatchCalls()).toEqual(["brave-origin"]);
 		expect(fs.readFileSync(specialState, "utf8")).toBe("browser-flux");
 	});
 
 	// Mutation caught: a visible browser-toggle URL request must not hide an
-	// empty workspace or launch Chromium outside its special workspace.
+	// empty workspace or launch Brave Origin outside its special workspace.
 	it("launches a missing visible browser-toggle client through its special workspace", async () => {
 		const result = await run(
 			["browser-toggle", "flux", "https://example.test/missing-toggle-client"],
@@ -483,14 +487,14 @@ fi
 
 		expect(result.exitCode).toBe(0);
 		expect(await chromiumArguments()).toEqual([
-			`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+			`--user-data-dir=${directory}/.config/brave-haoshoku/flux`,
 			"--class=chromium-flux",
 			"https://example.test/missing-toggle-client",
 		]);
 		expect(dispatchCalls()).toEqual([
-			"dispatch exec [workspace special:browser-flux silent] uwsm-app -- chromium --user-data-dir=" +
-				`${directory}/.config/chromium-haoshoku/flux --class=chromium-flux https://example.test/missing-toggle-client `,
-			"chromium",
+			"dispatch exec [workspace special:browser-flux silent] uwsm-app -- brave-origin --user-data-dir=" +
+				`${directory}/.config/brave-haoshoku/flux --class=chromium-flux https://example.test/missing-toggle-client `,
+			"brave-origin",
 		]);
 		expect(fs.readFileSync(specialState, "utf8")).toBe("browser-flux");
 	});
@@ -507,13 +511,13 @@ fi
 
 		expect(result.exitCode).toBe(0);
 		expect(await chromiumArguments()).toEqual([
-			`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+			`--user-data-dir=${directory}/.config/brave-haoshoku/flux`,
 			"--class=chromium-flux",
 		]);
 		expect(dispatchCalls()).toEqual([
-			"dispatch exec [workspace special:browser-flux silent] uwsm-app -- chromium --user-data-dir=" +
-				`${directory}/.config/chromium-haoshoku/flux --class=chromium-flux `,
-			"chromium",
+			"dispatch exec [workspace special:browser-flux silent] uwsm-app -- brave-origin --user-data-dir=" +
+				`${directory}/.config/brave-haoshoku/flux --class=chromium-flux `,
+			"brave-origin",
 		]);
 		expect(fs.readFileSync(specialState, "utf8")).toBe("browser-flux");
 	});
@@ -544,8 +548,8 @@ fi
 			{
 				class:
 					recipe === "youtube"
-						? "chrome-youtube.com__-Default"
-						: "chrome-www.crunchyroll.com__-Default",
+						? "brave-youtube.com__-Default"
+						: "brave-www.crunchyroll.com__-Default",
 			},
 		]);
 
@@ -594,7 +598,7 @@ fi
 
 	it("falls back to DP-1 for youtube when no monitor is focused", async () => {
 		const result = await run(["youtube"], {
-			clients: JSON.stringify([{ class: "chrome-youtube.com__-Default" }]),
+			clients: JSON.stringify([{ class: "brave-youtube.com__-Default" }]),
 			focusedMonitor: "",
 		});
 
@@ -604,7 +608,7 @@ fi
 
 	it("toggles Re:ANIME on the focused monitor without relaunching its exact client", async () => {
 		const result = await run(["reanime"], {
-			clients: JSON.stringify([{ class: "chrome-reanime.to__home-Default" }]),
+			clients: JSON.stringify([{ class: "brave-reanime.to__home-Default" }]),
 			focusedMonitor: "DP-2",
 		});
 
@@ -622,15 +626,30 @@ fi
 		});
 	});
 
-	it("opens the hidden Haki session on its pinned monitor", async () => {
+	it("keeps a present PC recipe monitor unchanged", async () => {
 		const result = await run(["haki"], {
 			clients: hakiClient,
 			focusedMonitor: "DP-1",
+			liveMonitors: ["DP-1", "DP-2", "HDMI-A-1"],
 		});
 
 		expect(result.exitCode).toBe(0);
 		expect(dispatchCalls()).toEqual([
 			"dispatch focusmonitor DP-2",
+			"dispatch togglespecialworkspace haki",
+		]);
+	});
+
+	it("falls back to the focused monitor when a recipe monitor is absent", async () => {
+		const result = await run(["haki"], {
+			clients: hakiClient,
+			focusedMonitor: "eDP-1",
+			liveMonitors: ["eDP-1"],
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(dispatchCalls()).toEqual([
+			"dispatch focusmonitor eDP-1",
 			"dispatch togglespecialworkspace haki",
 		]);
 	});
@@ -1016,12 +1035,12 @@ exit 17
 
 		expect(result.exitCode).toBe(0);
 		expect(await chromiumArguments()).toEqual([
-			`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+			`--user-data-dir=${directory}/.config/brave-haoshoku/flux`,
 			"--class=chromium-flux",
 			"--app=https://chatgpt.com",
 		]);
 		expect(dispatchCalls().filter((call) => call === "claude")).toHaveLength(0);
-		expect(dispatchCalls().filter((call) => call === "chromium")).toHaveLength(
+		expect(dispatchCalls().filter((call) => call === "brave-origin")).toHaveLength(
 			1,
 		);
 	});
@@ -1034,7 +1053,7 @@ exit 17
 		expect(result.exitCode).toBe(0);
 		expect(fs.existsSync(browserCall)).toBe(false);
 		expect(dispatchCalls().filter((call) => call === "claude")).toHaveLength(1);
-		expect(dispatchCalls().filter((call) => call === "chromium")).toHaveLength(
+		expect(dispatchCalls().filter((call) => call === "brave-origin")).toHaveLength(
 			0,
 		);
 	});
@@ -1043,13 +1062,13 @@ exit 17
 		const result = await run(["assistants"], {
 			clients: JSON.stringify([
 				{ class: claudeClass },
-				{ class: "chrome-chatgptXcom__-Default" },
+				{ class: "brave-chatgptXcom__-Default" },
 			]),
 		});
 
 		expect(result.exitCode).toBe(0);
 		expect(await chromiumArguments()).toEqual([
-			`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+			`--user-data-dir=${directory}/.config/brave-haoshoku/flux`,
 			"--class=chromium-flux",
 			"--app=https://chatgpt.com",
 		]);
@@ -1062,7 +1081,7 @@ exit 17
 		{ recipe: "crunchyroll", url: "https://www.crunchyroll.com/" },
 	]) {
 		// Mutation caught: omitting --class from this app launch lets it become
-		// the Flux singleton owner that creates later plain windows as "chromium".
+		// the Flux singleton owner that creates later plain windows as "brave-origin".
 		it(`starts the Flux singleton owner with its registered class for ${recipe}`, async () => {
 			await run(
 				[recipe],
@@ -1072,7 +1091,7 @@ exit 17
 			);
 
 			expect(await chromiumArguments()).toEqual([
-				`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+				`--user-data-dir=${directory}/.config/brave-haoshoku/flux`,
 				"--class=chromium-flux",
 				`--app=${url}`,
 			]);
@@ -1084,14 +1103,14 @@ exit 17
 
 		expect(result.exitCode).toBe(0);
 		expect(await chromiumArguments()).toEqual([
-			`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+			`--user-data-dir=${directory}/.config/brave-haoshoku/flux`,
 			"--class=chromium-flux",
 			"--app=https://x.com/",
 		]);
 		expect(dispatchCalls()).toContain("dispatch focusmonitor DP-2");
 		expect(dispatchCalls()).toContain("dispatch togglespecialworkspace x");
 		expect(fs.readFileSync(log, "utf8")).toContain(
-			"dispatch exec [workspace special:x silent] uwsm-app -- chromium",
+			"dispatch exec [workspace special:x silent] uwsm-app -- brave-origin",
 		);
 	});
 
@@ -1104,12 +1123,12 @@ exit 17
 
 	it("launches X when a lookalike class differs at its literal dot", async () => {
 		const result = await run(["x"], {
-			clients: JSON.stringify([{ class: "chrome-xXcom__-Default" }]),
+			clients: JSON.stringify([{ class: "brave-xXcom__-Default" }]),
 		});
 
 		expect(result.exitCode).toBe(0);
 		expect(await chromiumArguments()).toEqual([
-			`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+			`--user-data-dir=${directory}/.config/brave-haoshoku/flux`,
 			"--class=chromium-flux",
 			"--app=https://x.com/",
 		]);
@@ -1118,14 +1137,14 @@ exit 17
 	for (const { recipe, className, decoyClass, url } of [
 		{
 			recipe: "youtube",
-			className: "chrome-youtube.com__-Default",
-			decoyClass: "chrome-youtubeXcom__-Default",
+			className: "brave-youtube.com__-Default",
+			decoyClass: "brave-youtubeXcom__-Default",
 			url: "https://youtube.com/",
 		},
 		{
 			recipe: "crunchyroll",
-			className: "chrome-www.crunchyroll.com__-Default",
-			decoyClass: "chrome-wwwXcrunchyrollXcom__-Default",
+			className: "brave-www.crunchyroll.com__-Default",
+			decoyClass: "brave-wwwXcrunchyrollXcom__-Default",
 			url: "https://www.crunchyroll.com/",
 		},
 	]) {
@@ -1134,7 +1153,7 @@ exit 17
 
 			expect(result.exitCode).toBe(0);
 			expect(await chromiumArguments()).toEqual([
-				`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+				`--user-data-dir=${directory}/.config/brave-haoshoku/flux`,
 				"--class=chromium-flux",
 				`--app=${url}`,
 			]);
@@ -1143,7 +1162,7 @@ exit 17
 				`dispatch togglespecialworkspace ${recipe}`,
 			);
 			expect(
-				dispatchCalls().filter((call) => call === "chromium"),
+				dispatchCalls().filter((call) => call === "brave-origin"),
 			).toHaveLength(1);
 		});
 
@@ -1155,7 +1174,7 @@ exit 17
 			expect(result.exitCode).toBe(0);
 			expect(fs.existsSync(browserCall)).toBe(false);
 			expect(
-				dispatchCalls().filter((call) => call === "chromium"),
+				dispatchCalls().filter((call) => call === "brave-origin"),
 			).toHaveLength(0);
 		});
 
@@ -1166,7 +1185,7 @@ exit 17
 
 			expect(result.exitCode).toBe(0);
 			expect(await chromiumArguments()).toEqual([
-				`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+				`--user-data-dir=${directory}/.config/brave-haoshoku/flux`,
 				"--class=chromium-flux",
 				`--app=${url}`,
 			]);
@@ -1175,7 +1194,7 @@ exit 17
 
 	it("launches a Re:ANIME lookalike through Flux with the exact app URL and class", async () => {
 		const result = await run(["reanime"], {
-			clients: JSON.stringify([{ class: "chrome-reanimeXto__home-Default" }]),
+			clients: JSON.stringify([{ class: "brave-reanimeXto__home-Default" }]),
 			focusedMonitor: "",
 		});
 		const calls = fs.existsSync(log) ? dispatchCalls() : [];
@@ -1187,11 +1206,11 @@ exit 17
 				: [],
 			focusedFallback: calls.includes("dispatch focusmonitor DP-1"),
 			toggled: calls.includes("dispatch togglespecialworkspace reanime"),
-			chromiumLaunches: calls.filter((call) => call === "chromium").length,
+			chromiumLaunches: calls.filter((call) => call === "brave-origin").length,
 		}).toEqual({
 			exitCode: 0,
 			chromiumArguments: [
-				`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+				`--user-data-dir=${directory}/.config/brave-haoshoku/flux`,
 				"--class=chromium-flux",
 				"--app=https://reanime.to/home",
 			],
@@ -1201,7 +1220,7 @@ exit 17
 		});
 	});
 
-	// Mutation caught: directly backgrounding Chromium after revealing its workspace
+	// Mutation caught: directly backgrounding Brave Origin after revealing its workspace
 	// lets it land on the active workspace; unescaped URL data can also become shell
 	// syntax when Hyprland's string-based exec API is used.
 	it("launches an absent browser through its special workspace with literal URL argv", async () => {
@@ -1211,7 +1230,7 @@ exit 17
 
 		expect(result.exitCode).toBe(0);
 		expect(await chromiumArguments()).toEqual([
-			`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+			`--user-data-dir=${directory}/.config/brave-haoshoku/flux`,
 			"--class=chromium-flux",
 			hostileUrl,
 		]);
@@ -1225,7 +1244,7 @@ exit 17
 		expect(launchIndex).toBeGreaterThan(
 			calls.indexOf("dispatch togglespecialworkspace browser-flux"),
 		);
-		expect(launchIndex).toBeLessThan(calls.indexOf("chromium"));
+		expect(launchIndex).toBeLessThan(calls.indexOf("brave-origin"));
 	});
 
 	async function chromiumArguments() {
@@ -1234,7 +1253,7 @@ exit 17
 				return fs.readFileSync(browserCall, "utf8").split("\0").filter(Boolean);
 			await Bun.sleep(10);
 		}
-		throw new Error("Chromium was not invoked");
+		throw new Error("Brave Origin was not invoked");
 	}
 
 	it("rejects unknown recipes without dispatching", async () => {
@@ -1244,27 +1263,27 @@ exit 17
 		expect(fs.existsSync(log)).toBe(false);
 	});
 
-	it("opens Flux in its isolated Chromium profile and class", async () => {
+	it("opens Flux in its isolated Brave Origin profile and class", async () => {
 		expect((await run(["browser-toggle", "flux"])).exitCode).toBe(0);
 		const calls = fs.readFileSync(log, "utf8");
 		expect(calls).toContain("dispatch focusmonitor DP-1");
 		expect(calls).toContain("dispatch togglespecialworkspace browser-flux");
 		expect(await chromiumArguments()).toEqual([
-			`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+			`--user-data-dir=${directory}/.config/brave-haoshoku/flux`,
 			"--class=chromium-flux",
 		]);
 	});
 
-	it("opens DeFi in a different Chromium profile", async () => {
+	it("opens DeFi in a different Brave Origin profile", async () => {
 		expect((await run(["browser-toggle", "defi"])).exitCode).toBe(0);
 		expect(await chromiumArguments()).toEqual([
-			`--user-data-dir=${directory}/.config/chromium-haoshoku/defi`,
+			`--user-data-dir=${directory}/.config/brave-haoshoku/defi`,
 			"--class=chromium-defi",
 		]);
 	});
 
 	// Mutation caught: hard-coding Flux and DeFi recipe branches rejects a valid
-	// future profile instead of deriving its workspace and Chromium argv safely.
+	// future profile instead of deriving its workspace and Brave Origin argv safely.
 	it("opens a registered third profile through the generic browser command", async () => {
 		const chromiumProfiles = [
 			{
@@ -1291,7 +1310,7 @@ exit 17
 
 		expect(result.exitCode).toBe(0);
 		expect(await chromiumArguments()).toEqual([
-			`--user-data-dir=${directory}/.config/chromium-haoshoku/research`,
+			`--user-data-dir=${directory}/.config/brave-haoshoku/research`,
 			"--class=chromium-research",
 			"https://research.example/brief",
 		]);
@@ -1302,8 +1321,8 @@ exit 17
 	});
 
 	// Mutation caught: accepting an ID that is absent from the validated registry
-	// starts an uncontrolled Chromium data directory instead of rejecting it.
-	it("rejects unknown generic browser profile IDs before launching Chromium", async () => {
+	// starts an uncontrolled Brave Origin data directory instead of rejecting it.
+	it("rejects unknown generic browser profile IDs before launching Brave Origin", async () => {
 		const result = await run(
 			["browser", "not-registered", "https://unsafe.example/"],
 			{
@@ -1346,7 +1365,7 @@ exit 17
 
 			expect(result.exitCode).toBe(0);
 			expect(await chromiumArguments()).toEqual([
-				`--user-data-dir=${directory}/.config/chromium-haoshoku/${id}`,
+				`--user-data-dir=${directory}/.config/brave-haoshoku/${id}`,
 				`--class=chromium-${id}`,
 			]);
 		}
@@ -1366,7 +1385,7 @@ exit 17
 
 		expect(result.exitCode).toBe(0);
 		expect(await chromiumArguments()).toEqual([
-			`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+			`--user-data-dir=${directory}/.config/brave-haoshoku/flux`,
 			"--class=chromium-research",
 		]);
 		expect(fs.readFileSync(log, "utf8")).toContain(
@@ -1378,7 +1397,7 @@ exit 17
 		["browser-flux", "flux"],
 		["browser-defi", "defi"],
 	]) {
-		// Mutation caught: sending a URL through the PATH-shadowed Chromium wrapper,
+		// Mutation caught: sending a URL through the PATH-shadowed Brave Origin wrapper,
 		// dropping an argument, or launching the wrong profile prevents the selected
 		// browser workspace from opening the requested pages.
 		it(`launches ${recipe} with every URL in its isolated profile when absent`, async () => {
@@ -1390,15 +1409,15 @@ exit 17
 
 			expect(result.exitCode).toBe(0);
 			expect(await chromiumArguments()).toEqual([
-				`--user-data-dir=${directory}/.config/chromium-haoshoku/${profile}`,
+				`--user-data-dir=${directory}/.config/brave-haoshoku/${profile}`,
 				`--class=chromium-${profile}`,
 				...urls,
 			]);
 		});
 
-		// Mutation caught: retaining the launch-only class flag can cause Chromium
+		// Mutation caught: retaining the launch-only class flag can cause Brave Origin
 		// to miss the existing profile process instead of appending these URLs to it.
-		it(`forwards URLs to the existing ${recipe} Chromium client before revealing it`, async () => {
+		it(`forwards URLs to the existing ${recipe} Brave Origin client before revealing it`, async () => {
 			const urls = [
 				"https://example.test/forward?one=1",
 				"https://example.test/forward?two=2",
@@ -1409,20 +1428,20 @@ exit 17
 
 			expect(result.exitCode).toBe(0);
 			expect(await chromiumArguments()).toEqual([
-				`--user-data-dir=${directory}/.config/chromium-haoshoku/${profile}`,
+				`--user-data-dir=${directory}/.config/brave-haoshoku/${profile}`,
 				...urls,
 			]);
 			const calls = fs.readFileSync(log, "utf8").split("\n");
-			expect(calls.indexOf("chromium")).toBeLessThan(
+			expect(calls.indexOf("brave-origin")).toBeLessThan(
 				calls.indexOf("dispatch focusmonitor DP-1"),
 			);
 			expect(fs.readFileSync(specialState, "utf8")).toBe(recipe);
 		});
 	}
 
-	// Mutation caught: invoking Chromium with no URL creates a new browser
+	// Mutation caught: invoking Brave Origin with no URL creates a new browser
 	// window instead of just revealing the registered profile's workspace.
-	it("reveals an existing Flux browser without invoking Chromium when no URL is supplied", async () => {
+	it("reveals an existing Flux browser without invoking Brave Origin when no URL is supplied", async () => {
 		const result = await run(["browser-flux"], {
 			clients: JSON.stringify([{ class: "chromium-flux" }]),
 		});
@@ -1460,8 +1479,8 @@ exit 17
 		});
 
 		// Mutation caught: launching an already-running browser on a hidden
-		// workspace creates a duplicate Chromium invocation instead of revealing it.
-		it(`reveals a hidden existing ${profile} browser without Chromium`, async () => {
+		// workspace creates a duplicate Brave Origin invocation instead of revealing it.
+		it(`reveals a hidden existing ${profile} browser without Brave Origin`, async () => {
 			expect(
 				(await run(["browser-toggle", profile], { clients: client })).exitCode,
 			).toBe(0);
@@ -1470,12 +1489,12 @@ exit 17
 		});
 
 		// Mutation caught: skipping the launch after revealing an empty workspace
-		// leaves the requested profile without a Chromium client.
+		// leaves the requested profile without a Brave Origin client.
 		it(`reveals and launches a missing ${profile} browser exactly once`, async () => {
 			expect((await run(["browser-toggle", profile])).exitCode).toBe(0);
 			expect(fs.readFileSync(specialState, "utf8")).toBe(workspace);
 			const calls = fs.readFileSync(log, "utf8").trim().split("\n");
-			expect(calls.filter((call) => call === "chromium")).toHaveLength(1);
+			expect(calls.filter((call) => call === "brave-origin")).toHaveLength(1);
 		});
 
 		// Mutation caught: routing the generic browser command through toggle
@@ -1505,11 +1524,11 @@ exit 17
 		expect(dispatchCalls()).toEqual(["dispatch focusmonitor HDMI-A-1"]);
 	});
 
-	it("does not relaunch WhatsApp when Chromium's app-derived class is already present", async () => {
+	it("does not relaunch WhatsApp when Brave Origin's app-derived class is already present", async () => {
 		const result = await run(["communication"], {
 			clients: JSON.stringify([
 				{ class: "signal" },
-				{ class: "chrome-web.whatsapp.com__-Default" },
+				{ class: "brave-web.whatsapp.com__-Default" },
 			]),
 		});
 
@@ -1517,9 +1536,9 @@ exit 17
 		expect(fs.existsSync(browserCall)).toBe(false);
 	});
 
-	it("does not relaunch Notion when Chromium's app-derived class is already present", async () => {
+	it("does not relaunch Notion when Brave Origin's app-derived class is already present", async () => {
 		const result = await run(["numbered", "10", "notion"], {
-			clients: JSON.stringify([{ class: "chrome-www.notion.so__-Default" }]),
+			clients: JSON.stringify([{ class: "brave-www.notion.so__-Default" }]),
 		});
 
 		expect(result.exitCode).toBe(0);
@@ -1721,19 +1740,19 @@ exit 17
 
 	it("launches Notion when a lookalike class differs at its literal dots", async () => {
 		const result = await run(["numbered", "10", "notion"], {
-			clients: JSON.stringify([{ class: "chrome-wwwXnotionXso__-Default" }]),
+			clients: JSON.stringify([{ class: "brave-wwwXnotionXso__-Default" }]),
 		});
 
 		expect(result.exitCode).toBe(0);
 		expect(await chromiumArguments()).toEqual([
-			`--user-data-dir=${directory}/.config/chromium-haoshoku/notion`,
+			`--user-data-dir=${directory}/.config/brave-haoshoku/notion`,
 			"--app=https://www.notion.so/",
 		]);
 	});
 
 	it("does not relaunch Notion for its exact app-derived class", async () => {
 		const result = await run(["numbered", "10", "notion"], {
-			clients: JSON.stringify([{ class: "chrome-www.notion.so__-Default" }]),
+			clients: JSON.stringify([{ class: "brave-www.notion.so__-Default" }]),
 		});
 
 		expect(result.exitCode).toBe(0);
@@ -1745,15 +1764,15 @@ exit 17
 
 		expect(result.exitCode).toBe(0);
 		expect(await chromiumArguments()).toEqual([
-			`--user-data-dir=${directory}/.config/chromium-haoshoku/notion`,
+			`--user-data-dir=${directory}/.config/brave-haoshoku/notion`,
 			"--app=https://www.notion.so/",
 		]);
-		expect(dispatchCalls().filter((call) => call === "chromium")).toHaveLength(
+		expect(dispatchCalls().filter((call) => call === "brave-origin")).toHaveLength(
 			1,
 		);
 	});
 
-	it("does not give missing Notion a Chromium class flag", async () => {
+	it("does not give missing Notion a Brave Origin class flag", async () => {
 		const result = await run(["numbered", "10", "notion"]);
 
 		expect(result.exitCode).toBe(0);
@@ -1768,14 +1787,14 @@ exit 17
 
 		expect(result.exitCode).toBe(0);
 		expect(await chromiumArguments()).toEqual([
-			`--user-data-dir=${directory}/.config/chromium-haoshoku/whatsapp`,
+			`--user-data-dir=${directory}/.config/brave-haoshoku/whatsapp`,
 			"--app=https://web.whatsapp.com/",
 		]);
-		expect(dispatchCalls().filter((call) => call === "chromium")).toHaveLength(
+		expect(dispatchCalls().filter((call) => call === "brave-origin")).toHaveLength(
 			1,
 		);
 		expect(fs.readFileSync(log, "utf8")).toContain(
-			"dispatch exec [workspace special:communication silent] uwsm-app -- chromium",
+			"dispatch exec [workspace special:communication silent] uwsm-app -- brave-origin",
 		);
 	});
 
@@ -1783,13 +1802,13 @@ exit 17
 		const result = await run(["communication"], {
 			clients: JSON.stringify([
 				{ class: "signal" },
-				{ class: "chrome-webXwhatsappXcom__-Default" },
+				{ class: "brave-webXwhatsappXcom__-Default" },
 			]),
 		});
 
 		expect(result.exitCode).toBe(0);
 		expect(await chromiumArguments()).toEqual([
-			`--user-data-dir=${directory}/.config/chromium-haoshoku/whatsapp`,
+			`--user-data-dir=${directory}/.config/brave-haoshoku/whatsapp`,
 			"--app=https://web.whatsapp.com/",
 		]);
 	});
@@ -1798,7 +1817,7 @@ exit 17
 		const result = await run(["communication"], {
 			clients: JSON.stringify([
 				{ class: "signal" },
-				{ class: "chrome-web.whatsapp.com__-Default" },
+				{ class: "brave-web.whatsapp.com__-Default" },
 			]),
 		});
 
@@ -1817,7 +1836,7 @@ printf 'signal-desktop\\n' >> "$CALL_LOG"
 		fs.chmodSync(signalDesktop, 0o755);
 
 		const result = await run(["communication"], {
-			clients: JSON.stringify([{ class: "chrome-web.whatsapp.com__-Default" }]),
+			clients: JSON.stringify([{ class: "brave-web.whatsapp.com__-Default" }]),
 		});
 
 		expect(result.exitCode).toBe(0);

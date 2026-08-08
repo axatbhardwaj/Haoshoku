@@ -17,6 +17,12 @@ const wrapperPath = path.join(
 	"scripts",
 	"haoshoku-chromium-flux",
 );
+const bindingsPath = path.join(
+	repoRoot,
+	"configs",
+	"omarchy",
+	"bindings.conf",
+);
 const scriptsPath = path.join(repoRoot, "configs", "scripts");
 
 function filesUnder(directory) {
@@ -56,8 +62,8 @@ function fluxLaunchSitesInSource(source, sourceName) {
 	return sourceCommands(source).flatMap(({ command, line }) => {
 		if (
 			command.startsWith("#") ||
-			!/(?:^|\s)(?:\/usr\/bin\/)?chromium(?=\s|$)/.test(command) ||
-			!/--user-data-dir=(?:"[^"]*chromium-haoshoku\/flux"|'[^']*chromium-haoshoku\/flux'|[^\s;]*chromium-haoshoku\/flux)(?=\s|;|$)/.test(
+			!/(?:^|\s)(?:\/usr\/bin\/)?brave-origin(?=\s|$)/.test(command) ||
+			!/--user-data-dir=(?:"[^"]*brave-haoshoku\/flux"|'[^']*brave-haoshoku\/flux'|[^\s;]*brave-haoshoku\/flux)(?=\s|;|$)/.test(
 				command,
 			)
 		)
@@ -73,7 +79,7 @@ function hasFluxClass(command) {
 	);
 }
 
-describe("Flux Chromium integration", () => {
+describe("Flux Brave Origin integration", () => {
 	let directory;
 
 	beforeEach(() => {
@@ -99,9 +105,50 @@ describe("Flux Chromium integration", () => {
 		expect(execFirstField).toMatch(/^\S+$/);
 		expect(path.isAbsolute(execFirstField)).toBe(false);
 		expect(execFirstField).toBe(path.basename(wrapperPath));
+		const desktop = fs.readFileSync(desktopPath, "utf8");
+		expect(desktop).toContain("Name=Brave Origin");
+		expect(desktop).toContain(
+			"Comment=Brave Origin pinned to the flux profile so web apps share one session",
+		);
+		expect(desktop).toContain("Icon=brave-origin");
 	});
 
-	it("stamps every literal Flux-profile Chromium launch with the Flux class", () => {
+	it("resolves the wrapped Brave Origin binary through PATH", () => {
+		expect(fs.readFileSync(wrapperPath, "utf8")).not.toContain(
+			"/usr/bin/brave-origin",
+		);
+	});
+
+	it("routes every focus-aware web app through an explicit Brave profile", () => {
+		const lines = fs.readFileSync(bindingsPath, "utf8").split(/\r?\n/);
+		const sectionStart = lines.indexOf("# --- Web apps ---");
+		const sectionEnd = lines.indexOf("# Add extra bindings", sectionStart);
+		expect(sectionStart).toBeGreaterThan(-1);
+		expect(sectionEnd).toBeGreaterThan(sectionStart);
+
+		const activeBindings = lines
+			.slice(sectionStart + 1, sectionEnd)
+			.filter((line) => line.startsWith("bindd = "));
+		const braveFocusAwareBinding =
+			/, exec, omarchy-launch-or-focus "brave-[^"]+" "(?:haoshoku-chromium-flux|brave-origin --user-data-dir=\$HOME\/\.config\/brave-haoshoku\/[^"\s]+) --app=https?:\/\/[^"]+"$/;
+		const launchOnlyActionBinding =
+			/, exec, omarchy-launch-webapp "https?:\/\/[^"]+"$/;
+
+		expect(activeBindings.length).toBeGreaterThan(0);
+		expect(
+			activeBindings.filter(
+				(line) =>
+					!braveFocusAwareBinding.test(line) &&
+					!launchOnlyActionBinding.test(line),
+			),
+		).toEqual([]);
+		expect(activeBindings).toContain(
+			'bindd = SUPER SHIFT ALT, G, WhatsApp, exec, omarchy-launch-or-focus "brave-web\\.whatsapp\\.com__-Default" "brave-origin --user-data-dir=$HOME/.config/brave-haoshoku/whatsapp --app=https://web.whatsapp.com/"',
+		);
+		expect(fs.readFileSync(bindingsPath, "utf8")).not.toContain("Chromium");
+	});
+
+	it("stamps every literal Flux-profile Brave Origin launch with the Flux class", () => {
 		const fluxLaunchSites = filesUnder(scriptsPath).flatMap((file) =>
 			fluxLaunchSitesInSource(
 				fs.readFileSync(file, "utf8"),
@@ -115,9 +162,18 @@ describe("Flux Chromium integration", () => {
 		).toEqual([]);
 	});
 
+	it("includes bare Brave Origin Flux launches in the class guard", () => {
+		const command =
+			'brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/flux" --app=https://example.invalid/';
+
+		expect(fluxLaunchSitesInSource(command, "fixture")).toEqual([
+			{ command, source: "fixture:1" },
+		]);
+	});
+
 	it("rejects suffixed Flux class values at literal launch sites", () => {
 		const command =
-			'chromium --user-data-dir="$HOME/.config/chromium-haoshoku/flux" --class=chromium-flux-wrong';
+			'/usr/bin/brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/flux" --class=chromium-flux-wrong';
 		const sites = fluxLaunchSitesInSource(command, "fixture");
 
 		expect(sites).toHaveLength(1);
@@ -127,14 +183,14 @@ describe("Flux Chromium integration", () => {
 				"--class chromium-flux",
 				'"--class=chromium-flux"',
 				'--class="chromium-flux"',
-			].map((flag) => hasFluxClass(`chromium ${flag}`)),
+			].map((flag) => hasFluxClass(`/usr/bin/brave-origin ${flag}`)),
 		).toEqual([true, true, true, true]);
 		expect(
 			[
 				"--class=chromium-flux-wrong",
 				'--class="chromium-flux)wrong"',
 				"--class='chromium-flux;wrong'",
-			].map((flag) => hasFluxClass(`chromium ${flag}`)),
+			].map((flag) => hasFluxClass(`/usr/bin/brave-origin ${flag}`)),
 		).toEqual([false, false, false]);
 		expect(sites.filter((site) => !hasFluxClass(site.command))).toEqual([
 			{ command, source: "fixture:1" },
@@ -143,15 +199,15 @@ describe("Flux Chromium integration", () => {
 
 	it("treats backslash-continued Flux launches as logical commands", () => {
 		const classedCommand =
-			'chromium --user-data-dir="$HOME/.config/chromium-haoshoku/flux" --class=chromium-flux';
+			'/usr/bin/brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/flux" --class=chromium-flux';
 		const classlessCommand =
-			'chromium --user-data-dir="$HOME/.config/chromium-haoshoku/flux" --app=https://example.invalid/';
+			'/usr/bin/brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/flux" --app=https://example.invalid/';
 		const source = [
-			"chromium \\",
-			'  --user-data-dir="$HOME/.config/chromium-haoshoku/flux" \\',
+			"/usr/bin/brave-origin \\",
+			'  --user-data-dir="$HOME/.config/brave-haoshoku/flux" \\',
 			"  --class=chromium-flux",
-			"chromium \\",
-			'  --user-data-dir="$HOME/.config/chromium-haoshoku/flux" \\',
+			"/usr/bin/brave-origin \\",
+			'  --user-data-dir="$HOME/.config/brave-haoshoku/flux" \\',
 			"  --app=https://example.invalid/",
 		].join("\n");
 		const sites = fluxLaunchSitesInSource(source, "fixture");
@@ -168,21 +224,21 @@ describe("Flux Chromium integration", () => {
 	// Mutation caught: placing the injected class after "$@" prevents an
 	// explicit caller class from taking precedence; omitting it leaves a Flux
 	// singleton owner unable to stamp later plain windows with chromium-flux.
-	it("injects the Flux class before forwarded Chromium arguments", async () => {
-		const capturedArguments = path.join(directory, "chromium-arguments");
-		const chromium = path.join(directory, "chromium");
+	it("injects the Flux class before forwarded Brave Origin arguments", async () => {
+		const capturedArguments = path.join(directory, "brave-origin-arguments");
+		const braveOrigin = path.join(directory, "brave-origin");
 		const isolatedWrapper = path.join(directory, "haoshoku-chromium-flux");
 		fs.writeFileSync(
-			chromium,
+			braveOrigin,
 			`#!/usr/bin/env bash
 printf '%s\\0' "$@" > "$CAPTURED_ARGUMENTS"
 `,
 		);
 		fs.writeFileSync(
 			isolatedWrapper,
-			fs.readFileSync(wrapperPath, "utf8").replace("/usr/bin/chromium", chromium),
+			fs.readFileSync(wrapperPath, "utf8"),
 		);
-		fs.chmodSync(chromium, 0o755);
+		fs.chmodSync(braveOrigin, 0o755);
 		fs.chmodSync(isolatedWrapper, 0o755);
 
 		const proc = Bun.spawn(
@@ -192,13 +248,14 @@ printf '%s\\0' "$@" > "$CAPTURED_ARGUMENTS"
 					...process.env,
 					CAPTURED_ARGUMENTS: capturedArguments,
 					HOME: directory,
+					PATH: `${directory}:${process.env.PATH}`,
 				},
 			},
 		);
 
 		await proc.exited;
 		expect(fs.readFileSync(capturedArguments, "utf8").split("\0").filter(Boolean)).toEqual([
-			`--user-data-dir=${directory}/.config/chromium-haoshoku/flux`,
+			`--user-data-dir=${directory}/.config/brave-haoshoku/flux`,
 			"--class=chromium-flux",
 			"--class=caller-choice",
 			"https://example.test/",

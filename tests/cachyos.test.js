@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import fs from "node:fs";
 import path from "node:path";
+import { log } from "../src/common/utils.js";
 import {
 	ensureRustToolchain,
 	getInstalledPackages,
@@ -558,6 +559,156 @@ describe("Arch package-manager preflight", () => {
 		expect(result).toBe(false);
 		expect(preflightCalls).toBe(1);
 	});
+
+	it("runs Brave policy provisioning only for Omarchy in the plain setup flow", async () => {
+		async function runSetup(isOmarchy) {
+			const events = [];
+			const record = (event, result) => async () => {
+				events.push(event);
+				return result;
+			};
+			const result = await runCachyOSSetup({
+				prepareArchPackageManagerImpl: record("prepare", true),
+				ensureRustToolchainImpl: record("rust", true),
+				ensureAurHelperImpl: record("aur", "paru"),
+				installDevToolsImpl: record("dev-tools"),
+				commandExistsImpl: async (command) => {
+					expect(command).toBe("omarchy");
+					return isOmarchy;
+				},
+				installSystemPackagesImpl: record("system-packages"),
+				installFlatpakAppsImpl: record("flatpaks"),
+				promptDeviceTypeImpl: record("device-type"),
+				configureUserAppsImpl: record("user-apps"),
+				configureBraveManagedPoliciesImpl: record("brave-policies", true),
+				configureOmarchyMonitorsImpl: record("monitors"),
+				configureOmarchyWorkspacesImpl: record("workspaces"),
+				configureOmazedImpl: record("omazed"),
+			});
+			return { events, result };
+		}
+
+		expect(await runSetup(true)).toEqual({
+			result: true,
+			events: [
+				"prepare",
+				"rust",
+				"aur",
+				"dev-tools",
+				"device-type",
+				"system-packages",
+				"flatpaks",
+				"user-apps",
+				"brave-policies",
+				"monitors",
+				"workspaces",
+				"omazed",
+			],
+		});
+		expect(await runSetup(false)).toEqual({
+			result: true,
+			events: [
+				"prepare",
+				"rust",
+				"aur",
+				"dev-tools",
+				"system-packages",
+				"flatpaks",
+				"user-apps",
+			],
+		});
+	});
+
+	it("continues Omarchy setup when Brave policy provisioning throws", async () => {
+		const events = [];
+		const warnings = [];
+		const originalWarning = log.warning;
+		log.warning = (message) => warnings.push(message);
+
+		try {
+			let thrown;
+			let result;
+			try {
+				result = await runCachyOSSetup({
+					prepareArchPackageManagerImpl: async () => true,
+					ensureRustToolchainImpl: async () => {},
+					ensureAurHelperImpl: async () => "paru",
+					installDevToolsImpl: async () => {},
+					commandExistsImpl: async () => true,
+					installSystemPackagesImpl: async () => {},
+					installFlatpakAppsImpl: async () => {},
+					promptDeviceTypeImpl: async () => {},
+					configureUserAppsImpl: async () => {},
+					configureBraveManagedPoliciesImpl: async () => {
+						events.push("brave-policies");
+						throw new Error("policy write failed");
+					},
+					configureOmarchyMonitorsImpl: async () => events.push("monitors"),
+					configureOmarchyWorkspacesImpl: async () => events.push("workspaces"),
+					configureOmazedImpl: async () => events.push("omazed"),
+				});
+			} catch (error) {
+				thrown = error;
+			}
+
+			expect(events).toEqual([
+				"brave-policies",
+				"monitors",
+				"workspaces",
+				"omazed",
+			]);
+			expect(thrown).toBeUndefined();
+			expect(result).toBe(true);
+			expect(warnings).toHaveLength(1);
+			expect(warnings[0]).toContain("policy write failed");
+			expect(warnings[0]).toContain("continuing");
+		} finally {
+			log.warning = originalWarning;
+		}
+	});
+
+	for (const failingStep of ["monitors", "workspaces"]) {
+		it(`warns and continues Omarchy setup when the ${failingStep} device variant is missing`, async () => {
+			const events = [];
+			const warnings = [];
+			const originalWarning = log.warning;
+			log.warning = (message) => warnings.push(message);
+
+			try {
+				const step = (name) => async () => {
+					events.push(name);
+					if (name === failingStep) {
+						throw new Error(`missing ${name}-laptop.conf`);
+					}
+				};
+				const result = await runCachyOSSetup({
+					prepareArchPackageManagerImpl: async () => true,
+					ensureRustToolchainImpl: async () => {},
+					ensureAurHelperImpl: async () => "paru",
+					installDevToolsImpl: async () => {},
+					commandExistsImpl: async () => true,
+					installSystemPackagesImpl: async () => {},
+					installFlatpakAppsImpl: async () => {},
+					promptDeviceTypeImpl: async () => {},
+					configureUserAppsImpl: async () => {},
+					configureBraveManagedPoliciesImpl: async () => true,
+					configureOmarchyMonitorsImpl: step("monitors"),
+					configureOmarchyWorkspacesImpl: step("workspaces"),
+					configureOmazedImpl: step("omazed"),
+				});
+
+				expect(result).toBe(true);
+				expect(events).toEqual(["monitors", "workspaces", "omazed"]);
+				expect(warnings).toHaveLength(1);
+				expect(warnings[0]).toContain(
+					`missing ${failingStep}-laptop.conf`,
+				);
+				expect(warnings[0]).toContain("continuing");
+			} finally {
+				log.warning = originalWarning;
+			}
+		});
+	}
 });
 
 describe("Omarchy-owned defaults", () => {
@@ -578,7 +729,7 @@ describe("Omarchy-owned defaults", () => {
 		}
 	});
 
-	it("uses Chromium as the only managed browser", () => {
+	it("keeps Chromium installed and provisions Brave Origin", () => {
 		const packages = fs
 			.readFileSync(
 				path.resolve(import.meta.dir, "..", "common", "paru_applist.txt"),
@@ -586,6 +737,7 @@ describe("Omarchy-owned defaults", () => {
 			)
 			.split(/\r?\n/);
 		expect(packages).toContain("chromium");
+		expect(packages).toContain("brave-origin-bin");
 		for (const retired of [
 			"brave-bin",
 			"floorp-bin",

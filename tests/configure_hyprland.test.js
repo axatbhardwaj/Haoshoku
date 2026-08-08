@@ -589,14 +589,28 @@ describe("promptDeviceType", () => {
 		return fn;
 	}
 
-	it("persists 'pc' to ~/.haoshoku.json when the user picks Main PC", async () => {
+	it("persists an explicit pc choice and does not prompt again", async () => {
 		const result = await hyprland.promptDeviceType({
 			configPath,
+			isTTY: true,
 			promptFn: buildPromptFn({ device: "pc" }),
 		});
 		expect(result).toBe("pc");
 		const persisted = JSON.parse(fs.readFileSync(configPath, "utf8"));
 		expect(persisted.deviceType).toBe("pc");
+
+		let promptCalls = 0;
+		expect(
+			await hyprland.promptDeviceType({
+				configPath,
+				isTTY: true,
+				promptFn: async () => {
+					promptCalls += 1;
+					return { device: "laptop" };
+				},
+			}),
+		).toBe("pc");
+		expect(promptCalls).toBe(0);
 	});
 
 	it("persists 'laptop' to ~/.haoshoku.json when the user picks Laptop", async () => {
@@ -608,6 +622,23 @@ describe("promptDeviceType", () => {
 		expect(JSON.parse(fs.readFileSync(configPath, "utf8")).deviceType).toBe(
 			"laptop",
 		);
+	});
+
+	it("offers only device types that have routable config variants", async () => {
+		let question;
+		await hyprland.promptDeviceType({
+			configPath,
+			promptFn: async (receivedQuestion) => {
+				question = receivedQuestion;
+				return { device: null };
+			},
+		});
+
+		expect(question.choices.map(({ value }) => value)).toEqual([
+			"pc",
+			"laptop",
+			null,
+		]);
 	});
 
 	it("does NOT modify ~/.haoshoku.json when the user picks Skip", async () => {
@@ -661,5 +692,115 @@ describe("promptDeviceType", () => {
 			"laptop",
 		);
 		expect(messages.join("\n")).toMatch(/Malformed .*\.haoshoku\.json/i);
+	});
+
+	it("keeps a valid configured device type without prompting unless forced", async () => {
+		fs.writeFileSync(configPath, `${JSON.stringify({ deviceType: "pc" })}\n`);
+		let promptCalls = 0;
+		const promptFn = async () => {
+			promptCalls += 1;
+			return { device: "laptop" };
+		};
+
+		expect(
+			await hyprland.promptDeviceType({ configPath, promptFn }),
+		).toBe("pc");
+		expect(promptCalls).toBe(0);
+		expect(JSON.parse(fs.readFileSync(configPath, "utf8")).deviceType).toBe(
+			"pc",
+		);
+
+		expect(
+			await hyprland.promptDeviceType({ configPath, promptFn, force: true }),
+		).toBe("laptop");
+		expect(promptCalls).toBe(1);
+		expect(JSON.parse(fs.readFileSync(configPath, "utf8")).deviceType).toBe(
+			"laptop",
+		);
+	});
+
+	it("does not persist the non-interactive pc fallback and prompts on the next run", async () => {
+		const fallbackResult = await hyprland.promptDeviceType({
+			configPath,
+			isTTY: false,
+			promptFn: async () => {
+				throw new Error("prompt must not run");
+			},
+		});
+
+		expect(fallbackResult).toBe("pc");
+		expect(fs.existsSync(configPath)).toBeFalse();
+
+		let promptCalls = 0;
+		const interactiveResult = await hyprland.promptDeviceType({
+			configPath,
+			isTTY: true,
+			promptFn: async () => {
+				promptCalls += 1;
+				return { device: "laptop" };
+			},
+		});
+
+		expect(interactiveResult).toBe("laptop");
+		expect(promptCalls).toBe(1);
+		expect(JSON.parse(fs.readFileSync(configPath, "utf8")).deviceType).toBe(
+			"laptop",
+		);
+	});
+
+	it("does not modify a non-object config during the unattended pc fallback", async () => {
+		fs.writeFileSync(configPath, "null\n");
+		const before = fs.readFileSync(configPath, "utf8");
+
+		expect(
+			await hyprland.promptDeviceType({
+				configPath,
+				isTTY: false,
+				promptFn: async () => {
+					throw new Error("prompt must not run");
+				},
+			}),
+		).toBe("pc");
+		expect(fs.readFileSync(configPath, "utf8")).toBe(before);
+	});
+
+	it("does not persist the pc fallback when the prompt throws and prompts on the next run", async () => {
+		const warnings = [];
+		const originalWarning = console.log;
+		console.log = (...args) => warnings.push(args.join(" "));
+
+		try {
+			expect(
+				await hyprland.promptDeviceType({
+					configPath,
+					isTTY: true,
+					promptFn: async () => {
+						throw new Error("terminal unavailable");
+					},
+				}),
+			).toBe("pc");
+		} finally {
+			console.log = originalWarning;
+		}
+
+		expect(fs.existsSync(configPath)).toBeFalse();
+		expect(warnings.join("\n")).toContain("terminal unavailable");
+		expect(warnings.join("\n")).toContain("defaulting to pc");
+
+		let promptCalls = 0;
+		expect(
+			await hyprland.promptDeviceType({
+				configPath,
+				isTTY: true,
+				promptFn: async () => {
+					promptCalls += 1;
+					return { device: "laptop" };
+				},
+			}),
+		).toBe("laptop");
+		expect(promptCalls).toBe(1);
+		expect(JSON.parse(fs.readFileSync(configPath, "utf8")).deviceType).toBe(
+			"laptop",
+		);
 	});
 });
