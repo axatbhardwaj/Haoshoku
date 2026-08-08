@@ -47,6 +47,7 @@ const allowedReasons = new Set([
 	"displaced_by_workspace_toggle",
 	"deleted_by_user",
 	"reclaimed_by_overlay",
+	"relocated_to_different_key",
 	"superseded_by_workspace_toggle",
 ]);
 const swapsDocument = JSON.parse(fs.readFileSync(swapsPath, "utf8"));
@@ -308,6 +309,48 @@ describe("Omarchy keybinding swaps", () => {
 			"bindd = SUPER, Z, Zed, exec, uwsm-app -- zeditor --new",
 		);
 		expect(zedBinding).not.toContain("omarchy-launch-or-focus");
+	});
+
+	it("moves close-window to SUPER+Q, leaves SUPER+W unbound, and retires Obsidian's old key", () => {
+		const bindings = fs.readFileSync(bindingsConfigPath, "utf8");
+		const bindingLines = bindings.split(/\r?\n/);
+		const closeWindowSwap = swapsDocument.swaps.find(
+			(swap) => swap.key_combination_taken === "SUPER, W",
+		);
+
+		expect({
+			closeWindow: activeBindingsFor(bindings, "SUPER", "Q"),
+			formerCloseWindow: activeBindingsFor(bindings, "SUPER", "W"),
+			formerCloseWindowSuppression: bindingLines.filter(
+				(line) => line === "unbind = SUPER, W",
+			),
+			closeWindowRegistry: closeWindowSwap,
+			retiredObsidianShortcut: activeBindingsFor(
+				bindings,
+				"SUPER SHIFT",
+				"O",
+			),
+			retiredObsidianSuppression: bindingLines.filter(
+				(line) => line === "unbind = SUPER SHIFT, O",
+			),
+		}).toEqual({
+			closeWindow: ["bindd = SUPER, Q, Close window, killactive"],
+			formerCloseWindow: [],
+			formerCloseWindowSuppression: ["unbind = SUPER, W"],
+			closeWindowRegistry: {
+				config_file: "configs/omarchy/bindings.conf",
+				key_combination_taken: "SUPER, W",
+				previous_binding: "bindd = SUPER, W, Close window, killactive",
+				moved_from_dispatcher: "killactive",
+				moved_from_arg: "",
+				moved_to: "SUPER, Q",
+				moved_to_dispatcher: "killactive",
+				moved_to_arg: "",
+				reason: "relocated_to_different_key",
+			},
+			retiredObsidianShortcut: [],
+			retiredObsidianSuppression: ["unbind = SUPER SHIFT, O"],
+		});
 	});
 
 	it("routes SUPER+A to the systemd-managed Haki tmux session", () => {
@@ -621,20 +664,27 @@ describe("Omarchy keybinding swaps", () => {
 			const claimedSlotIndex = lines.findIndex((line) =>
 				line.startsWith(`bindd = ${swap.key_combination_taken},`),
 			);
-
-			expect(unbindIndex).toBeGreaterThan(-1);
-			expect(relocationIndex).toBe(unbindIndex + 1);
-			if (claimedSlotIndex >= 0) {
-				expect(claimedSlotIndex).toBeGreaterThan(relocationIndex);
-				return;
-			}
-
 			const workspaceClaim = fs
 				.readFileSync(configPath, "utf8")
 				.split("\n")
 				.find((line) =>
 					line.startsWith(`bindd = ${swap.key_combination_taken},`),
 				);
+			const movedKey = swap.moved_to.split(",").at(-1).trim();
+			const displacedKey = swap.key_combination_taken.split(",").at(-1).trim();
+
+			expect(unbindIndex).toBeGreaterThan(-1);
+			expect(relocationIndex).toBe(unbindIndex + 1);
+			if (movedKey !== displacedKey) {
+				expect(claimedSlotIndex).toBe(-1);
+				expect(workspaceClaim).toBeUndefined();
+				return;
+			}
+			if (claimedSlotIndex >= 0) {
+				expect(claimedSlotIndex).toBeGreaterThan(relocationIndex);
+				return;
+			}
+
 			expect(workspaceClaim).toBeDefined();
 		});
 	}

@@ -8,6 +8,13 @@ needs the slot, but every `unbind` must relocate the default faithfully to
 `SUPER CTRL SHIFT` plus the same key and be recorded in
 `keybinding-swaps.json`.
 
+When an owner explicitly moves a dispatcher to a different key while leaving
+the displaced slot vacant, record `reason: "relocated_to_different_key"` with
+the complete `moved_to`, `moved_to_dispatcher`, and `moved_to_arg` fields. The
+registry must therefore let a reader trace the vacated stock key directly to
+the live destination. This exception applies only to a deliberate cross-key
+relocation; it is not the service-scrub form below.
+
 When the user asks for a service to be scrubbed from the repository, its swap
 keeps the stock dispatcher but records `<removed>` for `previous_binding`'s
 argument and `moved_from_arg`, with `previous_binding_redacted: true`. The

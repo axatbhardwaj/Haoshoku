@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Move Close window from `Super+W` to `Super+Q` while intentionally leaving
+  `Super+W` unbound, and remove the Obsidian shortcut; Obsidian remains
+  launchable through Walker.
+
 ## 8.1.0 - 2026-08-08
 
 - Provision GitHub's `gh-stack` extension without a prompt on both default

@@ -69,6 +69,17 @@
 		},
 		{
 			"config_file": "configs/omarchy/bindings.conf",
+			"key_combination_taken": "SUPER, W",
+			"previous_binding": "bindd = SUPER, W, Close window, killactive",
+			"moved_from_dispatcher": "killactive",
+			"moved_from_arg": "",
+			"moved_to": "SUPER, Q",
+			"moved_to_dispatcher": "killactive",
+			"moved_to_arg": "",
+			"reason": "relocated_to_different_key"
+		},
+		{
+			"config_file": "configs/omarchy/bindings.conf",
 			"key_combination_taken": "SUPER SHIFT, X",
 			"previous_binding": "bindd = SUPER SHIFT, X, X, exec, omarchy-launch-webapp \"https://x.com/\"",
 			"moved_from_dispatcher": "exec",
