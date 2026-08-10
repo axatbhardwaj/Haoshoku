@@ -353,20 +353,22 @@ describe("Omarchy keybinding swaps", () => {
 		});
 	});
 
-	it("routes SUPER+A to the systemd-managed Haki tmux session", () => {
+	it("routes SUPER+A to tag-owned Warp Haki without class placement", () => {
 		const workspaces = fs.readFileSync(configPath, "utf8");
 		expect({
 			binding: activeBindingsFor(workspaces, "SUPER", "A"),
-			windowRule: workspaces
+			obsoleteHakiClassPlacement: workspaces
 				.split("\n")
-				.filter((line) => line.includes("haoshoku-haki")),
+				.filter((line) => line.includes("match:class ^haoshoku-haki$")),
+			broadWarpClassPlacement: workspaces
+				.split("\n")
+				.filter((line) => line.includes("match:class ^dev\\.warp\\.Warp$")),
 		}).toEqual({
 			binding: [
 				"bindd = SUPER, A, Show/focus/hide Haki session, exec, haoshoku-special-workspace haki",
 			],
-			windowRule: [
-				"windowrule = workspace special:haki, match:class ^haoshoku-haki$",
-			],
+			obsoleteHakiClassPlacement: [],
+			broadWarpClassPlacement: [],
 		});
 	});
 
