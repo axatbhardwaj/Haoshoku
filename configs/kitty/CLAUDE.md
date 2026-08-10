@@ -1,7 +1,8 @@
 # configs/kitty/
 
-kitty is the primary terminal: `Super+T`, Caelestia's `apps.terminal`, the
-`Super+A` agents window, and the workspace-7 helper all launch it.
+Kitty remains installed and its config remains deployable as an inactive,
+recoverable fallback. Active terminal routes use Warp through the XDG default
+or explicit tagged Warp recipes; do not add Kitty back to a keybind or helper.
 
 ## Files
 

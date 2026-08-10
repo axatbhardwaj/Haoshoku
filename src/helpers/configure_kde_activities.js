@@ -26,7 +26,6 @@ const WINDOW_CLASSES = {
 	// Notion PWA has the same constraint.
 	notion: "brave-dcokohelbbehjlcjjfmhfbpdgfjcoopf-Default",
 	spotify: "Spotify",
-	agents: "kitty-agents",
 	braveFlux: "brave-flux",
 	// Measured live because steam.desktop declares no StartupWMClass. Exact
 	// wmclassmatch=1 deliberately excludes steam_app_* game windows.
@@ -42,7 +41,6 @@ const WINDOW_CLASSES = {
 const RULES = [
 	["haoshoku-notion", "notion", "all", "Notion"],
 	["haoshoku-spotify", "spotify", "all", "Spotify"],
-	["haoshoku-agents", "agents", "all", "Agents"],
 	["haoshoku-brave-flux", "braveFlux", "flux", "Brave Flux"],
 	["haoshoku-steam", "steam", "flux", "Steam"],
 	["haoshoku-discord", "discord", "flux", "Discord"],
@@ -56,6 +54,7 @@ const RULES = [
 const RETIRED_RULE_IDS = new Set([
 	"haoshoku-brave",
 	"haoshoku-brave-work",
+	"haoshoku-agents",
 	...RULES.map(([id]) => id),
 ]);
 

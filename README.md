@@ -72,8 +72,8 @@ The Arch setup:
   workspaces 1–3 and 8 on DP-1, 4–5 and 9 on HDMI-A-1, and 6, 7, and 10 on
   DP-2. The laptop variant removes monitor pins for a single-monitor layout
   while keeping the same workspace behavior, window rules, and bindings;
-- adds two-key special-workspace toggles under `Super`: A Haki (local Claude
-  workspace), I AI assistants,
+- adds two-key special-workspace toggles under `Super`: A Haki (the tagged Warp
+  `haki` tab), I AI assistants,
   M music, O 1Password, G communication, B Flux Brave Origin,
   D DeFi Brave Origin,
   S stash, and `Super+Shift+X` X (`Super+Shift+S` stashes the focused window);
@@ -115,8 +115,8 @@ does not run `git clean`, so Omarchy's managed
 The optional Claude Remote Control setup runs persistent Claude sessions from
 three fixed roots: `haki` at `$HOME`, `dev` at `$HOME/dev`, and `work` at
 `$HOME/Work`. Instances whose roots do not exist are skipped with a warning.
-`Super+A` always opens a local kitty terminal rooted at `$HOME`, separate from
-the managed services. Set `claudeSessionName` in `~/.haoshoku.json` to a named
+`Super+A` opens the tagged Warp `agents` tab on the special workspace, separate
+from the managed services. Set `claudeSessionName` in `~/.haoshoku.json` to a named
 Claude session to resume it. A missing or null value starts plain Claude; a
 syntactically invalid value is preserved, reported, and ignored. A valid name is
 passed as one literal argument to `claude -r`, but it resumes directly only when

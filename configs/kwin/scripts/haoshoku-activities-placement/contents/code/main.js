@@ -5,7 +5,6 @@ const outputByClass = {
 	// mapping. The Notion PWA class has the same constraint.
 	"brave-dcokohelbbehjlcjjfmhfbpdgfjcoopf-Default": "DP-2",
 	Spotify: "DP-2",
-	"kitty-agents": "DP-2",
 	// These two classes are produced by Brave's --class flag; the flag mechanism
 	// was measured, while these exact production values were not observed live.
 	"brave-flux": "DP-1",

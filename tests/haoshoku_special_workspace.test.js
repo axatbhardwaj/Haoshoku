@@ -19,37 +19,6 @@ const claudeLocal = path.join(
 	"scripts",
 	"haoshoku-claude-local",
 );
-const workspacesConfig = fs.readFileSync(
-	path.join(import.meta.dir, "..", "configs", "omarchy", "workspaces-pc.conf"),
-	"utf8",
-);
-const caelestiaConfigDirectory = path.join(
-	import.meta.dir,
-	"..",
-	"configs",
-	"caelestia",
-);
-
-function configuredWorkspaceArgs(pattern) {
-	const args = workspacesConfig.match(pattern)?.groups?.args;
-	if (!args)
-		throw new Error(`missing configured workspace command: ${pattern}`);
-	return args.trim().split(/\s+/);
-}
-
-function configuredCaelestiaWorkspaceArgs(file) {
-	const config = fs.readFileSync(
-		path.join(caelestiaConfigDirectory, file),
-		"utf8",
-	);
-	const args = config.match(
-		/^exec-once = \/home\/xzat\/\.local\/bin\/haoshoku-special-workspace (?<args>.+)$/m,
-	)?.groups?.args;
-	if (!args)
-		throw new Error(`missing Caelestia workspace login command: ${file}`);
-	return args.trim().split(/\s+/);
-}
-
 describe("haoshoku-special-workspace", () => {
 	it("resolves browser profile Brave Origin through PATH", () => {
 		const source = fs.readFileSync(script, "utf8");
@@ -136,7 +105,6 @@ describe("haoshoku-special-workspace", () => {
 	let chromium;
 	let claudeDesktop;
 	let focusedMonitorState;
-	let kittyCall;
 	let specialMonitorState;
 	let specialState;
 	let tmuxLog;
@@ -150,7 +118,6 @@ describe("haoshoku-special-workspace", () => {
 		chromium = path.join(directory, "brave-origin");
 		claudeDesktop = path.join(directory, ["claude", "desktop"].join("-"));
 		focusedMonitorState = path.join(directory, "focused-monitor-state");
-		kittyCall = path.join(directory, "kitty-call");
 		specialMonitorState = path.join(directory, "special-monitor-state");
 		specialState = path.join(directory, "special-workspace-state");
 		tmuxLog = path.join(directory, "tmux-call");
@@ -322,7 +289,6 @@ esac
 				BROWSER_CALL: browserCall,
 				CALL_LOG: log,
 				FOCUSED_MONITOR_STATE: focusedMonitorState,
-				KITTY_CALL: kittyCall,
 				LIVE_MONITORS: liveMonitors.join(" "),
 				SPECIAL_STATE: specialState,
 				SPECIAL_MONITOR_STATE: specialMonitorState,
@@ -344,21 +310,6 @@ esac
 
 	function dispatchCalls() {
 		return fs.readFileSync(log, "utf8").trim().split("\n");
-	}
-
-	function installKittyArgumentRecorder() {
-		fs.writeFileSync(
-			path.join(directory, "kitty"),
-			'#!/usr/bin/env bash\nprintf \'%s\\0\' "$@" > "$KITTY_CALL"\n',
-		);
-		fs.chmodSync(path.join(directory, "kitty"), 0o755);
-	}
-
-	function kittyArguments() {
-		if (!fs.existsSync(kittyCall)) return null;
-		const argv = fs.readFileSync(kittyCall, "utf8").split("\0");
-		if (argv.at(-1) === "") argv.pop();
-		return argv;
 	}
 
 	function warpArguments() {
@@ -1515,199 +1466,6 @@ exit 17
 		expect(fs.existsSync(browserCall)).toBe(false);
 	});
 
-	// Mutation caught: sharing the numbered keypress recipe with exec-once moves
-	// focus to workspace 7 at login instead of leaving monitor defaults active.
-	it("starts workspace-7 kitty without focus while SUPER+7 still focuses it", async () => {
-		installKittyArgumentRecorder();
-		const loginArgs = configuredWorkspaceArgs(
-			/^exec-once = haoshoku-special-workspace (?<args>.+)$/m,
-		);
-		const shortcutArgs = configuredWorkspaceArgs(
-			/^bindd = SUPER, code:16, [^,]+, exec, haoshoku-special-workspace (?<args>.+)$/m,
-		);
-		const launch = `dispatch exec [workspace 7 silent] uwsm-app -- kitty --class haoshoku-ws7 -d ${directory}`;
-
-		const login = await run(loginArgs);
-
-		expect(login.exitCode).toBe(0);
-		expect(await kittyArguments()).toEqual([
-			"--class",
-			"haoshoku-ws7",
-			"-d",
-			directory,
-		]);
-		expect(dispatchCalls()).toEqual([launch]);
-
-		fs.rmSync(log, { force: true });
-		fs.rmSync(kittyCall, { force: true });
-		const shortcut = await run(shortcutArgs, {
-			clients: JSON.stringify([
-				{
-					address: "0x7abc",
-					class: "haoshoku-ws7",
-					workspace: { name: "7" },
-				},
-			]),
-		});
-
-		expect(shortcut.exitCode).toBe(0);
-		expect(await kittyArguments()).toBeNull();
-		expect(dispatchCalls()).toEqual(["dispatch workspace 7"]);
-	});
-
-	it("starts workspace-7 kitty only once across repeated login runs", async () => {
-		installKittyArgumentRecorder();
-		const loginArgs = configuredWorkspaceArgs(
-			/^exec-once = haoshoku-special-workspace (?<args>.+)$/m,
-		);
-
-		const first = await run(loginArgs);
-		const second = await run(loginArgs, {
-			clients: JSON.stringify([
-				{
-					address: "0x7abc",
-					class: "haoshoku-ws7",
-					workspace: { name: "7" },
-				},
-			]),
-		});
-
-		expect(first.exitCode).toBe(0);
-		expect(second.exitCode).toBe(0);
-		expect(
-			dispatchCalls().filter((call) => call.startsWith("dispatch exec ")),
-		).toHaveLength(1);
-		expect(dispatchCalls()).not.toContain("dispatch workspace 7");
-	});
-
-	for (const file of ["hypr-user-pc.conf", "hypr-user-laptop.conf"]) {
-		it(`starts one workspace-7 kitty across repeated ${file} login runs`, async () => {
-			installKittyArgumentRecorder();
-			const loginArgs = configuredCaelestiaWorkspaceArgs(file);
-
-			const first = await run(loginArgs);
-			const second = await run(loginArgs, {
-				clients: JSON.stringify([
-					{
-						address: "0x7abc",
-						class: "haoshoku-ws7",
-						workspace: { name: "7" },
-					},
-				]),
-			});
-
-			expect(first.exitCode).toBe(0);
-			expect(second.exitCode).toBe(0);
-			expect(
-				dispatchCalls().filter((call) => call.startsWith("dispatch exec ")),
-			).toHaveLength(1);
-			expect(dispatchCalls()).not.toContain("dispatch workspace 7");
-		});
-	}
-
-	// Mutation caught: omitting the dedicated class or home directory launches a
-	// terminal that the workspace rule cannot route or that starts in an arbitrary cwd.
-	it("launches a missing workspace-7 kitty with its dedicated class from home", async () => {
-		installKittyArgumentRecorder();
-
-		const result = await run(["numbered", "7", "kitty"]);
-
-		expect(result.exitCode).toBe(0);
-		expect(await kittyArguments()).toEqual([
-			"--class",
-			"haoshoku-ws7",
-			"-d",
-			directory,
-		]);
-		expect(dispatchCalls()).toEqual([
-			"dispatch workspace 7",
-			`dispatch exec [workspace 7 silent] uwsm-app -- kitty --class haoshoku-ws7 -d ${directory}`,
-		]);
-	});
-
-	it("derives a numbered kitty class from its workspace", async () => {
-		installKittyArgumentRecorder();
-
-		const result = await run(["numbered", "8", "kitty"]);
-
-		expect(result.exitCode).toBe(0);
-		expect(await kittyArguments()).toEqual([
-			"--class",
-			"haoshoku-ws8",
-			"-d",
-			directory,
-		]);
-		expect(dispatchCalls()).toEqual([
-			"dispatch workspace 8",
-			`dispatch exec [workspace 8 silent] uwsm-app -- kitty --class haoshoku-ws8 -d ${directory}`,
-		]);
-	});
-
-	// Mutation caught: probing the generic kitty class treats unrelated terminal
-	// windows as the workspace-7 terminal and leaves workspace 7 empty.
-	it("launches workspace-7 kitty when an unrelated kitty client exists", async () => {
-		installKittyArgumentRecorder();
-
-		const result = await run(["numbered", "7", "kitty"], {
-			clients: JSON.stringify([{ class: "kitty" }]),
-		});
-
-		expect(result.exitCode).toBe(0);
-		expect(await kittyArguments()).toEqual([
-			"--class",
-			"haoshoku-ws7",
-			"-d",
-			directory,
-		]);
-		expect(dispatchCalls()).toEqual([
-			"dispatch workspace 7",
-			`dispatch exec [workspace 7 silent] uwsm-app -- kitty --class haoshoku-ws7 -d ${directory}`,
-		]);
-	});
-
-	// Mutation caught: skipping the dedicated-class probe opens duplicate home
-	// terminals every time the workspace-7 binding or login recipe runs.
-	it("does not relaunch workspace-7 kitty when its dedicated client exists", async () => {
-		installKittyArgumentRecorder();
-
-		const result = await run(["numbered", "7", "kitty"], {
-			clients: JSON.stringify([
-				{
-					address: "0x7abc",
-					class: "haoshoku-ws7",
-					workspace: { name: "7" },
-				},
-			]),
-		});
-
-		expect(result.exitCode).toBe(0);
-		expect(await kittyArguments()).toBeNull();
-		expect(dispatchCalls()).toEqual(["dispatch workspace 7"]);
-	});
-
-	// Mutation caught: a class-only occupancy probe treats a stashed or manually
-	// moved workspace-7 kitty as present and permanently leaves workspace 7 empty.
-	it("reclaims a stranded workspace-7 kitty instead of launching another", async () => {
-		installKittyArgumentRecorder();
-
-		const result = await run(["numbered", "7", "kitty"], {
-			clients: JSON.stringify([
-				{
-					address: "0x7abc",
-					class: "haoshoku-ws7",
-					workspace: { name: "special:stash" },
-				},
-			]),
-		});
-
-		expect(result.exitCode).toBe(0);
-		expect(await kittyArguments()).toBeNull();
-		expect(dispatchCalls()).toEqual([
-			"dispatch workspace 7",
-			"dispatch movetoworkspacesilent 7,address:0x7abc",
-		]);
-	});
-
 	it("launches Notion when a lookalike class differs at its literal dots", async () => {
 		const result = await run(["numbered", "10", "notion"], {
 			clients: JSON.stringify([{ class: "brave-wwwXnotionXso__-Default" }]),
@@ -1917,11 +1675,6 @@ printf 'signal-desktop\\n' >> "$CALL_LOG"
 	});
 
 	it("uses distinct Haki and agents Warp tab-config ownership", async () => {
-		fs.writeFileSync(
-			path.join(directory, "kitty"),
-			"#!/usr/bin/env bash\nexit 0\n",
-		);
-		fs.chmodSync(path.join(directory, "kitty"), 0o755);
 		for (const { recipe, address, tag, uri } of [
 			{
 				recipe: "haki",

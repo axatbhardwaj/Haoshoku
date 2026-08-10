@@ -117,16 +117,18 @@ describe("Omarchy workspace overlay", () => {
 		);
 	});
 
-	it("keeps workspace 7's dedicated home kitty routed, bound, and started through the managed overlay", () => {
+	it("routes workspace 7 through tagged Warp without a broad class placement rule", () => {
 		expect(config).toContain(
-			"windowrule = workspace 7 silent, match:class ^haoshoku-ws7$",
+			"bindd = SUPER, code:16, Workspace 7 and Warp, exec, haoshoku-special-workspace numbered 7 warp",
 		);
 		expect(config).toContain(
-			"bindd = SUPER, code:16, Workspace 7 and Kitty, exec, haoshoku-special-workspace numbered 7 kitty",
+			"exec-once = haoshoku-special-workspace numbered-login 7 warp",
 		);
-		expect(config).toContain(
-			"exec-once = haoshoku-special-workspace numbered-login 7 kitty",
-		);
+		for (const overlay of [config, laptopConfig]) {
+			expect(overlay).not.toContain("haoshoku-ws7");
+			expect(overlay).not.toContain("haoshoku-haki");
+			expect(overlay).not.toMatch(/match:class \^dev\\\.warp\\\.Warp\$/);
+		}
 	});
 
 	it("routes X by its exact app-derived Brave class to its special workspace", () => {

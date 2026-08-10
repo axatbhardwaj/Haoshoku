@@ -171,7 +171,7 @@ export async function configureOmarchyWorkspaces({
 		// exec-once is not replayed by reload, so ensure the managed workspace is
 		// populated during this install as well as on the next full login.
 		await runCommandImpl(
-			`${shellEscape(scriptDestination)} numbered-login 7 kitty`,
+			`${shellEscape(scriptDestination)} numbered-login 7 warp`,
 		);
 	} else
 		log.info(

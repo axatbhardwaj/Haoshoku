@@ -155,6 +155,13 @@ export function configureCaelestiaShell({ home = HOME } = {}) {
 		...(shellConfig.services ?? {}),
 		useTwelveHourClock: false,
 	};
+	shellConfig.general = {
+		...(shellConfig.general ?? {}),
+		apps: {
+			...(shellConfig.general?.apps ?? {}),
+			terminal: ["xdg-terminal-exec", "--"],
+		},
+	};
 
 	fs.mkdirSync(caelestiaConfigDir, { recursive: true });
 	fs.writeFileSync(

@@ -119,7 +119,7 @@ export function patchWarpSettings(
 }
 
 /**
- * Configure Warp: deploy the agents Tab Config and shipped Elysian theme, then
+ * Configure Warp: deploy all shipped top-level Tab Configs and the Elysian theme, then
  * activate the theme and Kitty-matched opacity in `settings.toml`. Creates a
  * minimal settings file when absent. Mutates settings safely: skips unchanged
  * writes, keeps a one-time `.bak`, and writes atomically via temp + rename.

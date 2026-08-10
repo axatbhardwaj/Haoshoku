@@ -27,7 +27,6 @@ const ADD_FAILURE_ID = "66666666-6666-4666-8666-666666666666";
 const CLASSES = {
 	notion: "brave-dcokohelbbehjlcjjfmhfbpdgfjcoopf-Default",
 	spotify: "Spotify",
-	agents: "kitty-agents",
 	braveFlux: "brave-flux",
 	steam: "steam",
 	discord: "discord",
@@ -159,7 +158,7 @@ describe("updateKwinRulesContent", () => {
 			"[General]",
 			"custom = untouched",
 			"count=99",
-			"rules=keep-me,haoshoku-brave-flux,haoshoku-brave-work",
+			"rules=keep-me,haoshoku-brave-flux,haoshoku-brave-work,haoshoku-agents",
 			"",
 			unrelated.trimEnd(),
 			"[haoshoku-brave-flux]",
@@ -172,6 +171,9 @@ describe("updateKwinRulesContent", () => {
 			"[haoshoku-brave]",
 			"Description=orphan",
 			"",
+			"[haoshoku-agents]",
+			"wmclass=kitty-agents",
+			"",
 		].join("\n");
 
 		const result = updateKwinRulesContent(original, IDS, CLASSES);
@@ -182,6 +184,7 @@ describe("updateKwinRulesContent", () => {
 		expect(result).toContain(unrelated);
 		expect(result).not.toContain("haoshoku-brave-work");
 		expect(result).not.toContain("[haoshoku-brave]\n");
+		expect(result).not.toContain("[haoshoku-agents]\n");
 		const rules = section(result, "General")
 			.match(/^rules=(.*)$/m)[1]
 			.split(",");
@@ -189,7 +192,6 @@ describe("updateKwinRulesContent", () => {
 			"keep-me",
 			"haoshoku-notion",
 			"haoshoku-spotify",
-			"haoshoku-agents",
 			"haoshoku-brave-flux",
 			"haoshoku-steam",
 			"haoshoku-discord",
@@ -199,7 +201,7 @@ describe("updateKwinRulesContent", () => {
 			"haoshoku-brave-defi",
 			"haoshoku-teams",
 		]);
-		expect(section(result, "General")).toContain("count=12\n");
+		expect(section(result, "General")).toContain("count=11\n");
 	});
 
 	it("emits the measured Wayland classes and explicit forced activity UUIDs", async () => {
@@ -209,7 +211,6 @@ describe("updateKwinRulesContent", () => {
 		const expected = {
 			"haoshoku-notion": [CLASSES.notion, allActivities],
 			"haoshoku-spotify": [CLASSES.spotify, allActivities],
-			"haoshoku-agents": [CLASSES.agents, allActivities],
 			"haoshoku-brave-flux": [CLASSES.braveFlux, IDS.flux],
 			"haoshoku-steam": [CLASSES.steam, IDS.flux],
 			"haoshoku-discord": [CLASSES.discord, IDS.flux],
@@ -228,6 +229,7 @@ describe("updateKwinRulesContent", () => {
 			expect(block).toContain("activityrule=2\n");
 			expect(block).toMatch(/^Description=Haoshoku /m);
 		}
+		expect(section(result, "haoshoku-agents")).toBeUndefined();
 	});
 
 	it("pins only Steam's exact measured class to flux", async () => {
@@ -399,7 +401,6 @@ describe("KWin activities placement asset", () => {
 		const expected = {
 			[CLASSES.notion]: "DP-2",
 			[CLASSES.spotify]: "DP-2",
-			[CLASSES.agents]: "DP-2",
 			[CLASSES.braveFlux]: "DP-1",
 			[CLASSES.steam]: "DP-1",
 			[CLASSES.braveDefi]: "DP-1",
@@ -568,7 +569,6 @@ describe("syncKdeActivities", () => {
 		const expectedClasses = {
 			"haoshoku-notion": "brave-dcokohelbbehjlcjjfmhfbpdgfjcoopf-Default",
 			"haoshoku-spotify": "Spotify",
-			"haoshoku-agents": "kitty-agents",
 			"haoshoku-brave-flux": "brave-flux",
 			"haoshoku-steam": "steam",
 			"haoshoku-discord": "discord",
@@ -677,7 +677,6 @@ describe("syncKdeActivities", () => {
 		for (const rule of [
 			"haoshoku-notion",
 			"haoshoku-spotify",
-			"haoshoku-agents",
 		]) {
 			expect(section(rules, rule)).toContain(`activity=${allActivities}\n`);
 		}

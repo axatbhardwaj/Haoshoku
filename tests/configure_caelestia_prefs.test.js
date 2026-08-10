@@ -638,19 +638,20 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		);
 	});
 
-	it("routes Super+A to DP-2 (agents split) and Super+D to HDMI-A-1 on PC", () => {
+	it("routes Super+A through the tagged Warp agents recipe and Super+D to HDMI-A-1 on PC", () => {
 		const conf = fs.readFileSync(
 			path.join(CONFIGS_CAELESTIA_DIR, "hypr-user-pc.conf"),
 			"utf8",
 		);
 		expect(conf).toContain(
-			"bind = Super, A, exec, hyprctl dispatch focusmonitor DP-2 && /home/xzat/.local/bin/agents-toggle",
+			"bind = Super, A, exec, hyprctl dispatch focusmonitor DP-2 && /home/xzat/.local/bin/haoshoku-special-workspace agents",
 		);
 		const unbindIndex = conf.indexOf("unbind = Super, A");
 		const bindIndex = conf.indexOf("bind = Super, A, exec");
 		expect(unbindIndex).toBeGreaterThanOrEqual(0);
 		expect(bindIndex).toBeGreaterThan(unbindIndex);
-		expect(conf).not.toContain("match:title agents");
+		expect(conf).not.toContain("agents-toggle");
+		expect(conf).not.toContain("kitty-agents");
 		expect(conf).toContain(
 			"bind = $kbCommunication, exec, hyprctl dispatch focusmonitor HDMI-A-1 && caelestia toggle communication",
 		);
@@ -711,11 +712,12 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		);
 		expect(conf).toContain("unbind = $kbGoToWs, 7");
 		expect(conf).toContain(
-			"bind = $kbGoToWs, 7, exec, hyprctl dispatch focusmonitor DP-2 && /home/xzat/.local/bin/haoshoku-special-workspace numbered 7 kitty",
+			"bind = $kbGoToWs, 7, exec, hyprctl dispatch focusmonitor DP-2 && /home/xzat/.local/bin/haoshoku-special-workspace numbered 7 warp",
 		);
 		expect(conf).toContain(
-			"windowrule = workspace 7 silent, match:class ^haoshoku-ws7$",
+			"exec-once = /home/xzat/.local/bin/haoshoku-special-workspace numbered-login 7 warp",
 		);
+		expect(conf).not.toContain("haoshoku-ws7");
 		expect(conf).not.toContain("kitty-workspace-7");
 	});
 
@@ -739,19 +741,20 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		expect(conf).not.toMatch(/workspace\s*=\s*10\s*,\s*monitor:/);
 	});
 
-	it("routes Super+A to the agents split without monitor forcing on laptop", () => {
+	it("routes Super+A through the tagged Warp agents recipe without monitor forcing on laptop", () => {
 		const conf = fs.readFileSync(
 			path.join(CONFIGS_CAELESTIA_DIR, "hypr-user-laptop.conf"),
 			"utf8",
 		);
 		expect(conf).toContain(
-			"bind = Super, A, exec, /home/xzat/.local/bin/agents-toggle",
+			"bind = Super, A, exec, /home/xzat/.local/bin/haoshoku-special-workspace agents",
 		);
 		const unbindIndex = conf.indexOf("unbind = Super, A");
 		const bindIndex = conf.indexOf("bind = Super, A, exec");
 		expect(unbindIndex).toBeGreaterThanOrEqual(0);
 		expect(bindIndex).toBeGreaterThan(unbindIndex);
-		expect(conf).not.toContain("match:title agents");
+		expect(conf).not.toContain("agents-toggle");
+		expect(conf).not.toContain("kitty-agents");
 		// Laptop has eDP-1, not DP-2/HDMI-A-1 — no focusmonitor forcing on Super+A
 		expect(conf).not.toMatch(/focusmonitor\s+DP-2/);
 		expect(conf).not.toContain("caelestia toggle claude");
@@ -819,7 +822,7 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		);
 		const sharedMarkers = [
 			"bind = $kbEditor, exec, app2unit -- $editor",
-			"bind = $kbTerminal, exec, app2unit -- kitty",
+			"bind = $kbTerminal, exec, app2unit -- xdg-terminal-exec",
 			"bind = $kbBrowser, exec, caelestia toggle brave-work",
 			"workspace = 10, default:true, persistent:true",
 			"workspace = 1, default:true, persistent:true",
@@ -829,15 +832,13 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 			"workspace = 5, default:true, persistent:true",
 			"workspace = 6, persistent:true",
 			"workspace = 7, persistent:true",
-			"windowrule = workspace special:agents, match:class kitty-agents",
 			"windowrule = workspace 2 silent, match:class ^[Ss]team$",
 			"windowrule = workspace 4 silent, match:class discord",
 			"windowrule = workspace 5 silent, match:class (teams-for-linux|TelegramDesktop|org\\.telegram\\.desktop)",
 			'hyprctl dispatch exec "[workspace 2 silent] app2unit -- steam"',
 			'hyprctl dispatch exec "[workspace 4 silent] app2unit -- discord"',
 			"bind = $kbGoToWs, 6, exec, hyprctl dispatch workspace 6",
-			"bind = $kbGoToWs, 7, exec, /home/xzat/.local/bin/haoshoku-special-workspace numbered 7 kitty",
-			"windowrule = workspace 7 silent, match:class ^haoshoku-ws7$",
+			"bind = $kbGoToWs, 7, exec, /home/xzat/.local/bin/haoshoku-special-workspace numbered 7 warp",
 			"hyprshot -m output -m active",
 		];
 
@@ -980,7 +981,7 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		}
 	});
 
-	it("rebinds Super+T (default terminal) to kitty in both hypr-user variants", () => {
+	it("rebinds Super+T (default terminal) to the XDG terminal in both hypr-user variants", () => {
 		for (const file of ["hypr-user-pc.conf", "hypr-user-laptop.conf"]) {
 			const conf = fs.readFileSync(
 				path.join(CONFIGS_CAELESTIA_DIR, file),
@@ -988,7 +989,9 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 			);
 
 			expect(conf).toContain("unbind = $kbTerminal");
-			expect(conf).toContain("bind = $kbTerminal, exec, app2unit -- kitty");
+			expect(conf).toContain(
+				"bind = $kbTerminal, exec, app2unit -- xdg-terminal-exec",
+			);
 		}
 	});
 
@@ -1007,62 +1010,21 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		}
 	});
 
-	it.skip("ships configs/scripts/agents-toggle with the occupancy guard", () => {
-		const s = fs.readFileSync(
-			path.join(PROJECT_ROOT, "configs", "scripts", "agents-toggle"),
-			"utf8",
-		);
-		expect(s).toContain("special:agents");
-		expect(s).toContain("togglespecialworkspace agents");
-		expect(s).toContain(
-			"kitty --class=$CLASS --title=agents fish -C 'claude -r io'",
-		);
-		expect(s).toContain("haoshoku-agents-toggle.lock");
-		expect(s).toContain('mkdir "$LOCK_DIR"');
-		expect(s).toContain("trap 'rmdir \"$LOCK_DIR\"' 0 HUP INT TERM");
-		expect(s).not.toContain("xdg-open");
-	});
-
-	it.skip("agents-toggle identifies its window by a dedicated class and can place it", () => {
-		const s = fs.readFileSync(
-			path.join(PROJECT_ROOT, "configs", "scripts", "agents-toggle"),
-			"utf8",
-		);
-		// The dedicated --class is what makes this window addressable at all: it is
-		// how the stray-reclaim lookup, the post-spawn placement fallback, and the
-		// windowrule in hypr-user-*.conf all find it. The predecessor matched on
-		// dev.warp.Warp plus a title substring and had to diff the client list,
-		// because every Warp window shared one class and one warm PID.
-		expect(s).toContain("CLASS=kitty-agents");
-		expect(s).toContain("select(.class == $c)");
-		expect(s).toContain("movetoworkspacesilent");
+	it("binds Super+A to the shared Warp agents recipe in both hypr-user variants", () => {
 		for (const file of ["hypr-user-pc.conf", "hypr-user-laptop.conf"]) {
 			const conf = fs.readFileSync(
 				path.join(CONFIGS_CAELESTIA_DIR, file),
 				"utf8",
 			);
-			expect(conf).toContain(
-				"windowrule = workspace special:agents, match:class kitty-agents",
+			expect(conf).toMatch(
+			/bind = Super, A, exec,.*haoshoku-special-workspace agents/,
 			);
-		}
-		// The old script's title-substring match is gone with the class; asserting
-		// on the launch command rather than on `dev.warp.Warp`, which still appears
-		// in the comment explaining why the rewrite was possible.
-		expect(s).not.toContain("warp-terminal");
-	});
-
-	it("binds Super+A to the agents-toggle script in both hypr-user variants", () => {
-		for (const file of ["hypr-user-pc.conf", "hypr-user-laptop.conf"]) {
-			const conf = fs.readFileSync(
-				path.join(CONFIGS_CAELESTIA_DIR, file),
-				"utf8",
-			);
-			expect(conf).toMatch(/bind = Super, A, exec,.*agents-toggle/);
 			const unbindIndex = conf.indexOf("unbind = Super, A");
 			const bindIndex = conf.indexOf("bind = Super, A, exec");
 			expect(unbindIndex).toBeGreaterThanOrEqual(0);
 			expect(bindIndex).toBeGreaterThan(unbindIndex);
 			expect(conf).not.toContain("caelestia toggle agents");
+			expect(conf).not.toContain("agents-toggle");
 		}
 	});
 

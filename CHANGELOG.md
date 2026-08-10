@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Migrate every active Omarchy, Caelestia, and KDE terminal caller to Warp.
+  `xdg-terminal-exec` now selects Warp, workspace 7 and the Haki/agents tabs
+  use exact-address tags, and Kitty remains installed as an inactive fallback.
 - Add JioHotstar as a `Super+J` special workspace and relocate Omarchy's
   toggle-split action to `Super+Ctrl+Shift+J`.
 

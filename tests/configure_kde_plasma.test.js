@@ -43,7 +43,10 @@ describe("syncKdePlasma", () => {
 			.map((file) => fs.readFileSync(path.join(applications, file), "utf8"))
 			.join("\n");
 		expect(content).toContain("X-KDE-Shortcuts=Meta+T");
-		expect(content).toContain("Exec=kitty");
+		expect(content).toContain("Exec=warp-terminal");
+		expect(content).toContain(
+			"Exec=warp-terminal warp://tab_config/agents?new_window=true",
+		);
 		expect(content).toContain("Exec=dolphin");
 		expect(content).toContain("Exec=zeditor");
 		expect(content).toContain("Exec=brave --profile-directory=Default");

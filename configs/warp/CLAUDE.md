@@ -1,12 +1,14 @@
 # configs/warp/
 
-Warp terminal configuration, deployed by `configureWarp()` (`src/helpers/configure_warp.js`).
+Warp is the primary XDG terminal. Its configuration is deployed by
+`configureWarp()` (`src/helpers/configure_warp.js`).
 
 ## Files
 
 | File                      | What                                                  | When to read                          |
 | ------------------------- | ----------------------------------------------------- | ------------------------------------- |
-| `tab_configs/agents.toml` | Super+A agents tab (Claude only), tab title "agents" | Modifying the agents workspace layout |
+| `tab_configs/haki.toml`   | Omarchy Super+A Haki tab | Modifying the Haki workspace layout |
+| `tab_configs/agents.toml` | Caelestia Super+A agents tab (Claude only), tab title "agents" | Modifying the agents workspace layout |
 | `themes/elysian.yaml`     | Warp-native port of the active Omarchy Elysian Kitty palette | Modifying Warp colors or readability |
 
 ## Elysian theme: shipped and activated
@@ -18,21 +20,15 @@ custom-theme object, and `override_opacity = 77`. The palette is a direct port o
 Omarchy Elysian Kitty roles and ANSI colors. Warp ignores shell OSC palette injection
 (`warpdotdev/warp#3108`), so a native custom theme is required.
 
-The normal CachyOS user-app setup calls `configureWarp()` again. This restores durable deployment
-without restoring any Warp keybind or default-terminal routing; Kitty remains primary until a
-separate user-approved switch.
+The normal CachyOS user-app setup calls `configureWarp()` again. It restores the
+Elysian theme, every shipped top-level tab config, and the XDG preference for
+Warp. Kitty remains installed with its config as an inactive fallback.
 
 ## Agents tab config
 
-`tab_configs/agents.toml` deploys to `${XDG_DATA_HOME:-~/.local/share}/warp-terminal/tab_configs/`
-(a single Claude pane; the Codex half of the old top/bottom split was dropped, so
-there is no root `split = "vertical"` pane left to declare). Super+A runs the
-`agents-toggle` guard script (`configs/scripts/` → `~/.local/bin/`): if `special:agents`
-already holds a window it just toggles that workspace's visibility; otherwise it spawns
-`warp-terminal warp://tab_config/agents?new_window=true` pinned to `special:agents` via a
-Hyprland `[workspace special:agents]` exec rule. Launched **directly** — never `xdg-open`,
-which routes `warp://` to the unrelated GNOME "Warp" app (`app.drey.Warp`).
-
-This replaced a Caelestia title-match toggle + windowrule: Warp has no stable per-window
-identity (every window is class `dev.warp.Warp`; the title drifts off "agents" once a pane
-exits), so title matching spawned duplicate windows. Keying off workspace occupancy is robust.
+`tab_configs/haki.toml` and `tab_configs/agents.toml` deploy to
+`${XDG_DATA_HOME:-~/.local/share}/warp-terminal/tab_configs/`. The shared
+`haoshoku-special-workspace` helper launches their `warp://tab_config/...` URIs,
+then tags the exact new window address (`haoshoku-haki` or `haoshoku-agents`).
+Workspace 7 uses the same exact-address ownership pattern (`haoshoku-ws7`).
+Never place Warp with a broad `dev.warp.Warp` class rule: all Warp windows share it.

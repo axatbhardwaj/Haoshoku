@@ -47,11 +47,11 @@ avoids a registry migration that could risk a duplicate-class validation
 hazard, so future maintainers must not “fix” the apparent naming mismatch or
 break the matching windowrules.
 
-Workspace 7 is owned by the `haoshoku-ws7` class and the
-`haoshoku-special-workspace` numbered kitty recipe. `exec-once` covers fresh
-logins; `configure_omarchy_workspaces.js` invokes the same idempotent login
-recipe after reload so the installing session is populated immediately. Keep
-the dedicated class, windowrule, login recipe, and `SUPER+7` binding aligned.
+Workspace 7 uses the `haoshoku-special-workspace numbered 7 warp` recipe.
+Exact-address tags, not Warp's shared class, identify its owned window;
+`exec-once` and the post-reload helper call use `numbered-login 7 warp`.
+Never add a broad `dev.warp.Warp` placement rule. `SUPER+Return` and `SUPER+T`
+remain Omarchy's `xdg-terminal-exec` routes, whose XDG default is Warp.
 
 One appearance carve-out is **`hooks/theme-set.d/`**: its post-processing
 hooks run AFTER Omarchy sets a theme. They do not author Omarchy appearance;

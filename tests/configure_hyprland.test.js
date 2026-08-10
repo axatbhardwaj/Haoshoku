@@ -494,6 +494,10 @@ describe("configureCaelestiaShell — malformed shell.json handling", () => {
 		const shellConfig = JSON.parse(fs.readFileSync(shellConfigPath, "utf8"));
 		// Starting from {} means only the forced default lands.
 		expect(shellConfig.services.useTwelveHourClock).toBe(false);
+		expect(shellConfig.general.apps.terminal).toEqual([
+			"xdg-terminal-exec",
+			"--",
+		]);
 		expect(messages.join("\n")).toMatch(/shell\.json/i);
 		expect(messages.join("\n")).toMatch(/\.bak/);
 	});
@@ -517,6 +521,10 @@ describe("configureCaelestiaShell — malformed shell.json handling", () => {
 		const shellConfig = JSON.parse(fs.readFileSync(shellConfigPath, "utf8"));
 		expect(shellConfig.services.weatherLocation).toBe("Pune");
 		expect(shellConfig.services.useTwelveHourClock).toBe(false);
+		expect(shellConfig.general.apps.terminal).toEqual([
+			"xdg-terminal-exec",
+			"--",
+		]);
 	});
 });
 

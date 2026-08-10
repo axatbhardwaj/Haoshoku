@@ -98,10 +98,6 @@ esac
 			"#!/usr/bin/env bash\nexit 0\n",
 		);
 		fs.writeFileSync(
-			path.join(commandDirectory, "kitty"),
-			'#!/usr/bin/env bash\nshift 2\nexec "$@"\n',
-		);
-		fs.writeFileSync(
 			path.join(commandDirectory, "warp-terminal"),
 			"#!/usr/bin/env bash\nexit 0\n",
 		);
@@ -113,7 +109,6 @@ esac
 			hyprctl,
 			helper,
 			path.join(commandDirectory, "systemctl"),
-			path.join(commandDirectory, "kitty"),
 			path.join(commandDirectory, "warp-terminal"),
 			path.join(commandDirectory, "brave-origin"),
 		]) {
@@ -400,38 +395,6 @@ esac
 		});
 	}
 
-	for (const { probe, failedProbeCall } of [
-		{ probe: "occupancy", failedProbeCall: "1" },
-		{ probe: "stray-address", failedProbeCall: "2" },
-	]) {
-		for (const failure of ["non-zero-exit", "invalid-json"]) {
-			it(`[${failure}] workspace-7 ${probe} probe failure causes no kitty action`, async () => {
-				const result = await run(
-					["numbered-login", "7", "kitty"],
-					"clients -j",
-					failure,
-					"",
-					"",
-					"[]",
-					"",
-					failedProbeCall,
-				);
-
-				expect(result.exitCode).toBe(0);
-				expect(result.stderr).toBe("");
-				expect(
-					result.dispatches.filter((dispatch) =>
-						[
-							"dispatch exec ",
-							"dispatch focuswindow",
-							"dispatch movetoworkspace",
-						].some((prefix) => dispatch.startsWith(prefix)),
-					),
-				).toEqual([]);
-			});
-		}
-	}
-
 	it("exits successfully for every accepted recipe when Hyprland is unavailable", async () => {
 		fs.writeFileSync(
 			path.join(commandDirectory, "hyprctl"),
@@ -446,12 +409,7 @@ esac
 				name: "numbered communication",
 				args: ["numbered", "3", "communication-numbered"],
 			},
-			{ name: "numbered kitty", args: ["numbered", "7", "kitty"] },
 			{ name: "numbered Warp", args: ["numbered", "7", "warp"] },
-			{
-				name: "numbered-login kitty",
-				args: ["numbered-login", "7", "kitty"],
-			},
 			{ name: "numbered notion", args: ["numbered", "4", "notion"] },
 			{ name: "browser", args: ["browser", "flux"] },
 			{ name: "browser-toggle", args: ["browser-toggle", "flux"] },
