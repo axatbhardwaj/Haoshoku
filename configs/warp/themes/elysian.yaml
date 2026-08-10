@@ -1,0 +1,27 @@
+# Elysian — ported 1:1 from the active Omarchy kitty palette.
+# ANSI mapping: normal.* = kitty color0-7, bright.* = kitty color8-15.
+name: Elysian
+accent: "#62e2a4"
+background: "#010401"
+foreground: "#fdfffd"
+cursor: "#fdfffd"
+details: darker
+terminal_colors:
+  normal:
+    black: "#010401"
+    red: "#bf5a7c"
+    green: "#70cf6c"
+    yellow: "#dfec63"
+    blue: "#62e2a4"
+    magenta: "#e0eb7a"
+    cyan: "#9ed8dd"
+    white: "#bff2ab"
+  bright:
+    black: "#518a51"
+    red: "#dcb0be"
+    green: "#b4e8b2"
+    yellow: "#f6fdb7"
+    blue: "#b0f3d2"
+    magenta: "#f8fdce"
+    cyan: "#e3f5f6"
+    white: "#fdfffd"

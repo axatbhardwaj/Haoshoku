@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { log } from "../src/common/utils.js";
 import {
+	configureUserApps,
 	ensureRustToolchain,
 	getInstalledPackages,
 	installArchPackageBatch,
@@ -14,6 +15,46 @@ import {
 	runCachyOSSetup,
 	selectArchInstallCommand,
 } from "../src/os_scripts/cachyos.js";
+
+describe("user app configuration", () => {
+	it("runs the Warp configurator in the normal app setup path", async () => {
+		const events = [];
+		const record = (name) => async () => events.push(name);
+
+		await configureUserApps({
+			promptUserImpl: async () => false,
+			configureBrowserIntegrationImpl: record("browser"),
+			configureAudioImpl: record("audio"),
+			configureBashImpl: record("bash"),
+			configureFastfetchImpl: record("fastfetch"),
+			configureWarpImpl: record("warp"),
+			runCommandImpl: record("uosc"),
+			enableServicesImpl: record("services"),
+			configureClaudeImpl: record("claude"),
+			installGhStackImpl: record("gh-stack"),
+			configureClaudeStayAwakeImpl: record("stay-awake"),
+			configurePrWatchImpl: record("pr-watch"),
+			configureCodexImpl: record("codex"),
+			configureAgentOsImpl: record("agent-os"),
+		});
+
+		expect(events).toEqual([
+			"browser",
+			"audio",
+			"bash",
+			"fastfetch",
+			"warp",
+			"uosc",
+			"services",
+			"claude",
+			"gh-stack",
+			"stay-awake",
+			"pr-watch",
+			"codex",
+			"agent-os",
+		]);
+	});
+});
 
 describe("Rust toolchain preparation", () => {
 	it("preserves Rust when rustc and cargo are already available", async () => {

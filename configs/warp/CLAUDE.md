@@ -7,16 +7,20 @@ Warp terminal configuration, deployed by `configureWarp()` (`src/helpers/configu
 | File                      | What                                                  | When to read                          |
 | ------------------------- | ----------------------------------------------------- | ------------------------------------- |
 | `tab_configs/agents.toml` | Super+A agents tab (Claude only), tab title "agents" | Modifying the agents workspace layout |
+| `themes/elysian.yaml`     | Warp-native port of the active Omarchy Elysian Kitty palette | Modifying Warp colors or readability |
 
-## Theme: activated, not shipped
+## Elysian theme: shipped and activated
 
-Warp's color theme is **not** stored here. Caelestia generates the Warp theme from its
-`warp.yaml` template into `${XDG_DATA_HOME:-~/.local/share}/warp-terminal/themes/caelestia.yaml`
-on every scheme change. `configureWarp()` only **activates** it by patching
-`${XDG_CONFIG_HOME:-~/.config}/warp-terminal/settings.toml` — `system_theme = false` plus a
-`theme = { custom = { name, path } }` object (custom themes require the object form; a bare
-string selects a built-in). Warp ignores Caelestia's OSC palette injection
-(`warpdotdev/warp#3108`), which is why activation — not OSC — is the fix.
+`configureWarp()` copies `themes/elysian.yaml` to
+`${XDG_DATA_HOME:-~/.local/share}/warp-terminal/themes/elysian.yaml`, then patches
+`${XDG_CONFIG_HOME:-~/.config}/warp-terminal/settings.toml`: `system_theme = false`, the
+custom-theme object, and `override_opacity = 77`. The palette is a direct port of the active
+Omarchy Elysian Kitty roles and ANSI colors. Warp ignores shell OSC palette injection
+(`warpdotdev/warp#3108`), so a native custom theme is required.
+
+The normal CachyOS user-app setup calls `configureWarp()` again. This restores durable deployment
+without restoring any Warp keybind or default-terminal routing; Kitty remains primary until a
+separate user-approved switch.
 
 ## Agents tab config
 

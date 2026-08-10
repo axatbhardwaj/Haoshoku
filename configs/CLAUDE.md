@@ -17,7 +17,7 @@ Template configuration files copied to user's `~/.config/` during setup.
 | `ghostty/`      | Retained legacy Ghostty config; installed but no longer deployed or wired to keybinds | Reviewing the former Ghostty setup |
 | `fastfetch/`    | Fastfetch system info config        | Modifying system info display             |
 | `fish/`         | Fish shell config                   | Modifying shell behavior, aliases         |
-| `warp/`         | Warp tab config + theme activation. No longer wired to any keybind — Super+T, Super+A and ws 7 moved to kitty; kept because Warp is still installed | Modifying Warp tab config or theme |
+| `warp/`         | Warp tab config + shipped Elysian theme deployment. No keybind points at Warp yet — Kitty remains primary pending a visual check | Modifying Warp tab config or theme |
 | `vencord/`      | Vencord Discord theme               | Modifying Discord appearance              |
 | `claude/`       | Claude Code personal config (copied)    | Modifying settings, backup/restore        |
 | `claude-remote-control/` | Claude Remote Control tmux supervisor + systemd user-unit template | Modifying persistent Claude sessions, restart behavior, or attach lifecycle |
