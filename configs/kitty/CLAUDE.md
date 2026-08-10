@@ -1,14 +1,15 @@
 # configs/kitty/
 
-Kitty remains installed and its config remains deployable as an inactive,
-recoverable fallback. Active terminal routes use Warp through the XDG default
-or explicit tagged Warp recipes; do not add Kitty back to a keybind or helper.
+Kitty, its package entry, and its config remain in the repository for manual
+recovery. No current deployer automatically installs `kitty.conf`. Active
+terminal routes use Warp through the XDG default or explicit tagged Warp
+recipes; do not add Kitty back to a keybind or helper.
 
 ## Files
 
 | File               | What                                                                 | When to read                                    |
 | ------------------ | -------------------------------------------------------------------- | ----------------------------------------------- |
-| `kitty.conf`       | The live config, deployed to `~/.config/kitty/kitty.conf` by `configureTerminals()` in `src/os_scripts/cachyos.js`. It intentionally carries no colours because the shell applies them at runtime. | Changing terminal font, padding, opacity, blur, decorations, or keybinds |
+| `kitty.conf`       | Retained fallback config for manual recovery; it is not automatically deployed. It intentionally carries no colours because the shell applies them at runtime. | Changing terminal font, padding, opacity, blur, decorations, or keybinds |
 | `gen-sequences.py` | Maintenance tool, **not deployed**. Rewrites `~/.local/state/caelestia/sequences.txt` from the Zed theme. | Re-syncing the OSC palette after a Caelestia scheme change |
 
 ## Blur under Hyprland
@@ -62,5 +63,6 @@ UI roles:
 
 - `caelestia scheme set ...` regenerates `sequences.txt` from `term0`–`term15`
   and undoes `gen-sequences.py`. Re-run the script after changing schemes.
-- Only `kitty.conf` is deployed. `gen-sequences.py` is run manually when the
-  generated OSC values need to be reconciled with the Zed theme.
+- `kitty.conf` is retained for manual recovery, not automatically deployed.
+  `gen-sequences.py` is run manually when the generated OSC values need to be
+  reconciled with the Zed theme.

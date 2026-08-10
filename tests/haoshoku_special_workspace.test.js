@@ -105,6 +105,7 @@ describe("haoshoku-special-workspace", () => {
 	let chromium;
 	let claudeDesktop;
 	let focusedMonitorState;
+	let runtimeDirectory;
 	let specialMonitorState;
 	let specialState;
 	let tmuxLog;
@@ -118,6 +119,7 @@ describe("haoshoku-special-workspace", () => {
 		chromium = path.join(directory, "brave-origin");
 		claudeDesktop = path.join(directory, ["claude", "desktop"].join("-"));
 		focusedMonitorState = path.join(directory, "focused-monitor-state");
+		runtimeDirectory = path.join(directory, "runtime");
 		specialMonitorState = path.join(directory, "special-monitor-state");
 		specialState = path.join(directory, "special-workspace-state");
 		tmuxLog = path.join(directory, "tmux-call");
@@ -125,6 +127,10 @@ describe("haoshoku-special-workspace", () => {
 		warpCall = path.join(directory, "warp-call");
 		fs.writeFileSync(focusedMonitorState, "DP-1");
 		fs.writeFileSync(specialMonitorState, "DP-1");
+		fs.mkdirSync(runtimeDirectory);
+		const flock = Bun.which("flock");
+		if (!flock) throw new Error("missing test dependency: flock");
+		fs.symlinkSync(flock, path.join(directory, "flock"));
 		const hyprctl = path.join(directory, "hyprctl");
 		const uwsmApp = path.join(directory, "uwsm-app");
 		const helperDirectory = path.join(directory, ".local", "bin");
@@ -294,6 +300,7 @@ esac
 				SPECIAL_MONITOR_STATE: specialMonitorState,
 				TMUX_LOG: tmuxLog,
 				TMUX_STATE: tmuxState,
+				XDG_RUNTIME_DIR: runtimeDirectory,
 				WARP_CALL: warpCall,
 				WARP_CLIENTS_AFTER_LAUNCH: warpClientsAfterLaunch ?? "",
 				PATH: `${directory}:${process.env.PATH}`,
@@ -1617,6 +1624,19 @@ printf 'signal-desktop\\n' >> "$CALL_LOG"
 		]);
 	});
 
+	it("fails closed when multiple unowned Warps are adoptable", async () => {
+		const result = await run(["numbered-login", "8", "warp"], {
+			clientsState: JSON.stringify([
+				warpClient("0xadopt-one", "8"),
+				warpClient("0xadopt-two", "8"),
+			]),
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(warpArguments()).toBeNull();
+		expect(fs.existsSync(log)).toBe(false);
+	});
+
 	it("launches, tags, and moves only the new Warp when other owners exist", async () => {
 		const result = await run(["numbered", "7", "warp"], {
 			clientsState: JSON.stringify([
@@ -1654,6 +1674,139 @@ printf 'signal-desktop\\n' >> "$CALL_LOG"
 		expect(repeated.exitCode).toBe(0);
 		expect(warpArguments()).toBeNull();
 		expect(fs.existsSync(log)).toBe(false);
+	});
+
+	it("fails closed when multiple unowned Warps appear after launch", async () => {
+		const result = await run(["numbered-login", "7", "warp"], {
+			clientsState: "[]",
+			warpClientsAfterLaunch: JSON.stringify([
+				warpClient("0xnew-one", "7"),
+				warpClient("0xnew-two", "7"),
+			]),
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(warpArguments()).toEqual([
+			`warp://action/new_window?path=${directory}`,
+		]);
+		expect(dispatchCalls()).toHaveLength(1);
+		expect(dispatchCalls()[0]).toContain(
+			"dispatch exec [workspace 7 silent] uwsm-app -- warp-terminal ",
+		);
+	});
+
+	it("fails closed when its user runtime lock cannot be opened", async () => {
+		const result = await run(["numbered-login", "7", "warp"], {
+			clientsState: "[]",
+			warpClientsAfterLaunch: JSON.stringify([warpClient("0xnew", "7")]),
+			env: { XDG_RUNTIME_DIR: path.join(directory, "missing-runtime") },
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(warpArguments()).toBeNull();
+		expect(fs.existsSync(log)).toBe(false);
+	});
+
+	it("serializes concurrent Haki and agents Warp ownership without stealing a new address", async () => {
+		const raceClients = path.join(directory, "race-clients.json");
+		const raceCounterLock = path.join(directory, "race-counter.lock");
+		const raceInitialCount = path.join(directory, "race-initial-count");
+		const raceLaunchFile = path.join(directory, "race-launched");
+		const racePollCount = path.join(directory, "race-poll-count");
+		const raceWarpCalls = path.join(directory, "race-warp-calls");
+		fs.writeFileSync(
+			raceClients,
+			JSON.stringify([
+				warpClient("0xfirst", "special:race"),
+				warpClient("0xsecond", "special:race"),
+			]),
+		);
+		fs.writeFileSync(
+			path.join(directory, "hyprctl"),
+			`#!/usr/bin/env bash
+increment() {
+  local file="$1" count=0
+  exec 9>"$RACE_COUNTER_LOCK"
+  flock 9
+  [[ -r "$file" ]] && read -r count < "$file"
+  ((count += 1))
+  printf '%s\\n' "$count" > "$file"
+  flock -u 9
+  exec 9>&-
+  printf '%s\\n' "$count"
+}
+wait_for() {
+  local file="$1" minimum="$2" current=0 attempt
+  for attempt in {1..100}; do
+    [[ -r "$file" ]] && read -r current < "$file"
+    ((current >= minimum)) && return 0
+    sleep 0.01
+  done
+}
+if [[ "$1 $2" == "clients -j" ]]; then
+  if [[ ! -e "$RACE_LAUNCH_FILE" ]]; then
+    increment "$RACE_INITIAL_COUNT" >/dev/null
+    wait_for "$RACE_INITIAL_COUNT" 2
+    printf '[]\\n'
+  else
+    increment "$RACE_POLL_COUNT" >/dev/null
+    wait_for "$RACE_POLL_COUNT" 2
+    cat "$RACE_CLIENTS"
+  fi
+elif [[ "$1 $2" == "monitors -j" ]]; then
+  printf '[{"name":"DP-1","focused":true,"specialWorkspace":{"name":""}},{"name":"DP-2","focused":false,"specialWorkspace":{"name":""}}]\\n'
+elif [[ "$1" == "dispatch" && "$2" == "exec" ]]; then
+  printf '%s\\n' "$*" >> "$CALL_LOG"
+  bash -c "\${3#*] }"
+else
+  printf '%s\\n' "$*" >> "$CALL_LOG"
+fi
+`,
+		);
+		fs.writeFileSync(
+			path.join(directory, "warp-terminal"),
+			`#!/usr/bin/env bash
+printf '%s\\n' "$*" >> "$RACE_WARP_CALLS"
+if [[ ! -e "$RACE_LAUNCH_FILE" ]]; then
+  touch "$RACE_LAUNCH_FILE"
+fi
+`,
+		);
+		fs.chmodSync(path.join(directory, "hyprctl"), 0o755);
+		fs.chmodSync(path.join(directory, "warp-terminal"), 0o755);
+
+		const environment = {
+			...process.env,
+			CALL_LOG: log,
+			HOME: directory,
+			PATH: `${directory}:${process.env.PATH}`,
+			RACE_CLIENTS: raceClients,
+			RACE_COUNTER_LOCK: raceCounterLock,
+			RACE_INITIAL_COUNT: raceInitialCount,
+			RACE_LAUNCH_FILE: raceLaunchFile,
+			RACE_POLL_COUNT: racePollCount,
+			RACE_WARP_CALLS: raceWarpCalls,
+			XDG_RUNTIME_DIR: runtimeDirectory,
+		};
+		const [haki, agents] = ["haki", "agents"].map((recipe) =>
+			Bun.spawn([script, recipe], { env: environment, stderr: "pipe" }),
+		);
+		const [hakiExit, agentsExit] = await Promise.all([
+			haki.exited,
+			agents.exited,
+		]);
+
+		expect([hakiExit, agentsExit]).toEqual([0, 0]);
+		expect(
+			fs.readFileSync(raceWarpCalls, "utf8").trim().split("\n"),
+		).toHaveLength(2);
+		expect(
+			dispatchCalls().filter((dispatch) =>
+				["dispatch tagwindow ", "dispatch movetoworkspace"].some((prefix) =>
+					dispatch.startsWith(prefix),
+				),
+			),
+		).toEqual([]);
 	});
 
 	it("does not claim a concurrently created Warp owned by another Haoshoku tag", async () => {

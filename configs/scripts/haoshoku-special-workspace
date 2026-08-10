@@ -57,15 +57,16 @@ warp_clients() {
   printf '%s\n' "$clients"
 }
 
-find_owned_warp_address() {
+find_owned_warp_addresses() {
   local clients="$1" tag="$2"
-  jq -r --arg tag "$tag" '
-    first(.[]? | select(
+  jq -c --arg tag "$tag" '[
+    .[]? | select(
       type == "object"
       and .class == "dev.warp.Warp"
       and (.address | type == "string" and length > 0)
       and any(.tags?[]?; . == $tag)
-    ) | .address) // empty
+    ) | .address
+  ]
   ' <<<"$clients"
 }
 
@@ -76,16 +77,17 @@ find_warp_workspace() {
   ' <<<"$clients"
 }
 
-find_adoptable_warp_address() {
+find_adoptable_warp_addresses() {
   local clients="$1" workspace="$2"
-  jq -r --arg workspace "$workspace" '
-    first(.[]? | select(
+  jq -c --arg workspace "$workspace" '[
+    .[]? | select(
       type == "object"
       and .class == "dev.warp.Warp"
       and (.address | type == "string" and length > 0)
       and ((.workspace.name // "") | tostring) == $workspace
       and (any(.tags?[]?; type == "string" and startswith("haoshoku-")) | not)
-    ) | .address) // empty
+    ) | .address
+  ]
   ' <<<"$clients"
 }
 
@@ -98,53 +100,92 @@ warp_addresses() {
   ) | .address]' <<<"$clients"
 }
 
-find_new_warp_address() {
+find_new_warp_addresses() {
   local clients="$1" before_addresses="$2"
-  jq -r --argjson before "$before_addresses" '
-    first(.[]? | select(
+  jq -c --argjson before "$before_addresses" '[
+    .[]? | select(
       type == "object"
       and .class == "dev.warp.Warp"
       and (.address | type == "string" and length > 0)
       and (.address as $address | $before | index($address) | not)
       and (any(.tags?[]?; type == "string" and startswith("haoshoku-")) | not)
-    ) | .address) // empty
+    ) | .address
+  ]
   ' <<<"$clients"
 }
 
-ensure_warp() {
+unique_warp_address() {
+  local addresses="$1" count
+  count="$(jq -r 'length' <<<"$addresses")" || return 2
+  case "$count" in
+    0) return 1 ;;
+    1) jq -er '.[0] | select(type == "string" and length > 0)' <<<"$addresses" ;;
+    *) return 2 ;;
+  esac
+}
+
+ensure_warp_locked() {
   local workspace="$1" tag="$2" uri="$3"
-  local clients owned_address owned_workspace adoptable_address before_addresses new_address
-  local attempt
+  local clients owned_addresses owned_address owned_workspace
+  local adoptable_addresses adoptable_address before_addresses new_addresses new_address
+  local attempt candidate_status
   clients="$(warp_clients)" || return 0
 
-  owned_address="$(find_owned_warp_address "$clients" "$tag")"
-  if [[ -n "$owned_address" ]]; then
+  owned_addresses="$(find_owned_warp_addresses "$clients" "$tag")" || return 0
+  if owned_address="$(unique_warp_address "$owned_addresses")"; then
     owned_workspace="$(find_warp_workspace "$clients" "$owned_address")"
     [[ "$owned_workspace" == "$workspace" ]] || \
       dispatch movetoworkspacesilent "$workspace,address:$owned_address"
     return 0
+  else
+    candidate_status=$?
   fi
+  [[ "$candidate_status" == 1 ]] || return 0
 
-  adoptable_address="$(find_adoptable_warp_address "$clients" "$workspace")"
-  if [[ -n "$adoptable_address" ]]; then
+  adoptable_addresses="$(find_adoptable_warp_addresses "$clients" "$workspace")" || return 0
+  if adoptable_address="$(unique_warp_address "$adoptable_addresses")"; then
     dispatch tagwindow "+$tag" "address:$adoptable_address"
     return 0
+  else
+    candidate_status=$?
   fi
+  [[ "$candidate_status" == 1 ]] || return 0
 
   before_addresses="$(warp_addresses "$clients")"
   launch "$workspace" warp-terminal "$uri"
   for attempt in {1..10}; do
     clients="$(warp_clients)" || return 0
-    new_address="$(find_new_warp_address "$clients" "$before_addresses")"
-    if [[ -n "$new_address" ]]; then
+    new_addresses="$(find_new_warp_addresses "$clients" "$before_addresses")" || return 0
+    if new_address="$(unique_warp_address "$new_addresses")"; then
       dispatch tagwindow "+$tag" "address:$new_address"
       dispatch movetoworkspacesilent "$workspace,address:$new_address"
       return 0
+    else
+      candidate_status=$?
     fi
+    [[ "$candidate_status" == 1 ]] || return 0
     if (( attempt < 10 )); then
       sleep 0.1
     fi
   done
+}
+
+ensure_warp() {
+  local runtime_dir lock_fd result=0
+  runtime_dir="${XDG_RUNTIME_DIR:-}"
+  [[ -n "$runtime_dir" && -d "$runtime_dir" ]] || return 0
+  command -v flock >/dev/null 2>&1 || return 0
+  if ! exec {lock_fd}>"$runtime_dir/haoshoku-warp-ownership.lock"; then
+    return 0
+  fi
+  if ! flock "$lock_fd"; then
+    exec {lock_fd}>&-
+    return 0
+  fi
+  ensure_warp_locked "$@" || result=$?
+  flock -u "$lock_fd" >/dev/null 2>&1 || true
+  exec {lock_fd}>&-
+  return "$result"
 }
 
 if [[ "$recipe" == numbered || "$recipe" == numbered-login ]]; then

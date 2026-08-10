@@ -16,13 +16,16 @@ describe("haoshoku-special-workspace failed hyprctl probes", () => {
 	let directory;
 	let log;
 	let commandDirectory;
+	let runtimeDirectory;
 
 	beforeEach(() => {
 		directory = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-probe-"));
 		log = path.join(directory, "dispatches");
 		commandDirectory = path.join(directory, "commands");
+		runtimeDirectory = path.join(directory, "runtime");
 		fs.mkdirSync(commandDirectory);
-		for (const command of ["bash", "dirname", "jq", "sleep"]) {
+		fs.mkdirSync(runtimeDirectory);
+		for (const command of ["bash", "dirname", "flock", "jq", "sleep"]) {
 			const systemCommand = Bun.which(command);
 			if (!systemCommand)
 				throw new Error(`missing test dependency: ${command}`);
@@ -141,6 +144,7 @@ esac
 				PATH: commandDirectory,
 				PROBE_CALL_COUNT: path.join(directory, "probe-call-count"),
 				PROBE_FAILURE: failure,
+				XDG_RUNTIME_DIR: runtimeDirectory,
 				VISIBLE_WORKSPACE: visibleWorkspace
 					? `special:${visibleWorkspace}`
 					: "",
