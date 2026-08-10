@@ -185,6 +185,34 @@ describe("configureWarp (integration)", () => {
 		expect(fs.existsSync(`${settingsOf()}.tmp`)).toBe(false);
 	});
 
+	it("writes an empty first-capture marker when the preference is absent", async () => {
+		await configureWarp({ home, env: {} });
+
+		const capture = `${preferenceOf()}.haoshoku-first-capture`;
+		expect(fs.existsSync(capture)).toBe(true);
+		expect(fs.readFileSync(capture, "utf8")).toBe("");
+
+		fs.writeFileSync(preferenceOf(), "kitty.desktop\n");
+		await configureWarp({ home, env: {} });
+
+		expect(fs.readFileSync(capture, "utf8")).toBe("");
+	});
+
+	it("writes an empty first-capture marker when the preference is empty", async () => {
+		fs.mkdirSync(path.dirname(preferenceOf()), { recursive: true });
+		fs.writeFileSync(preferenceOf(), "");
+		await configureWarp({ home, env: {} });
+
+		const capture = `${preferenceOf()}.haoshoku-first-capture`;
+		expect(fs.existsSync(capture)).toBe(true);
+		expect(fs.readFileSync(capture, "utf8")).toBe("");
+
+		fs.writeFileSync(preferenceOf(), "foot.desktop\n");
+		await configureWarp({ home, env: {} });
+
+		expect(fs.readFileSync(capture, "utf8")).toBe("");
+	});
+
 	it("deploys every shipped tab config into the XDG tab_configs dir", async () => {
 		const projectRoot = fs.mkdtempSync(
 			path.join(os.tmpdir(), "haoshoku-warp-root-"),

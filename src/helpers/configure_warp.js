@@ -34,18 +34,21 @@ export function resolveWarpPaths({
 }
 
 function configureXdgTerminalPreference(preferencePath) {
-	const original = fs.existsSync(preferencePath)
+	const preferenceExists = fs.existsSync(preferencePath);
+	const original = preferenceExists
 		? fs.readFileSync(preferencePath, "utf8")
 		: "";
-	if (original === XDG_TERMINAL_PREFERENCE) return;
-
 	fs.mkdirSync(path.dirname(preferencePath), { recursive: true });
-	if (original !== "") {
-		const firstCapture = `${preferencePath}.haoshoku-first-capture`;
-		if (!fs.existsSync(firstCapture)) {
+	const firstCapture = `${preferencePath}.haoshoku-first-capture`;
+	if (!fs.existsSync(firstCapture)) {
+		if (preferenceExists) {
 			fs.copyFileSync(preferencePath, firstCapture, fs.constants.COPYFILE_EXCL);
+		} else {
+			fs.writeFileSync(firstCapture, "", { flag: "wx" });
 		}
 	}
+	if (original === XDG_TERMINAL_PREFERENCE) return;
+
 	const tmp = `${preferencePath}.tmp`;
 	fs.writeFileSync(tmp, XDG_TERMINAL_PREFERENCE);
 	fs.renameSync(tmp, preferencePath);
