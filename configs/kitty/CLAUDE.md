@@ -31,8 +31,8 @@ the terminal loaded from its own config, so `sequences.txt` decides what an
 interactive shell actually displays. `kitty.conf` therefore carries no colour
 directives that would only be a temporary pre-shell baseline.
 
-The regeneration tool is terminal-agnostic. It lives beside the primary
-terminal config because that is where terminal-theme maintenance is documented,
+The regeneration tool is terminal-agnostic. It lives beside Kitty's retained
+fallback config because that is where terminal-theme maintenance is documented,
 but it only reads the Zed theme and writes Caelestia's state file.
 
 ## The two-palette trap

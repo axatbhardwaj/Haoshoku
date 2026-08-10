@@ -526,6 +526,43 @@ describe("configureCaelestiaShell — malformed shell.json handling", () => {
 			"--",
 		]);
 	});
+
+	it("preserves sibling general and app settings while replacing an old terminal argv", () => {
+		const shellConfigPath = path.join(
+			tmpHome,
+			".config",
+			"caelestia",
+			"shell.json",
+		);
+		fs.mkdirSync(path.dirname(shellConfigPath), { recursive: true });
+		fs.writeFileSync(
+			shellConfigPath,
+			JSON.stringify({
+				general: {
+					workspaceLayout: "centered",
+					apps: {
+						browser: ["brave", "--profile-directory=Default"],
+						terminal: ["kitty", "-e"],
+					},
+				},
+				services: { weatherLocation: "Pune" },
+			}),
+		);
+
+		hyprland.configureCaelestiaShell({ home: tmpHome });
+
+		const shellConfig = JSON.parse(fs.readFileSync(shellConfigPath, "utf8"));
+		expect(shellConfig.general.workspaceLayout).toBe("centered");
+		expect(shellConfig.general.apps.browser).toEqual([
+			"brave",
+			"--profile-directory=Default",
+		]);
+		expect(shellConfig.general.apps.terminal).toEqual([
+			"xdg-terminal-exec",
+			"--",
+		]);
+		expect(shellConfig.services.weatherLocation).toBe("Pune");
+	});
 });
 
 describe("promptDesktopEnvironment", () => {

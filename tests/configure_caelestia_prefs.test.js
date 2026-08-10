@@ -587,7 +587,7 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		expect(toggles).not.toHaveProperty("vivaldi");
 	});
 
-	it("launches sysmon btop with a UTF-8 locale override", () => {
+	it("launches sysmon btop through the XDG terminal with its toggle metadata", () => {
 		const cliJson = JSON.parse(
 			fs.readFileSync(path.join(CONFIGS_CAELESTIA_DIR, "cli.json"), "utf8"),
 		);
@@ -597,21 +597,21 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 			enable: true,
 			match: [
 				{
-					class: "btop",
+					class: "dev.warp.Warp",
 					title: "btop",
 					workspace: { name: "special:sysmon" },
 				},
 			],
 		});
-		expect(btop.command.slice(0, 5)).toEqual([
-			"foot",
-			"-a",
-			"btop",
-			"-T",
-			"btop",
+		expect(btop.command).toEqual([
+			"xdg-terminal-exec",
+			"--",
+			"env",
+			"LC_ALL=C.UTF-8",
+			"fish",
+			"-C",
+			"exec btop",
 		]);
-		expect(btop.command).toContain("LC_ALL=C.UTF-8");
-		expect(btop.command.slice(-3)).toEqual(["fish", "-C", "exec btop"]);
 	});
 
 	it("ships hypr-user-pc.conf with the PC's monitor-pinned workspaces", () => {

@@ -115,13 +115,14 @@ does not run `git clean`, so Omarchy's managed
 The optional Claude Remote Control setup runs persistent Claude sessions from
 three fixed roots: `haki` at `$HOME`, `dev` at `$HOME/dev`, and `work` at
 `$HOME/Work`. Instances whose roots do not exist are skipped with a warning.
-`Super+A` opens the tagged Warp `agents` tab on the special workspace, separate
-from the managed services. Set `claudeSessionName` in `~/.haoshoku.json` to a named
-Claude session to resume it. A missing or null value starts plain Claude; a
+On Omarchy, `Super+A` opens the tagged Warp `haki` tab on the special workspace;
+Caelestia and KDE use their own Warp `agents` routes. Set `claudeSessionName` in
+`~/.haoshoku.json` only to resume a named Haki Claude session. A missing or null
+value starts plain Claude; a
 syntactically invalid value is preserved, reported, and ignored. A valid name is
 passed as one literal argument to `claude -r`, but it resumes directly only when
 the name resolves uniquely; otherwise Claude may open its picker. This
-keybinding never attaches to tmux
+Haki keybinding never attaches to tmux
 or calls systemd.
 
 These sessions run Claude Remote Control in **server mode**
