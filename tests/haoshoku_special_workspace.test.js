@@ -1898,6 +1898,24 @@ printf 'signal-desktop\\n' >> "$CALL_LOG"
 		expect(fs.existsSync(log)).toBe(false);
 	});
 
+	it("does not claim a concurrently created Warp owned by another Haoshoku tag", async () => {
+		const result = await run(["numbered-login", "7", "warp"], {
+			clientsState: "[]",
+			warpClientsAfterLaunch: JSON.stringify([
+				warpClient("0xforeign", "7", ["haoshoku-agents"]),
+			]),
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(warpArguments()).toEqual([
+			`warp://action/new_window?path=${directory}`,
+		]);
+		expect(dispatchCalls()).toHaveLength(1);
+		expect(dispatchCalls()[0]).toContain(
+			"dispatch exec [workspace 7 silent] uwsm-app -- warp-terminal ",
+		);
+	});
+
 	it("uses distinct Haki and agents Warp tab-config ownership", async () => {
 		fs.writeFileSync(
 			path.join(directory, "kitty"),

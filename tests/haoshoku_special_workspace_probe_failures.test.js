@@ -259,6 +259,29 @@ esac
 		});
 	}
 
+	it("rejects a multi-document client probe before launching Warp", async () => {
+		const result = await run(
+			["numbered-login", "7", "warp"],
+			"",
+			"non-zero-exit",
+			"",
+			"",
+			"[]\n[]",
+		);
+
+		expect(result.exitCode).toBe(0);
+		expect(result.stderr).toBe("");
+		expect(
+			result.dispatches.filter((dispatch) =>
+				[
+					"dispatch exec ",
+					"dispatch tagwindow ",
+					"dispatch movetoworkspace",
+				].some((prefix) => dispatch.startsWith(prefix)),
+			),
+		).toEqual([]);
+	});
+
 	for (const failure of ["invalid-json", "empty-output", "non-zero-exit"]) {
 		it(`[${failure}] numbered Warp initial probe performs no ownership action`, async () => {
 			const result = await run(
@@ -286,6 +309,34 @@ esac
 			["numbered-login", "7", "warp"],
 			"clients -j",
 			"invalid-json",
+			"",
+			"",
+			"[]",
+			"",
+			"2",
+		);
+
+		expect(result.exitCode).toBe(0);
+		expect(result.stderr).toBe("");
+		expect(
+			result.dispatches.filter((dispatch) =>
+				dispatch.startsWith("dispatch exec "),
+			),
+		).toHaveLength(1);
+		expect(
+			result.dispatches.filter((dispatch) =>
+				["dispatch tagwindow ", "dispatch movetoworkspace"].some((prefix) =>
+					dispatch.startsWith(prefix),
+				),
+			),
+		).toEqual([]);
+	});
+
+	it("does not guess an address after a later Warp poll exits nonzero", async () => {
+		const result = await run(
+			["numbered-login", "7", "warp"],
+			"clients -j",
+			"non-zero-exit",
 			"",
 			"",
 			"[]",

@@ -68,7 +68,7 @@ ensure_numbered_kitty() {
 warp_clients() {
   local clients
   clients="$(hyprctl clients -j 2>/dev/null)" || return 1
-  jq -e 'type == "array"' <<<"$clients" >/dev/null 2>&1 || return 1
+  jq -se 'length == 1 and (.[0] | type == "array")' <<<"$clients" >/dev/null 2>&1 || return 1
   printf '%s\n' "$clients"
 }
 
@@ -121,6 +121,7 @@ find_new_warp_address() {
       and .class == "dev.warp.Warp"
       and (.address | type == "string" and length > 0)
       and (.address as $address | $before | index($address) | not)
+      and (any(.tags?[]?; type == "string" and startswith("haoshoku-")) | not)
     ) | .address) // empty
   ' <<<"$clients"
 }
