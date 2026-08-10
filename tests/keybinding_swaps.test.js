@@ -257,11 +257,7 @@ describe("Omarchy keybinding swaps", () => {
 				movedTo: superFSwap?.moved_to,
 				reason: superFSwap?.reason,
 			},
-			cwdFileManager: activeBindingsFor(
-				bindings,
-				"SUPER ALT SHIFT",
-				"F",
-			),
+			cwdFileManager: activeBindingsFor(bindings, "SUPER ALT SHIFT", "F"),
 			fullscreenRelocation: bindingLines.slice(
 				fullscreenUnbindIndex,
 				fullscreenUnbindIndex + 2,
@@ -325,11 +321,7 @@ describe("Omarchy keybinding swaps", () => {
 				(line) => line === "unbind = SUPER, W",
 			),
 			closeWindowRegistry: closeWindowSwap,
-			retiredObsidianShortcut: activeBindingsFor(
-				bindings,
-				"SUPER SHIFT",
-				"O",
-			),
+			retiredObsidianShortcut: activeBindingsFor(bindings, "SUPER SHIFT", "O"),
 			retiredObsidianSuppression: bindingLines.filter(
 				(line) => line === "unbind = SUPER SHIFT, O",
 			),

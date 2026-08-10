@@ -572,8 +572,7 @@ describe("syncKdeActivities", () => {
 			"haoshoku-brave-flux": "brave-flux",
 			"haoshoku-steam": "steam",
 			"haoshoku-discord": "discord",
-			"haoshoku-whatsapp":
-				"brave-hnpfjngllnobngcgfapefoaidbinmjnm-Default",
+			"haoshoku-whatsapp": "brave-hnpfjngllnobngcgfapefoaidbinmjnm-Default",
 			"haoshoku-telegram": "org.telegram.desktop",
 			"haoshoku-signal": "signal",
 			"haoshoku-brave-defi": "brave-defi",
@@ -674,10 +673,7 @@ describe("syncKdeActivities", () => {
 			"utf8",
 		);
 		const allActivities = `${IDS.flux},${IDS.defi},${IDS.palmUSD},${extraActivityId}`;
-		for (const rule of [
-			"haoshoku-notion",
-			"haoshoku-spotify",
-		]) {
+		for (const rule of ["haoshoku-notion", "haoshoku-spotify"]) {
 			expect(section(rules, rule)).toContain(`activity=${allActivities}\n`);
 		}
 	});

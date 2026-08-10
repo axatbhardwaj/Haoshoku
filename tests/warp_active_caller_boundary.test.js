@@ -25,7 +25,7 @@ function activeRuntimeText(relativePath) {
 		.readFileSync(path.join(root, relativePath), "utf8")
 		.split(/\r?\n/)
 		.filter((line) => !/^\s*[#;]/.test(line))
-		.join("\n")
+		.join("\n");
 }
 
 function kdeServiceLaunches(kdeShortcuts) {
@@ -55,7 +55,10 @@ describe("active terminal caller boundary", () => {
 		}
 
 		const cliJson = JSON.parse(
-			fs.readFileSync(path.join(root, "configs", "caelestia", "cli.json"), "utf8"),
+			fs.readFileSync(
+				path.join(root, "configs", "caelestia", "cli.json"),
+				"utf8",
+			),
 		);
 		for (const group of Object.values(cliJson.toggles)) {
 			for (const toggle of Object.values(group)) {
@@ -114,7 +117,10 @@ describe("active terminal caller boundary", () => {
 		expect(serviceLaunches.get("dev.warp.Warp.desktop")).toBe("Meta+Return");
 
 		const fastfetch = Bun.JSONC.parse(
-			fs.readFileSync(path.join(root, "configs", "fastfetch", "config.jsonc"), "utf8"),
+			fs.readFileSync(
+				path.join(root, "configs", "fastfetch", "config.jsonc"),
+				"utf8",
+			),
 		);
 		expect(fastfetch.logo.type).toBe("auto");
 	});

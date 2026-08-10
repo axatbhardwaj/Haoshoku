@@ -1017,7 +1017,7 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 				"utf8",
 			);
 			expect(conf).toMatch(
-			/bind = Super, A, exec,.*haoshoku-special-workspace agents/,
+				/bind = Super, A, exec,.*haoshoku-special-workspace agents/,
 			);
 			const unbindIndex = conf.indexOf("unbind = Super, A");
 			const bindIndex = conf.indexOf("bind = Super, A, exec");

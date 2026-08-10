@@ -71,7 +71,12 @@ describe("--workspaces CLI mode", () => {
 			recursive: true,
 		});
 		fs.copyFileSync(
-			path.join(PROJECT_ROOT, "configs", "scripts", "haoshoku-special-workspace"),
+			path.join(
+				PROJECT_ROOT,
+				"configs",
+				"scripts",
+				"haoshoku-special-workspace",
+			),
 			path.join(
 				tmpProjectRoot,
 				"configs",
@@ -85,7 +90,8 @@ describe("--workspaces CLI mode", () => {
 			path.join(tmpProjectRoot, "node_modules"),
 			"dir",
 		);
-		const { HYPRLAND_INSTANCE_SIGNATURE: _session, ...isolatedEnv } = process.env;
+		const { HYPRLAND_INSTANCE_SIGNATURE: _session, ...isolatedEnv } =
+			process.env;
 
 		const result = Bun.spawnSync(
 			[path.join(tmpProjectRoot, "haoshoku.js"), "--workspaces"],
@@ -100,12 +106,7 @@ describe("--workspaces CLI mode", () => {
 		expect(result.exitCode).toBe(0);
 		expect(fs.readFileSync(destination, "utf8")).toBe(
 			fs.readFileSync(
-				path.join(
-					PROJECT_ROOT,
-					"configs",
-					"omarchy",
-					"workspaces-pc.conf",
-				),
+				path.join(PROJECT_ROOT, "configs", "omarchy", "workspaces-pc.conf"),
 				"utf8",
 			),
 		);
@@ -127,9 +128,7 @@ describe("--workspaces CLI mode", () => {
 
 		expect(result.exitCode).toBe(0);
 		expect(
-			JSON.parse(
-				fs.readFileSync(path.join(tmpHome, ".haoshoku.json"), "utf8"),
-			),
+			JSON.parse(fs.readFileSync(path.join(tmpHome, ".haoshoku.json"), "utf8")),
 		).toEqual({ deviceType: "laptop", preserved: true });
 	});
 
@@ -192,16 +191,9 @@ describe("--workspaces CLI mode", () => {
 		});
 
 		expect(result.exitCode).toBe(0);
-		expect(
-			fs.readFileSync(path.join(hyprDir(), "monitors.conf"), "utf8"),
-		).toBe(
+		expect(fs.readFileSync(path.join(hyprDir(), "monitors.conf"), "utf8")).toBe(
 			fs.readFileSync(
-				path.join(
-					PROJECT_ROOT,
-					"configs",
-					"omarchy",
-					"monitors-laptop.conf",
-				),
+				path.join(PROJECT_ROOT, "configs", "omarchy", "monitors-laptop.conf"),
 				"utf8",
 			),
 		);

@@ -834,9 +834,7 @@ describe("promptDeviceType", () => {
 
 		expect(fs.readFileSync(configPath, "utf8")).toBe(before);
 		expect(warnings.join("\n")).toContain("terminal unavailable");
-		expect(warnings.join("\n")).toContain(
-			"returning stored deviceType laptop",
-		);
+		expect(warnings.join("\n")).toContain("returning stored deviceType laptop");
 	});
 
 	it("does not persist the non-interactive pc fallback and prompts on the next run", async () => {

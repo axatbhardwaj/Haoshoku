@@ -292,7 +292,9 @@ describe("syncKdePlasma", () => {
 		await syncKdePlasma({ home, reload: false });
 
 		expect(fs.existsSync(path.join(home, ".config", "kwinrc"))).toBe(false);
-		expect(fs.existsSync(path.join(home, ".config", "kwinrulesrc"))).toBe(false);
+		expect(fs.existsSync(path.join(home, ".config", "kwinrulesrc"))).toBe(
+			false,
+		);
 	});
 
 	it("never touches virtual desktops in the running KWin session", async () => {
