@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const root = path.join(import.meta.dir, "..");
-const activeRouteFiles = [
+const activeTextRouteFiles = [
 	"configs/caelestia/cli.json",
 	"configs/omarchy/workspaces-pc.conf",
 	"configs/omarchy/workspaces-laptop.conf",
@@ -15,10 +15,10 @@ const activeRouteFiles = [
 	"src/helpers/configure_kde_plasma.js",
 	"src/helpers/configure_kde_activities.js",
 	"configs/kwin/scripts/haoshoku-activities-placement/contents/code/main.js",
-	"configs/kde_shortcuts.kksrc",
 	"configs/scripts/haoshoku-special-workspace",
 ];
-const retiredTerminalLauncher = /\b(?:kitty|foot|ghostty|alacritty|agents-toggle)\b/i;
+const retiredTerminalLauncher =
+	/\b(?:kitty|foot|ghostty|alacritty|konsole|agents-toggle)\b/i;
 
 function activeRuntimeText(relativePath) {
 	return fs
@@ -26,12 +26,28 @@ function activeRuntimeText(relativePath) {
 		.split(/\r?\n/)
 		.filter((line) => !/^\s*[#;]/.test(line))
 		.join("\n")
-		.replace("[services][kitty.desktop]\n_launch=none", "");
+}
+
+function kdeServiceLaunches(kdeShortcuts) {
+	const launches = new Map();
+	let desktopId;
+
+	for (const line of kdeShortcuts.split(/\r?\n/)) {
+		const section = line.match(/^\[services\]\[(.+)\]$/);
+		if (section) {
+			desktopId = section[1];
+			continue;
+		}
+		const launch = line.match(/^_launch=(.+)$/);
+		if (desktopId && launch) launches.set(desktopId, launch[1]);
+	}
+
+	return launches;
 }
 
 describe("active terminal caller boundary", () => {
 	it("keeps all active terminal command routes on Warp while retaining Kitty fallback", () => {
-		for (const relativePath of activeRouteFiles.filter(
+		for (const relativePath of activeTextRouteFiles.filter(
 			(path) => path !== "configs/caelestia/cli.json",
 		)) {
 			const content = activeRuntimeText(relativePath);
@@ -69,6 +85,17 @@ describe("active terminal caller boundary", () => {
 		expect(
 			fs.existsSync(path.join(root, "configs", "kitty", "kitty.conf")),
 		).toBe(true);
+		expect(
+			fs.existsSync(path.join(root, "configs", "ghostty", "config.ghostty")),
+		).toBe(true);
+		expect(
+			fs.existsSync(path.join(root, "configs", "alacritty", "alacritty.toml")),
+		).toBe(true);
+		const changelog = fs.readFileSync(path.join(root, "CHANGELOG.md"), "utf8");
+		expect(changelog).toContain(
+			"Keep one dedicated home-rooted kitty terminal on workspace 7",
+		);
+		expect(activeTextRouteFiles).not.toContain("CHANGELOG.md");
 	});
 
 	it("assigns KDE Meta+Return to Warp and uses a terminal-neutral Fastfetch logo", () => {
@@ -76,10 +103,10 @@ describe("active terminal caller boundary", () => {
 			path.join(root, "configs", "kde_shortcuts.kksrc"),
 			"utf8",
 		);
-		expect(kdeShortcuts).toContain("[services][kitty.desktop]\n_launch=none");
-		expect(kdeShortcuts).toContain(
-			"[services][dev.warp.Warp.desktop]\n_launch=Meta+Return",
-		);
+		const serviceLaunches = kdeServiceLaunches(kdeShortcuts);
+		expect(serviceLaunches.get("kitty.desktop")).toBe("none");
+		expect(serviceLaunches.get("org.kde.konsole.desktop")).toBe("none");
+		expect(serviceLaunches.get("dev.warp.Warp.desktop")).toBe("Meta+Return");
 
 		const fastfetch = Bun.JSONC.parse(
 			fs.readFileSync(path.join(root, "configs", "fastfetch", "config.jsonc"), "utf8"),
