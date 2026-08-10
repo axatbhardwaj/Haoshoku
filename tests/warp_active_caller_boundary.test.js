@@ -104,6 +104,11 @@ describe("active terminal caller boundary", () => {
 			"utf8",
 		);
 		const serviceLaunches = kdeServiceLaunches(kdeShortcuts);
+		for (const [desktopId, launch] of serviceLaunches) {
+			if (retiredTerminalLauncher.test(desktopId)) {
+				expect(launch, desktopId).toBe("none");
+			}
+		}
 		expect(serviceLaunches.get("kitty.desktop")).toBe("none");
 		expect(serviceLaunches.get("org.kde.konsole.desktop")).toBe("none");
 		expect(serviceLaunches.get("dev.warp.Warp.desktop")).toBe("Meta+Return");
