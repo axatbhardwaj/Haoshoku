@@ -47,6 +47,7 @@ describe("resolveWarpPaths", () => {
 	it("defaults to ~/.config and ~/.local/share", () => {
 		const r = resolveWarpPaths({ home: "/h", env: {} });
 		expect(r.settings).toBe("/h/.config/warp-terminal/settings.toml");
+		expect(r.xdgTerminalPreference).toBe("/h/.config/xdg-terminals.list");
 		expect(r.themePath).toBe(
 			"/h/.local/share/warp-terminal/themes/elysian.yaml",
 		);
@@ -59,6 +60,7 @@ describe("resolveWarpPaths", () => {
 			env: { XDG_CONFIG_HOME: "/x/cfg", XDG_DATA_HOME: "/x/data" },
 		});
 		expect(r.settings).toBe("/x/cfg/warp-terminal/settings.toml");
+		expect(r.xdgTerminalPreference).toBe("/x/cfg/xdg-terminals.list");
 		expect(r.themePath).toBe("/x/data/warp-terminal/themes/elysian.yaml");
 	});
 });
@@ -136,6 +138,7 @@ describe("configureWarp (integration)", () => {
 	afterEach(() => fs.rmSync(home, { recursive: true, force: true }));
 	const settingsOf = () =>
 		path.join(home, ".config", "warp-terminal", "settings.toml");
+	const preferenceOf = () => path.join(home, ".config", "xdg-terminals.list");
 
 	it("creates a minimal settings.toml when absent", async () => {
 		await configureWarp({ home, env: {} });
@@ -182,26 +185,96 @@ describe("configureWarp (integration)", () => {
 		expect(fs.existsSync(`${settingsOf()}.tmp`)).toBe(false);
 	});
 
-	it("deploys the agents tab config into the XDG tab_configs dir", async () => {
+	it("deploys every shipped tab config into the XDG tab_configs dir", async () => {
 		const projectRoot = fs.mkdtempSync(
 			path.join(os.tmpdir(), "haoshoku-warp-root-"),
 		);
 		const srcDir = path.join(projectRoot, "configs", "warp", "tab_configs");
 		fs.mkdirSync(srcDir, { recursive: true });
 		fs.writeFileSync(path.join(srcDir, "agents.toml"), 'title = "agents"\n');
+		fs.writeFileSync(path.join(srcDir, "logs.toml"), 'title = "logs"\n');
 
 		await configureWarp({ home, env: {}, projectRoot });
 
-		const dest = path.join(
+		const tabConfigDir = path.join(
 			home,
 			".local",
 			"share",
 			"warp-terminal",
 			"tab_configs",
-			"agents.toml",
 		);
-		expect(fs.existsSync(dest)).toBe(true);
-		expect(fs.readFileSync(dest, "utf8")).toContain('title = "agents"');
+		expect(
+			fs.readFileSync(path.join(tabConfigDir, "agents.toml"), "utf8"),
+		).toBe('title = "agents"\n');
+		expect(fs.readFileSync(path.join(tabConfigDir, "logs.toml"), "utf8")).toBe(
+			'title = "logs"\n',
+		);
+		fs.rmSync(projectRoot, { recursive: true, force: true });
+	});
+
+	it("captures the first terminal preference and keeps Warp assets byte-identical on rerun", async () => {
+		fs.mkdirSync(path.dirname(preferenceOf()), { recursive: true });
+		fs.writeFileSync(preferenceOf(), "foot.desktop\nkitty.desktop\n");
+		fs.mkdirSync(path.dirname(settingsOf()), { recursive: true });
+		fs.writeFileSync(settingsOf(), "[appearance]\nfont_size = 14\n");
+
+		const projectRoot = fs.mkdtempSync(
+			path.join(os.tmpdir(), "haoshoku-warp-root-"),
+		);
+		const srcDir = path.join(projectRoot, "configs", "warp", "tab_configs");
+		const themeDir = path.join(projectRoot, "configs", "warp", "themes");
+		fs.mkdirSync(srcDir, { recursive: true });
+		fs.mkdirSync(themeDir, { recursive: true });
+		fs.writeFileSync(path.join(srcDir, "agents.toml"), 'title = "agents"\n');
+		fs.writeFileSync(path.join(srcDir, "logs.toml"), 'title = "logs"\n');
+		fs.writeFileSync(path.join(themeDir, "elysian.yaml"), "name: Elysian\n");
+
+		await configureWarp({ home, env: {}, projectRoot });
+
+		expect(fs.readFileSync(preferenceOf(), "utf8")).toBe(
+			"# Terminal emulator preference order for xdg-terminal-exec\n# The first found and valid terminal will be used\ndev.warp.Warp.desktop\n",
+		);
+		const capture = `${preferenceOf()}.haoshoku-first-capture`;
+		expect(fs.readFileSync(capture, "utf8")).toBe(
+			"foot.desktop\nkitty.desktop\n",
+		);
+
+		const assetPaths = [
+			preferenceOf(),
+			capture,
+			settingsOf(),
+			path.join(
+				home,
+				".local",
+				"share",
+				"warp-terminal",
+				"themes",
+				"elysian.yaml",
+			),
+			path.join(
+				home,
+				".local",
+				"share",
+				"warp-terminal",
+				"tab_configs",
+				"agents.toml",
+			),
+			path.join(
+				home,
+				".local",
+				"share",
+				"warp-terminal",
+				"tab_configs",
+				"logs.toml",
+			),
+		];
+		const afterFirst = assetPaths.map((file) => fs.readFileSync(file));
+
+		await configureWarp({ home, env: {}, projectRoot });
+
+		expect(assetPaths.map((file) => fs.readFileSync(file))).toEqual(afterFirst);
+		expect(fs.existsSync(`${preferenceOf()}.bak`)).toBe(false);
+		expect(fs.existsSync(`${preferenceOf()}.tmp`)).toBe(false);
 		fs.rmSync(projectRoot, { recursive: true, force: true });
 	});
 });

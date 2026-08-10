@@ -9,6 +9,10 @@ const PROJECT_ROOT_DEFAULT = path.resolve(__dirname, "..", "..");
 const THEME_NAME = "Elysian";
 const THEME_FILE = "elysian.yaml";
 const THEME_OPACITY = 77;
+const XDG_TERMINAL_PREFERENCE =
+	"# Terminal emulator preference order for xdg-terminal-exec\n" +
+	"# The first found and valid terminal will be used\n" +
+	"dev.warp.Warp.desktop\n";
 
 /**
  * Resolve Warp's Linux file locations, honoring XDG_CONFIG_HOME / XDG_DATA_HOME
@@ -23,9 +27,29 @@ export function resolveWarpPaths({
 	const data = env.XDG_DATA_HOME || path.join(home, ".local", "share");
 	return {
 		settings: path.join(cfg, "warp-terminal", "settings.toml"),
+		xdgTerminalPreference: path.join(cfg, "xdg-terminals.list"),
 		themePath: path.join(data, "warp-terminal", "themes", THEME_FILE),
 		tabConfigDir: path.join(data, "warp-terminal", "tab_configs"),
 	};
+}
+
+function configureXdgTerminalPreference(preferencePath) {
+	const original = fs.existsSync(preferencePath)
+		? fs.readFileSync(preferencePath, "utf8")
+		: "";
+	if (original === XDG_TERMINAL_PREFERENCE) return;
+
+	fs.mkdirSync(path.dirname(preferencePath), { recursive: true });
+	if (original !== "") {
+		const firstCapture = `${preferencePath}.haoshoku-first-capture`;
+		if (!fs.existsSync(firstCapture)) {
+			fs.copyFileSync(preferencePath, firstCapture, fs.constants.COPYFILE_EXCL);
+		}
+	}
+	const tmp = `${preferencePath}.tmp`;
+	fs.writeFileSync(tmp, XDG_TERMINAL_PREFERENCE);
+	fs.renameSync(tmp, preferencePath);
+	log.success("Set Warp as the XDG terminal default.");
 }
 
 function patchTomlTable(content, header, entries) {
@@ -102,22 +126,33 @@ export async function configureWarp({
 	env = process.env,
 	projectRoot = PROJECT_ROOT_DEFAULT,
 } = {}) {
-	const { settings, themePath, tabConfigDir } = resolveWarpPaths({ home, env });
+	const { settings, xdgTerminalPreference, themePath, tabConfigDir } =
+		resolveWarpPaths({ home, env });
 
-	// Deploy the agents Tab Config (independent of theme state, so the theme
+	// Deploy all shipped Tab Configs (independent of theme state, so the theme
 	// early-return below can never skip it).
-	const tabConfigSrc = path.join(
+	const tabConfigSrcDir = path.join(
 		projectRoot,
 		"configs",
 		"warp",
 		"tab_configs",
-		"agents.toml",
 	);
-	if (fs.existsSync(tabConfigSrc)) {
+	if (fs.existsSync(tabConfigSrcDir)) {
 		fs.mkdirSync(tabConfigDir, { recursive: true });
-		safeCopyFile(tabConfigSrc, path.join(tabConfigDir, "agents.toml"));
-		log.info("Deployed Warp agents tab config.");
+		for (const entry of fs.readdirSync(tabConfigSrcDir, {
+			withFileTypes: true,
+		})) {
+			if (entry.isFile() && path.extname(entry.name) === ".toml") {
+				safeCopyFile(
+					path.join(tabConfigSrcDir, entry.name),
+					path.join(tabConfigDir, entry.name),
+				);
+			}
+		}
+		log.info("Deployed Warp tab configs.");
 	}
+
+	configureXdgTerminalPreference(xdgTerminalPreference);
 
 	// Deploy the exact Elysian palette used by the active Omarchy kitty theme.
 	const themeSrc = path.join(
