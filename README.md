@@ -79,6 +79,9 @@ The Arch setup:
   S stash, and `Super+Shift+X` X (`Super+Shift+S` stashes the focused window);
   see the canonical swaps JSON above for every Omarchy default relocated or
   superseded to make room;
+- adds a `Super+Shift+G` toggle for ephemeral gaming workspace 11. Use
+  `haoshoku-gaming-workspace place -- %command%` as a Steam launch option to
+  move the launched game's process-tree windows there;
 - starts Flux, DeFi, WhatsApp, and Notion with empty Brave Origin profiles
   below `~/.config/brave-haoshoku/`; existing Chromium profile data remains
   untouched at `~/.config/chromium-haoshoku/` for manual import;

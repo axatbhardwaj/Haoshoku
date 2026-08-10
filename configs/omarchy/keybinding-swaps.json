@@ -237,7 +237,7 @@
 			"previous_binding": "bindd = SUPER SHIFT, G, Signal, exec, omarchy-launch-or-focus ^signal$ \"uwsm-app -- signal-desktop\"",
 			"moved_from_dispatcher": "exec",
 			"moved_from_arg": "omarchy-launch-or-focus ^signal$ \"uwsm-app -- signal-desktop\"",
-			"reason": "deleted_by_user"
+			"reason": "superseded_by_workspace_toggle"
 		},
 		{
 			"config_file": "configs/omarchy/bindings.conf",

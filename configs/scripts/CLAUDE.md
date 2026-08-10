@@ -12,6 +12,7 @@ binary acts as a PATH-shadow wrapper for that binary.
 | `haoshoku-browser` | Routes URLs to the most recently focused managed browser profile, falling back to the configured default. | Changing browser dispatch or focused-profile selection |
 | `haoshoku-chromium-flux` | Launches Brave Origin on the isolated Flux profile and preserves that profile through Omarchy web-app launch parsing. | Changing the Flux profile, wrapper name, or paired desktop entry |
 | `haoshoku-chromium-profiles` | Validates and queries the configured browser profile registry, with portable Flux and DeFi fallbacks. | Changing registry validation, defaults, or profile lookup |
+| `haoshoku-gaming-workspace` | Toggles ephemeral gaming workspace 11 and wraps Steam launches to place process-tree windows there. | Changing gaming workspace focus, process matching, placement, or launch wrapping |
 | `haoshoku-special-workspace` | Implements numbered-app launchers (including the dedicated `haoshoku-ws7` home kitty), stranded-window reclaim, and focus/show/hide behavior for named app and browser special workspaces. | Changing workspace recipes, placement, reclaim/launch-if-missing behavior, or browser toggles |
 | `haoshoku-zed-glass` | Post-processes Omazed's generated Zed theme with dotted `background.appearance`, alpha-adjusted surfaces, and neutral borders. | Changing Zed transparency, Omazed hooks, or protected theme surfaces |
 | `mic-toggle` | Toggles the default microphone through `wpctl` or `pactl` and reports the resulting state. | Changing microphone controls or notifications |

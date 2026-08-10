@@ -1,0 +1,5 @@
+[
+  {"address":"0xSPLASH","pid":4444,"class":"eac-splash","title":"EasyAntiCheat"},
+  {"address":"0xGAME","pid":4444,"class":"eldenring.exe","title":"ELDEN RING"},
+  {"address":"0xOTHER","pid":7777,"class":"unrelated","title":"nope"}
+]

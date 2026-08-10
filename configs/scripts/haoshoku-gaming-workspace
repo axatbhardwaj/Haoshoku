@@ -1,0 +1,274 @@
+#!/usr/bin/env bash
+# Gaming workspace: an ephemeral workspace 11 that games and Steam gather on.
+#
+#   haoshoku-gaming-workspace toggle
+#   haoshoku-gaming-workspace place -- <command...>
+#
+# `place` is used as a Steam launch option:
+#
+#   haoshoku-gaming-workspace place -- %command%
+#   haoshoku-gaming-workspace place -- gamescope -W 2560 -H 1440 -r 144 -f -O DP-1 -- %command%
+#
+# Windows are matched by process descendancy, not by window class. Proton window
+# classes vary per game and the window never belongs to the pid Steam launched, so a
+# class list would need maintaining forever and a launched-pid check would never fire.
+#
+# Cycling between games on the workspace needs nothing from this script: Omarchy
+# already binds ALT+TAB to cyclenext, which is workspace-local.
+
+WORKSPACE_ID=11
+
+# Overridable so the test suite can point at a hyprctl that does not exist and prove
+# the watcher's failure is survivable.
+HYPRCTL="${HAOSHOKU_GW_HYPRCTL:-hyprctl}"
+
+# A game may sit on a splash, an anti-cheat handshake or a shader build long before it
+# opens a window -- Elden Ring takes upwards of 40s. The ceiling only bounds a watcher
+# that will never succeed; it is not a deadline the game has to meet.
+WATCH_TIMEOUT_SECONDS=180
+# Sub-second because the window is placed on whatever workspace you are looking at and
+# only then moved. At a one-second interval that lands as a visible flash.
+WATCH_POLL_SECONDS=0.25
+
+dispatch() {
+  "$HYPRCTL" dispatch "$@" >/dev/null 2>&1 || true
+}
+
+# Every pid in the tree rooted at $1, including $1. Empty when the process is gone.
+collect_descendants() {
+  local root="$1"
+  [ -d "/proc/$root" ] || return 0
+
+  local -a queue=("$root")
+  local -a found=()
+  local guard=0 current child kids
+
+  while [ "${#queue[@]}" -gt 0 ]; do
+    # A cycle in /proc/*/children should be impossible, but an unbounded loop inside a
+    # game launcher is not a failure worth risking.
+    guard=$((guard + 1))
+    [ "$guard" -gt 4096 ] && break
+
+    current="${queue[0]}"
+    queue=("${queue[@]:1}")
+    found+=("$current")
+
+    kids="$(cat "/proc/$current/task/"*"/children" 2>/dev/null)" || kids=""
+    for child in $kids; do
+      queue+=("$child")
+    done
+  done
+
+  [ "${#found[@]}" -gt 0 ] || return 0
+  printf '%s ' "${found[@]}"
+  printf '\n'
+}
+
+# Every window in <clients-json-file> owned by any of the given pids, one address per
+# line. Exits non-zero when there is no match, the file is unreadable, or the JSON is
+# malformed. Every one of those is an ordinary outcome here, not an error.
+match_client_for_pids() {
+  local file="$1"
+  shift
+  [ -r "$file" ] || return 1
+  [ "$#" -gt 0 ] || return 1
+
+  local pids_json address
+  pids_json="$(printf '%s\n' "$@" | jq -Rc 'select(length > 0) | tonumber' 2>/dev/null | jq -sc '.' 2>/dev/null)" || return 1
+  [ -n "$pids_json" ] || return 1
+
+  address="$(jq -er --argjson pids "$pids_json" '
+    .[]?
+    | select(type == "object" and (.pid as $p | $pids | index($p)) != null)
+    | .address
+    | select(type == "string" and length > 0)
+  ' "$file" 2>/dev/null)" || return 1
+
+  [ -n "$address" ] || return 1
+  printf '%s\n' "$address"
+}
+
+# Which workspace `toggle` should dispatch to, given hyprctl's activeworkspace JSON.
+# An unreadable or malformed state deliberately resolves to the gaming workspace:
+# guessing `previous` from an unknown position can strand you somewhere you did not
+# ask for, whereas a wrong jump to 11 is undone by pressing the key again.
+toggle_target() {
+  local file="$1" id
+  id="$(jq -er '.id? // empty' "$file" 2>/dev/null)" || id=""
+  if [ "$id" = "$WORKSPACE_ID" ]; then
+    printf 'previous\n'
+  else
+    printf '%s\n' "$WORKSPACE_ID"
+  fi
+}
+
+# Poll for windows belonging to the launched process tree and move them to the gaming
+# workspace. Runs until the process tree exits or the ceiling is hit, placing each new
+# window once. Every failure path here is a silent return: this runs beside a game that
+# must not care.
+#
+# Known limitation, deliberate: the watch is bound to the lifetime of the process this
+# script launched. A launcher that forks the real game and exits immediately takes the
+# watch down with it, and that game's window is never placed. Steam's own chain does not
+# do this -- reaper blocks on the game -- so tightening it would add a failure mode to
+# the launch path in exchange for a case that does not arise here.
+watch_and_place() {
+  local root="$1" clients="$2"
+  local address placed=" "
+  local focused=0
+
+  # The temp file is created and removed by the caller. A RETURN trap here would not
+  # run when the parent kills this watcher, which is the common ending: every launch
+  # whose game exits before a window is matched would leak one file.
+  # SECONDS rather than an accumulator, so the poll interval and the ceiling stay
+  # independent -- a fractional interval cannot be summed in shell arithmetic.
+  local deadline=$((SECONDS + WATCH_TIMEOUT_SECONDS))
+
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    kill -0 "$root" 2>/dev/null || return 0
+
+    if "$HYPRCTL" clients -j >"$clients" 2>/dev/null; then
+      # Recollected each pass: the window-owning process often appears late.
+      if address="$(match_client_for_pids "$clients" $(collect_descendants "$root"))"; then
+        # Deliberately does not stop at the first hit. Elden Ring puts up an
+        # EasyAntiCheat splash before the game window, and both belong to the tree --
+        # a one-shot watcher would place the splash and leave the game behind.
+        local one
+        while IFS= read -r one; do
+          [ -n "$one" ] || continue
+          case "$placed" in *" $one "*) continue ;; esac
+          dispatch movetoworkspacesilent "$WORKSPACE_ID,address:$one"
+          if [ "$focused" -eq 0 ]; then
+            dispatch workspace "$WORKSPACE_ID"
+            focused=1
+          fi
+          placed="$placed$one "
+        done <<EOF
+$address
+EOF
+      fi
+    fi
+
+    sleep "$WATCH_POLL_SECONDS" || return 0
+  done
+}
+
+cmd_toggle() {
+  local state target
+  state="$(mktemp 2>/dev/null)" || state=""
+  # shellcheck disable=SC2064
+  [ -n "$state" ] && trap "rm -f '$state'" RETURN
+
+  if [ -n "$state" ]; then
+    "$HYPRCTL" activeworkspace -j >"$state" 2>/dev/null || : >"$state"
+  fi
+  target="$(toggle_target "$state")"
+  dispatch workspace "$target"
+  if [ "$target" = "$WORKSPACE_ID" ]; then
+    haoshoku-special-workspace numbered-login "$WORKSPACE_ID" steam
+  fi
+}
+
+# Forward a signal to the launched process and everything under it, preserving the
+# signal's identity. Forwarding only to the direct child lets a descendant outlive
+# Steam's stop button, and converting INT to TERM lies to a game that distinguishes them.
+#
+# Single pass, deliberately. A multi-pass version was written and measured, and it
+# cannot do what it appears to: a helper forked from a dying process reparents to init
+# the moment its parent exits, so re-walking /proc from the same root never sees it.
+# Catching orphans needs process groups, which is the trade rejected at the `"$@" &`
+# site below. So the bound is stated rather than papered over: forwarding reaches the
+# tree as it exists at the instant the signal arrives. Anything spawned by a process
+# that then exits is outside it. Under Steam, reaper is the root and it outlives the
+# game, so the tree is intact when this runs.
+forward_signal() {
+  local sig="$1" root="$2" pid
+  for pid in $(collect_descendants "$root"); do
+    kill -"$sig" "$pid" 2>/dev/null || true
+  done
+  return 0
+}
+
+cmd_place() {
+  [ "${1:-}" = "--" ] || { echo "usage: haoshoku-gaming-workspace place -- <command...>" >&2; return 2; }
+  shift
+  [ "$#" -gt 0 ] || { echo "usage: haoshoku-gaming-workspace place -- <command...>" >&2; return 2; }
+
+  local clients
+  clients="$(mktemp 2>/dev/null)" || clients=""
+  # shellcheck disable=SC2064  # expand $clients now, not at trap time
+  [ -n "$clients" ] && trap "rm -f '$clients'" EXIT
+
+  # The game runs in the background only so its pid is knowable; this script still
+  # blocks on it, so Steam sees the wrapper live exactly as long as the game does.
+  #
+  # Known consequence, measured and accepted: bash sets SIGINT to SIG_IGN on async
+  # children of a non-interactive shell, and that disposition is inherited through the
+  # whole Proton chain. A wrapped process that relies on bash's trap cannot see a
+  # forwarded INT -- a process that installs its own handler still can, as the suite's
+  # Python child demonstrates. `set -m` would fix it by giving the game its own group
+  # -- rejected, because it changes signal topology in a launch chain that has already
+  # eaten this game four times, to buy transparency for a signal Steam never sends.
+  # Steam's stop button is SIGTERM, which is unaffected and is covered by the tests.
+  "$@" &
+  local game=$!
+
+  local watcher=""
+  if [ -n "$clients" ]; then
+    watch_and_place "$game" "$clients" >/dev/null 2>&1 &
+    watcher=$!
+  fi
+
+  # Steam's stop button signals the wrapper; the game tree is what should receive it.
+  # The flag is what makes the wait loop below correct -- see the comment there.
+  local interrupted=0
+  trap 'interrupted=1; forward_signal TERM "$game"' TERM
+  trap 'interrupted=1; forward_signal INT "$game"' INT
+
+  local status=0
+  # Save and restore rather than asserting: this function is reachable from a shell that
+  # sourced this file as a library, where turning errexit on would be a surprise.
+  local had_errexit=0
+  case "$-" in *e*) had_errexit=1 ;; esac
+  set +e
+  # A trap firing during `wait` makes it return 128+signum WITHOUT reaping the child,
+  # so a single wait would report 143 while the game is still shutting down and throw
+  # away the status it eventually exits with.
+  #
+  # Retry on "a trap fired", not on "the pid is still alive". The pid test looks
+  # equivalent and is not: the handler forwards to a whole tree and sleeps between
+  # passes, so the child can exit while the trap is still running, and the loop would
+  # then break holding the interrupted 143. Measured, not theorised.
+  while :; do
+    interrupted=0
+    wait "$game"
+    status=$?
+    [ "$interrupted" -eq 1 ] || break
+  done
+  [ "$had_errexit" -eq 1 ] && set -e
+
+  if [ -n "$watcher" ]; then
+    kill "$watcher" 2>/dev/null || true
+    wait "$watcher" 2>/dev/null || true
+  fi
+
+  return "$status"
+}
+
+# Sourced for testing: expose the functions above, run nothing. This guard sits before
+# `set -e` on purpose -- the test shell drives these functions through their non-zero
+# return paths, which `set -e` would turn into an aborted test run.
+if [ "${HAOSHOKU_GAMING_WORKSPACE_LIB:-0}" = 1 ]; then
+  return 0
+fi
+
+set -euo pipefail
+
+case "${1:-}" in
+  toggle) cmd_toggle ;;
+  place)  shift; cmd_place "$@" ;;
+  *)
+    echo "usage: haoshoku-gaming-workspace {toggle | place -- <command...>}" >&2
+    exit 2
+    ;;
+esac
