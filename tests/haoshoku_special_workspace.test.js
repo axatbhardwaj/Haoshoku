@@ -1707,106 +1707,204 @@ printf 'signal-desktop\\n' >> "$CALL_LOG"
 		expect(fs.existsSync(log)).toBe(false);
 	});
 
-	it("serializes concurrent Haki and agents Warp ownership without stealing a new address", async () => {
-		const raceClients = path.join(directory, "race-clients.json");
-		const raceCounterLock = path.join(directory, "race-counter.lock");
-		const raceInitialCount = path.join(directory, "race-initial-count");
-		const raceLaunchFile = path.join(directory, "race-launched");
-		const racePollCount = path.join(directory, "race-poll-count");
-		const raceWarpCalls = path.join(directory, "race-warp-calls");
-		fs.writeFileSync(
-			raceClients,
-			JSON.stringify([
-				warpClient("0xfirst", "special:race"),
-				warpClient("0xsecond", "special:race"),
-			]),
+	async function runConcurrentWarpOwnership(targetScript, label) {
+		const raceDirectory = fs.mkdtempSync(
+			path.join(directory, `warp-race-${label}-`),
 		);
+		const commandDirectory = path.join(raceDirectory, "commands");
+		const clients = path.join(raceDirectory, "clients.json");
+		const clientsLock = path.join(raceDirectory, "clients.lock");
+		const initialProbes = path.join(raceDirectory, "initial-probes");
+		const launches = path.join(raceDirectory, "launches");
+		const runtime = path.join(raceDirectory, "runtime");
+		const dispatches = path.join(raceDirectory, "dispatches");
+		fs.mkdirSync(commandDirectory);
+		fs.mkdirSync(runtime);
+		fs.writeFileSync(clients, "[]\n");
+		const ownershipLock = path.join(runtime, "haoshoku-warp-ownership.lock");
 		fs.writeFileSync(
-			path.join(directory, "hyprctl"),
+			path.join(commandDirectory, "hyprctl"),
 			`#!/usr/bin/env bash
+update_clients() {
+  local filter="$1" temporary
+  exec 9>"$RACE_CLIENTS_LOCK"
+  flock 9
+  temporary="$(mktemp "$RACE_DIRECTORY/clients.XXXXXX")"
+  jq "$filter" "$RACE_CLIENTS" > "$temporary"
+  mv "$temporary" "$RACE_CLIENTS"
+  flock -u 9
+  exec 9>&-
+}
 increment() {
   local file="$1" count=0
-  exec 9>"$RACE_COUNTER_LOCK"
+  exec 9>"$RACE_CLIENTS_LOCK"
   flock 9
   [[ -r "$file" ]] && read -r count < "$file"
   ((count += 1))
   printf '%s\\n' "$count" > "$file"
   flock -u 9
   exec 9>&-
-  printf '%s\\n' "$count"
 }
-wait_for() {
-  local file="$1" minimum="$2" current=0 attempt
-  for attempt in {1..100}; do
-    [[ -r "$file" ]] && read -r current < "$file"
-    ((current >= minimum)) && return 0
-    sleep 0.01
-  done
+lock_is_held() {
+  [[ -e "$RACE_OWNERSHIP_LOCK" ]] || return 1
+  exec 8>"$RACE_OWNERSHIP_LOCK"
+  if flock -n 8; then
+    flock -u 8
+    exec 8>&-
+    return 1
+  fi
+  exec 8>&-
 }
 if [[ "$1 $2" == "clients -j" ]]; then
-  if [[ ! -e "$RACE_LAUNCH_FILE" ]]; then
-    increment "$RACE_INITIAL_COUNT" >/dev/null
-    wait_for "$RACE_INITIAL_COUNT" 2
-    printf '[]\\n'
-  else
-    increment "$RACE_POLL_COUNT" >/dev/null
-    wait_for "$RACE_POLL_COUNT" 2
+  if lock_is_held; then
     cat "$RACE_CLIENTS"
+  else
+    increment "$RACE_INITIAL_PROBES"
+    for attempt in {1..100}; do
+      [[ -r "$RACE_INITIAL_PROBES" ]] && read -r count < "$RACE_INITIAL_PROBES"
+      ((count >= 2)) && break
+      sleep 0.01
+    done
+    printf '[]\\n'
   fi
 elif [[ "$1 $2" == "monitors -j" ]]; then
   printf '[{"name":"DP-1","focused":true,"specialWorkspace":{"name":""}},{"name":"DP-2","focused":false,"specialWorkspace":{"name":""}}]\\n'
+elif [[ "$1" == "dispatch" && "$2" == "tagwindow" ]]; then
+  tag="\${3#+}" address="\${4#address:}"
+  update_clients "map(if .address == \\"$address\\" then .tags = ((.tags + [\\"$tag\\"]) | unique) else . end)"
+  printf '%s\\n' "$*" >> "$RACE_DISPATCHES"
+elif [[ "$1" == "dispatch" && "$2" == "movetoworkspacesilent" ]]; then
+  workspace="\${3%,address:*}" address="\${3#*,address:}"
+  update_clients "map(if .address == \\"$address\\" then .workspace.name = \\"$workspace\\" else . end)"
+  printf '%s\\n' "$*" >> "$RACE_DISPATCHES"
 elif [[ "$1" == "dispatch" && "$2" == "exec" ]]; then
-  printf '%s\\n' "$*" >> "$CALL_LOG"
+  printf '%s\\n' "$*" >> "$RACE_DISPATCHES"
   bash -c "\${3#*] }"
 else
-  printf '%s\\n' "$*" >> "$CALL_LOG"
+  printf '%s\\n' "$*" >> "$RACE_DISPATCHES"
 fi
 `,
 		);
 		fs.writeFileSync(
-			path.join(directory, "warp-terminal"),
+			path.join(commandDirectory, "warp-terminal"),
 			`#!/usr/bin/env bash
-printf '%s\\n' "$*" >> "$RACE_WARP_CALLS"
-if [[ ! -e "$RACE_LAUNCH_FILE" ]]; then
-  touch "$RACE_LAUNCH_FILE"
+if [[ "$1" == *haki* ]]; then address=0xhaki; workspace=special:haki; else address=0xagents; workspace=special:agents; fi
+printf '%s\\n' "$1" >> "$RACE_LAUNCHES"
+if [[ -e "$RACE_OWNERSHIP_LOCK" ]] && ! flock -n "$RACE_OWNERSHIP_LOCK"; then
+  jq --arg address "$address" --arg workspace "$workspace" '. + [{address:$address,class:"dev.warp.Warp",workspace:{name:$workspace},tags:[]}]' "$RACE_CLIENTS" > "$RACE_CLIENTS.next"
+  mv "$RACE_CLIENTS.next" "$RACE_CLIENTS"
+else
+  increment() {
+    local count=0
+    exec 9>"$RACE_CLIENTS_LOCK"
+    flock 9
+    [[ -r "$RACE_LAUNCHES" ]] && count="$(wc -l < "$RACE_LAUNCHES")"
+    flock -u 9
+    exec 9>&-
+    printf '%s\\n' "$count"
+  }
+  while (( $(increment) < 2 )); do sleep 0.01; done
+  exec 9>"$RACE_CLIENTS_LOCK"
+  flock 9
+  printf '[{"address":"0xshared","class":"dev.warp.Warp","workspace":{"name":"special:race"},"tags":[]}]\\n' > "$RACE_CLIENTS"
+  flock -u 9
+  exec 9>&-
 fi
 `,
 		);
-		fs.chmodSync(path.join(directory, "hyprctl"), 0o755);
-		fs.chmodSync(path.join(directory, "warp-terminal"), 0o755);
-
+		fs.writeFileSync(
+			path.join(commandDirectory, "uwsm-app"),
+			'#!/usr/bin/env bash\nexec "$@"\n',
+		);
+		for (const command of ["hyprctl", "warp-terminal", "uwsm-app"])
+			fs.chmodSync(path.join(commandDirectory, command), 0o755);
 		const environment = {
 			...process.env,
-			CALL_LOG: log,
 			HOME: directory,
-			PATH: `${directory}:${process.env.PATH}`,
-			RACE_CLIENTS: raceClients,
-			RACE_COUNTER_LOCK: raceCounterLock,
-			RACE_INITIAL_COUNT: raceInitialCount,
-			RACE_LAUNCH_FILE: raceLaunchFile,
-			RACE_POLL_COUNT: racePollCount,
-			RACE_WARP_CALLS: raceWarpCalls,
-			XDG_RUNTIME_DIR: runtimeDirectory,
+			PATH: `${commandDirectory}:${directory}:${process.env.PATH}`,
+			RACE_CLIENTS: clients,
+			RACE_CLIENTS_LOCK: clientsLock,
+			RACE_DIRECTORY: raceDirectory,
+			RACE_DISPATCHES: dispatches,
+			RACE_INITIAL_PROBES: initialProbes,
+			RACE_LAUNCHES: launches,
+			RACE_OWNERSHIP_LOCK: ownershipLock,
+			XDG_RUNTIME_DIR: runtime,
 		};
-		const [haki, agents] = ["haki", "agents"].map((recipe) =>
-			Bun.spawn([script, recipe], { env: environment, stderr: "pipe" }),
+		const processes = ["haki", "agents"].map((recipe) =>
+			Bun.spawn([targetScript, recipe], { env: environment, stderr: "pipe" }),
 		);
-		const [hakiExit, agentsExit] = await Promise.all([
-			haki.exited,
-			agents.exited,
-		]);
+		const exitCodes = await Promise.all(
+			processes.map((process) => process.exited),
+		);
+		return {
+			clients: JSON.parse(fs.readFileSync(clients, "utf8")),
+			dispatches: fs.existsSync(dispatches)
+				? fs.readFileSync(dispatches, "utf8").trim().split("\n")
+				: [],
+			exitCodes,
+			launches: fs.existsSync(launches)
+				? fs.readFileSync(launches, "utf8").trim().split("\n")
+				: [],
+		};
+	}
 
-		expect([hakiExit, agentsExit]).toEqual([0, 0]);
+	function assertDistinctWarpOwnership(race) {
+		expect(race.exitCodes).toEqual([0, 0]);
+		expect(race.launches.sort()).toEqual([
+			"warp://tab_config/agents?new_window=true",
+			"warp://tab_config/haki?new_window=true",
+		]);
 		expect(
-			fs.readFileSync(raceWarpCalls, "utf8").trim().split("\n"),
-		).toHaveLength(2);
+			race.clients
+				.map(({ address, tags, workspace }) => ({ address, tags, workspace }))
+				.sort((left, right) => left.address.localeCompare(right.address)),
+		).toEqual([
+			{
+				address: "0xagents",
+				tags: ["haoshoku-agents"],
+				workspace: { name: "special:agents" },
+			},
+			{
+				address: "0xhaki",
+				tags: ["haoshoku-haki"],
+				workspace: { name: "special:haki" },
+			},
+		]);
 		expect(
-			dispatchCalls().filter((dispatch) =>
-				["dispatch tagwindow ", "dispatch movetoworkspace"].some((prefix) =>
-					dispatch.startsWith(prefix),
-				),
-			),
-		).toEqual([]);
+			race.dispatches
+				.filter((dispatch) =>
+					dispatch.startsWith("dispatch movetoworkspacesilent"),
+				)
+				.sort(),
+		).toEqual([
+			"dispatch movetoworkspacesilent special:agents,address:0xagents",
+			"dispatch movetoworkspacesilent special:haki,address:0xhaki",
+		]);
+	}
+
+	it("serializes concurrent Haki and agents Warp ownership into distinct windows", async () => {
+		assertDistinctWarpOwnership(
+			await runConcurrentWarpOwnership(script, "locked"),
+		);
+	});
+
+	it("proves the distinct-owner race assertion fails without the ownership lock", async () => {
+		const source = fs.readFileSync(script, "utf8");
+		const unlocked = path.join(
+			directory,
+			"haoshoku-special-workspace-unlocked",
+		);
+		const mutated = source.replace(
+			/ensure_warp\(\) \{[\s\S]*?\n\}\n\nif \[\[ "\$recipe"/,
+			'ensure_warp() {\n  ensure_warp_locked "$@"\n}\n\nif [[ "$recipe"',
+		);
+		expect(mutated).not.toBe(source);
+		fs.writeFileSync(unlocked, mutated);
+		fs.chmodSync(unlocked, 0o755);
+
+		const race = await runConcurrentWarpOwnership(unlocked, "unlocked");
+		expect(() => assertDistinctWarpOwnership(race)).toThrow();
 	});
 
 	it("does not claim a concurrently created Warp owned by another Haoshoku tag", async () => {
