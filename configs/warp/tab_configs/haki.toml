@@ -1,0 +1,10 @@
+name = "Haki"
+title = "haki"
+color = "purple"
+
+[[panes]]
+id = "haki"
+type = "terminal"
+directory = "/home/xzat"
+commands = ["/home/xzat/.local/bin/haoshoku-claude-local"]
+is_focused = true

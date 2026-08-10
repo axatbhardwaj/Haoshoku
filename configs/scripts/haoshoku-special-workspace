@@ -13,45 +13,6 @@ has_client() {
   hyprctl clients -j 2>/dev/null | jq -e --arg pattern "$pattern" 'any(.[]; ((.class // "") | test($pattern; "i")))' >/dev/null 2>&1 || return 1
 }
 
-load_claude_session_name() {
-  local config="$HOME/.haoshoku.json"
-  local lookup rejected session_name status
-  [[ -r "$config" ]] || return 0
-  if session_name="$(jq -ser '
-    if length == 1
-      and (.[0] | type == "object")
-      and (.[0].claudeSessionName? | type == "string" and test("\\A[A-Za-z0-9][A-Za-z0-9_-]*\\z"))
-    then .[0].claudeSessionName else empty end
-  ' "$config" 2>/dev/null)"; then
-    printf '%s\n' "$session_name"
-    return 0
-  fi
-
-  if ! lookup="$(jq -cs '
-    if length != 1 or (.[0] | type != "object") then
-      {status: "invalid-config"}
-    elif ((.[0] | has("claudeSessionName") | not) or .[0].claudeSessionName == null) then
-      {status: "unset"}
-    else
-      {status: "invalid-value", value: .[0].claudeSessionName}
-    end
-  ' "$config" 2>/dev/null)"; then
-    echo "Ignoring claudeSessionName in ~/.haoshoku.json: the file is not valid JSON. Set claudeSessionName to one name using letters, digits, underscores, or hyphens, or set it to null." >&2
-    return 0
-  fi
-
-  status="$(jq -r '.status' <<<"$lookup")"
-  case "$status" in
-    invalid-config)
-      echo "Ignoring claudeSessionName in ~/.haoshoku.json: the file must contain exactly one JSON object. Set claudeSessionName there to one name using letters, digits, underscores, or hyphens, or set it to null." >&2
-      ;;
-    invalid-value)
-      rejected="$(jq -c '.value' <<<"$lookup")"
-      echo "Ignoring claudeSessionName=$rejected in ~/.haoshoku.json. Set claudeSessionName to one name using letters, digits, underscores, or hyphens, or set it to null." >&2
-      ;;
-  esac
-}
-
 has_client_class() {
   # Return 0/1/2 as data (present/absent/probe failure). Under set -e, call
   # only in a condition or as `has_client_class x || status=$?`; never bare.
@@ -104,6 +65,102 @@ ensure_numbered_kitty() {
   esac
 }
 
+warp_clients() {
+  local clients
+  clients="$(hyprctl clients -j 2>/dev/null)" || return 1
+  jq -e 'type == "array"' <<<"$clients" >/dev/null 2>&1 || return 1
+  printf '%s\n' "$clients"
+}
+
+find_owned_warp_address() {
+  local clients="$1" tag="$2"
+  jq -r --arg tag "$tag" '
+    first(.[]? | select(
+      type == "object"
+      and .class == "dev.warp.Warp"
+      and (.address | type == "string" and length > 0)
+      and any(.tags?[]?; . == $tag)
+    ) | .address) // empty
+  ' <<<"$clients"
+}
+
+find_warp_workspace() {
+  local clients="$1" address="$2"
+  jq -r --arg address "$address" '
+    first(.[]? | select(.address == $address) | .workspace.name // empty) // empty
+  ' <<<"$clients"
+}
+
+find_adoptable_warp_address() {
+  local clients="$1" workspace="$2"
+  jq -r --arg workspace "$workspace" '
+    first(.[]? | select(
+      type == "object"
+      and .class == "dev.warp.Warp"
+      and (.address | type == "string" and length > 0)
+      and ((.workspace.name // "") | tostring) == $workspace
+      and (any(.tags?[]?; type == "string" and startswith("haoshoku-")) | not)
+    ) | .address) // empty
+  ' <<<"$clients"
+}
+
+warp_addresses() {
+  local clients="$1"
+  jq -c '[.[]? | select(
+    type == "object"
+    and .class == "dev.warp.Warp"
+    and (.address | type == "string" and length > 0)
+  ) | .address]' <<<"$clients"
+}
+
+find_new_warp_address() {
+  local clients="$1" before_addresses="$2"
+  jq -r --argjson before "$before_addresses" '
+    first(.[]? | select(
+      type == "object"
+      and .class == "dev.warp.Warp"
+      and (.address | type == "string" and length > 0)
+      and (.address as $address | $before | index($address) | not)
+    ) | .address) // empty
+  ' <<<"$clients"
+}
+
+ensure_warp() {
+  local workspace="$1" tag="$2" uri="$3"
+  local clients owned_address owned_workspace adoptable_address before_addresses new_address
+  local attempt
+  clients="$(warp_clients)" || return 0
+
+  owned_address="$(find_owned_warp_address "$clients" "$tag")"
+  if [[ -n "$owned_address" ]]; then
+    owned_workspace="$(find_warp_workspace "$clients" "$owned_address")"
+    [[ "$owned_workspace" == "$workspace" ]] || \
+      dispatch movetoworkspacesilent "$workspace,address:$owned_address"
+    return 0
+  fi
+
+  adoptable_address="$(find_adoptable_warp_address "$clients" "$workspace")"
+  if [[ -n "$adoptable_address" ]]; then
+    dispatch tagwindow "+$tag" "address:$adoptable_address"
+    return 0
+  fi
+
+  before_addresses="$(warp_addresses "$clients")"
+  launch "$workspace" warp-terminal "$uri"
+  for attempt in {1..10}; do
+    clients="$(warp_clients)" || return 0
+    new_address="$(find_new_warp_address "$clients" "$before_addresses")"
+    if [[ -n "$new_address" ]]; then
+      dispatch tagwindow "+$tag" "address:$new_address"
+      dispatch movetoworkspacesilent "$workspace,address:$new_address"
+      return 0
+    fi
+    if (( attempt < 10 )); then
+      sleep 0.1
+    fi
+  done
+}
+
 if [[ "$recipe" == numbered || "$recipe" == numbered-login ]]; then
   [[ $# -eq 3 ]] || { echo "usage: haoshoku-special-workspace $recipe WORKSPACE APP" >&2; exit 2; }
   workspace="$2" app="$3"
@@ -118,6 +175,7 @@ if [[ "$recipe" == numbered || "$recipe" == numbered-login ]]; then
       launch_if_missing "$workspace" '^(TelegramDesktop|org\.telegram\.desktop)$' Telegram
       ;;
     kitty) ensure_numbered_kitty "$workspace" ;;
+    warp) ensure_warp "$workspace" "haoshoku-ws${workspace}" "warp://action/new_window?path=$HOME" ;;
     notion)
       # Brave Origin ignores --class under --app and derives the class from the URL instead.
       launch_if_missing "$workspace" '^brave-www\.notion\.so__-Default$' brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/notion" --app=https://www.notion.so/
@@ -157,6 +215,7 @@ if [[ -n "$browser_profile" ]]; then
 else
   case "$recipe" in
     haki) workspace=haki; monitor=DP-2 ;;
+    agents) workspace=agents; monitor=DP-2 ;;
     assistants) workspace=assistants; monitor=DP-2 ;;
     music) workspace=music; monitor=DP-1 ;;
     1password) workspace=1password; monitor=DP-1 ;;
@@ -239,38 +298,12 @@ if [[ -n "$browser_profile" ]]; then
     dispatch exec "[workspace special:$workspace silent] uwsm-app -- $chromium_command"
   fi
   exit 0
-elif [[ "$recipe" == haki ]]; then
-  haki_client_present=false
-  if has_client '^haoshoku-haki$'; then
-    haki_client_present=true
-  fi
+elif [[ "$recipe" == haki || "$recipe" == agents ]]; then
   focus_or_toggle_special_workspace
-  if [[ "$haki_client_present" == true ]]; then
-    exit 0
-  fi
-
-  # Deliberately a local chat terminal, NOT an attach to the systemd-managed
-  # Remote Control session: that session is driven from the phone and web, so
-  # attaching to it locally yields a terminal you cannot type into.
-  #
-  # A configured claudeSessionName is passed to `claude -r`. It resumes directly
-  # only when the name resolves uniquely; a broad or non-unique name is treated
-  # as a fuzzy search, opens a picker, and can offer a session running elsewhere
-  # that cannot be resumed. Plain `-c` was also tried and is wrong here: it takes
-  # whichever conversation is newest in the directory, which is not necessarily
-  # this one once the Remote Control host creates sessions in $HOME. With no
-  # usable configured name, plain `claude` starts a fresh session.
-  #
-  # The `-d "$HOME"` is load-bearing: without it kitty inherits whatever cwd the
-  # Hyprland dispatch happened to carry, so the resumed session lands in an
-  # unrelated project directory.
-  #
-  claude_command=(claude)
-  claude_session_name="$(load_claude_session_name)"
-  if [[ -n "$claude_session_name" ]]; then
-    claude_command+=(-r "$claude_session_name")
-  fi
-  launch "special:$workspace" kitty --class haoshoku-haki -d "$HOME" "${claude_command[@]}"
+  case "$recipe" in
+    haki) ensure_warp "special:$workspace" haoshoku-haki "warp://tab_config/haki?new_window=true" ;;
+    agents) ensure_warp "special:$workspace" haoshoku-agents "warp://tab_config/agents?new_window=true" ;;
+  esac
   exit 0
 elif [[ "$follows_focus" == true ]]; then
   toggle_special_workspace

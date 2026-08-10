@@ -12,6 +12,13 @@ const script = path.join(
 	"scripts",
 	"haoshoku-special-workspace",
 );
+const claudeLocal = path.join(
+	import.meta.dir,
+	"..",
+	"configs",
+	"scripts",
+	"haoshoku-claude-local",
+);
 const workspacesConfig = fs.readFileSync(
 	path.join(import.meta.dir, "..", "configs", "omarchy", "workspaces-pc.conf"),
 	"utf8",
@@ -38,7 +45,8 @@ function configuredCaelestiaWorkspaceArgs(file) {
 	const args = config.match(
 		/^exec-once = \/home\/xzat\/\.local\/bin\/haoshoku-special-workspace (?<args>.+)$/m,
 	)?.groups?.args;
-	if (!args) throw new Error(`missing Caelestia workspace login command: ${file}`);
+	if (!args)
+		throw new Error(`missing Caelestia workspace login command: ${file}`);
 	return args.trim().split(/\s+/);
 }
 
@@ -72,6 +80,11 @@ describe("haoshoku-special-workspace", () => {
 		);
 		const expectedRecipes = {
 			haki: { workspace: "haki", monitor: "DP-2", followsFocus: false },
+			agents: {
+				workspace: "agents",
+				monitor: "DP-2",
+				followsFocus: false,
+			},
 			assistants: {
 				workspace: "assistants",
 				monitor: "DP-2",
@@ -119,6 +132,7 @@ describe("haoshoku-special-workspace", () => {
 	let directory;
 	let log;
 	let browserCall;
+	let clientState;
 	let chromium;
 	let claudeDesktop;
 	let focusedMonitorState;
@@ -127,10 +141,12 @@ describe("haoshoku-special-workspace", () => {
 	let specialState;
 	let tmuxLog;
 	let tmuxState;
+	let warpCall;
 	beforeEach(() => {
 		directory = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-special-"));
 		log = path.join(directory, "calls");
 		browserCall = path.join(directory, "chromium-call");
+		clientState = path.join(directory, "hypr-clients.json");
 		chromium = path.join(directory, "brave-origin");
 		claudeDesktop = path.join(directory, ["claude", "desktop"].join("-"));
 		focusedMonitorState = path.join(directory, "focused-monitor-state");
@@ -139,6 +155,7 @@ describe("haoshoku-special-workspace", () => {
 		specialState = path.join(directory, "special-workspace-state");
 		tmuxLog = path.join(directory, "tmux-call");
 		tmuxState = path.join(directory, "tmux-session");
+		warpCall = path.join(directory, "warp-call");
 		fs.writeFileSync(focusedMonitorState, "DP-1");
 		fs.writeFileSync(specialMonitorState, "DP-1");
 		const hyprctl = path.join(directory, "hyprctl");
@@ -174,7 +191,11 @@ if [[ -f "$SPECIAL_STATE" ]]; then state="$(< "$SPECIAL_STATE")"; else state="";
 focused_monitor="$(< "$FOCUSED_MONITOR_STATE")"
 special_monitor="$(< "$SPECIAL_MONITOR_STATE")"
 if [[ "$1 $2" == "clients -j" ]]; then
-  printf '%s\\n' "$HYPR_CLIENTS"
+  if [[ -n "\${HYPR_CLIENTS_STATE:-}" ]]; then
+    cat "$HYPR_CLIENTS_STATE"
+  else
+    printf '%s\\n' "$HYPR_CLIENTS"
+  fi
 elif [[ "$1 $2" == "monitors -j" ]]; then
   separator=""
   printf '['
@@ -220,6 +241,15 @@ exec "$@"
 `,
 		);
 		fs.writeFileSync(
+			path.join(directory, "warp-terminal"),
+			`#!/usr/bin/env bash
+printf '%s\\0' "$@" > "$WARP_CALL"
+if [[ -n "\${HYPR_CLIENTS_STATE:-}" && -n "\${WARP_CLIENTS_AFTER_LAUNCH:-}" ]]; then
+  printf '%s\\n' "$WARP_CLIENTS_AFTER_LAUNCH" > "$HYPR_CLIENTS_STATE"
+fi
+`,
+		);
+		fs.writeFileSync(
 			chromium,
 			`#!/usr/bin/env bash
 printf 'brave-origin\\n' >> "$CALL_LOG"
@@ -251,12 +281,14 @@ esac
 		fs.chmodSync(helper, 0o755);
 		fs.chmodSync(path.join(directory, "systemctl"), 0o755);
 		fs.chmodSync(uwsmApp, 0o755);
+		fs.chmodSync(path.join(directory, "warp-terminal"), 0o755);
 	});
 	afterEach(() => fs.rmSync(directory, { recursive: true, force: true }));
 
 	async function run(
 		args,
 		{
+			clientsState,
 			clients = "[]",
 			chromiumProfiles,
 			env = {},
@@ -264,8 +296,12 @@ esac
 			liveMonitors = ["DP-1", "DP-2", "HDMI-A-1"],
 			visibleWorkspace,
 			visibleMonitor = "DP-1",
+			warpClientsAfterLaunch,
 		} = {},
 	) {
+		if (clientsState !== undefined) {
+			fs.writeFileSync(clientState, clientsState);
+		}
 		fs.writeFileSync(focusedMonitorState, focusedMonitor);
 		if (visibleWorkspace !== undefined) {
 			fs.writeFileSync(specialState, visibleWorkspace);
@@ -282,6 +318,7 @@ esac
 				...process.env,
 				HOME: directory,
 				HYPR_CLIENTS: clients,
+				HYPR_CLIENTS_STATE: clientsState !== undefined ? clientState : "",
 				BROWSER_CALL: browserCall,
 				CALL_LOG: log,
 				FOCUSED_MONITOR_STATE: focusedMonitorState,
@@ -291,6 +328,8 @@ esac
 				SPECIAL_MONITOR_STATE: specialMonitorState,
 				TMUX_LOG: tmuxLog,
 				TMUX_STATE: tmuxState,
+				WARP_CALL: warpCall,
+				WARP_CLIENTS_AFTER_LAUNCH: warpClientsAfterLaunch ?? "",
 				PATH: `${directory}:${process.env.PATH}`,
 				...env,
 			},
@@ -322,6 +361,44 @@ esac
 		return argv;
 	}
 
+	function warpArguments() {
+		if (!fs.existsSync(warpCall)) return null;
+		const argv = fs.readFileSync(warpCall, "utf8").split("\0");
+		if (argv.at(-1) === "") argv.pop();
+		return argv;
+	}
+
+	function installClaudeArgumentRecorder() {
+		fs.writeFileSync(
+			path.join(directory, "claude"),
+			'#!/usr/bin/env bash\nif (( $# == 0 )); then : > "$CLAUDE_CALL"; else printf \'%s\\0\' "$@" > "$CLAUDE_CALL"; fi\n',
+		);
+		fs.chmodSync(path.join(directory, "claude"), 0o755);
+	}
+
+	function claudeArguments(claudeCall) {
+		const argv = fs.readFileSync(claudeCall, "utf8").split("\0");
+		if (argv.at(-1) === "") argv.pop();
+		return argv;
+	}
+
+	async function runClaudeLocal(claudeCall, env = {}) {
+		const proc = Bun.spawn([claudeLocal], {
+			env: {
+				...process.env,
+				CLAUDE_CALL: claudeCall,
+				HOME: directory,
+				PATH: `${directory}:${process.env.PATH}`,
+				...env,
+			},
+			stderr: "pipe",
+		});
+		return {
+			exitCode: await proc.exited,
+			stderr: await new Response(proc.stderr).text(),
+		};
+	}
+
 	function installRawSessionNameJqBypass() {
 		const realJq = Bun.which("jq");
 		if (!realJq) throw new Error("missing test dependency: jq");
@@ -351,7 +428,17 @@ fi
 	}
 
 	const fluxClient = JSON.stringify([{ class: "chromium-flux" }]);
-	const hakiClient = JSON.stringify([{ class: "haoshoku-haki" }]);
+	const hakiClient = JSON.stringify([
+		warpClient("0xhaki", "special:haki", ["haoshoku-haki"]),
+	]);
+	function warpClient(address, workspace, tags = []) {
+		return {
+			address,
+			class: "dev.warp.Warp",
+			workspace: { name: workspace },
+			tags,
+		};
+	}
 	const xClient = JSON.stringify([{ class: "brave-x.com__-Default" }]);
 	const forwardedUrl = "https://example.test/forwarded";
 	const claudeClass = "com.anthropic.Claude";
@@ -659,112 +746,12 @@ fi
 		]);
 	});
 
-	it("resumes the configured io-haki conversation locally and never touches systemd", async () => {
-		const systemctlCall = path.join(directory, "systemctl-call");
-		fs.writeFileSync(
-			path.join(directory, "systemctl"),
-			`#!/usr/bin/env bash
-: > ${JSON.stringify(systemctlCall)}
-exit 17
-`,
-		);
-		fs.writeFileSync(
-			path.join(directory, "kitty"),
-			`#!/usr/bin/env bash
-printf 'terminal:%s\\n' "$*" >> "$CALL_LOG"
-shift 4
-exec "$@"
-`,
-		);
-		fs.writeFileSync(
-			path.join(directory, "claude"),
-			"#!/usr/bin/env bash\nprintf 'claude:started\\n' >> \"$CALL_LOG\"\n",
-		);
-		for (const executable of ["systemctl", "kitty", "claude"]) {
-			fs.chmodSync(path.join(directory, executable), 0o755);
-		}
-
-		const result = await run(["haki"]);
-
-		expect({
-			exitCode: result.exitCode,
-			stderr: result.stderr,
-			dispatches: dispatchCalls(),
-			systemctlCalled: fs.existsSync(systemctlCall),
-		}).toEqual({
-			exitCode: 0,
-			stderr: "",
-			dispatches: [
-				"dispatch focusmonitor DP-2",
-				"dispatch togglespecialworkspace haki",
-				`dispatch exec [workspace special:haki silent] uwsm-app -- kitty --class haoshoku-haki -d ${directory} claude -r io-haki `,
-				`terminal:--class haoshoku-haki -d ${directory} claude -r io-haki`,
-				"claude:started",
-			],
-			systemctlCalled: false,
-		});
-	});
-
-	it("honors a portable configured Haki session name", async () => {
-		fs.writeFileSync(
-			path.join(directory, ".haoshoku.json"),
-			JSON.stringify({ claudeSessionName: "portable-haki" }),
-		);
-		fs.writeFileSync(
-			path.join(directory, "kitty"),
-			'#!/usr/bin/env bash\nprintf \'terminal:%s\\n\' "$*" >> "$CALL_LOG"\n',
-		);
-		fs.chmodSync(path.join(directory, "kitty"), 0o755);
-
-		const result = await run(["haki"]);
-
-		expect({
-			exitCode: result.exitCode,
-			stderr: result.stderr,
-			dispatches: dispatchCalls(),
-		}).toEqual({
-			exitCode: 0,
-			stderr: "",
-			dispatches: [
-				"dispatch focusmonitor DP-2",
-				"dispatch togglespecialworkspace haki",
-				`dispatch exec [workspace special:haki silent] uwsm-app -- kitty --class haoshoku-haki -d ${directory} claude -r portable-haki `,
-				`terminal:--class haoshoku-haki -d ${directory} claude -r portable-haki`,
-			],
-		});
-	});
-
-	it("starts a useful plain Claude session when no Haki session is configured", async () => {
-		fs.rmSync(path.join(directory, ".haoshoku.json"));
-		fs.writeFileSync(
-			path.join(directory, "kitty"),
-			'#!/usr/bin/env bash\nprintf \'terminal:%s\\n\' "$*" >> "$CALL_LOG"\n',
-		);
-		fs.chmodSync(path.join(directory, "kitty"), 0o755);
-
-		const result = await run(["haki"]);
-
-		expect({
-			exitCode: result.exitCode,
-			stderr: result.stderr,
-			dispatches: dispatchCalls(),
-		}).toEqual({
-			exitCode: 0,
-			stderr: "",
-			dispatches: [
-				"dispatch focusmonitor DP-2",
-				"dispatch togglespecialworkspace haki",
-				`dispatch exec [workspace special:haki silent] uwsm-app -- kitty --class haoshoku-haki -d ${directory} claude `,
-				`terminal:--class haoshoku-haki -d ${directory} claude`,
-			],
-		});
-	});
-
 	// Mutations caught: removing whole-stream cardinality admits multi-document
 	// input; restoring jq's ^/$ anchors admits a trailing newline; dropping the
 	// fallback diagnostic makes rejected names impossible to diagnose.
 	it("maps awkward config inputs to one exact Haki launch argv", async () => {
-		installKittyArgumentRecorder();
+		const claudeCall = path.join(directory, "claude-call");
+		installClaudeArgumentRecorder();
 		const executionMarker = path.join(directory, "session-name-executed");
 		const longSessionName = `long-${"a".repeat(8192)}`;
 		const cases = [
@@ -820,24 +807,22 @@ exec "$@"
 				accepted: true,
 			},
 		];
-		const baseArgv = ["--class", "haoshoku-haki", "-d", directory, "claude"];
+		const baseArgv = [];
 		const validator = chromiumProfileConfig.isValidClaudeSessionName;
 		const observations = [];
 
 		for (const testCase of cases) {
 			const hasValue = Object.hasOwn(testCase, "value");
 			fs.rmSync(executionMarker, { force: true });
-			fs.rmSync(kittyCall, { force: true });
-			fs.rmSync(log, { force: true });
-			fs.writeFileSync(specialState, "");
+			fs.rmSync(claudeCall, { force: true });
 			fs.writeFileSync(
 				path.join(directory, ".haoshoku.json"),
 				testCase.rawConfig ??
 					JSON.stringify({ claudeSessionName: testCase.value }),
 			);
 
-			const result = await run(["haki"]);
-			const argv = kittyArguments();
+			const result = await runClaudeLocal(claudeCall);
+			const argv = claudeArguments(claudeCall);
 			const observation = {
 				label: testCase.label,
 				exitCode: result.exitCode,
@@ -893,7 +878,8 @@ exec "$@"
 	// Mutation caught: this replaces the bounded jq lookup with arbitrary raw
 	// output, so only launch's per-element quoting can preserve the final argv.
 	it("preserves raw session-name elements when the jq bound is bypassed", async () => {
-		installKittyArgumentRecorder();
+		const claudeCall = path.join(directory, "claude-call");
+		installClaudeArgumentRecorder();
 		installRawSessionNameJqBypass();
 		const executionMarker = path.join(directory, "quoting-bypass-executed");
 		const cases = [
@@ -906,22 +892,20 @@ exec "$@"
 			},
 			{ label: "backticks", value: `name\`touch ${executionMarker}\`` },
 		];
-		const baseArgv = ["--class", "haoshoku-haki", "-d", directory, "claude"];
+		const baseArgv = [];
 		const observations = [];
 
 		for (const testCase of cases) {
 			fs.rmSync(executionMarker, { force: true });
-			fs.rmSync(kittyCall, { force: true });
-			fs.rmSync(log, { force: true });
-			fs.writeFileSync(specialState, "");
+			fs.rmSync(claudeCall, { force: true });
 
-			const result = await run(["haki"], {
-				env: { RAW_CLAUDE_SESSION_NAME: testCase.value },
+			const result = await runClaudeLocal(claudeCall, {
+				RAW_CLAUDE_SESSION_NAME: testCase.value,
 			});
 			const observation = {
 				label: testCase.label,
 				exitCode: result.exitCode,
-				argv: kittyArguments(),
+				argv: claudeArguments(claudeCall),
 				stderr: result.stderr,
 				markerCreated: fs.existsSync(executionMarker),
 			};
@@ -954,38 +938,6 @@ exec "$@"
 		expect(dispatchCalls()).toEqual(["dispatch focusmonitor DP-2"]);
 		expect(fs.readFileSync(specialState, "utf8")).toBe("haki");
 		expect(fs.readFileSync(specialMonitorState, "utf8")).toBe("DP-2");
-	});
-
-	// Mutation caught: returning after cross-monitor focus leaves a visible
-	// workspace empty when its client has died.
-	it("relaunches missing Haki after focusing its visible workspace", async () => {
-		// The harness executes the dispatched command, so stub the terminal:
-		// otherwise this launches a real interactive claude and hangs.
-		fs.writeFileSync(
-			path.join(directory, "kitty"),
-			'#!/usr/bin/env bash\nprintf \'terminal:%s\\n\' "$*" >> "$CALL_LOG"\n',
-		);
-		fs.chmodSync(path.join(directory, "kitty"), 0o755);
-
-		const result = await run(["haki"], {
-			focusedMonitor: "DP-1",
-			visibleWorkspace: "haki",
-			visibleMonitor: "DP-2",
-		});
-
-		expect({
-			exitCode: result.exitCode,
-			stderr: result.stderr,
-			dispatches: dispatchCalls(),
-		}).toEqual({
-			exitCode: 0,
-			stderr: "",
-			dispatches: [
-				"dispatch focusmonitor DP-2",
-				`dispatch exec [workspace special:haki silent] uwsm-app -- kitty --class haoshoku-haki -d ${directory} claude -r io-haki `,
-				`terminal:--class haoshoku-haki -d ${directory} claude -r io-haki`,
-			],
-		});
 	});
 
 	it("hides Haki visible on the focused monitor", async () => {
@@ -1045,9 +997,9 @@ exit 17
 			"--app=https://chatgpt.com",
 		]);
 		expect(dispatchCalls().filter((call) => call === "claude")).toHaveLength(0);
-		expect(dispatchCalls().filter((call) => call === "brave-origin")).toHaveLength(
-			1,
-		);
+		expect(
+			dispatchCalls().filter((call) => call === "brave-origin"),
+		).toHaveLength(1);
 	});
 
 	it("launches only Claude Desktop when ChatGPT is already present", async () => {
@@ -1058,9 +1010,9 @@ exit 17
 		expect(result.exitCode).toBe(0);
 		expect(fs.existsSync(browserCall)).toBe(false);
 		expect(dispatchCalls().filter((call) => call === "claude")).toHaveLength(1);
-		expect(dispatchCalls().filter((call) => call === "brave-origin")).toHaveLength(
-			0,
-		);
+		expect(
+			dispatchCalls().filter((call) => call === "brave-origin"),
+		).toHaveLength(0);
 	});
 
 	it("launches ChatGPT when a decoy replaces the class's literal dot", async () => {
@@ -1785,9 +1737,9 @@ exit 17
 			`--user-data-dir=${directory}/.config/brave-haoshoku/notion`,
 			"--app=https://www.notion.so/",
 		]);
-		expect(dispatchCalls().filter((call) => call === "brave-origin")).toHaveLength(
-			1,
-		);
+		expect(
+			dispatchCalls().filter((call) => call === "brave-origin"),
+		).toHaveLength(1);
 	});
 
 	it("does not give missing Notion a Brave Origin class flag", async () => {
@@ -1808,9 +1760,9 @@ exit 17
 			`--user-data-dir=${directory}/.config/brave-haoshoku/whatsapp`,
 			"--app=https://web.whatsapp.com/",
 		]);
-		expect(dispatchCalls().filter((call) => call === "brave-origin")).toHaveLength(
-			1,
-		);
+		expect(
+			dispatchCalls().filter((call) => call === "brave-origin"),
+		).toHaveLength(1);
 		expect(fs.readFileSync(log, "utf8")).toContain(
 			"dispatch exec [workspace special:communication silent] uwsm-app -- brave-origin",
 		);
@@ -1862,5 +1814,193 @@ printf 'signal-desktop\\n' >> "$CALL_LOG"
 			"dispatch exec [workspace special:communication silent] uwsm-app -- signal-desktop ",
 		);
 		expect(dispatchCalls()).toContain("signal-desktop");
+	});
+
+	// Mutations caught: a class-only Warp lookup cannot distinguish unrelated
+	// windows; omitting the address selector can tag or move the wrong one.
+	it("keeps an owned Warp in place and reclaims only its stranded address", async () => {
+		const owned = warpClient("0xowned", "7", ["haoshoku-ws7"]);
+		const inPlace = await run(["numbered", "7", "warp"], {
+			clientsState: JSON.stringify([owned, warpClient("0xother", "7")]),
+		});
+
+		expect(inPlace.exitCode).toBe(0);
+		expect(warpArguments()).toBeNull();
+		expect(dispatchCalls()).toEqual(["dispatch workspace 7"]);
+
+		fs.rmSync(log, { force: true });
+		const stranded = await run(["numbered", "7", "warp"], {
+			clientsState: JSON.stringify([
+				{ ...owned, workspace: { name: "special:stash" } },
+				warpClient("0xother", "7"),
+			]),
+		});
+
+		expect(stranded.exitCode).toBe(0);
+		expect(dispatchCalls()).toEqual([
+			"dispatch workspace 7",
+			"dispatch movetoworkspacesilent 7,address:0xowned",
+		]);
+	});
+
+	it("adopts only an unowned Warp already on the numbered workspace", async () => {
+		const result = await run(["numbered-login", "8", "warp"], {
+			clientsState: JSON.stringify([
+				warpClient("0xadopt", "8"),
+				warpClient("0xother-owner", "8", ["haoshoku-ws7"]),
+				warpClient("0xelsewhere", "9"),
+			]),
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(warpArguments()).toBeNull();
+		expect(dispatchCalls()).toEqual([
+			"dispatch tagwindow +haoshoku-ws8 address:0xadopt",
+		]);
+	});
+
+	it("launches, tags, and moves only the new Warp when other owners exist", async () => {
+		const result = await run(["numbered", "7", "warp"], {
+			clientsState: JSON.stringify([
+				warpClient("0xother-owner", "7", ["haoshoku-haki"]),
+				warpClient("0xunrelated", "4"),
+			]),
+			warpClientsAfterLaunch: JSON.stringify([
+				warpClient("0xother-owner", "7", ["haoshoku-haki"]),
+				warpClient("0xunrelated", "4"),
+				warpClient("0xnew", "7"),
+			]),
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(warpArguments()).toEqual([
+			`warp://action/new_window?path=${directory}`,
+		]);
+		expect(dispatchCalls()).toEqual([
+			"dispatch workspace 7",
+			expect.stringContaining(
+				"dispatch exec [workspace 7 silent] uwsm-app -- warp-terminal ",
+			),
+			"dispatch tagwindow +haoshoku-ws7 address:0xnew",
+			"dispatch movetoworkspacesilent 7,address:0xnew",
+		]);
+
+		fs.rmSync(log, { force: true });
+		fs.rmSync(warpCall, { force: true });
+		const repeated = await run(["numbered-login", "7", "warp"], {
+			clientsState: JSON.stringify([
+				warpClient("0xnew", "7", ["haoshoku-ws7"]),
+			]),
+		});
+
+		expect(repeated.exitCode).toBe(0);
+		expect(warpArguments()).toBeNull();
+		expect(fs.existsSync(log)).toBe(false);
+	});
+
+	it("uses distinct Haki and agents Warp tab-config ownership", async () => {
+		fs.writeFileSync(
+			path.join(directory, "kitty"),
+			"#!/usr/bin/env bash\nexit 0\n",
+		);
+		fs.chmodSync(path.join(directory, "kitty"), 0o755);
+		for (const { recipe, address, tag, uri } of [
+			{
+				recipe: "haki",
+				address: "0xhaki",
+				tag: "haoshoku-haki",
+				uri: "warp://tab_config/haki?new_window=true",
+			},
+			{
+				recipe: "agents",
+				address: "0xagents",
+				tag: "haoshoku-agents",
+				uri: "warp://tab_config/agents?new_window=true",
+			},
+		]) {
+			fs.rmSync(log, { force: true });
+			fs.rmSync(warpCall, { force: true });
+			const result = await run([recipe], {
+				clientsState: "[]",
+				warpClientsAfterLaunch: JSON.stringify([
+					warpClient(address, `special:${recipe}`),
+				]),
+			});
+
+			expect(result.exitCode, recipe).toBe(0);
+			expect(warpArguments(), recipe).toEqual([uri]);
+			expect(dispatchCalls(), recipe).toEqual([
+				"dispatch focusmonitor DP-2",
+				`dispatch togglespecialworkspace ${recipe}`,
+				expect.stringContaining(
+					`dispatch exec [workspace special:${recipe} silent] uwsm-app -- warp-terminal `,
+				),
+				`dispatch tagwindow +${tag} address:${address}`,
+				`dispatch movetoworkspacesilent special:${recipe},address:${address}`,
+			]);
+		}
+	});
+
+	it("keeps the Haki session-name contract in the executable wrapper", async () => {
+		const claudeCall = path.join(directory, "claude-call");
+		const marker = path.join(directory, "injection-marker");
+		fs.writeFileSync(
+			path.join(directory, "claude"),
+			'#!/usr/bin/env bash\nif (( $# == 0 )); then : > "$CLAUDE_CALL"; else printf \'%s\\0\' "$@" > "$CLAUDE_CALL"; fi\n',
+		);
+		fs.chmodSync(path.join(directory, "claude"), 0o755);
+
+		const cases = [
+			{
+				name: "valid",
+				config: '{"claudeSessionName":"portable-haki"}\n',
+				argv: ["-r", "portable-haki"],
+			},
+			{ name: "missing", config: null, argv: [] },
+			{
+				name: "injection",
+				config: `{"claudeSessionName":"name; touch ${marker}"}\n`,
+				argv: [],
+				diagnostic: true,
+			},
+			{
+				name: "multi-document",
+				config: '{"claudeSessionName":"one"}\n{"claudeSessionName":"two"}\n',
+				argv: [],
+				diagnostic: true,
+			},
+		];
+
+		for (const testCase of cases) {
+			fs.rmSync(claudeCall, { force: true });
+			fs.rmSync(marker, { force: true });
+			if (testCase.config === null) {
+				fs.rmSync(path.join(directory, ".haoshoku.json"), { force: true });
+			} else {
+				fs.writeFileSync(
+					path.join(directory, ".haoshoku.json"),
+					testCase.config,
+				);
+			}
+			const proc = Bun.spawn(["bash", claudeLocal], {
+				env: {
+					...process.env,
+					CLAUDE_CALL: claudeCall,
+					HOME: directory,
+					PATH: `${directory}:${process.env.PATH}`,
+				},
+				stderr: "pipe",
+			});
+			const stderr = await new Response(proc.stderr).text();
+
+			expect(await proc.exited, testCase.name).toBe(0);
+			const argv = fs.readFileSync(claudeCall, "utf8").split("\0");
+			if (argv.at(-1) === "") argv.pop();
+			expect(argv, testCase.name).toEqual(testCase.argv);
+			expect(stderr.includes("claudeSessionName"), testCase.name).toBe(
+				Boolean(testCase.diagnostic),
+			);
+			expect(fs.existsSync(marker), testCase.name).toBe(false);
+		}
 	});
 });

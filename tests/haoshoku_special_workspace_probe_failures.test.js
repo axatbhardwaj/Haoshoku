@@ -22,7 +22,7 @@ describe("haoshoku-special-workspace failed hyprctl probes", () => {
 		log = path.join(directory, "dispatches");
 		commandDirectory = path.join(directory, "commands");
 		fs.mkdirSync(commandDirectory);
-		for (const command of ["bash", "dirname", "jq"]) {
+		for (const command of ["bash", "dirname", "jq", "sleep"]) {
 			const systemCommand = Bun.which(command);
 			if (!systemCommand)
 				throw new Error(`missing test dependency: ${command}`);
@@ -102,6 +102,10 @@ esac
 			'#!/usr/bin/env bash\nshift 2\nexec "$@"\n',
 		);
 		fs.writeFileSync(
+			path.join(commandDirectory, "warp-terminal"),
+			"#!/usr/bin/env bash\nexit 0\n",
+		);
+		fs.writeFileSync(
 			path.join(commandDirectory, "brave-origin"),
 			'#!/usr/bin/env bash\n[[ -z "${CHROMIUM_LOG:-}" ]] || printf \'%s\\n\' "$*" >> "$CHROMIUM_LOG"\n',
 		);
@@ -110,6 +114,7 @@ esac
 			helper,
 			path.join(commandDirectory, "systemctl"),
 			path.join(commandDirectory, "kitty"),
+			path.join(commandDirectory, "warp-terminal"),
 			path.join(commandDirectory, "brave-origin"),
 		]) {
 			fs.chmodSync(executable, 0o755);
@@ -218,18 +223,20 @@ esac
 			});
 		});
 
-		it(`[${failure}] regex client probe falls back to launching the Haki session`, async () => {
+		it(`[${failure}] Haki client probe fails closed without Warp ownership actions`, async () => {
 			const result = await run(["haki"], "clients -j", failure);
 
-			expect(result).toEqual({
-				dispatches: [
-					"dispatch focusmonitor DP-2",
-					"dispatch togglespecialworkspace haki",
-					`dispatch exec [workspace special:haki silent] uwsm-app -- kitty --class haoshoku-haki -d ${directory} claude -r io-haki`,
-				],
-				exitCode: 0,
-				stderr: "",
-			});
+			expect(result.exitCode).toBe(0);
+			expect(result.stderr).toBe("");
+			expect(
+				result.dispatches.filter((dispatch) =>
+					[
+						"dispatch exec ",
+						"dispatch tagwindow ",
+						"dispatch movetoworkspace",
+					].some((prefix) => dispatch.startsWith(prefix)),
+				),
+			).toEqual([]);
 		});
 
 		it(`[${failure}] exact-class client probe falls back to launching Brave Origin`, async () => {
@@ -251,6 +258,79 @@ esac
 			expect(result.dispatches[2]).toContain("--class=chromium-flux");
 		});
 	}
+
+	for (const failure of ["invalid-json", "empty-output", "non-zero-exit"]) {
+		it(`[${failure}] numbered Warp initial probe performs no ownership action`, async () => {
+			const result = await run(
+				["numbered-login", "7", "warp"],
+				"clients -j",
+				failure,
+			);
+
+			expect(result.exitCode).toBe(0);
+			expect(result.stderr).toBe("");
+			expect(
+				result.dispatches.filter((dispatch) =>
+					[
+						"dispatch exec ",
+						"dispatch tagwindow ",
+						"dispatch movetoworkspace",
+					].some((prefix) => dispatch.startsWith(prefix)),
+				),
+			).toEqual([]);
+		});
+	}
+
+	it("does not guess an address after a Warp poll probe fails", async () => {
+		const result = await run(
+			["numbered-login", "7", "warp"],
+			"clients -j",
+			"invalid-json",
+			"",
+			"",
+			"[]",
+			"",
+			"2",
+		);
+
+		expect(result.exitCode).toBe(0);
+		expect(result.stderr).toBe("");
+		expect(
+			result.dispatches.filter((dispatch) =>
+				dispatch.startsWith("dispatch exec "),
+			),
+		).toHaveLength(1);
+		expect(
+			result.dispatches.filter((dispatch) =>
+				["dispatch tagwindow ", "dispatch movetoworkspace"].some((prefix) =>
+					dispatch.startsWith(prefix),
+				),
+			),
+		).toEqual([]);
+	});
+
+	it("leaves one launched Warp unowned when its new address never appears", async () => {
+		const result = await run(
+			["numbered-login", "7", "warp"],
+			"",
+			"non-zero-exit",
+		);
+
+		expect(result.exitCode).toBe(0);
+		expect(result.stderr).toBe("");
+		expect(
+			result.dispatches.filter((dispatch) =>
+				dispatch.startsWith("dispatch exec "),
+			),
+		).toHaveLength(1);
+		expect(
+			result.dispatches.filter((dispatch) =>
+				["dispatch tagwindow ", "dispatch movetoworkspace"].some((prefix) =>
+					dispatch.startsWith(prefix),
+				),
+			),
+		).toEqual([]);
+	});
 
 	for (const failure of ["invalid-json", "empty-output", "non-zero-exit"]) {
 		it(`[${failure}] exact-class client probe preserves a visible browser-toggle hide`, async () => {
@@ -316,6 +396,7 @@ esac
 				args: ["numbered", "3", "communication-numbered"],
 			},
 			{ name: "numbered kitty", args: ["numbered", "7", "kitty"] },
+			{ name: "numbered Warp", args: ["numbered", "7", "warp"] },
 			{
 				name: "numbered-login kitty",
 				args: ["numbered-login", "7", "kitty"],
