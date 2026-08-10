@@ -25,9 +25,12 @@ binary acts as a PATH-shadow wrapper for that binary.
   the absolute system path so users who explicitly invoke `/usr/bin/X` get the
   unmodified original.
 - Retired streaming launchers (`primevideo-*`, `zee5-hd`, `crunchyroll-hd`,
-  `jiohotstar-hd`) are intentionally removed and cleaned from `~/.local/bin/`
-  by `installUserScripts()`. Do not re-add them without also reintroducing the
-  matching Caelestia toggles, desktop entries, and tests.
+  and the old `jiohotstar-hd` Caelestia-toggle launcher) are intentionally
+  removed and cleaned from `~/.local/bin/` by `installUserScripts()`. Do not
+  re-add those scripts without also reintroducing the matching Caelestia
+  toggles, desktop entries, and tests. The old `jiohotstar-hd` launcher remains
+  retired; JioHotstar is now available through the unrelated `Super+J` Brave
+  webapp special workspace.
 - Retired AI web-app launcher `ai-webapps-toggle` is intentionally removed and
   cleaned from `~/.local/bin/`; `Super+I` now routes through
   `haoshoku-special-workspace`.

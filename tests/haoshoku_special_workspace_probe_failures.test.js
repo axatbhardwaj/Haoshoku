@@ -333,6 +333,7 @@ esac
 			{ name: "stash", args: ["stash"] },
 			{ name: "x", args: ["x"] },
 			{ name: "youtube", args: ["youtube"] },
+			{ name: "jiohotstar", args: ["jiohotstar"] },
 			{ name: "crunchyroll", args: ["crunchyroll"] },
 			{ name: "reanime", args: ["reanime"] },
 		]) {

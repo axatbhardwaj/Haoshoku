@@ -91,6 +91,11 @@ describe("haoshoku-special-workspace", () => {
 			stash: { workspace: "stash", monitor: "DP-1", followsFocus: false },
 			x: { workspace: "x", monitor: "DP-2", followsFocus: false },
 			youtube: { workspace: "youtube", monitor: "DP-1", followsFocus: true },
+			jiohotstar: {
+				workspace: "jiohotstar",
+				monitor: "DP-1",
+				followsFocus: true,
+			},
 			crunchyroll: {
 				workspace: "crunchyroll",
 				monitor: "DP-1",
@@ -1078,6 +1083,7 @@ exit 17
 		{ recipe: "assistants", url: "https://chatgpt.com" },
 		{ recipe: "x", url: "https://x.com/" },
 		{ recipe: "youtube", url: "https://youtube.com/" },
+		{ recipe: "jiohotstar", url: "https://www.jiohotstar.com/" },
 		{ recipe: "crunchyroll", url: "https://www.crunchyroll.com/" },
 	]) {
 		// Mutation caught: omitting --class from this app launch lets it become
@@ -1142,6 +1148,12 @@ exit 17
 			url: "https://youtube.com/",
 		},
 		{
+			recipe: "jiohotstar",
+			className: "brave-www.jiohotstar.com__-Default",
+			decoyClass: "brave-wwwXjiohotstarXcom__-Default",
+			url: "https://www.jiohotstar.com/",
+		},
+		{
 			recipe: "crunchyroll",
 			className: "brave-www.crunchyroll.com__-Default",
 			decoyClass: "brave-wwwXcrunchyrollXcom__-Default",
@@ -1150,13 +1162,19 @@ exit 17
 	]) {
 		it(`opens missing ${recipe} on DP-1 with the Flux app profile`, async () => {
 			const result = await run([recipe], { focusedMonitor: "" });
+			const actualArguments = await chromiumArguments();
 
 			expect(result.exitCode).toBe(0);
-			expect(await chromiumArguments()).toEqual([
+			expect(actualArguments).toEqual([
 				`--user-data-dir=${directory}/.config/brave-haoshoku/flux`,
 				"--class=chromium-flux",
 				`--app=${url}`,
 			]);
+			if (recipe === "jiohotstar") {
+				console.info(
+					`JioHotstar fixture: classPattern=^brave-www\\.jiohotstar\\.com__-Default$ url=${url} argv=${JSON.stringify(actualArguments)}`,
+				);
+			}
 			expect(dispatchCalls()).toContain("dispatch focusmonitor DP-1");
 			expect(dispatchCalls()).toContain(
 				`dispatch togglespecialworkspace ${recipe}`,

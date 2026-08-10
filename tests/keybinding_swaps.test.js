@@ -394,6 +394,41 @@ describe("Omarchy keybinding swaps", () => {
 		});
 	});
 
+	it("relocates toggle-split to SUPER CTRL SHIFT+J before JioHotstar claims SUPER+J", () => {
+		const bindings = fs.readFileSync(bindingsConfigPath, "utf8");
+		const workspaces = fs.readFileSync(configPath, "utf8");
+		const splitSwap = swapsDocument.swaps.find(
+			(swap) => swap.key_combination_taken === "SUPER, J",
+		);
+
+		expect({
+			formerSlot: activeBindingsFor(bindings, "SUPER", "J"),
+			relocation: activeBindingsFor(bindings, "SUPER CTRL SHIFT", "J"),
+			jiohotstarClaim: activeBindingsFor(workspaces, "SUPER", "J"),
+			registry: splitSwap,
+		}).toEqual({
+			formerSlot: [],
+			relocation: [
+				"bindd = SUPER CTRL SHIFT, J, Toggle window split, layoutmsg, togglesplit",
+			],
+			jiohotstarClaim: [
+				"bindd = SUPER, J, Show/focus/hide JioHotstar workspace, exec, haoshoku-special-workspace jiohotstar",
+			],
+			registry: {
+				config_file: "configs/omarchy/bindings.conf",
+				key_combination_taken: "SUPER, J",
+				previous_binding:
+					"bindd = SUPER, J, Toggle window split, layoutmsg, togglesplit",
+				moved_from_dispatcher: "layoutmsg",
+				moved_from_arg: "togglesplit",
+				moved_to: "SUPER CTRL SHIFT, J",
+				moved_to_dispatcher: "layoutmsg",
+				moved_to_arg: "togglesplit",
+				reason: "displaced_by_workspace_toggle",
+			},
+		});
+	});
+
 	it("validates every swap against the extensible registry schema", () => {
 		expect(Number.isInteger(swapsDocument.schema_version)).toBe(true);
 		expect(swapsDocument.schema_version).toBeGreaterThan(0);

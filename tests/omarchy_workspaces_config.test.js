@@ -6,6 +6,16 @@ const config = fs.readFileSync(
 	path.join(import.meta.dir, "..", "configs", "omarchy", "workspaces-pc.conf"),
 	"utf8",
 );
+const laptopConfig = fs.readFileSync(
+	path.join(
+		import.meta.dir,
+		"..",
+		"configs",
+		"omarchy",
+		"workspaces-laptop.conf",
+	),
+	"utf8",
+);
 const bindingsConfig = fs.readFileSync(
 	path.join(import.meta.dir, "..", "configs", "omarchy", "bindings.conf"),
 	"utf8",
@@ -39,6 +49,7 @@ describe("Omarchy workspace overlay", () => {
 			"bindd = SUPER, B, Toggle Flux Brave Origin workspace, exec, haoshoku-special-workspace browser-toggle flux",
 			"bindd = SUPER, D, Toggle DeFi Brave Origin workspace, exec, haoshoku-special-workspace browser-toggle defi",
 			"bindd = SUPER, Y, Show/focus/hide YouTube workspace, exec, haoshoku-special-workspace youtube",
+			"bindd = SUPER, J, Show/focus/hide JioHotstar workspace, exec, haoshoku-special-workspace jiohotstar",
 			"bindd = SUPER, R, Show/focus/hide Crunchyroll workspace, exec, haoshoku-special-workspace crunchyroll",
 			"bindd = SUPER, F, Show/focus/hide Re:ANIME workspace, exec, haoshoku-special-workspace reanime",
 			"bindd = SUPER, S, Toggle stash workspace, togglespecialworkspace, stash",
@@ -50,11 +61,11 @@ describe("Omarchy workspace overlay", () => {
 				(line) =>
 					line.startsWith("bindd = SUPER, ") &&
 					!line.includes("haoshoku-special-workspace numbered ") &&
-					// Ten helper-backed toggles plus the stash toggle.
+					// Eleven helper-backed toggles plus the stash toggle.
 					(line.includes("haoshoku-special-workspace") ||
 						line.endsWith("togglespecialworkspace, stash")),
 			),
-		).toHaveLength(11);
+		).toHaveLength(12);
 		expect(config).toContain(
 			"bindd = SUPER SHIFT, S, Stash focused window, movetoworkspacesilent, special:stash",
 		);
@@ -152,6 +163,11 @@ describe("Omarchy workspace overlay", () => {
 			decoyClass: "brave-youtubeXcom__-Default",
 		},
 		{
+			workspace: "jiohotstar",
+			classPattern: "^brave-www\\.jiohotstar\\.com__-Default$",
+			decoyClass: "brave-wwwXjiohotstarXcom__-Default",
+		},
+		{
 			workspace: "crunchyroll",
 			classPattern: "^brave-www\\.crunchyroll\\.com__-Default$",
 			decoyClass: "brave-wwwXcrunchyrollXcom__-Default",
@@ -174,6 +190,15 @@ describe("Omarchy workspace overlay", () => {
 		});
 	}
 
+	it("keeps the JioHotstar class rule and SUPER+J toggle identical on laptop", () => {
+		expect(laptopConfig).toContain(
+			"windowrule = workspace special:jiohotstar, match:class ^brave-www\\.jiohotstar\\.com__-Default$",
+		);
+		expect(laptopConfig).toContain(
+			"bindd = SUPER, J, Show/focus/hide JioHotstar workspace, exec, haoshoku-special-workspace jiohotstar",
+		);
+	});
+
 	// Portal file dialogs open tiled on the workspace underneath, so a revealed
 	// special workspace draws over them. `pin` is what rescues them: a pinned
 	// floating window renders above whichever workspace is showing.
@@ -191,12 +216,16 @@ describe("Omarchy workspace overlay", () => {
 		expect("nautilus").not.toMatch(new RegExp(portalClass));
 	});
 
-	it("owns SUPER+Y, SUPER+R, and SUPER+F exactly once across both overlays", () => {
+	it("owns the streaming workspace keys exactly once across both overlays", () => {
 		const overlayLines = `${bindingsConfig}\n${config}`.split(/\r?\n/);
 		for (const [key, expected] of [
 			[
 				"Y",
 				"bindd = SUPER, Y, Show/focus/hide YouTube workspace, exec, haoshoku-special-workspace youtube",
+			],
+			[
+				"J",
+				"bindd = SUPER, J, Show/focus/hide JioHotstar workspace, exec, haoshoku-special-workspace jiohotstar",
 			],
 			[
 				"R",

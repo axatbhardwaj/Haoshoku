@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Add JioHotstar as a `Super+J` special workspace and relocate Omarchy's
+  toggle-split action to `Super+Ctrl+Shift+J`.
+
 ## 8.2.0 - 2026-08-10
 
 - Move Close window from `Super+W` to `Super+Q` while intentionally leaving

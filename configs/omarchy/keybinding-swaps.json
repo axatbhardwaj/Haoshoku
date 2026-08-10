@@ -47,6 +47,17 @@
 		},
 		{
 			"config_file": "configs/omarchy/bindings.conf",
+			"key_combination_taken": "SUPER, J",
+			"previous_binding": "bindd = SUPER, J, Toggle window split, layoutmsg, togglesplit",
+			"moved_from_dispatcher": "layoutmsg",
+			"moved_from_arg": "togglesplit",
+			"moved_to": "SUPER CTRL SHIFT, J",
+			"moved_to_dispatcher": "layoutmsg",
+			"moved_to_arg": "togglesplit",
+			"reason": "displaced_by_workspace_toggle"
+		},
+		{
+			"config_file": "configs/omarchy/bindings.conf",
 			"key_combination_taken": "SUPER, P",
 			"previous_binding": "bindd = SUPER, P, Pseudo window, pseudo",
 			"moved_from_dispatcher": "pseudo",

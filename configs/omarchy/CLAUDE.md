@@ -35,9 +35,9 @@ alone.
 Browser web-app rules use the classes derived from Brave Origin, including
 `brave-www.notion.so__-Default`, `brave-x.com__-Default`,
 `brave-youtube.com__-Default`, `brave-www.crunchyroll.com__-Default`,
-`brave-reanime.to__home-Default`, `brave-chatgpt.com__-Default`, and
-`brave-web.whatsapp.com__-Default`; do not revert them to the old
-Chromium-derived prefix.
+`brave-www.jiohotstar.com__-Default`, `brave-reanime.to__home-Default`,
+`brave-chatgpt.com__-Default`, and `brave-web.whatsapp.com__-Default`; do not
+revert them to the old Chromium-derived prefix.
 The profile classes `chromium-flux` and `chromium-defi` are intentionally
 retained unchanged even though the browser is now Brave Origin. They are
 opaque Wayland class strings, not brand labels: Brave Origin launched with
