@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 8.2.0 - 2026-08-10
 
 - Move Close window from `Super+W` to `Super+Q` while intentionally leaving
   `Super+W` unbound, and remove the Obsidian shortcut; Obsidian remains
