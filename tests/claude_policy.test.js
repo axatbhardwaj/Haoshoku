@@ -7,40 +7,87 @@ const POLICY_PATH = path.resolve(
 	"../configs/claude/CLAUDE.md",
 );
 
+function section(policy, title, level = 2) {
+	const hashes = "#".repeat(level);
+	const headingText = level === 2 ? `\\d+\\. ${title}` : title;
+	const heading = new RegExp(`^${hashes} ${headingText}\\s*$`, "m");
+	const start = policy.search(heading);
+	expect(start).toBeGreaterThanOrEqual(0);
+
+	const body = policy.slice(policy.indexOf("\n", start) + 1);
+	const nextHeading = body.search(new RegExp(`^${hashes}\\s`, "m"));
+	return nextHeading < 0 ? body : body.slice(0, nextHeading);
+}
+
+function expectDesignedWorkContract(designedWork) {
+	expect(designedWork).toMatch(
+		/1\.\s*Fable[\s\S]*?(?:architecture|acceptance criteria)[\s\S]*?2\.\s*Sol[\s\S]*?adversarial[\s\S]*?(?:read-only\s+Codex|Codex\s+dispatch)[\s\S]*?3\.\s*Fable[\s\S]*?corrects[\s\S]*?automatically/i,
+	);
+	expect(designedWork).toMatch(
+		/if\s+Sol\s+caused\s+(?:any\s+)?plan\s+change[\s\S]*?cold\s+Codex\s+dispatch[\s\S]*?revised\s+plan[\s\S]*?final\s+pass/i,
+	);
+	expect(designedWork).toMatch(
+		/6\.\s*Opus[\s\S]*?accepted\s+DAG[\s\S]*?dynamic\s+Workflow[\s\S]*?executes/i,
+	);
+}
+
 it("ships the public single-path Claude orchestration policy", () => {
 	const policy = fs.readFileSync(POLICY_PATH, "utf8");
+	const discovery = section(policy, "Discovery");
+	const straightforward = section(discovery, "Straightforward work", 3);
+	const designedWork = section(discovery, "Designed work", 3);
+	const roles = section(policy, "Roles");
+	const research = section(policy, "Conditional research");
+	const governor = section(policy, "Complexity and convergence governor");
+	const approval = section(policy, "Approval and authority");
+	const completion = section(policy, "Completion");
 
-	expect(policy).toContain("## 1. One operating model");
-	expect(policy).toContain("Every request starts with `discovering-work`.");
-	expect(policy).toContain("Opus sends one bounded brief to `codex-wrapper`.");
-	expect(policy).toContain("Codex implements and verifies the change.");
-	expect(policy).toContain("Opus inspects the final state");
-
-	expect(policy).toContain("Fable produces the architecture");
-	expect(policy).toContain("Sol reviews the plan adversarially");
-	expect(policy).toContain("Fable corrects ordinary findings automatically.");
-	expect(policy).toContain("a new cold Codex dispatch gives the revised");
-	expect(policy).toContain(
-		"Opus renders the accepted DAG as a dynamic Workflow",
+	expect(policy).toMatch(/^## 1\. One operating model$/m);
+	expect(policy).toMatch(
+		/every\s+request\s+starts\s+with\s+`discovering-work`/i,
 	);
 
-	expect(policy).toContain(
-		"Codex and Grok investigate the same external questions independently when\nresearch is triggered.",
+	expect(straightforward).toMatch(
+		/1\.\s*Opus\s+sends\s+one\b[\s\S]*?codex-wrapper[\s\S]*?2\.\s*Codex\s+implements\s+and\s+verifies[\s\S]*?3\.\s*Opus[\s\S]*?(?:accepts|returns\s+precise\s+corrections)/i,
 	);
-	expect(policy).toContain(
-		"Claude-native MCP access may supplement, but never replace",
+
+	expectDesignedWorkContract(designedWork);
+	const unconditionalDesignedWork = designedWork.replace(
+		/If\s+Sol\s+caused\s+(?:any\s+)?plan\s+change,\s*/i,
+		"",
 	);
-	expect(policy).toContain("## 6. Complexity and convergence governor");
-	expect(policy).toContain("do not retain unused process machinery");
-	expect(policy).toContain("Proceed automatically with clear, reversible work");
-	expect(policy).toContain(
-		"Stop at a newly discovered boundary and ask before:",
+	expect(unconditionalDesignedWork).not.toBe(designedWork);
+	expect(() => expectDesignedWorkContract(unconditionalDesignedWork)).toThrow();
+
+	expect(roles).toMatch(
+		/Codex\s+and\s+Grok\s+investigate\s+the\s+same\s+external\s+questions\s+independently[\s\S]*?research\s+is\s+triggered/i,
+	);
+	expect(research).toMatch(
+		/paired\s+Codex\s+and\s+Grok\s+research\s+runs\s+only\s+when[\s\S]*?(?:external|current|uncertain|disputed)/i,
+	);
+	expect(research).toMatch(
+		/Claude-native\s+MCP\s+access[\s\S]*?supplement[\s\S]*?never\s+replace[\s\S]*?paired\s+Codex\s+and\s+Grok/i,
+	);
+
+	expect(governor).toMatch(
+		/acceptance\s+criteria[\s\S]*?durable[\s\S]*?process\s+machinery[\s\S]*?disposable/i,
+	);
+	expect(governor).toMatch(
+		/do\s+not\s+retain\s+unused\s+process\s+machinery[\s\S]*?target-backed\s+delta/i,
+	);
+	expect(approval).toMatch(
+		/proceed\s+automatically[\s\S]*?clear,?\s+reversible\s+work/i,
+	);
+	expect(approval).toMatch(
+		/stop\s+at\s+a\s+newly\s+discovered\s+boundary[\s\S]*?ask\s+before/i,
 	);
 
 	expect(policy).not.toMatch(/\bT[0-3]\b/);
-	expect(policy).not.toContain("FAST lane");
-	expect(policy).not.toContain("STANDARD lane");
-	expect(policy).not.toContain("one ledger line");
+	expect(policy).not.toMatch(/\b(?:FAST|STANDARD)\s+lane\b/i);
+	expect(policy).not.toMatch(/\bone\s+ledger\s+line\b/i);
 	expect(policy).not.toContain("--tier");
+	expect(completion).toMatch(
+		/no\s+routing\s+ledger[\s\S]*?part\s+of\s+completion/i,
+	);
 	expect(policy.split("\n").length).toBeLessThan(300);
 });
