@@ -125,7 +125,7 @@ unique_warp_address() {
 }
 
 ensure_warp_locked() {
-  local workspace="$1" tag="$2" uri="$3"
+  local workspace="$1" tag="$2" uri="$3" adopt_existing="${4:-false}"
   local clients owned_addresses owned_address owned_workspace
   local adoptable_addresses adoptable_address before_addresses new_addresses new_address
   local attempt candidate_status
@@ -142,14 +142,16 @@ ensure_warp_locked() {
   fi
   [[ "$candidate_status" == 1 ]] || return 0
 
-  adoptable_addresses="$(find_adoptable_warp_addresses "$clients" "$workspace")" || return 0
-  if adoptable_address="$(unique_warp_address "$adoptable_addresses")"; then
-    dispatch tagwindow "+$tag" "address:$adoptable_address"
-    return 0
-  else
-    candidate_status=$?
+  if [[ "$adopt_existing" == true ]]; then
+    adoptable_addresses="$(find_adoptable_warp_addresses "$clients" "$workspace")" || return 0
+    if adoptable_address="$(unique_warp_address "$adoptable_addresses")"; then
+      dispatch tagwindow "+$tag" "address:$adoptable_address"
+      return 0
+    else
+      candidate_status=$?
+    fi
+    [[ "$candidate_status" == 1 ]] || return 0
   fi
-  [[ "$candidate_status" == 1 ]] || return 0
 
   before_addresses="$(warp_addresses "$clients")"
   launch "$workspace" warp-terminal "$uri"
@@ -201,7 +203,7 @@ if [[ "$recipe" == numbered || "$recipe" == numbered-login ]]; then
       launch_if_missing "$workspace" '^teams-for-linux$' teams-for-linux
       launch_if_missing "$workspace" '^(TelegramDesktop|org\.telegram\.desktop)$' Telegram
       ;;
-    warp) ensure_warp "$workspace" "haoshoku-ws${workspace}" "warp://action/new_window?path=$HOME" ;;
+    warp) ensure_warp "$workspace" "haoshoku-ws${workspace}" "warp://action/new_window?path=$HOME" true ;;
     notion)
       # Brave Origin ignores --class under --app and derives the class from the URL instead.
       launch_if_missing "$workspace" '^brave-www\.notion\.so__-Default$' brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/notion" --app=https://www.notion.so/

@@ -1963,6 +1963,47 @@ fi
 		}
 	});
 
+	// Mutation caught: allowing named tabs to adopt a plain Warp skips their
+	// tab-config URI and assigns the workspace tag to the pre-existing window.
+	it("launches named Warp tabs instead of adopting a plain special-workspace Warp", async () => {
+		for (const { recipe, tag, uri } of [
+			{
+				recipe: "haki",
+				tag: "haoshoku-haki",
+				uri: "warp://tab_config/haki?new_window=true",
+			},
+			{
+				recipe: "agents",
+				tag: "haoshoku-agents",
+				uri: "warp://tab_config/agents?new_window=true",
+			},
+		]) {
+			fs.rmSync(log, { force: true });
+			fs.rmSync(warpCall, { force: true });
+			const result = await run([recipe], {
+				clientsState: JSON.stringify([
+					warpClient("0xplain", `special:${recipe}`),
+				]),
+				warpClientsAfterLaunch: JSON.stringify([
+					warpClient("0xplain", `special:${recipe}`),
+					warpClient("0xnew", `special:${recipe}`),
+				]),
+			});
+
+			expect(result.exitCode, recipe).toBe(0);
+			expect(warpArguments(), recipe).toEqual([uri]);
+			expect(dispatchCalls(), recipe).toEqual([
+				"dispatch focusmonitor DP-2",
+				`dispatch togglespecialworkspace ${recipe}`,
+				expect.stringContaining(
+					`dispatch exec [workspace special:${recipe} silent] uwsm-app -- warp-terminal `,
+				),
+				`dispatch tagwindow +${tag} address:0xnew`,
+				`dispatch movetoworkspacesilent special:${recipe},address:0xnew`,
+			]);
+		}
+	});
+
 	it("keeps the Haki session-name contract in the executable wrapper", async () => {
 		const claudeCall = path.join(directory, "claude-call");
 		const marker = path.join(directory, "injection-marker");
