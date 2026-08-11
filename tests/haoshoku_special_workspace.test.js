@@ -57,7 +57,7 @@ describe("haoshoku-special-workspace", () => {
 			assistants: {
 				workspace: "assistants",
 				monitor: "DP-2",
-				followsFocus: false,
+				followsFocus: true,
 			},
 			music: { workspace: "music", monitor: "DP-1", followsFocus: false },
 			"1password": {
@@ -104,6 +104,7 @@ describe("haoshoku-special-workspace", () => {
 	let clientState;
 	let chromium;
 	let claudeDesktop;
+	let codexDesktop;
 	let focusedMonitorState;
 	let runtimeDirectory;
 	let specialMonitorState;
@@ -119,6 +120,7 @@ describe("haoshoku-special-workspace", () => {
 		clientState = path.join(directory, "hypr-clients.json");
 		chromium = path.join(directory, "brave-origin");
 		claudeDesktop = path.join(directory, ["claude", "desktop"].join("-"));
+		codexDesktop = path.join(directory, ["codex", "desktop"].join("-"));
 		focusedMonitorState = path.join(directory, "focused-monitor-state");
 		runtimeDirectory = path.join(directory, "runtime");
 		specialMonitorState = path.join(directory, "special-monitor-state");
@@ -239,6 +241,12 @@ printf 'claude\n' >> "$CALL_LOG"
 `,
 		);
 		fs.writeFileSync(
+			codexDesktop,
+			`#!/usr/bin/env bash
+printf 'codex-desktop\n' >> "$CALL_LOG"
+`,
+		);
+		fs.writeFileSync(
 			helper,
 			`#!/usr/bin/env bash
 case "$1" in
@@ -253,6 +261,7 @@ esac
 		);
 		fs.chmodSync(hyprctl, 0o755);
 		fs.chmodSync(claudeDesktop, 0o755);
+		fs.chmodSync(codexDesktop, 0o755);
 		fs.chmodSync(chromium, 0o755);
 		fs.chmodSync(helper, 0o755);
 		fs.chmodSync(path.join(directory, "systemctl"), 0o755);
@@ -409,7 +418,7 @@ fi
 	const xClient = JSON.stringify([{ class: "brave-x.com__-Default" }]);
 	const forwardedUrl = "https://example.test/forwarded";
 	const claudeClass = "com.anthropic.Claude";
-	const chatgptClass = "brave-chatgpt.com__-Default";
+	const codexClass = "chatgpt";
 
 	it("forwards a generic browser URL without hiding it on the focused monitor", async () => {
 		const result = await run(["browser", "flux", forwardedUrl], {
@@ -937,12 +946,41 @@ exit 17
 		});
 	});
 
+	// Mutation caught: removing assistants' focused-monitor behavior would reopen
+	// the hidden workspace on its old DP-2 fallback instead of where the user is.
+	it("opens hidden assistants on the focused monitor", async () => {
+		const result = await run(["assistants"], {
+			clients: JSON.stringify([{ class: claudeClass }, { class: codexClass }]),
+			focusedMonitor: "HDMI-A-1",
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(dispatchCalls()).toEqual([
+			"dispatch focusmonitor HDMI-A-1",
+			"dispatch togglespecialworkspace assistants",
+		]);
+	});
+
+	// Mutation caught: routing assistants through the fixed-monitor reveal path
+	// would focus its old monitor instead of moving the visible workspace.
+	it("moves visible assistants to the focused monitor", async () => {
+		const result = await run(["assistants"], {
+			clients: JSON.stringify([{ class: claudeClass }, { class: codexClass }]),
+			focusedMonitor: "HDMI-A-1",
+			visibleWorkspace: "assistants",
+			visibleMonitor: "DP-2",
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(dispatchCalls()).toEqual([
+			"dispatch togglespecialworkspace assistants",
+		]);
+		expect(fs.readFileSync(specialMonitorState, "utf8")).toBe("HDMI-A-1");
+	});
+
 	it("does not relaunch either assistant when both exact classes are present", async () => {
 		const result = await run(["assistants"], {
-			clients: JSON.stringify([
-				{ class: claudeClass },
-				{ class: chatgptClass },
-			]),
+			clients: JSON.stringify([{ class: claudeClass }, { class: codexClass }]),
 		});
 
 		expect(result.exitCode).toBe(0);
@@ -952,54 +990,53 @@ exit 17
 		).toEqual([]);
 	});
 
-	it("launches only ChatGPT when Claude Desktop is already present", async () => {
+	it("launches only Codex Desktop when Claude Desktop is already present", async () => {
 		const result = await run(["assistants"], {
 			clients: JSON.stringify([{ class: claudeClass }]),
 		});
 
 		expect(result.exitCode).toBe(0);
-		expect(await chromiumArguments()).toEqual([
-			`--user-data-dir=${directory}/.config/brave-haoshoku/flux`,
-			"--class=chromium-flux",
-			"--app=https://chatgpt.com",
-		]);
+		expect(fs.existsSync(browserCall)).toBe(false);
 		expect(dispatchCalls().filter((call) => call === "claude")).toHaveLength(0);
 		expect(
-			dispatchCalls().filter((call) => call === "brave-origin"),
+			dispatchCalls().filter((call) => call === "codex-desktop"),
 		).toHaveLength(1);
+		expect(dispatchCalls().filter((call) => call === "brave-origin")).toEqual(
+			[],
+		);
 	});
 
-	it("launches only Claude Desktop when ChatGPT is already present", async () => {
+	it("launches only Claude Desktop when Codex Desktop is already present", async () => {
 		const result = await run(["assistants"], {
-			clients: JSON.stringify([{ class: chatgptClass }]),
+			clients: JSON.stringify([{ class: codexClass }]),
 		});
 
 		expect(result.exitCode).toBe(0);
 		expect(fs.existsSync(browserCall)).toBe(false);
 		expect(dispatchCalls().filter((call) => call === "claude")).toHaveLength(1);
 		expect(
-			dispatchCalls().filter((call) => call === "brave-origin"),
+			dispatchCalls().filter((call) => call === "codex-desktop"),
 		).toHaveLength(0);
+		expect(dispatchCalls().filter((call) => call === "brave-origin")).toEqual(
+			[],
+		);
 	});
 
-	it("launches ChatGPT when a decoy replaces the class's literal dot", async () => {
+	it("launches Codex Desktop when only an uppercase class decoy is present", async () => {
 		const result = await run(["assistants"], {
-			clients: JSON.stringify([
-				{ class: claudeClass },
-				{ class: "brave-chatgptXcom__-Default" },
-			]),
+			clients: JSON.stringify([{ class: claudeClass }, { class: "ChatGPT" }]),
 		});
 
 		expect(result.exitCode).toBe(0);
-		expect(await chromiumArguments()).toEqual([
-			`--user-data-dir=${directory}/.config/brave-haoshoku/flux`,
-			"--class=chromium-flux",
-			"--app=https://chatgpt.com",
-		]);
+		expect(
+			dispatchCalls().filter((call) => call === "codex-desktop"),
+		).toHaveLength(1);
+		expect(dispatchCalls().filter((call) => call === "brave-origin")).toEqual(
+			[],
+		);
 	});
 
 	for (const { recipe, url } of [
-		{ recipe: "assistants", url: "https://chatgpt.com" },
 		{ recipe: "x", url: "https://x.com/" },
 		{ recipe: "youtube", url: "https://youtube.com/" },
 		{ recipe: "jiohotstar", url: "https://www.jiohotstar.com/" },
@@ -1008,12 +1045,7 @@ exit 17
 		// Mutation caught: omitting --class from this app launch lets it become
 		// the Flux singleton owner that creates later plain windows as "brave-origin".
 		it(`starts the Flux singleton owner with its registered class for ${recipe}`, async () => {
-			await run(
-				[recipe],
-				recipe === "assistants"
-					? { clients: JSON.stringify([{ class: claudeClass }]) }
-					: undefined,
-			);
+			await run([recipe]);
 
 			expect(await chromiumArguments()).toEqual([
 				`--user-data-dir=${directory}/.config/brave-haoshoku/flux`,

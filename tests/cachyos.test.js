@@ -749,6 +749,18 @@ describe("Arch package-manager preflight", () => {
 });
 
 describe("Omarchy-owned defaults", () => {
+	it("provisions both native desktop assistants", () => {
+		const packages = fs
+			.readFileSync(
+				path.resolve(import.meta.dir, "..", "common", "paru_applist.txt"),
+				"utf8",
+			)
+			.split(/\r?\n/);
+
+		expect(packages).toContain("claude-desktop");
+		expect(packages).toContain("openai-codex-desktop");
+	});
+
 	it("keeps KDE, Fish, and appearance packages out of the application list", () => {
 		const packages = fs.readFileSync(
 			path.resolve(import.meta.dir, "..", "common", "paru_applist.txt"),

@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Replace the `Super+I` assistants workspace's ChatGPT Brave web app with
+  Codex Desktop. Claude Desktop remains alongside it, and both desktop windows
+  route to `special:assistants`, which follows the focused monitor. Arch setup
+  provisions the Codex Desktop package alongside Claude Desktop.
+
 ## 8.3.2 - 2026-08-12
 
 - Split the `Super+A` Haki Warp tab vertically with the configured `io-haki`

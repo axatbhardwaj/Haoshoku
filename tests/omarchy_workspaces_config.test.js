@@ -143,19 +143,19 @@ describe("Omarchy workspace overlay", () => {
 	it("routes both AI assistants by exact class without silent placement", () => {
 		const expectedRules = [
 			String.raw`windowrule = workspace special:assistants, match:class ^com\.anthropic\.Claude$`,
-			String.raw`windowrule = workspace special:assistants, match:class ^brave-chatgpt\.com__-Default$`,
+			"windowrule = workspace special:assistants, match:class ^chatgpt$",
 		];
-		const assistantRules = config
-			.split(/\r?\n/)
-			.filter((line) =>
-				line.startsWith("windowrule = workspace special:assistants,"),
-			);
+		for (const overlay of [config, laptopConfig]) {
+			const assistantRules = overlay
+				.split(/\r?\n/)
+				.filter((line) =>
+					line.startsWith("windowrule = workspace special:assistants,"),
+				);
 
-		expect(assistantRules).toEqual(expectedRules);
-		for (const rule of assistantRules) expect(rule).not.toContain(" silent");
-		expect("brave-chatgptXcom__-Default").not.toMatch(
-			/^brave-chatgpt\.com__-Default$/,
-		);
+			expect(assistantRules).toEqual(expectedRules);
+			for (const rule of assistantRules) expect(rule).not.toContain(" silent");
+		}
+		expect("chatgpt-desktop").not.toMatch(/^chatgpt$/);
 	});
 
 	for (const { workspace, classPattern, decoyClass } of [

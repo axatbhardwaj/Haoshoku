@@ -249,7 +249,7 @@ else
   case "$recipe" in
     haki) workspace=haki; monitor=DP-2 ;;
     agents) workspace=agents; monitor=DP-2 ;;
-    assistants) workspace=assistants; monitor=DP-2 ;;
+    assistants) workspace=assistants; monitor=DP-2; follows_focus=true ;;
     music) workspace=music; monitor=DP-1 ;;
     1password) workspace=1password; monitor=DP-1 ;;
     communication) workspace=communication; monitor=HDMI-A-1 ;;
@@ -347,9 +347,7 @@ fi
 case "$recipe" in
   assistants)
     launch_if_missing "special:$workspace" '^com\.anthropic\.Claude$' claude-desktop
-    # App windows derive their class from the URL, but this process may own Flux's
-    # singleton; --class=chromium-flux makes later plain windows use its registry class.
-    launch_if_missing "special:$workspace" '^brave-chatgpt\.com__-Default$' brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/flux" --class=chromium-flux --app=https://chatgpt.com
+    has_client_class chatgpt || launch "special:$workspace" codex-desktop
     ;;
   music) launch_if_missing "special:$workspace" '^[Ss]potify$' spotify ;;
   1password) launch_if_missing "special:$workspace" '^1password$' 1password ;;
