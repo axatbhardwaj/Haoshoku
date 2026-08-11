@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 8.3.2 - 2026-08-12
 
 - Split the `Super+A` Haki Warp tab vertically with the configured `io-haki`
   Claude session above a fresh Codex session. Both panes start at `$HOME`,
