@@ -78,6 +78,57 @@ describe("shipped Warp tab configs", () => {
 
 		expect(unsupportedColors).toEqual([]);
 	});
+
+	it("ships Haki as a Claude-over-Codex vertical split", () => {
+		// Catches removal or reversal of either child, command replacement, loss of
+		// the home directory, or focus moving away from the Claude pane.
+		const source = fs.readFileSync(
+			path.join(
+				import.meta.dir,
+				"..",
+				"configs",
+				"warp",
+				"tab_configs",
+				"haki.toml",
+			),
+			"utf8",
+		);
+		const panes = source
+			.split(/^\[\[panes\]\]$/m)
+			.slice(1)
+			.map((pane) =>
+				pane
+					.split("\n")
+					.map((line) => line.trim())
+					.filter((line) => line && !line.startsWith("#")),
+			);
+		const paneById = new Map(
+			panes.map((lines) => [lines.find((line) => /^id\s*=/.test(line)), lines]),
+		);
+
+		expect(source).toMatch(/^name\s*=\s*"Haki"$/m);
+		expect(source).toMatch(/^title\s*=\s*"haki"$/m);
+		expect(source).toMatch(/^color\s*=\s*"magenta"$/m);
+		expect(paneById.get('id = "root"')).toEqual([
+			'id = "root"',
+			'type = "split"',
+			'split = "vertical"',
+			'children = ["claude", "codex"]',
+		]);
+		expect(paneById.get('id = "claude"')).toEqual([
+			'id = "claude"',
+			'type = "terminal"',
+			'directory = "/home/xzat"',
+			'commands = ["/home/xzat/.local/bin/haoshoku-claude-local"]',
+			"is_focused = true",
+		]);
+		expect(paneById.get('id = "codex"')).toEqual([
+			'id = "codex"',
+			'type = "terminal"',
+			'directory = "/home/xzat"',
+			'commands = ["codex"]',
+		]);
+	});
 });
 
 describe("resolveWarpPaths", () => {

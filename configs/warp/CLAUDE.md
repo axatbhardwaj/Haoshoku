@@ -7,7 +7,7 @@ Warp is the primary XDG terminal. Its configuration is deployed by
 
 | File                      | What                                                  | When to read                          |
 | ------------------------- | ----------------------------------------------------- | ------------------------------------- |
-| `tab_configs/haki.toml`   | Omarchy Super+A Haki tab | Modifying the Haki workspace layout |
+| `tab_configs/haki.toml`   | Omarchy Super+A Haki two-pane Claude-over-Codex tab | Modifying the Haki workspace layout |
 | `tab_configs/agents.toml` | Caelestia Super+A agents tab (Claude only), tab title "agents" | Modifying the agents workspace layout |
 | `themes/elysian.yaml`     | Warp-native port of the active Omarchy Elysian Kitty palette | Modifying Warp colors or readability |
 
@@ -24,7 +24,10 @@ The normal CachyOS user-app setup calls `configureWarp()` again. It restores the
 Elysian theme, every shipped top-level tab config, and the XDG preference for
 Warp. Kitty remains installed with its config as an inactive fallback.
 
-## Agents tab config
+## Agent tab configs
+
+Haki is the two-pane Meta+A layout: Claude above a fresh Codex pane below.
+`tab_configs/agents.toml` remains the separate Claude-only contract.
 
 `tab_configs/haki.toml` and `tab_configs/agents.toml` deploy to
 `${XDG_DATA_HOME:-~/.local/share}/warp-terminal/tab_configs/`. The shared

@@ -3,8 +3,20 @@ title = "haki"
 color = "magenta"
 
 [[panes]]
-id = "haki"
+id = "root"
+type = "split"
+split = "vertical"
+children = ["claude", "codex"]
+
+[[panes]]
+id = "claude"
 type = "terminal"
 directory = "/home/xzat"
 commands = ["/home/xzat/.local/bin/haoshoku-claude-local"]
 is_focused = true
+
+[[panes]]
+id = "codex"
+type = "terminal"
+directory = "/home/xzat"
+commands = ["codex"]
