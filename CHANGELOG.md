@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Fix `Super+A` after Warp session restoration by creating and focusing a
+  dedicated Warp window before loading the Haki tab config. Reject unsupported
+  tab colors at test time and use Warp's valid `magenta` color instead of
+  `purple`.
+
 ## 8.3.0 - 2026-08-11
 
 - Migrate every active Omarchy, Caelestia, and KDE terminal caller to Warp.
