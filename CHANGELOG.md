@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 8.3.0 - 2026-08-11
 
 - Migrate every active Omarchy, Caelestia, and KDE terminal caller to Warp.
   `xdg-terminal-exec` now selects Warp, workspace 7 and the Haki/agents tabs
