@@ -83,11 +83,13 @@ it("ships the public single-path Claude orchestration policy", () => {
 	);
 
 	expect(policy).not.toMatch(/\bT[0-3]\b/);
-	expect(policy).not.toMatch(/\b(?:FAST|STANDARD)\s+lane\b/i);
+	expect(policy).not.toMatch(/\bFAST\b/i);
+	expect(policy).not.toMatch(/\bSTANDARD\b/i);
 	expect(policy).not.toMatch(/\bone\s+ledger\s+line\b/i);
 	expect(policy).not.toContain("--tier");
+	expect(policy.match(/\brouting\s+ledgers?\b/gi)).toHaveLength(1);
 	expect(completion).toMatch(
-		/no\s+routing\s+ledger[\s\S]*?part\s+of\s+completion/i,
+		/no\s+routing\s+ledger\b[\s\S]*?part\s+of\s+completion/i,
 	);
 	expect(policy.split("\n").length).toBeLessThan(300);
 });
