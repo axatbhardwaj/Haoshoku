@@ -125,7 +125,7 @@ unique_warp_address() {
 }
 
 ensure_warp_locked() {
-  local workspace="$1" tag="$2" uri="$3" adopt_existing="${4:-false}"
+  local workspace="$1" tag="$2" uri="$3" adopt_existing="${4:-false}" tab_uri="${5:-}"
   local clients owned_addresses owned_address owned_workspace
   local adoptable_addresses adoptable_address before_addresses new_addresses new_address
   local attempt candidate_status
@@ -161,6 +161,10 @@ ensure_warp_locked() {
     if new_address="$(unique_warp_address "$new_addresses")"; then
       dispatch tagwindow "+$tag" "address:$new_address"
       dispatch movetoworkspacesilent "$workspace,address:$new_address"
+      if [[ -n "$tab_uri" ]]; then
+        dispatch focuswindow "address:$new_address"
+        launch "$workspace" warp-terminal "$tab_uri"
+      fi
       return 0
     else
       candidate_status=$?
@@ -170,6 +174,7 @@ ensure_warp_locked() {
       sleep 0.1
     fi
   done
+
 }
 
 ensure_warp() {
@@ -329,8 +334,8 @@ if [[ -n "$browser_profile" ]]; then
 elif [[ "$recipe" == haki || "$recipe" == agents ]]; then
   focus_or_toggle_special_workspace
   case "$recipe" in
-    haki) ensure_warp "special:$workspace" haoshoku-haki "warp://tab_config/haki?new_window=true" ;;
-    agents) ensure_warp "special:$workspace" haoshoku-agents "warp://tab_config/agents?new_window=true" ;;
+    haki) ensure_warp "special:$workspace" haoshoku-haki "warp://action/new_window?path=$HOME" false "warp://tab_config/haki" ;;
+    agents) ensure_warp "special:$workspace" haoshoku-agents "warp://action/new_window?path=$HOME" false "warp://tab_config/agents" ;;
   esac
   exit 0
 elif [[ "$follows_focus" == true ]]; then

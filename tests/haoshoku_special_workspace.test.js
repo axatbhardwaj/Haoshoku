@@ -111,6 +111,7 @@ describe("haoshoku-special-workspace", () => {
 	let tmuxLog;
 	let tmuxState;
 	let warpCall;
+	let warpCalls;
 	beforeEach(() => {
 		directory = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-special-"));
 		log = path.join(directory, "calls");
@@ -125,6 +126,7 @@ describe("haoshoku-special-workspace", () => {
 		tmuxLog = path.join(directory, "tmux-call");
 		tmuxState = path.join(directory, "tmux-session");
 		warpCall = path.join(directory, "warp-call");
+		warpCalls = path.join(directory, "warp-calls");
 		fs.writeFileSync(focusedMonitorState, "DP-1");
 		fs.writeFileSync(specialMonitorState, "DP-1");
 		fs.mkdirSync(runtimeDirectory);
@@ -217,6 +219,7 @@ exec "$@"
 			path.join(directory, "warp-terminal"),
 			`#!/usr/bin/env bash
 printf '%s\\0' "$@" > "$WARP_CALL"
+printf '%s\\n' "$*" >> "$WARP_CALLS"
 if [[ -n "\${HYPR_CLIENTS_STATE:-}" && -n "\${WARP_CLIENTS_AFTER_LAUNCH:-}" ]]; then
   printf '%s\\n' "$WARP_CLIENTS_AFTER_LAUNCH" > "$HYPR_CLIENTS_STATE"
 fi
@@ -302,6 +305,7 @@ esac
 				TMUX_STATE: tmuxState,
 				XDG_RUNTIME_DIR: runtimeDirectory,
 				WARP_CALL: warpCall,
+				WARP_CALLS: warpCalls,
 				WARP_CLIENTS_AFTER_LAUNCH: warpClientsAfterLaunch ?? "",
 				PATH: `${directory}:${process.env.PATH}`,
 				...env,
@@ -324,6 +328,11 @@ esac
 		const argv = fs.readFileSync(warpCall, "utf8").split("\0");
 		if (argv.at(-1) === "") argv.pop();
 		return argv;
+	}
+
+	function warpLaunches() {
+		if (!fs.existsSync(warpCalls)) return [];
+		return fs.readFileSync(warpCalls, "utf8").trim().split("\n");
 	}
 
 	function installClaudeArgumentRecorder() {
@@ -1788,8 +1797,9 @@ fi
 		fs.writeFileSync(
 			path.join(commandDirectory, "warp-terminal"),
 			`#!/usr/bin/env bash
-if [[ "$1" == *haki* ]]; then address=0xhaki; workspace=special:haki; else address=0xagents; workspace=special:agents; fi
+if [[ "$RACE_RECIPE" == haki ]]; then address=0xhaki; workspace=special:haki; else address=0xagents; workspace=special:agents; fi
 printf '%s\\n' "$1" >> "$RACE_LAUNCHES"
+[[ "$1" == warp://action/new_window* ]] || exit 0
 if [[ -e "$RACE_OWNERSHIP_LOCK" ]] && ! flock -n "$RACE_OWNERSHIP_LOCK"; then
   jq --arg address "$address" --arg workspace "$workspace" '. + [{address:$address,class:"dev.warp.Warp",workspace:{name:$workspace},tags:[]}]' "$RACE_CLIENTS" > "$RACE_CLIENTS.next"
   mv "$RACE_CLIENTS.next" "$RACE_CLIENTS"
@@ -1832,7 +1842,10 @@ fi
 			XDG_RUNTIME_DIR: runtime,
 		};
 		const processes = ["haki", "agents"].map((recipe) =>
-			Bun.spawn([targetScript, recipe], { env: environment, stderr: "pipe" }),
+			Bun.spawn([targetScript, recipe], {
+				env: { ...environment, RACE_RECIPE: recipe },
+				stderr: "pipe",
+			}),
 		);
 		const exitCodes = await Promise.all(
 			processes.map((process) => process.exited),
@@ -1852,8 +1865,10 @@ fi
 	function assertDistinctWarpOwnership(race) {
 		expect(race.exitCodes).toEqual([0, 0]);
 		expect(race.launches.sort()).toEqual([
-			"warp://tab_config/agents?new_window=true",
-			"warp://tab_config/haki?new_window=true",
+			`warp://action/new_window?path=${directory}`,
+			`warp://action/new_window?path=${directory}`,
+			"warp://tab_config/agents",
+			"warp://tab_config/haki",
 		]);
 		expect(
 			race.clients
@@ -1931,17 +1946,18 @@ fi
 				recipe: "haki",
 				address: "0xhaki",
 				tag: "haoshoku-haki",
-				uri: "warp://tab_config/haki?new_window=true",
+				uri: "warp://tab_config/haki",
 			},
 			{
 				recipe: "agents",
 				address: "0xagents",
 				tag: "haoshoku-agents",
-				uri: "warp://tab_config/agents?new_window=true",
+				uri: "warp://tab_config/agents",
 			},
 		]) {
 			fs.rmSync(log, { force: true });
 			fs.rmSync(warpCall, { force: true });
+			fs.rmSync(warpCalls, { force: true });
 			const result = await run([recipe], {
 				clientsState: "[]",
 				warpClientsAfterLaunch: JSON.stringify([
@@ -1950,7 +1966,10 @@ fi
 			});
 
 			expect(result.exitCode, recipe).toBe(0);
-			expect(warpArguments(), recipe).toEqual([uri]);
+			expect(warpLaunches(), recipe).toEqual([
+				`warp://action/new_window?path=${directory}`,
+				uri,
+			]);
 			expect(dispatchCalls(), recipe).toEqual([
 				"dispatch focusmonitor DP-2",
 				`dispatch togglespecialworkspace ${recipe}`,
@@ -1959,6 +1978,10 @@ fi
 				),
 				`dispatch tagwindow +${tag} address:${address}`,
 				`dispatch movetoworkspacesilent special:${recipe},address:${address}`,
+				`dispatch focuswindow address:${address}`,
+				expect.stringContaining(
+					`dispatch exec [workspace special:${recipe} silent] uwsm-app -- warp-terminal `,
+				),
 			]);
 		}
 	});
@@ -1970,16 +1993,17 @@ fi
 			{
 				recipe: "haki",
 				tag: "haoshoku-haki",
-				uri: "warp://tab_config/haki?new_window=true",
+				uri: "warp://tab_config/haki",
 			},
 			{
 				recipe: "agents",
 				tag: "haoshoku-agents",
-				uri: "warp://tab_config/agents?new_window=true",
+				uri: "warp://tab_config/agents",
 			},
 		]) {
 			fs.rmSync(log, { force: true });
 			fs.rmSync(warpCall, { force: true });
+			fs.rmSync(warpCalls, { force: true });
 			const result = await run([recipe], {
 				clientsState: JSON.stringify([
 					warpClient("0xplain", `special:${recipe}`),
@@ -1991,7 +2015,10 @@ fi
 			});
 
 			expect(result.exitCode, recipe).toBe(0);
-			expect(warpArguments(), recipe).toEqual([uri]);
+			expect(warpLaunches(), recipe).toEqual([
+				`warp://action/new_window?path=${directory}`,
+				uri,
+			]);
 			expect(dispatchCalls(), recipe).toEqual([
 				"dispatch focusmonitor DP-2",
 				`dispatch togglespecialworkspace ${recipe}`,
@@ -2000,8 +2027,44 @@ fi
 				),
 				`dispatch tagwindow +${tag} address:0xnew`,
 				`dispatch movetoworkspacesilent special:${recipe},address:0xnew`,
+				"dispatch focuswindow address:0xnew",
+				expect.stringContaining(
+					`dispatch exec [workspace special:${recipe} silent] uwsm-app -- warp-terminal `,
+				),
 			]);
 		}
+	});
+
+	// Mutations caught: relying on `?new_window=true` lets Warp deduplicate the
+	// launch, while adopting the existing client claims an unrelated window.
+	it("creates a dedicated Warp before loading a restored named tab", async () => {
+		const restored = warpClient("0xrestored", "special:haki");
+		const result = await run(["haki"], {
+			clientsState: JSON.stringify([restored]),
+			warpClientsAfterLaunch: JSON.stringify([
+				restored,
+				warpClient("0xnew", "special:haki"),
+			]),
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(warpLaunches()).toEqual([
+			`warp://action/new_window?path=${directory}`,
+			"warp://tab_config/haki",
+		]);
+		expect(dispatchCalls()).toEqual([
+			"dispatch focusmonitor DP-2",
+			"dispatch togglespecialworkspace haki",
+			expect.stringContaining(
+				"dispatch exec [workspace special:haki silent] uwsm-app -- warp-terminal ",
+			),
+			"dispatch tagwindow +haoshoku-haki address:0xnew",
+			"dispatch movetoworkspacesilent special:haki,address:0xnew",
+			"dispatch focuswindow address:0xnew",
+			expect.stringContaining(
+				"dispatch exec [workspace special:haki silent] uwsm-app -- warp-terminal ",
+			),
+		]);
 	});
 
 	it("keeps the Haki session-name contract in the executable wrapper", async () => {

@@ -1,6 +1,6 @@
 name = "Haki"
 title = "haki"
-color = "purple"
+color = "magenta"
 
 [[panes]]
 id = "haki"

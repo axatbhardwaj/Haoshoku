@@ -43,6 +43,43 @@ const expectedTheme = {
 	},
 };
 
+describe("shipped Warp tab configs", () => {
+	it("use only colors accepted by Warp's tab-config schema", () => {
+		const supportedColors = new Set([
+			"black",
+			"red",
+			"green",
+			"yellow",
+			"blue",
+			"magenta",
+			"cyan",
+			"white",
+		]);
+		const tabConfigDirectory = path.join(
+			import.meta.dir,
+			"..",
+			"configs",
+			"warp",
+			"tab_configs",
+		);
+		const unsupportedColors = fs
+			.readdirSync(tabConfigDirectory)
+			.filter((filename) => filename.endsWith(".toml"))
+			.flatMap((filename) => {
+				const source = fs.readFileSync(
+					path.join(tabConfigDirectory, filename),
+					"utf8",
+				);
+				return [...source.matchAll(/^color\s*=\s*"([^"]+)"/gm)].map(
+					([, color]) => ({ filename, color }),
+				);
+			})
+			.filter(({ color }) => !supportedColors.has(color));
+
+		expect(unsupportedColors).toEqual([]);
+	});
+});
+
 describe("resolveWarpPaths", () => {
 	it("defaults to ~/.config and ~/.local/share", () => {
 		const r = resolveWarpPaths({ home: "/h", env: {} });
