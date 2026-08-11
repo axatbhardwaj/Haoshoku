@@ -102,9 +102,11 @@ describe("shipped Warp tab configs", () => {
 					.map((line) => line.trim())
 					.filter((line) => line && !line.startsWith("#")),
 			);
-		const paneById = new Map(
-			panes.map((lines) => [lines.find((line) => /^id\s*=/.test(line)), lines]),
+		const paneIds = panes.map((lines) =>
+			lines.find((line) => /^id\s*=/.test(line)),
 		);
+		expect(paneIds).toEqual(['id = "root"', 'id = "claude"', 'id = "codex"']);
+		const paneById = new Map(paneIds.map((id, index) => [id, panes[index]]));
 
 		expect(source).toMatch(/^name\s*=\s*"Haki"$/m);
 		expect(source).toMatch(/^title\s*=\s*"haki"$/m);
