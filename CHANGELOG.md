@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Split the `Super+A` Haki Warp tab vertically with the configured `io-haki`
+  Claude session above a fresh Codex session. Both panes start at `$HOME`,
+  Claude receives initial focus, and the existing exact-window workspace
+  ownership remains unchanged.
+
 ## 8.3.1 - 2026-08-12
 
 - Fix `Super+A` after Warp session restoration by creating and focusing a
