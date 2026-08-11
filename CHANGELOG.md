@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 8.3.1 - 2026-08-12
 
 - Fix `Super+A` after Warp session restoration by creating and focusing a
   dedicated Warp window before loading the Haki tab config. Reject unsupported
