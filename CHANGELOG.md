@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 8.3.3 - 2026-08-12
 
 - Replace the `Super+I` assistants workspace's ChatGPT Brave web app with
   Codex Desktop. Claude Desktop remains alongside it, and both desktop windows
