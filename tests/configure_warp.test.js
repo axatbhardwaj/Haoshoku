@@ -113,7 +113,6 @@ describe("shipped Warp tab configs", () => {
 		expect(source).toMatch(/^color\s*=\s*"magenta"$/m);
 		expect(paneById.get('id = "root"')).toEqual([
 			'id = "root"',
-			'type = "split"',
 			'split = "vertical"',
 			'children = ["claude", "codex"]',
 		]);

@@ -4,7 +4,6 @@ color = "magenta"
 
 [[panes]]
 id = "root"
-type = "split"
 split = "vertical"
 children = ["claude", "codex"]
 
