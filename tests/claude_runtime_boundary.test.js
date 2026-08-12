@@ -12,7 +12,7 @@ import {
 const PROJECT_ROOT = path.resolve(import.meta.dir, "..");
 const CLAUDE_CONFIG_DIR = path.join(PROJECT_ROOT, "configs", "claude");
 const PRIVATE_SOURCE_ROOT = process.env.HAOSHOKU_CLAUDE_RUNTIME_SOURCE_ROOT;
-const PRIVATE_SOURCE_SHA = "d852e8377ce65ba128f7b5b5cafdac0ac7a1e6f8";
+const PRIVATE_SOURCE_SHA = "25440a316fb1360a0edd37ef728e88cb5aeee9a9";
 const RUNTIME_FILES = [
 	"agents/sol-wrapper.md",
 	"agents/luna-wrapper.md",
@@ -35,7 +35,7 @@ const PINNED_DIGESTS = {
 	"agents/sol-wrapper.md":
 		"d4e004cda372090c1aade211187f15421cee7c3faa2c6e9ab69b52ed5e4d47c0",
 	"agents/luna-wrapper.md":
-		"a482b9dcca6576af9f13d61a546fbbd0d366286047b9a0d74670411611c2d090",
+		"a99fb52255e9300977c2768b9cc912177173d96418cbeebfa5362677108f83b0",
 	"agents/grok-wrapper.md":
 		"69f0876934f8aeea6ec62d90d694ea481b1bc1906b2ea16a9a40cbb14e1b4130",
 	"agents/madhyastha.md":
@@ -45,13 +45,13 @@ const PINNED_DIGESTS = {
 	"agents/run-codex-task.sh":
 		"c104edb98749f936367fa2812d7063674c78f53a3206a64d83940e71b5e67166",
 	"agents/validate-codex-wrapper.sh":
-		"1e06f6fb83e79ac14b020a69fdd85613ed6c20a225f8cad8bac75c3bed696996",
+		"2240c08f1dabf3c04c71fe9b5ec44722657444de717415c6ae684ef67fa3f957",
 	"agents/codex-result.schema.json":
 		"cccad847ac6a90694bbad15daddc42f4a55f7219a5ed9f717db4dcdfc7e4bfa0",
 	"agents/prepare-pr-review-render-workspace.sh":
 		"01b03b63b1fa35318964b13c8a6dc86395201f0e42ebfb04c6134fb8996a15c4",
 	"workflows/pr-review.js":
-		"00419e889ff58b76b1ad28f5bf7f3da335efc9d37f9df85048a461b999602315",
+		"1ae550831bdcb9199c4974de89d40232a6ccdd049e7aaedf22eb20f098018bf1",
 	"workflows/review-station.js":
 		"913be6d7cbf52593ad32ee9f22f781bf166787445ef9f16e20eb03c81ef77b7a",
 	"skills/discovering-work/SKILL.md":
@@ -86,23 +86,14 @@ function privateSource(relativePath) {
 	return result.stdout.toString();
 }
 
-const SOURCE_IDENTICAL_RUNTIME_FILES = RUNTIME_FILES.filter(
-	(relativePath) =>
-		relativePath !== "agents/luna-wrapper.md" &&
-		relativePath !== "workflows/pr-review.js",
-);
-
-it("matches the pinned private source where no portability rewrite is needed", () => {
+it("matches the pinned private source for every bundled runtime file", () => {
 	if (!PRIVATE_SOURCE_ROOT) return;
-	for (const relativePath of [
-		"agents/run-codex-task.sh",
-		"agents/prepare-pr-review-render-workspace.sh",
-	]) {
-		expect(
-			fs.readFileSync(path.join(CLAUDE_CONFIG_DIR, relativePath), "utf8"),
-			relativePath,
-		).toBe(privateSource(relativePath));
-	}
+	const mismatches = RUNTIME_FILES.filter(
+		(relativePath) =>
+			fs.readFileSync(path.join(CLAUDE_CONFIG_DIR, relativePath), "utf8") !==
+			privateSource(relativePath),
+	);
+	expect(mismatches).toEqual([]);
 });
 
 it("deploys the complete public Claude fallback runtime into a fresh home", async () => {
@@ -127,12 +118,6 @@ it("deploys the complete public Claude fallback runtime into a fresh home", asyn
 			const deployed = path.join(claudeDir, relativePath);
 			expect(fs.readFileSync(deployed, "utf8"), relativePath).toBe(bundled);
 			expect(digest(bundled), relativePath).toBe(PINNED_DIGESTS[relativePath]);
-			if (
-				PRIVATE_SOURCE_ROOT &&
-				SOURCE_IDENTICAL_RUNTIME_FILES.includes(relativePath)
-			) {
-				expect(bundled, relativePath).toBe(privateSource(relativePath));
-			}
 		}
 		for (const executable of [
 			"agents/run-codex-task.sh",

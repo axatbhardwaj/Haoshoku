@@ -309,6 +309,27 @@ safe_launcher_command() {
   [[ "$args" =~ $LAUNCHER_ARGS_RE ]] && safe_wrapper_route
 }
 
+safe_render_workspace_command() {
+  local trusted_home helper cleanup_target
+  [ "$WRAPPER_GATEWAY" = "luna-wrapper" ] || return 1
+  trusted_home=$(trusted_home_for_uid) || return 1
+  [ "${HOME:-}" = "$trusted_home" ] || return 1
+  case "$CMD" in
+    'sha256sum /tmp/pr-review-render.'????????'/review.html')
+      [ "$(command -v sha256sum 2>/dev/null)" = /usr/bin/sha256sum ]
+      ;;
+    '~/.claude/agents/prepare-pr-review-render-workspace.sh'|"$trusted_home/.claude/agents/prepare-pr-review-render-workspace.sh")
+      return 0
+      ;;
+    '~/.claude/agents/prepare-pr-review-render-workspace.sh --cleanup '*|"$trusted_home/.claude/agents/prepare-pr-review-render-workspace.sh --cleanup "*)
+      helper=${CMD%% --cleanup *}
+      cleanup_target=${CMD#"$helper --cleanup "}
+      [[ "$cleanup_target" =~ ^/tmp/pr-review-render\.[A-Za-z0-9]{8}$ ]]
+      ;;
+    *) return 1 ;;
+  esac
+}
+
 safe_wrapper_route() {
   local model="" mode="" attribution_path="" model_count=0 mode_count=0 attribution_count=0 token i
   local -a words
@@ -348,6 +369,7 @@ safe_wrapper_route() {
 }
 
 safe_launcher_command && allow_with_gateway_marker "approved codex launcher" "$CMD"
+safe_render_workspace_command && allow "approved Luna document workspace helper"
 safe_git_command && safe_git_runtime && allow "read-only git inspection"
 
 case "$CMD" in
@@ -357,5 +379,5 @@ case "$CMD" in
     ;;
 esac
 
-echo "Blocked by codex-wrapper policy. Allowed: the run-codex-task.sh launcher, read-only git (rev-parse/status/diff/log/show/ls-files), mkdir under /tmp/codex-wrapper — single commands, no shell metacharacters. Got: $CMD" >&2
+echo "Blocked by codex-wrapper policy. Allowed: the run-codex-task.sh launcher, Luna's fixed render-workspace helper, read-only git (rev-parse/status/diff/log/show/ls-files), mkdir under /tmp/codex-wrapper — single commands, no shell metacharacters. Got: $CMD" >&2
 exit 2

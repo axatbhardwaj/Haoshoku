@@ -37,10 +37,9 @@ const REPO = a.repo
 const TODAY = a.today
 const WORKDIR = a.dir
 const REVIEW_FILE = a.reviewFile
-const CLAUDE_HOME = '~/.claude'
-const PREPARE_RENDER_WORKSPACE = `${CLAUDE_HOME}/agents/prepare-pr-review-render-workspace.sh`
-const SAMVADA_SKILL_FILE = `${CLAUDE_HOME}/skills/samvada-html-deliverables/SKILL.md`
-const SAMVADA_TEMPLATE_FILE = `${CLAUDE_HOME}/skills/samvada-html-deliverables/template.html`
+const PREPARE_RENDER_WORKSPACE = '~/.claude/agents/prepare-pr-review-render-workspace.sh'
+const SAMVADA_SKILL_FILE = '~/.claude/skills/samvada-html-deliverables/SKILL.md'
+const SAMVADA_TEMPLATE_FILE = '~/.claude/skills/samvada-html-deliverables/template.html'
 
 // ---------------------------------------------------------------------------
 // Responsibilities, and why each station sits where it does:
@@ -320,6 +319,7 @@ Use the \`samvada-html-deliverables\` skill for the visual format (dark, self-co
 Read both files before writing the staging artifact.
 - Skill instructions: ${SAMVADA_SKILL_FILE}
 - House template: ${SAMVADA_TEMPLATE_FILE}
+Resolve each leading \`~\` against the current home before reading it.
 If either file is unavailable or unreadable, fail closed instead of improvising the format.
 
 Header block, all fields mandatory:
