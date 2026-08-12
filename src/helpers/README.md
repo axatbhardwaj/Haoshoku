@@ -15,8 +15,10 @@ The Claude configuration has deliberately separate ownership paths:
 
 **Copied from haoshoku template (`configs/claude/`):**
 - `CLAUDE.md`, `statusline-command.sh`, `.gitignore` — personal config
+- The fixed wrapper and role definitions, launcher/hook/schema dependencies,
+  canonical review workflows, and required discovery/deliverable skill files
 - Updates via `--claude-backup` (capture) and `--claude` (deploy)
-- No directory walker: `agents/` and `workflows/` are never read or written
+- No directory walker: only the explicit fallback manifest is read or written
 
 **Symlinked from cache:** `skills/` and non-shadowed agent files
 - Source: `~/.cache/haoshoku/{owner}-{repo}/` (runtime git clone)
@@ -25,7 +27,7 @@ The Claude configuration has deliberately separate ownership paths:
 **Bootstrapped separately inside `~/.claude/`:** private executable policy
 - A private policy repository the user owns supplies the live policy checkout
 - This public installer deliberately cannot discover or fetch it
-- A fresh machine therefore needs that separate bootstrap after the three-file deploy
+- A fresh machine can run the complete public fallback before optional private bootstrap
 
 Executable policy comes from a private policy repository the user owns; follow the [canonical in-place bootstrap procedure](../../configs/claude/README.md#executable-policy-bootstrap).
 
@@ -33,8 +35,8 @@ Executable policy comes from a private policy repository the user owns; follow t
 
 | Function                 | Purpose                                             |
 | ------------------------ | --------------------------------------------------- |
-| `syncClaudeConfig()`     | Copy the three personal files into `~/.claude/`     |
-| `backupClaudeConfig()`   | Guard and copy the same three files to the template |
+| `syncClaudeConfig()`     | Copy the explicit public fallback into `~/.claude/` |
+| `backupClaudeConfig()`   | Guard and copy that manifest to the template        |
 | `updateClaudeConfig()`   | Pull latest from cached repos                       |
 | `installClaude()`        | Install Claude Code CLI if not present              |
 | `installSuperpowers()`   | Enable Superpowers plugin in settings.json          |
@@ -42,8 +44,8 @@ Executable policy comes from a private policy repository the user owns; follow t
 
 ## CLI Flags
 
-- `--claude` - deploy `CLAUDE.md`, the statusline, and `.gitignore`
-- `--claude-backup` - back up those three personal files through the home-path refusal guard
+- `--claude` - deploy the explicit public Claude fallback manifest
+- `--claude-backup` - back up that manifest through the home-path refusal guard
 - `--claude-update` - update cache + sync
 - `--superpowers` - enable Superpowers plugin in settings.json
 
@@ -51,7 +53,7 @@ Executable policy comes from a private policy repository the user owns; follow t
 
 Runtime git cloning for Claude skills and agents.
 
-**Separation**: `skill_manager.js` handles cache-backed skill/agent fetching and syncing; `configure_claude.js` handles only the three personal files. The private policy repository bootstrapped in place at `~/.claude/` owns executable policy.
+**Separation**: `skill_manager.js` handles cache-backed skill/agent fetching and syncing; `configure_claude.js` handles the explicit public fallback manifest. The private policy repository bootstrapped in place at `~/.claude/` can own richer executable policy.
 
 **Cache Location**: XDG_CACHE_HOME/haoshoku/ follows XDG Base Directory spec, prevents home directory pollution.
 

@@ -319,7 +319,7 @@ pyrightconfig.json
 .sidecar/
 .todos/
 .claude/
-.dvandva/
+.dvan[d]va/
 tasks/
 
 # Superpowers brainstorming + planning artifacts (local-only, never committed)

@@ -5,8 +5,8 @@ import path from "node:path";
 
 import * as claudeConfig from "../src/helpers/configure_claude.js";
 import {
-	PERSONAL_FILES,
 	backupClaudeConfig,
+	PERSONAL_FILES,
 	syncClaudeConfig,
 } from "../src/helpers/configure_claude.js";
 
@@ -16,9 +16,9 @@ describe("PERSONAL_FILES manifest", () => {
 		expect(srcs).toContain("statusline-command.sh");
 	});
 
-	it("includes the three expected personal files in stable order", () => {
+	it("keeps the root personal files in stable order", () => {
 		const srcs = PERSONAL_FILES.map((f) => f.src);
-		expect(srcs).toEqual([
+		expect(srcs.slice(0, 3)).toEqual([
 			"CLAUDE.md",
 			"statusline-command.sh",
 			"gitignore.template",
@@ -144,9 +144,9 @@ describe("bootstrapClaudePolicy()", () => {
 		expect(fs.readFileSync(path.join(claudeDir, "CLAUDE.md"), "utf-8")).toBe(
 			"# Remote policy\n",
 		);
-		expect(fs.readFileSync(path.join(claudeDir, "local-only.txt"), "utf-8")).toBe(
-			"keep me\n",
-		);
+		expect(
+			fs.readFileSync(path.join(claudeDir, "local-only.txt"), "utf-8"),
+		).toBe("keep me\n");
 		expect(fs.lstatSync(omarchyLink).isSymbolicLink()).toBe(true);
 		expect(fs.realpathSync(omarchyLink)).toBe(fs.realpathSync(omarchySkill));
 		expect(
@@ -326,9 +326,7 @@ describe("Claude deny-first ignore template", () => {
 	});
 
 	it("keeps root first-capture backups visible to the policy repository", () => {
-		tmpDir = fs.mkdtempSync(
-			path.join(os.tmpdir(), "haoshoku-claude-ignore-"),
-		);
+		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-claude-ignore-"));
 		const init = Bun.spawnSync(["git", "init"], {
 			cwd: tmpDir,
 			stderr: "pipe",
@@ -388,6 +386,9 @@ describe("syncClaudeConfig() respects the Claude home git index", () => {
 
 	function seedBundle() {
 		for (const file of PERSONAL_FILES) {
+			fs.mkdirSync(path.dirname(path.join(configsDir, file.src)), {
+				recursive: true,
+			});
 			fs.writeFileSync(
 				path.join(configsDir, file.src),
 				`Bundled ${file.src}\n`,
@@ -398,9 +399,9 @@ describe("syncClaudeConfig() respects the Claude home git index", () => {
 	function expectAllBundleFilesDeployed() {
 		for (const file of PERSONAL_FILES) {
 			const liveFile = file.dest ?? file.src;
-			expect(
-				fs.readFileSync(path.join(claudeDir, liveFile), "utf-8"),
-			).toBe(`Bundled ${file.src}\n`);
+			expect(fs.readFileSync(path.join(claudeDir, liveFile), "utf-8")).toBe(
+				`Bundled ${file.src}\n`,
+			);
 		}
 	}
 
@@ -418,6 +419,30 @@ describe("syncClaudeConfig() respects the Claude home git index", () => {
 		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
 
 		expect(fs.readFileSync(livePath, "utf-8")).toBe("# Private policy\n");
+	});
+
+	it("does not overwrite a tracked public runtime file", async () => {
+		const runtimeFile = "agents/sol-wrapper.md";
+		const livePath = path.join(claudeDir, runtimeFile);
+		fs.mkdirSync(path.dirname(livePath), { recursive: true });
+		fs.writeFileSync(livePath, "# Private Sol wrapper\n");
+		fs.mkdirSync(path.dirname(path.join(configsDir, runtimeFile)), {
+			recursive: true,
+		});
+		fs.writeFileSync(
+			path.join(configsDir, runtimeFile),
+			"# Public Sol wrapper\n",
+		);
+		const add = Bun.spawnSync(["git", "add", "--", runtimeFile], {
+			cwd: claudeDir,
+			stderr: "pipe",
+			stdout: "pipe",
+		});
+		expect(add.exitCode).toBe(0);
+
+		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
+
+		expect(fs.readFileSync(livePath, "utf-8")).toBe("# Private Sol wrapper\n");
 	});
 
 	it("uses the destination path when deciding whether .gitignore is tracked", async () => {
@@ -589,7 +614,10 @@ describe("syncClaudeConfig() respects the Claude home git index", () => {
 			stdout: "pipe",
 		});
 		expect(init.exitCode).toBe(0);
-		fs.writeFileSync(path.join(claudeDir, "CLAUDE.md"), "# Parent-owned policy\n");
+		fs.writeFileSync(
+			path.join(claudeDir, "CLAUDE.md"),
+			"# Parent-owned policy\n",
+		);
 		const add = Bun.spawnSync(
 			["git", "add", "--", path.join(".claude", "CLAUDE.md")],
 			{
@@ -669,11 +697,7 @@ describe("PERSONAL_FILES dest mapping", () => {
 
 	it("deploys to dest and backs up from dest while keeping src as the bundle path", async () => {
 		const bundledPath = path.join(configsDir, mappedFile.src);
-		const liveDestPath = path.join(
-			claudeHome,
-			".claude",
-			mappedFile.dest,
-		);
+		const liveDestPath = path.join(claudeHome, ".claude", mappedFile.dest);
 		const liveSrcPath = path.join(claudeHome, ".claude", mappedFile.src);
 		fs.writeFileSync(bundledPath, "bundled\n");
 
@@ -686,9 +710,7 @@ describe("PERSONAL_FILES dest mapping", () => {
 		await backupClaudeConfig({ srcDir: configsDir, claudeHome });
 
 		expect(fs.readFileSync(bundledPath, "utf-8")).toBe("live\n");
-		expect(
-			fs.existsSync(path.join(configsDir, mappedFile.dest)),
-		).toBe(false);
+		expect(fs.existsSync(path.join(configsDir, mappedFile.dest))).toBe(false);
 	});
 });
 
@@ -816,14 +838,19 @@ describe("Claude settings.json remains unmanaged", () => {
 		const bundledSettings = `${JSON.stringify({ stale: true }, null, 2)}\n`;
 		fs.writeFileSync(path.join(configsDir, "settings.json"), bundledSettings);
 		fs.writeFileSync(path.join(configsDir, "CLAUDE.md"), "# test\n");
-		fs.writeFileSync(path.join(configsDir, "statusline-command.sh"), "#!/bin/sh\n");
+		fs.writeFileSync(
+			path.join(configsDir, "statusline-command.sh"),
+			"#!/bin/sh\n",
+		);
 
 		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
 
-		expect(fs.readFileSync(path.join(claudeDir, "settings.json"), "utf-8")).toBe(
-			liveSettings,
+		expect(
+			fs.readFileSync(path.join(claudeDir, "settings.json"), "utf-8"),
+		).toBe(liveSettings);
+		expect(fs.existsSync(path.join(claudeDir, "settings.json.bak"))).toBe(
+			false,
 		);
-		expect(fs.existsSync(path.join(claudeDir, "settings.json.bak"))).toBe(false);
 	});
 
 	it("does not back up live settings.json into the bundle", async () => {
@@ -835,7 +862,7 @@ describe("Claude settings.json remains unmanaged", () => {
 	});
 });
 
-describe("Claude policy directories remain unmanaged", () => {
+describe("Claude runtime manifest keeps undeclared entries untouched", () => {
 	let tmpDir;
 	let configsDir;
 	let claudeHome;
@@ -850,9 +877,6 @@ describe("Claude policy directories remain unmanaged", () => {
 		claudeDir = path.join(claudeHome, ".claude");
 		fs.mkdirSync(configsDir, { recursive: true });
 		fs.mkdirSync(claudeDir, { recursive: true });
-		for (const file of PERSONAL_FILES) {
-			fs.writeFileSync(path.join(configsDir, file.src), "personal\n");
-		}
 		logs = {
 			error: [],
 			info: [],
@@ -1015,17 +1039,19 @@ describe("Claude policy directories remain unmanaged", () => {
 		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
 
 		expect({
-			agent: fs.existsSync(livePath("agents", path.join("nested", "policy.md"))),
+			agent: fs.existsSync(
+				livePath("agents", path.join("nested", "policy.md")),
+			),
 			workflow: fs.existsSync(
 				livePath("workflows", path.join("nested", "review.js")),
 			),
 		}).toEqual({ agent: false, workflow: false });
 	});
 
-	it("does not warn when policy directories are absent from the bundle", async () => {
+	it("warns when a required runtime file is absent from the bundle", async () => {
 		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
 
-		expect(logs.warning).toEqual([]);
+		expect(logs.warning.join("\n")).toContain("agents/sol-wrapper.md");
 	});
 
 	it("does not emit a merge-deploy summary", async () => {
@@ -1058,11 +1084,7 @@ describe("Claude policy directories remain unmanaged", () => {
 	});
 
 	it("does not overwrite an existing bundled agent from a live file", async () => {
-		const bundledAgent = writeBundled(
-			"agents",
-			"policy.md",
-			"bundled agent\n",
-		);
+		const bundledAgent = writeBundled("agents", "policy.md", "bundled agent\n");
 		writeLive("agents", "policy.md", "live agent\n");
 
 		await backupClaudeConfig({ srcDir: configsDir, claudeHome });
@@ -1109,11 +1131,7 @@ describe("Claude policy directories remain unmanaged", () => {
 	});
 
 	it("does not delete a bundled policy file for a live symlink", async () => {
-		const bundledAgent = writeBundled(
-			"agents",
-			"policy.md",
-			"bundled agent\n",
-		);
+		const bundledAgent = writeBundled("agents", "policy.md", "bundled agent\n");
 		const externalAgent = path.join(tmpDir, "external-agent.md");
 		fs.writeFileSync(externalAgent, "external agent\n");
 		const liveAgent = livePath("agents", "policy.md");
@@ -1147,10 +1165,7 @@ describe("Claude policy directories remain unmanaged", () => {
 		await backupClaudeConfig({ srcDir: configsDir, claudeHome });
 
 		const state = directories.map((directory) => ({
-			bundled: fs.readFileSync(
-				bundledPath(directory, "bundled.txt"),
-				"utf-8",
-			),
+			bundled: fs.readFileSync(bundledPath(directory, "bundled.txt"), "utf-8"),
 			deployed: fs.existsSync(livePath(directory, "bundled.txt")),
 			directory,
 			live: fs.readFileSync(livePath(directory, "live.txt"), "utf-8"),
