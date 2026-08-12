@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- Replace tiered Claude task routing with one capability-based path: Opus
+  orchestrates, Sol handles reasoning/code/research, Luna runs at fixed maximum
+  reasoning for PR reviews and human-facing HTML/docs, and Grok pairs on
+  external research only when discovery identifies a load-bearing unknown.
+- Bundle the complete portable Claude fallback runtime, including the named
+  wrappers, review workflows, guarded Codex launcher, isolated Luna render
+  workspace, discovering-work skill, and Samvada HTML deliverable skill.
+  Fresh installs and backups now round-trip all managed runtime files without
+  embedding a user-specific home path.
+
 ## 8.3.3 - 2026-08-12
 
 - Replace the `Super+I` assistants workspace's ChatGPT Brave web app with

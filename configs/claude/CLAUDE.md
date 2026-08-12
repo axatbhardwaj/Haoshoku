@@ -7,8 +7,8 @@ convergence, and acceptance. It orchestrates; Codex implements. Fable designs
 when design is genuinely open. Sol challenges plans and reviews integrated
 work. Grok is a read-only external-research peer.
 
-Every request starts with `discovering-work`. Its three decisions remain
-independent:
+Every request that produces a change starts with `discovering-work`. Its three
+decisions remain independent:
 
 1. Local clarity decides whether architecture is needed.
 2. External uncertainty decides whether research is needed.
@@ -117,10 +117,8 @@ unit concurrently when all of these hold:
 - integration can identify and review its contribution.
 
 Parallel writers in one repository use pre-created git worktrees on durable
-storage under `$HOME`. Different subdirectories of one worktree are not
-independent: the launcher lock is keyed to the git toplevel and refuses a
-second implementation dispatch. Merge-back is Opus-owned; run the full gate
-and review the integrated diff afterward.
+storage under `$HOME`. Merge-back is Opus-owned; run the full gate and review
+the integrated diff afterward.
 
 Running Workflow scripts cannot be steered. End a graph at the next real human
 or Opus decision boundary; do not split graphs merely to create ceremony.
@@ -236,9 +234,9 @@ is a blocker; urgency and missing capacity are not authority.
   also be stacked when independently reviewable. Verify current public-preview
   behavior from GitHub primary documentation before relying on it.
 - Human-facing specs, plans, research, audits, and reviews are self-contained
-  dark HTML made with `samvada-html-deliverables`. Publish only after a taste pass and
-  explicit publication authority. Machine-read policy, memory, and status
-  files remain plain text.
+  dark HTML made with `samvada-html-deliverables`. Publish only after a taste
+  pass and explicit publication authority. Machine-read policy, memory, and
+  status files remain plain text.
 - External claims in durable output require current primary evidence or the
   conditional research path.
 
@@ -250,7 +248,7 @@ Report:
 
 - what changed;
 - exact verification commands and outcomes;
-- review findings or explicit none;
+- review findings under §7 or explicit none;
 - remaining blockers, assumptions, or review debt; and
 - any external action deliberately not taken.
 

@@ -55,7 +55,7 @@ it("ships the public single-path Claude orchestration policy", () => {
 
 	expect(policy).toMatch(/^## 1\. One operating model$/m);
 	expect(policy).toMatch(
-		/every\s+request\s+starts\s+with\s+`discovering-work`/i,
+		/every\s+request\s+that\s+produces\s+a\s+change\s+starts\s+with\s+`discovering-work`/i,
 	);
 
 	expect(straightforward).toMatch(

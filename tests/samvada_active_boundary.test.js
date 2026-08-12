@@ -4,13 +4,13 @@ import fs from "node:fs";
 import path from "node:path";
 
 const PROJECT_ROOT = path.resolve(import.meta.dir, "..");
-const PRIVATE_SOURCE_SHA = "572bb5b8bd4d06302f559b0bac2391ebde0ca9a6";
+const PRIVATE_SOURCE_SHA = "413cf10231e8c5fa339666e6ccfea6a5a4ec3735";
 const PRIVATE_SOURCE_ROOT = process.env.HAOSHOKU_SAMVADA_SOURCE_ROOT;
 const SKILL_PATH = "skills/samvada-html-deliverables";
 const SKILL_FILES = ["SKILL.md", "agents/openai.yaml", "template.html"];
 const PINNED_DIGESTS = {
 	"CLAUDE.md":
-		"88b7d4ae8a6eda8bf04745c799d5fe80c5fbd28656196dfd55c3bce055b5dc7e",
+		"b4fb3f9ca39eae4a731940786dcd30900ea94fb580ba6e718879e4c527fe7751",
 	"SKILL.md":
 		"5f2c924887f2ddf85e7952d6c8d6680b75bf7c4460897ca1ce46e025390111fe",
 	"agents/openai.yaml":

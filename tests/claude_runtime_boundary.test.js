@@ -12,7 +12,7 @@ import {
 const PROJECT_ROOT = path.resolve(import.meta.dir, "..");
 const CLAUDE_CONFIG_DIR = path.join(PROJECT_ROOT, "configs", "claude");
 const PRIVATE_SOURCE_ROOT = process.env.HAOSHOKU_CLAUDE_RUNTIME_SOURCE_ROOT;
-const PRIVATE_SOURCE_SHA = "25440a316fb1360a0edd37ef728e88cb5aeee9a9";
+const PRIVATE_SOURCE_SHA = "413cf10231e8c5fa339666e6ccfea6a5a4ec3735";
 const RUNTIME_FILES = [
 	"agents/sol-wrapper.md",
 	"agents/luna-wrapper.md",
