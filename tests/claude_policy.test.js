@@ -21,10 +21,10 @@ function section(policy, title, level = 2) {
 
 function expectDesignedWorkContract(designedWork) {
 	expect(designedWork).toMatch(
-		/1\.\s*Fable[\s\S]*?(?:architecture|acceptance criteria)[\s\S]*?2\.\s*Sol[\s\S]*?adversarial[\s\S]*?(?:read-only\s+Codex|Codex\s+dispatch)[\s\S]*?3\.\s*Fable[\s\S]*?corrects[\s\S]*?automatically/i,
+		/1\.\s*Fable[\s\S]*?(?:architecture|acceptance criteria)[\s\S]*?2\.\s*Sol[\s\S]*?adversarial[\s\S]*?read-only\s+`?sol-wrapper`?[\s\S]*?3\.\s*Fable[\s\S]*?corrects[\s\S]*?automatically/i,
 	);
 	expect(designedWork).toMatch(
-		/if\s+Sol\s+caused\s+(?:any\s+)?plan\s+change[\s\S]*?cold\s+Codex\s+dispatch[\s\S]*?revised\s+plan[\s\S]*?final\s+pass/i,
+		/if\s+Sol\s+caused\s+(?:any\s+)?plan\s+change[\s\S]*?cold\s+`?sol-wrapper`?\s+dispatch[\s\S]*?revised\s+plan[\s\S]*?final\s+pass/i,
 	);
 	expect(designedWork).toMatch(
 		/6\.\s*Opus[\s\S]*?accepted\s+DAG[\s\S]*?dynamic\s+Workflow[\s\S]*?executes/i,
@@ -48,7 +48,7 @@ it("ships the public single-path Claude orchestration policy", () => {
 	);
 
 	expect(straightforward).toMatch(
-		/1\.\s*Opus\s+sends\s+one\b[\s\S]*?codex-wrapper[\s\S]*?2\.\s*Codex\s+implements\s+and\s+verifies[\s\S]*?3\.\s*Opus[\s\S]*?(?:accepts|returns\s+precise\s+corrections)/i,
+		/1\.\s*Opus\s+sends\s+one\b[\s\S]*?sol-wrapper[\s\S]*?2\.\s*Codex\s+implements\s+and\s+verifies[\s\S]*?3\.\s*Opus[\s\S]*?(?:accepts|returns\s+precise\s+corrections)/i,
 	);
 
 	expectDesignedWorkContract(designedWork);
@@ -87,9 +87,8 @@ it("ships the public single-path Claude orchestration policy", () => {
 	expect(policy).not.toMatch(/\bSTANDARD\b/i);
 	expect(policy).not.toMatch(/\bone\s+ledger\s+line\b/i);
 	expect(policy).not.toContain("--tier");
-	expect(policy.match(/\brouting\s+ledgers?\b/gi)).toHaveLength(1);
 	expect(completion).toMatch(
-		/no\s+routing\s+ledger\b[\s\S]*?part\s+of\s+completion/i,
+		/capability\/reasoning\s+routing[\s\S]*?not\s+a\s+task\s+tier[\s\S]*?lane\s+ledger[\s\S]*?caller\s+model\/effort\s+choice/i,
 	);
 	expect(policy.split("\n").length).toBeLessThan(300);
 });

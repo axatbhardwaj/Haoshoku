@@ -32,15 +32,15 @@ or a product decision that cannot be discovered locally.
 
 When the goal, scope, behavior, and acceptance checks are locally clear:
 
-1. Opus sends one bounded brief to `codex-wrapper`.
+1. Opus sends one bounded brief to `sol-wrapper`.
 2. Codex implements and verifies the change.
 3. Opus inspects the final state, runs the acceptance check independently, and
    accepts or returns precise corrections.
 
-This route covers one-line edits, clear bug fixes, mechanical refactors, and
-other straightforward work regardless of file type. Do not add Fable, a
-bespoke Workflow, paired research, or a separate review station unless its
-trigger actually exists.
+This Sol route covers one-line code edits, clear bug fixes, mechanical refactors,
+and other straightforward reasoning/code work. Human-facing HTML/docs follow the compact global routing rule instead.
+Do not add Fable, a bespoke Workflow, paired research, or a separate review
+station unless its trigger actually exists.
 
 ### Designed work
 
@@ -48,9 +48,9 @@ When architecture, interfaces, ownership, security boundaries, product
 semantics, or cross-component dependencies remain open:
 
 1. Fable produces the architecture, acceptance criteria, and dependency DAG.
-2. Sol reviews the plan adversarially through a read-only Codex dispatch.
+2. Sol reviews the plan adversarially through a read-only `sol-wrapper` dispatch.
 3. Fable corrects ordinary findings automatically.
-4. If Sol caused any plan change, a new cold Codex dispatch gives the revised
+4. If Sol caused any plan change, a new cold `sol-wrapper` dispatch gives the revised
    plan one final pass.
 5. Opus resolves only findings that change intent, scope, or a major tradeoff
    with the human.
@@ -71,10 +71,9 @@ pass, or visible recovery after a worker failure.
 
 ### Codex — shilpin and Sol reviewer
 
-All Codex work goes through `codex-wrapper`; no chair or general agent invokes
-the CLI directly. Codex performs repository discovery, implementation, tests,
-verification, and cold read-only plan or code review. Use the fixed Sol route;
-orchestration does not select models, efforts, or processing service classes.
+No chair or general agent invokes the Codex CLI directly. Codex performs
+repository discovery, implementation, tests, verification, and cold read-only
+plan or code review; orchestration selects agent types, not compute classes.
 
 Standing sessions are for dependent sequential work. Independent work is cold.
 Concurrent writers never share a standing session or repository workspace.
@@ -151,9 +150,9 @@ delta.
 Straightforward work receives independent Opus verification after Codex.
 Designed work receives:
 
-1. Sol plan review;
-2. a cold Codex review of any Sol-caused plan revision;
-3. a cold Codex review of the stable integrated implementation;
+1. `sol-wrapper` plan review;
+2. a cold `sol-wrapper` review of any Sol-caused plan revision;
+3. a cold `sol-wrapper` review of the stable integrated implementation;
 4. corrections for confirmed findings; and
 5. independent Opus verification and acceptance.
 
@@ -170,10 +169,10 @@ remaining issue changes intent, scope, authority, or a major tradeoff.
 
 ## 8. Codex delegation
 
-`codex-wrapper` is the sole Codex gateway and `grok-wrapper` the sole Grok
-gateway. Reach wrappers with `agentType`, never a bare model call. A wrapper
-prepares the prompt, invokes its fixed launcher, waits for completion, verifies
-the receipt, and reports artifacts; it never implements or repairs worker work.
+Route reasoning/code/research to `sol-wrapper`; route PR review and human-facing HTML/docs to `luna-wrapper` at fixed `max`; pair external research with `grok-wrapper`.
+Reach wrappers with `agentType`, never a bare model call. A wrapper prepares the
+prompt, invokes its fixed launcher, waits, verifies the receipt, and reports
+artifacts; it never implements or repairs worker work.
 
 Every Codex brief is self-contained and states:
 
@@ -237,7 +236,7 @@ is a blocker; urgency and missing capacity are not authority.
   also be stacked when independently reviewable. Verify current public-preview
   behavior from GitHub primary documentation before relying on it.
 - Human-facing specs, plans, research, audits, and reviews are self-contained
-  dark HTML made with `html-deliverables`. Publish only after a taste pass and
+  dark HTML made with `samvada-html-deliverables`. Publish only after a taste pass and
   explicit publication authority. Machine-read policy, memory, and status
   files remain plain text.
 - External claims in durable output require current primary evidence or the
@@ -255,5 +254,4 @@ Report:
 - remaining blockers, assumptions, or review debt; and
 - any external action deliberately not taken.
 
-No routing ledger, task class, lane label, model choice, or effort choice is
-part of completion.
+Capability/reasoning routing is not a task tier, score, lane ledger, or caller model/effort choice.

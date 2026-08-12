@@ -177,7 +177,7 @@ Engine note: Claude Code uses the slash commands installed to `.claude/commands/
 
 Markdown files are not the primary way to communicate work product ([Thariq's "the unreasonable effectiveness of HTML"](https://claude.com/blog/using-claude-code-the-unreasonable-effectiveness-of-html)). Any document produced for a human to read — specs, plans for approval, research/ADRs, reports, audits, PR reviews, todo/status views — is a **single self-contained dark-mode HTML file**. Conversation replies stay plain text; this rule is about files.
 
-**Format source (mandatory):** every HTML deliverable is authored via the `dvandva:html-deliverables` skill (ships in the Dvandva plugin — house tokens, components, diagram rules, and a fill-in `template.html`; in Codex, read that `SKILL.md` + `template.html` from the installed plugin path, e.g. `~/.codex/plugins/cache/dvandva/dvandva/<version>/skills/html-deliverables/`). Read it before writing the file; never restyle from scratch. If the plugin is missing, install it (`cargo install dvandva && dvandva install`) or copy the token block from an existing deliverable — never invent a new palette. The quality bar below is what that skill implements.
+**Format source (mandatory):** every HTML deliverable uses the bundled `samvada-html-deliverables` skill. Read `~/.codex/skills/samvada-html-deliverables/SKILL.md` and `template.html` from that same directory before writing; never restyle from scratch. Each deliverable declares its `samvada-artifact-meta` JSON block with a `samvada.artifact.*` schema. The quality bar below is what that skill implements.
 
 Quality bar, every file:
 - **Dark mode, always** — near-black background, comfortable contrast, one accent color, no flash-of-white.
