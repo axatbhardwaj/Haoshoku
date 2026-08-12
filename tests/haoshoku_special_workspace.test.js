@@ -54,11 +54,6 @@ describe("haoshoku-special-workspace", () => {
 				monitor: "DP-2",
 				followsFocus: false,
 			},
-			assistants: {
-				workspace: "assistants",
-				monitor: "DP-2",
-				followsFocus: true,
-			},
 			music: { workspace: "music", monitor: "DP-1", followsFocus: false },
 			"1password": {
 				workspace: "1password",
@@ -167,8 +162,11 @@ describe("haoshoku-special-workspace", () => {
 if [[ -f "$SPECIAL_STATE" ]]; then state="$(< "$SPECIAL_STATE")"; else state=""; fi
 focused_monitor="$(< "$FOCUSED_MONITOR_STATE")"
 special_monitor="$(< "$SPECIAL_MONITOR_STATE")"
-if [[ "$1 $2" == "clients -j" ]]; then
-  if [[ -n "\${HYPR_CLIENTS_STATE:-}" ]]; then
+			if [[ "$1 $2" == "clients -j" ]]; then
+		  if [[ -n "\${HYPR_CLIENT_PROBE_LOG:-}" ]]; then
+		    printf 'clients -j\\n' >> "$HYPR_CLIENT_PROBE_LOG"
+		  fi
+		  if [[ -n "\${HYPR_CLIENTS_STATE:-}" ]]; then
     cat "$HYPR_CLIENTS_STATE"
   else
     printf '%s\\n' "$HYPR_CLIENTS"
@@ -275,6 +273,7 @@ esac
 		{
 			clientsState,
 			clients = "[]",
+			clientProbeLog,
 			chromiumProfiles,
 			env = {},
 			focusedMonitor = "DP-1",
@@ -304,6 +303,7 @@ esac
 				HOME: directory,
 				HYPR_CLIENTS: clients,
 				HYPR_CLIENTS_STATE: clientsState !== undefined ? clientState : "",
+				HYPR_CLIENT_PROBE_LOG: clientProbeLog ?? "",
 				BROWSER_CALL: browserCall,
 				CALL_LOG: log,
 				FOCUSED_MONITOR_STATE: focusedMonitorState,
@@ -946,95 +946,119 @@ exit 17
 		});
 	});
 
-	// Mutation caught: removing assistants' focused-monitor behavior would reopen
-	// the hidden workspace on its old DP-2 fallback instead of where the user is.
-	it("opens hidden assistants on the focused monitor", async () => {
+	function assistantClient(address, className, workspace) {
+		return { address, class: className, workspace: { name: workspace } };
+	}
+
+	it("switches to workspace 1, reclaims exact assistant windows, and probes clients once", async () => {
+		const clientProbeLog = path.join(directory, "client-probes");
 		const result = await run(["assistants"], {
-			clients: JSON.stringify([{ class: claudeClass }, { class: codexClass }]),
-			focusedMonitor: "HDMI-A-1",
+			clientProbeLog,
+			clients: JSON.stringify([
+				assistantClient("0xclaude", claudeClass, "special:assistants"),
+				assistantClient("0xcodex", codexClass, "5"),
+			]),
 		});
 
 		expect(result.exitCode).toBe(0);
 		expect(dispatchCalls()).toEqual([
-			"dispatch focusmonitor HDMI-A-1",
-			"dispatch togglespecialworkspace assistants",
+			"dispatch workspace 1",
+			"dispatch movetoworkspacesilent 1,address:0xclaude",
+			"dispatch movetoworkspacesilent 1,address:0xcodex",
+		]);
+		expect(fs.readFileSync(clientProbeLog, "utf8").trim().split("\n")).toEqual([
+			"clients -j",
 		]);
 	});
 
-	// Mutation caught: routing assistants through the fixed-monitor reveal path
-	// would focus its old monitor instead of moving the visible workspace.
-	it("moves visible assistants to the focused monitor", async () => {
+	it("does not move or relaunch exact assistants already on workspace 1", async () => {
 		const result = await run(["assistants"], {
-			clients: JSON.stringify([{ class: claudeClass }, { class: codexClass }]),
-			focusedMonitor: "HDMI-A-1",
-			visibleWorkspace: "assistants",
-			visibleMonitor: "DP-2",
+			clients: JSON.stringify([
+				assistantClient("0xclaude", claudeClass, "1"),
+				assistantClient("0xcodex", codexClass, "1"),
+			]),
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(dispatchCalls()).toEqual(["dispatch workspace 1"]);
+	});
+
+	it("launches missing assistants into workspace 1 without special routing", async () => {
+		const result = await run(["assistants"]);
+
+		expect(result.exitCode).toBe(0);
+		expect(dispatchCalls()).toEqual([
+			"dispatch workspace 1",
+			"dispatch exec [workspace 1 silent] uwsm-app -- claude-desktop ",
+			"claude",
+			"dispatch exec [workspace 1 silent] uwsm-app -- codex-desktop ",
+			"codex-desktop",
+		]);
+	});
+
+	it("does not let an uppercase ChatGPT decoy suppress the Codex launch", async () => {
+		const result = await run(["assistants"], {
+			clients: JSON.stringify([
+				assistantClient("0xclaude", claudeClass, "1"),
+				assistantClient("0xdecoy", "ChatGPT", "1"),
+			]),
 		});
 
 		expect(result.exitCode).toBe(0);
 		expect(dispatchCalls()).toEqual([
-			"dispatch togglespecialworkspace assistants",
+			"dispatch workspace 1",
+			"dispatch exec [workspace 1 silent] uwsm-app -- codex-desktop ",
+			"codex-desktop",
 		]);
-		expect(fs.readFileSync(specialMonitorState, "utf8")).toBe("HDMI-A-1");
 	});
 
-	it("does not relaunch either assistant when both exact classes are present", async () => {
-		const result = await run(["assistants"], {
-			clients: JSON.stringify([{ class: claudeClass }, { class: codexClass }]),
-		});
+	it("does not launch assistants when the client probe is malformed", async () => {
+		const result = await run(["assistants"], { clients: "not json" });
 
 		expect(result.exitCode).toBe(0);
-		expect(fs.existsSync(browserCall)).toBe(false);
-		expect(
-			dispatchCalls().filter((call) => call.startsWith("dispatch exec")),
-		).toEqual([]);
+		expect(dispatchCalls()).toEqual(["dispatch workspace 1"]);
 	});
 
-	it("launches only Codex Desktop when Claude Desktop is already present", async () => {
-		const result = await run(["assistants"], {
-			clients: JSON.stringify([{ class: claudeClass }]),
+	for (const [label, client] of [
+		[
+			"a null workspace",
+			{ address: "0xclaude", class: claudeClass, workspace: null },
+		],
+		[
+			"a missing workspace name",
+			{ address: "0xclaude", class: claudeClass, workspace: {} },
+		],
+	]) {
+		it(`does not guess ownership from ${label}`, async () => {
+			const result = await run(["assistants"], {
+				clients: JSON.stringify([client]),
+			});
+
+			expect(result.exitCode).toBe(0);
+			expect(dispatchCalls()).toEqual(["dispatch workspace 1"]);
 		});
+	}
 
-		expect(result.exitCode).toBe(0);
-		expect(fs.existsSync(browserCall)).toBe(false);
-		expect(dispatchCalls().filter((call) => call === "claude")).toHaveLength(0);
-		expect(
-			dispatchCalls().filter((call) => call === "codex-desktop"),
-		).toHaveLength(1);
-		expect(dispatchCalls().filter((call) => call === "brave-origin")).toEqual(
-			[],
-		);
-	});
+	for (const [label, client] of [
+		["a null client entry", null],
+		[
+			"a client without a class",
+			{ address: "0xunknown", workspace: { name: "1" } },
+		],
+		[
+			"a client with a non-string class",
+			{ address: "0xunknown", class: 7, workspace: { name: "1" } },
+		],
+	]) {
+		it(`does not launch assistants from ${label}`, async () => {
+			const result = await run(["assistants"], {
+				clients: JSON.stringify([client]),
+			});
 
-	it("launches only Claude Desktop when Codex Desktop is already present", async () => {
-		const result = await run(["assistants"], {
-			clients: JSON.stringify([{ class: codexClass }]),
+			expect(result.exitCode).toBe(0);
+			expect(dispatchCalls()).toEqual(["dispatch workspace 1"]);
 		});
-
-		expect(result.exitCode).toBe(0);
-		expect(fs.existsSync(browserCall)).toBe(false);
-		expect(dispatchCalls().filter((call) => call === "claude")).toHaveLength(1);
-		expect(
-			dispatchCalls().filter((call) => call === "codex-desktop"),
-		).toHaveLength(0);
-		expect(dispatchCalls().filter((call) => call === "brave-origin")).toEqual(
-			[],
-		);
-	});
-
-	it("launches Codex Desktop when only an uppercase class decoy is present", async () => {
-		const result = await run(["assistants"], {
-			clients: JSON.stringify([{ class: claudeClass }, { class: "ChatGPT" }]),
-		});
-
-		expect(result.exitCode).toBe(0);
-		expect(
-			dispatchCalls().filter((call) => call === "codex-desktop"),
-		).toHaveLength(1);
-		expect(dispatchCalls().filter((call) => call === "brave-origin")).toEqual(
-			[],
-		);
-	});
+	}
 
 	for (const { recipe, url } of [
 		{ recipe: "x", url: "https://x.com/" },

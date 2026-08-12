@@ -39,10 +39,12 @@ describe("Omarchy workspace overlay", () => {
 		}
 	});
 
-	it("uses dedicated special-workspace toggles", () => {
+	it("uses dedicated special-workspace toggles and workspace 1 assistants", () => {
+		const assistantsBinding =
+			"bindd = SUPER, I, Workspace 1 and AI assistants, exec, haoshoku-special-workspace assistants";
 		const toggleBinds = [
 			"bindd = SUPER, A, Show/focus/hide Haki session, exec, haoshoku-special-workspace haki",
-			"bindd = SUPER, I, Show/focus/hide AI assistants workspace, exec, haoshoku-special-workspace assistants",
+			assistantsBinding,
 			"bindd = SUPER, M, Show/focus/hide music workspace, exec, haoshoku-special-workspace music",
 			"bindd = SUPER, O, Show/focus/hide 1Password workspace, exec, haoshoku-special-workspace 1password",
 			"bindd = SUPER, G, Show/focus/hide communication workspace, exec, haoshoku-special-workspace communication",
@@ -56,6 +58,9 @@ describe("Omarchy workspace overlay", () => {
 			"bindd = SUPER SHIFT, X, Show/focus/hide X workspace, exec, haoshoku-special-workspace x",
 		];
 		for (const bind of toggleBinds) expect(config).toContain(bind);
+		for (const overlay of [config, laptopConfig]) {
+			expect(overlay).toContain(assistantsBinding);
+		}
 		expect(
 			config.split("\n").filter(
 				(line) =>
@@ -140,20 +145,25 @@ describe("Omarchy workspace overlay", () => {
 		);
 	});
 
-	it("routes both AI assistants by exact class without silent placement", () => {
+	it("routes both AI assistants by exact class to workspace 1 silently", () => {
 		const expectedRules = [
-			String.raw`windowrule = workspace special:assistants, match:class ^com\.anthropic\.Claude$`,
-			"windowrule = workspace special:assistants, match:class ^chatgpt$",
+			String.raw`windowrule = workspace 1 silent, match:class ^com\.anthropic\.Claude$`,
+			"windowrule = workspace 1 silent, match:class ^chatgpt$",
 		];
 		for (const overlay of [config, laptopConfig]) {
 			const assistantRules = overlay
 				.split(/\r?\n/)
-				.filter((line) =>
-					line.startsWith("windowrule = workspace special:assistants,"),
+				.filter(
+					(line) =>
+						line.includes("match:class ^com\\.anthropic\\.Claude$") ||
+						line.includes("match:class ^chatgpt$"),
 				);
 
 			expect(assistantRules).toEqual(expectedRules);
-			for (const rule of assistantRules) expect(rule).not.toContain(" silent");
+			for (const rule of assistantRules) {
+				expect(rule).not.toMatch(/(?:float|pin|size|fullscreen|monitor)/);
+			}
+			expect(overlay).not.toContain("special:assistants");
 		}
 		expect("chatgpt-desktop").not.toMatch(/^chatgpt$/);
 	});

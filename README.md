@@ -73,8 +73,8 @@ The Arch setup:
   DP-2. The laptop variant removes monitor pins for a single-monitor layout
   while keeping the same workspace behavior, window rules, and bindings;
 - adds two-key special-workspace toggles under `Super`: A Haki (the tagged Warp
-  `haki` tab), I AI assistants (Claude Desktop and Codex Desktop, following
-  the focused monitor),
+  `haki` tab), I AI assistants (Claude Desktop and Codex Desktop) on ordinary
+  workspace 1,
   M music, O 1Password, G communication, B Flux Brave Origin,
   D DeFi Brave Origin,
   S stash, and `Super+Shift+X` X (`Super+Shift+S` stashes the focused window);

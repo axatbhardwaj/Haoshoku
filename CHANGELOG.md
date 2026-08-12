@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Make Meta+I switch to workspace 1, reclaim existing Claude and Codex windows there, and keep them tiled and unpinned.
+
 ## 8.4.0 - 2026-08-12
 
 - Replace tiered Claude task routing with one capability-based path: Opus

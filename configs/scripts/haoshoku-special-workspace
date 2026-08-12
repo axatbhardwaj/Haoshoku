@@ -50,6 +50,46 @@ launch_if_missing() {
   has_client "$pattern" || launch "$workspace" "$@"
 }
 
+assistant_clients() {
+  local clients
+  clients="$(hyprctl clients -j 2>/dev/null)" || return 1
+  jq -se '
+    length == 1
+    and (.[0] | type == "array")
+    and all(
+      .[0][]?;
+      type == "object"
+      and (.class | type == "string" and length > 0)
+      and (
+        if .class == "com.anthropic.Claude" or .class == "chatgpt" then
+          (.address | type == "string" and length > 0)
+          and (.workspace | if type == "object" then (.name | type == "string" and length > 0) else false end)
+        else
+          true
+        end
+      )
+    )
+  ' <<<"$clients" >/dev/null 2>&1 || return 1
+  printf '%s\n' "$clients"
+}
+
+assistant_class_present() {
+  local clients="$1" class="$2"
+  jq -e --arg class "$class" 'any(.[]?; type == "object" and .class == $class)' <<<"$clients" >/dev/null
+}
+
+assistant_addresses_outside_workspace() {
+  local clients="$1" class="$2" workspace="$3"
+  jq -r --arg class "$class" --arg workspace "$workspace" '
+    .[]? | select(
+      type == "object"
+      and .class == $class
+      and (.address | type == "string" and length > 0)
+      and (((.workspace? | if type == "object" then .name else "" end) // "") | tostring) != $workspace
+    ) | .address
+  ' <<<"$clients"
+}
+
 warp_clients() {
   local clients
   clients="$(hyprctl clients -j 2>/dev/null)" || return 1
@@ -218,6 +258,30 @@ if [[ "$recipe" == numbered || "$recipe" == numbered-login ]]; then
   exit 0
 fi
 
+if [[ "$recipe" == assistants ]]; then
+  [[ $# -eq 1 ]] || { echo "usage: haoshoku-special-workspace assistants" >&2; exit 2; }
+  dispatch workspace 1
+
+  if ! clients="$(assistant_clients)"; then
+    exit 0
+  fi
+
+  for class_and_app in \
+    'com.anthropic.Claude:claude-desktop' \
+    'chatgpt:codex-desktop'; do
+    class="${class_and_app%%:*}"
+    app="${class_and_app#*:}"
+    if assistant_class_present "$clients" "$class"; then
+      while IFS= read -r address; do
+        dispatch movetoworkspacesilent "1,address:$address"
+      done < <(assistant_addresses_outside_workspace "$clients" "$class" 1)
+    else
+      launch 1 "$app"
+    fi
+  done
+  exit 0
+fi
+
 browser_profile=""
 browser_toggle=false
 follows_focus=false
@@ -249,7 +313,6 @@ else
   case "$recipe" in
     haki) workspace=haki; monitor=DP-2 ;;
     agents) workspace=agents; monitor=DP-2 ;;
-    assistants) workspace=assistants; monitor=DP-2; follows_focus=true ;;
     music) workspace=music; monitor=DP-1 ;;
     1password) workspace=1password; monitor=DP-1 ;;
     communication) workspace=communication; monitor=HDMI-A-1 ;;
@@ -345,10 +408,6 @@ else
 fi
 
 case "$recipe" in
-  assistants)
-    launch_if_missing "special:$workspace" '^com\.anthropic\.Claude$' claude-desktop
-    has_client_class chatgpt || launch "special:$workspace" codex-desktop
-    ;;
   music) launch_if_missing "special:$workspace" '^[Ss]potify$' spotify ;;
   1password) launch_if_missing "special:$workspace" '^1password$' 1password ;;
   communication)
