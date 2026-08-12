@@ -13,6 +13,7 @@ const PUBLIC_RUNTIME_FILES = [
 	"configs/claude/agents/run-codex-task.sh",
 	"configs/claude/agents/validate-codex-wrapper.sh",
 	"configs/claude/agents/codex-result.schema.json",
+	"configs/claude/agents/prepare-pr-review-render-workspace.sh",
 	"configs/claude/workflows/pr-review.js",
 	"configs/claude/workflows/review-station.js",
 	"configs/claude/skills/discovering-work/SKILL.md",

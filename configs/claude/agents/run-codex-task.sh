@@ -184,6 +184,27 @@ fi
 [ -d "$WORKSPACE" ] || { echo "workspace not found: $WORKSPACE" >&2; exit 66; }
 [ -f "$PROMPT_FILE" ] || { echo "prompt file not found: $PROMPT_FILE" >&2; exit 66; }
 
+attribution_workspace_contract_is_safe() {
+  local workspace_root tracked_files
+  [ "$ATTRIBUTION_PATH" = "review.html" ] || return 1
+  case "$ATTRIBUTION_GIT_ROOT" in /tmp/pr-review-render.????????) ;; *) return 1 ;; esac
+  workspace_root=$(realpath "$WORKSPACE" 2>/dev/null) || return 1
+  [ "$workspace_root" = "$ATTRIBUTION_GIT_ROOT" ] || return 1
+  [ -f "$ATTRIBUTION_GIT_ROOT/.pr-review-workspace" ] &&
+    [ ! -L "$ATTRIBUTION_GIT_ROOT/.pr-review-workspace" ] || return 1
+  [ "$(cat "$ATTRIBUTION_GIT_ROOT/.pr-review-workspace" 2>/dev/null)" = "pr-review-render-workspace-v1" ] || return 1
+  [ -f "$ATTRIBUTION_GIT_ROOT/.gitignore" ] &&
+    [ ! -L "$ATTRIBUTION_GIT_ROOT/.gitignore" ] || return 1
+  printf '/review.html\n' | cmp -s - "$ATTRIBUTION_GIT_ROOT/.gitignore" || return 1
+  tracked_files=$(git -C "$ATTRIBUTION_GIT_ROOT" ls-files 2>/dev/null) || return 1
+  [ "$tracked_files" = $'.gitignore\n.pr-review-workspace' ] || return 1
+  git -C "$ATTRIBUTION_GIT_ROOT" diff --quiet HEAD -- .gitignore .pr-review-workspace || return 1
+  if [ -f "$ATTRIBUTION_GIT_DIR/info/exclude" ] &&
+    grep -Eq '^[[:space:]]*[^#[:space:]]' "$ATTRIBUTION_GIT_DIR/info/exclude"; then
+    return 1
+  fi
+}
+
 if [ -n "$ATTRIBUTION_PATH" ]; then
   [ "$MODE" = "implementation" ] && [ "$MODEL" = "luna" ] || { echo "--attribution-path requires Luna implementation mode" >&2; exit 64; }
   [ "$WORKTREE_ON_CONTENTION" -eq 0 ] || { echo "--attribution-path cannot be combined with --worktree-on-contention" >&2; exit 64; }
@@ -201,8 +222,13 @@ if [ -n "$ATTRIBUTION_PATH" ]; then
   case "$ATTRIBUTION_FULL_PATH" in "$ATTRIBUTION_GIT_ROOT/.git"|"$ATTRIBUTION_GIT_ROOT/.git"/*) echo "--attribution-path cannot name the worktree .git entry" >&2; exit 64 ;; esac
   case "$ATTRIBUTION_FULL_PATH" in "$ATTRIBUTION_GIT_DIR"|"$ATTRIBUTION_GIT_DIR"/*) echo "--attribution-path cannot name a Git administrative directory" >&2; exit 64 ;; esac
   case "$ATTRIBUTION_FULL_PATH" in "$ATTRIBUTION_GIT_COMMON_DIR"|"$ATTRIBUTION_GIT_COMMON_DIR"/*) echo "--attribution-path cannot name the Git common directory" >&2; exit 64 ;; esac
-  git -C "$ATTRIBUTION_GIT_ROOT" check-ignore -q --no-index -- "$ATTRIBUTION_PATH" || { echo "--attribution-path must name an ignored path" >&2; exit 64; }
+  git -c core.excludesFile=/dev/null -C "$ATTRIBUTION_GIT_ROOT" check-ignore -q --no-index -- "$ATTRIBUTION_PATH" || { echo "--attribution-path must name an ignored path" >&2; exit 64; }
   [ ! -e "$ATTRIBUTION_FULL_PATH" ] && [ ! -L "$ATTRIBUTION_FULL_PATH" ] || { echo "--attribution-path must not exist before launch" >&2; exit 64; }
+  attribution_workspace_contract_is_safe || { echo "--attribution-path requires an isolated PR review render workspace" >&2; exit 64; }
+  [ -z "$(git -c core.excludesFile=/dev/null -C "$ATTRIBUTION_GIT_ROOT" status --porcelain=v1 --untracked-files=all 2>/dev/null)" ] || {
+    echo "--attribution-path requires a clean isolated PR review render workspace" >&2
+    exit 64
+  }
 fi
 
 derive_workspace_slug() {
@@ -272,7 +298,13 @@ if [ "$PERSIST" -eq 1 ]; then
   SESSION_POINTER_KEY="$ORDERING_PREFIX.${ORDERING_NANOS}Z-$(basename "$RUN_DIR")"
 fi
 
-git_list() { git -C "$WORKSPACE" "$@" 2>/dev/null; }
+git_list() {
+  if [ -n "$ATTRIBUTION_PATH" ]; then
+    git -c core.excludesFile=/dev/null -C "$WORKSPACE" "$@" 2>/dev/null
+  else
+    git -C "$WORKSPACE" "$@" 2>/dev/null
+  fi
+}
 
 capture_dirty_lists() {  # capture_dirty_lists <prefix>; writes NUL-delimited path sets
   local prefix="$1"
@@ -291,6 +323,7 @@ capture_dirty_lists() {  # capture_dirty_lists <prefix>; writes NUL-delimited pa
 attribution_result_is_safe() {
   local resolved links
   [ -z "$ATTRIBUTION_PATH" ] && return 0
+  attribution_workspace_contract_is_safe || return 1
   [ -f "$ATTRIBUTION_FULL_PATH" ] && [ ! -L "$ATTRIBUTION_FULL_PATH" ] || return 1
   resolved=$(realpath -e -- "$ATTRIBUTION_GIT_ROOT/$ATTRIBUTION_PATH" 2>/dev/null) || return 1
   [ "$resolved" = "$ATTRIBUTION_FULL_PATH" ] || return 1
@@ -653,9 +686,9 @@ if [ -n "$BRIEF_SHA256" ]; then
   fi
 fi
 
-# ---- Gateway gate. The named wrapper's PreToolUse hook injects its authenticated
-# identity on every launcher command it authorises. Missing, invalid, and model-mismatched
-# identities fail before the launcher can lock or run against the workspace.
+# ---- Fixed-route guard. The named wrapper's PreToolUse hook injects its route
+# marker on every launcher command it authorises. Missing, invalid, and model-mismatched
+# markers fail before the launcher can lock or run against the workspace.
 #
 # Placed AFTER report() is defined and after RUN_DIR exists, so a refusal leaves a
 # report.json naming the reason. A refusal that vanished without an artifact would be
@@ -670,14 +703,14 @@ fi
 case "${CODEX_WRAPPER_GATEWAY:-}" in
   "")
     report "blocked_no_gateway_marker" null false
-    echo "Refusing: no authenticated wrapper gateway marker. Dispatch via a named wrapper." >&2
+    echo "Refusing: no wrapper route marker. Dispatch via a named wrapper." >&2
     exit 6
     ;;
   sol-wrapper) GATEWAY_MODEL="sol" ;;
   luna-wrapper) GATEWAY_MODEL="luna" ;;
   *)
     report "blocked_invalid_gateway_marker" null false
-    echo "Refusing: invalid authenticated wrapper gateway marker: $CODEX_WRAPPER_GATEWAY" >&2
+    echo "Refusing: invalid wrapper route marker: $CODEX_WRAPPER_GATEWAY" >&2
     exit 6
     ;;
 esac

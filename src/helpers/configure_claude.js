@@ -62,6 +62,7 @@ export const PERSONAL_FILES = [
 	{ src: "agents/run-codex-task.sh" },
 	{ src: "agents/validate-codex-wrapper.sh" },
 	{ src: "agents/codex-result.schema.json" },
+	{ src: "agents/prepare-pr-review-render-workspace.sh" },
 	{ src: "workflows/pr-review.js" },
 	{ src: "workflows/review-station.js" },
 	{ src: "skills/discovering-work/SKILL.md" },

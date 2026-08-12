@@ -4,6 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import {
+	backupClaudeConfig,
 	PERSONAL_FILES,
 	syncClaudeConfig,
 } from "../src/helpers/configure_claude.js";
@@ -11,7 +12,7 @@ import {
 const PROJECT_ROOT = path.resolve(import.meta.dir, "..");
 const CLAUDE_CONFIG_DIR = path.join(PROJECT_ROOT, "configs", "claude");
 const PRIVATE_SOURCE_ROOT = process.env.HAOSHOKU_CLAUDE_RUNTIME_SOURCE_ROOT;
-const PRIVATE_SOURCE_SHA = "572bb5b8bd4d06302f559b0bac2391ebde0ca9a6";
+const PRIVATE_SOURCE_SHA = "d852e8377ce65ba128f7b5b5cafdac0ac7a1e6f8";
 const RUNTIME_FILES = [
 	"agents/sol-wrapper.md",
 	"agents/luna-wrapper.md",
@@ -21,6 +22,7 @@ const RUNTIME_FILES = [
 	"agents/run-codex-task.sh",
 	"agents/validate-codex-wrapper.sh",
 	"agents/codex-result.schema.json",
+	"agents/prepare-pr-review-render-workspace.sh",
 	"workflows/pr-review.js",
 	"workflows/review-station.js",
 	"skills/discovering-work/SKILL.md",
@@ -33,7 +35,7 @@ const PINNED_DIGESTS = {
 	"agents/sol-wrapper.md":
 		"d4e004cda372090c1aade211187f15421cee7c3faa2c6e9ab69b52ed5e4d47c0",
 	"agents/luna-wrapper.md":
-		"32891095e408502316b4d024f628f040a7d630b479a62f84b9f35c4c8d60528e",
+		"a482b9dcca6576af9f13d61a546fbbd0d366286047b9a0d74670411611c2d090",
 	"agents/grok-wrapper.md":
 		"69f0876934f8aeea6ec62d90d694ea481b1bc1906b2ea16a9a40cbb14e1b4130",
 	"agents/madhyastha.md":
@@ -41,13 +43,15 @@ const PINNED_DIGESTS = {
 	"agents/anveshaka.md":
 		"42926e8bb514f634ff067bddf728f468a7b8c542a7bf6853dc884720d27e1577",
 	"agents/run-codex-task.sh":
-		"bb2d781c45630ff3224d67c0a54cf3534b4bd7614646fa04b44f1b74d4caf124",
+		"c104edb98749f936367fa2812d7063674c78f53a3206a64d83940e71b5e67166",
 	"agents/validate-codex-wrapper.sh":
 		"1e06f6fb83e79ac14b020a69fdd85613ed6c20a225f8cad8bac75c3bed696996",
 	"agents/codex-result.schema.json":
 		"cccad847ac6a90694bbad15daddc42f4a55f7219a5ed9f717db4dcdfc7e4bfa0",
+	"agents/prepare-pr-review-render-workspace.sh":
+		"01b03b63b1fa35318964b13c8a6dc86395201f0e42ebfb04c6134fb8996a15c4",
 	"workflows/pr-review.js":
-		"f419fa7e35e63555a01f2e20c3f619493c19ab3c4f0a9b2b2ccc9cff951bd63a",
+		"00419e889ff58b76b1ad28f5bf7f3da335efc9d37f9df85048a461b999602315",
 	"workflows/review-station.js":
 		"913be6d7cbf52593ad32ee9f22f781bf166787445ef9f16e20eb03c81ef77b7a",
 	"skills/discovering-work/SKILL.md":
@@ -82,6 +86,25 @@ function privateSource(relativePath) {
 	return result.stdout.toString();
 }
 
+const SOURCE_IDENTICAL_RUNTIME_FILES = RUNTIME_FILES.filter(
+	(relativePath) =>
+		relativePath !== "agents/luna-wrapper.md" &&
+		relativePath !== "workflows/pr-review.js",
+);
+
+it("matches the pinned private source where no portability rewrite is needed", () => {
+	if (!PRIVATE_SOURCE_ROOT) return;
+	for (const relativePath of [
+		"agents/run-codex-task.sh",
+		"agents/prepare-pr-review-render-workspace.sh",
+	]) {
+		expect(
+			fs.readFileSync(path.join(CLAUDE_CONFIG_DIR, relativePath), "utf8"),
+			relativePath,
+		).toBe(privateSource(relativePath));
+	}
+});
+
 it("deploys the complete public Claude fallback runtime into a fresh home", async () => {
 	expect(PERSONAL_FILES.map((file) => file.src)).toEqual([
 		"CLAUDE.md",
@@ -104,13 +127,17 @@ it("deploys the complete public Claude fallback runtime into a fresh home", asyn
 			const deployed = path.join(claudeDir, relativePath);
 			expect(fs.readFileSync(deployed, "utf8"), relativePath).toBe(bundled);
 			expect(digest(bundled), relativePath).toBe(PINNED_DIGESTS[relativePath]);
-			if (PRIVATE_SOURCE_ROOT) {
+			if (
+				PRIVATE_SOURCE_ROOT &&
+				SOURCE_IDENTICAL_RUNTIME_FILES.includes(relativePath)
+			) {
 				expect(bundled, relativePath).toBe(privateSource(relativePath));
 			}
 		}
 		for (const executable of [
 			"agents/run-codex-task.sh",
 			"agents/validate-codex-wrapper.sh",
+			"agents/prepare-pr-review-render-workspace.sh",
 		]) {
 			expect(
 				fs.statSync(path.join(claudeDir, executable)).mode & 0o111,
@@ -118,6 +145,53 @@ it("deploys the complete public Claude fallback runtime into a fresh home", asyn
 		}
 	} finally {
 		fs.rmSync(claudeHome, { recursive: true, force: true });
+	}
+});
+
+it("installs a portable runtime into an arbitrary home without baked-in home paths", async () => {
+	const claudeHome = fs.mkdtempSync(
+		path.join(os.tmpdir(), "haoshoku-arbitrary-claude-home-"),
+	);
+	try {
+		await syncClaudeConfig({ claudeHome });
+		for (const relativePath of RUNTIME_FILES) {
+			expect(
+				fs.readFileSync(path.join(claudeHome, ".claude", relativePath), "utf8"),
+				relativePath,
+			).not.toMatch(/\/(?:home|Users)\//);
+		}
+	} finally {
+		fs.rmSync(claudeHome, { recursive: true, force: true });
+	}
+});
+
+it("backs up the full public runtime manifest from an arbitrary home", async () => {
+	const claudeHome = fs.mkdtempSync(
+		path.join(os.tmpdir(), "haoshoku-arbitrary-claude-home-"),
+	);
+	const backupDir = fs.mkdtempSync(
+		path.join(os.tmpdir(), "haoshoku-portable-runtime-backup-"),
+	);
+	try {
+		await syncClaudeConfig({ claudeHome });
+
+		const summary = await backupClaudeConfig({
+			srcDir: backupDir,
+			claudeHome,
+		});
+		expect(summary).toEqual({ backedUp: PERSONAL_FILES.length, refused: 0 });
+		for (const file of PERSONAL_FILES) {
+			const liveFile = file.dest ?? file.src;
+			expect(
+				fs.readFileSync(path.join(backupDir, file.src), "utf8"),
+				file.src,
+			).toBe(
+				fs.readFileSync(path.join(claudeHome, ".claude", liveFile), "utf8"),
+			);
+		}
+	} finally {
+		fs.rmSync(claudeHome, { recursive: true, force: true });
+		fs.rmSync(backupDir, { recursive: true, force: true });
 	}
 });
 

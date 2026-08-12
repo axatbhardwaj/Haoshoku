@@ -37,9 +37,10 @@ const REPO = a.repo
 const TODAY = a.today
 const WORKDIR = a.dir
 const REVIEW_FILE = a.reviewFile
-const RENDER_WORKSPACE = WORKDIR
-const SAMVADA_SKILL_FILE = '/home/xzat/.claude/skills/samvada-html-deliverables/SKILL.md'
-const SAMVADA_TEMPLATE_FILE = '/home/xzat/.claude/skills/samvada-html-deliverables/template.html'
+const CLAUDE_HOME = '~/.claude'
+const PREPARE_RENDER_WORKSPACE = `${CLAUDE_HOME}/agents/prepare-pr-review-render-workspace.sh`
+const SAMVADA_SKILL_FILE = `${CLAUDE_HOME}/skills/samvada-html-deliverables/SKILL.md`
+const SAMVADA_TEMPLATE_FILE = `${CLAUDE_HOME}/skills/samvada-html-deliverables/template.html`
 
 // ---------------------------------------------------------------------------
 // Responsibilities, and why each station sits where it does:
@@ -120,6 +121,17 @@ const VERIFY_SCHEMA = {
   additionalProperties: false,
 }
 
+const RENDER_SETUP_SCHEMA = {
+  type: 'object',
+  properties: {
+    workspace: { type: 'string' },
+    attribution_path: { type: 'string' },
+    output_file: { type: 'string' },
+  },
+  required: ['workspace', 'attribution_path', 'output_file'],
+  additionalProperties: false,
+}
+
 const ACCEPT_SCHEMA = {
   type: 'object',
   properties: {
@@ -127,13 +139,14 @@ const ACCEPT_SCHEMA = {
     tasteAccepted: { type: 'boolean' },
     published: { type: 'boolean' },
     stagingRemoved: { type: 'boolean' },
+    workspaceRemoved: { type: 'boolean' },
     reviewFile: { type: 'string' },
     stagedSha256: { type: 'string' },
     publishedSha256: { type: 'string' },
     checked: { type: 'string' },
     blockers: { type: 'array', items: { type: 'string' } },
   },
-  required: ['dispatchVerified', 'tasteAccepted', 'published', 'stagingRemoved', 'reviewFile', 'stagedSha256', 'publishedSha256', 'checked', 'blockers'],
+  required: ['dispatchVerified', 'tasteAccepted', 'published', 'stagingRemoved', 'workspaceRemoved', 'reviewFile', 'stagedSha256', 'publishedSha256', 'checked', 'blockers'],
   additionalProperties: false,
 }
 
@@ -165,8 +178,6 @@ Pin real SHAs. A review that cannot name the commit it reviewed is worthless.`,
 )
 
 if (!scope) throw new Error(`Scope station failed for PR #${PR} — refusing to review without pinned SHAs.`)
-const STAGED_REVIEW_FILE = `${WORKDIR}/superpowers/reviews/pr-${PR}-${TODAY}-${scope.headSha}.html`
-const STAGED_REVIEW_PATH = `superpowers/reviews/pr-${PR}-${TODAY}-${scope.headSha}.html`
 log(`PR #${PR} "${scope.title}" by ${scope.author} — ${scope.filesChanged} files, +${scope.additions}/−${scope.deletions}, ${scope.headRef} → ${scope.baseRef} @ ${String(scope.headSha).slice(0, 8)}${scope.isStacked ? ' [STACKED]' : ''}`)
 if (String(scope.specAnchor).startsWith('NONE')) log('No spec anchor found — spec-compliance findings will be graded "not verified".')
 log(`${DIMENSIONS.length} cold Luna lenses dispatching in parallel; wall-clock is one review deep, not ${DIMENSIONS.length}.`)
@@ -282,6 +293,18 @@ log(`${confirmed.length} finding(s) survived verification; ${dropped.length} ref
 for (const f of dropped) log(`  dropped [${f.dimension}] ${f.summary} — ${f.reasonIfRefuted}`)
 if (gaps.length) log(`COVERAGE GAP — these lenses did not complete and are NOT covered by this review: ${gaps.join(', ')}`)
 
+phase('Render setup')
+const renderSetup = await agent(
+  `Prepare one unique disposable Git workspace for the Luna renderer. Run exactly \`${PREPARE_RENDER_WORKSPACE}\` and parse its JSON output.
+
+Independently require that the returned workspace is a Git toplevel under \`/tmp/pr-review-render.*\`, the attribution path is exactly \`review.html\`, the output file is exactly that path inside the returned workspace, and \`review.html\` is the only path ignored by its committed ignore file. Do not add caller-specific ignore rules. The reviewed checkout ${WORKDIR} remains read-only during rendering.`,
+  { label: `render-setup:PR-${PR}`, phase: 'Render setup', model: 'opus', schema: RENDER_SETUP_SCHEMA },
+)
+if (!renderSetup) throw new Error(`Render workspace setup failed for PR #${PR}.`)
+const RENDER_WORKSPACE = renderSetup.workspace
+const STAGED_REVIEW_FILE = renderSetup.output_file
+const STAGED_REVIEW_PATH = renderSetup.attribution_path
+
 phase('Render')
 const rendered = await agent(
   `MODE: implementation
@@ -312,7 +335,7 @@ Body section order: 1. Verdict  2. Severity table (#, Severity, Summary — filt
 
 Severity vocabulary is fixed: blocker, major, minor, nit, suggestion, resolved, not verified.
 
-You write ONLY ${STAGED_REVIEW_FILE}. Touch nothing else in the repo and do not write ${REVIEW_FILE}; Opus publishes accepted bytes later. Do NOT post to GitHub — posting requires human approval that has not been given, and the review body must contain NO link back to the local review file (it is unreachable by the PR author).
+You write ONLY ${STAGED_REVIEW_FILE}. Touch nothing else in the render workspace and do not write ${REVIEW_FILE}; Opus publishes accepted bytes later. The reviewed checkout ${WORKDIR} remains read-only during rendering. Do NOT post to GitHub — posting requires human approval that has not been given, and the review body must contain NO link back to the local review file (it is unreachable by the PR author).
 
 CONFIRMED FINDINGS (already adversarially verified — do not re-litigate):
 ${JSON.stringify(confirmed, null, 2)}
@@ -342,14 +365,14 @@ First run \`git -C ${RENDER_WORKSPACE} rev-parse --show-toplevel\` and require s
 
 Read the staged HTML. Accept taste only when it is self-contained dark HTML, follows the required section order, accurately represents the confirmed findings and coverage gaps, includes the pinned SHAs, and contains no GitHub post or publication action.
 
-If taste is accepted, publish those exact bytes to ${REVIEW_FILE}; do not rewrite, regenerate, or edit them. Compute SHA-256 for both paths and require stagedSha256 == publishedSha256. Remove only ${STAGED_REVIEW_FILE} after the digest comparison succeeds. Verify the requested file still hashes identically and the staging path is absent. If taste fails, do not publish; remove only the staged artifact and report the blocker. Opus owns this final judgment and local publication; GitHub posting remains separately human-authorized.
+If taste is accepted, publish those exact bytes to ${REVIEW_FILE}; do not rewrite, regenerate, or edit them. Compute SHA-256 for both paths and require stagedSha256 == publishedSha256. Run \`${PREPARE_RENDER_WORKSPACE} --cleanup ${RENDER_WORKSPACE}\` after the digest comparison succeeds. Verify the requested file still hashes identically, the staging path is absent, and the disposable workspace no longer exists. If taste fails, do not publish; use the same preparer cleanup command and report the blocker. The preparer must refuse cleanup unless this is the exact workflow-created disposable workspace. Opus owns this final judgment and local publication; GitHub posting remains separately human-authorized.
 
 RAW LUNA WRAPPER REPORT:
 ${typeof rendered === 'string' ? rendered : JSON.stringify(rendered, null, 2)}`,
   { label: `accept:PR-${PR}`, phase: 'Accept', model: 'opus', schema: ACCEPT_SCHEMA },
 )
 
-if (!accepted || accepted.dispatchVerified !== true || accepted.tasteAccepted !== true || accepted.published !== true || accepted.stagingRemoved !== true || accepted.stagedSha256 !== accepted.publishedSha256) {
+if (!accepted || accepted.dispatchVerified !== true || accepted.tasteAccepted !== true || accepted.published !== true || accepted.stagingRemoved !== true || accepted.workspaceRemoved !== true || accepted.stagedSha256 !== accepted.publishedSha256) {
   throw new Error(`PR review render was not accepted: ${JSON.stringify(accepted?.blockers || ['missing Opus acceptance'])}`)
 }
 
