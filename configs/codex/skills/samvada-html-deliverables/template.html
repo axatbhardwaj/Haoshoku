@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title><!-- concise page title --></title>
+<script type="application/json" id="samvada-artifact-meta">
+{
+  "schema": "samvada.artifact.research.v1",
+  "artifact_type": "explainer",
+  "title": "<!-- full title -->",
+  "date": "<!-- YYYY-MM-DD -->",
+  "basis": "<!-- what ground truth this reflects: version, commit, source -->"
+}
+</script>
+<style>
+  :root{
+    color-scheme: dark;
+    --ground:#0b0f14; --panel:#121821; --panel2:#182130; --line:#26303e;
+    --ink:#dce4ee; --dim:#8a97a8; --faint:#5c6774;
+    --vadi:#34d399; --prat:#a78bfa; --team:#5ca9ff; --human:#e0a63d; --seal:#46c26a; --stop:#ff6a5e;
+    --mono:"JetBrains Mono","Cascadia Code",ui-monospace,SFMono-Regular,Menlo,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--ink);font:16px/1.65 var(--sans)}
+  a{color:var(--vadi)}
+  main{max-width:1120px;margin:0 auto;padding:0 2.2rem 6rem}
+  section{margin-top:4.2rem}
+  .eyebrow{font:600 .72rem/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--faint);margin:0 0 .9rem}
+  h1{font:800 clamp(2.2rem,6vw,3.6rem)/1.08 var(--sans);letter-spacing:-.03em;margin:.4rem 0;text-wrap:balance}
+  h2{font:700 1.6rem/1.25 var(--sans);letter-spacing:-.01em;margin:.1rem 0 .9rem;text-wrap:balance}
+  h3{font:650 1.05rem/1.3 var(--sans);margin:1.4rem 0 .4rem}
+  p{max-width:68ch}
+  .thesis{font-size:1.18rem;color:var(--dim);max-width:56ch}
+  code,.st{font-family:var(--mono);font-size:.85em;background:var(--panel2);border:1px solid var(--line);padding:.08em .4em;border-radius:5px}
+  pre{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:1rem 1.2rem;overflow-x:auto;font:.82rem/1.6 var(--mono)}
+  pre code{background:none;border:none;padding:0}
+  figure{margin:1.6rem 0;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:1.2rem;overflow-x:auto}
+  figcaption{font:.78rem/1.5 var(--mono);color:var(--dim);margin-top:.7rem;text-align:center}
+  svg{display:block;min-width:720px}
+  svg text{font-family:var(--mono)}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;margin:1.2rem 0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:1.1rem 1.25rem}
+  .card h4{margin:0 0 .45rem;font:650 1rem/1.3 var(--sans)}
+  .card p{font-size:.9rem;color:var(--dim);margin:.3rem 0}
+  .strip{display:flex;flex-wrap:wrap;gap:.55rem;margin:1.1rem 0 0}
+  .chip{font:600 .72rem/1 var(--mono);letter-spacing:.06em;padding:.5em .8em;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--dim)}
+  .lane{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:1.1rem 1.25rem;margin:.9rem 0}
+  .lane h4{margin:0;font:650 1rem var(--sans);display:flex;gap:.7rem;align-items:center}
+  .lane .dot{width:12px;height:12px;border-radius:50%;display:inline-block}
+  .lane p{font-size:.9rem;color:var(--dim)}
+  .lane .route{font:.78rem/2 var(--mono);color:var(--ink);overflow-x:auto;white-space:nowrap;padding-bottom:.2rem}
+  .k-vadi{color:var(--vadi)} .k-prat{color:var(--prat)} .k-team{color:var(--team)} .k-human{color:var(--human)} .k-seal{color:var(--seal)}
+  table{border-collapse:collapse;width:100%;margin:1rem 0;font-size:.86rem}
+  th,td{border:1px solid var(--line);padding:.5rem .7rem;text-align:left;vertical-align:top}
+  th{background:var(--panel2);font:600 .72rem/1.4 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+  tr:nth-child(even) td{background:var(--panel)}
+  nav{position:sticky;top:0;background:rgba(11,15,20,.94);backdrop-filter:blur(6px);border-bottom:1px solid var(--line);padding:.5rem 2.2rem;font:.8rem var(--mono);z-index:9}
+  nav a{color:var(--dim);text-decoration:none;margin-right:1.05rem} nav a:hover{color:var(--vadi)}
+  header{padding:4.5rem 2.2rem 0;max-width:1120px;margin:0 auto}
+  .foot{margin-top:5rem;border-top:1px solid var(--line);padding-top:1.2rem;font:.75rem var(--mono);color:var(--faint)}
+  @media (prefers-reduced-motion: reduce){*{animation:none !important;transition:none !important}}
+</style>
+</head>
+<body>
+<!-- Optional sticky nav — only when the page exceeds ~3 screens:
+<nav><a href="#s1">Section</a><a href="#s2">Section</a></nav> -->
+<header>
+  <p class="eyebrow"><!-- subject line, lowercase mono --></p>
+  <h1><!-- the thesis headline; map opposition with <span class="k-vadi">/<span class="k-prat"> --></h1>
+  <p class="thesis"><!-- 1–2 sentence stance, --dim --></p>
+  <div class="strip">
+    <span class="chip"><!-- hard fact --></span>
+    <span class="chip"><!-- hard fact --></span>
+  </div>
+</header>
+<main>
+<section id="s1">
+  <p class="eyebrow"><!-- section eyebrow --></p>
+  <h2><!-- thesis, not topic --></h2>
+  <p><!-- prose annotating the figure below --></p>
+  <figure>
+  <svg viewBox="0 0 1040 160" width="100%" role="img" aria-label="<!-- what it shows -->">
+    <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#8a97a8"/></marker></defs>
+    <!-- node: fill = owning actor token; gate: --seal-stroked rect; loop/optional: dashed -->
+    <rect x="20" y="50" width="150" height="52" rx="9" fill="#182130" stroke="#26303e"/>
+    <text x="95" y="74" fill="#dce4ee" font-size="11.5" text-anchor="middle">state</text>
+    <text x="95" y="92" fill="#5c6774" font-size="9.5" text-anchor="middle">annotation</text>
+    <line x1="170" y1="76" x2="230" y2="76" stroke="#8a97a8" stroke-width="1.2" marker-end="url(#ar)"/>
+    <!-- comparative routes? one transit map: stage columns, one line per route,
+         station circles (r=7, fill=actor, stroke=--ground ×2) only where the route stops -->
+  </svg>
+  <figcaption><!-- the one insight the drawing can't say --></figcaption>
+  </figure>
+</section>
+</main>
+<p class="foot"><!-- WHAT · as of VERSION/COMMIT · DATE --></p>
+</body>
+</html>
