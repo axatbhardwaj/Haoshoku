@@ -14,7 +14,9 @@ describe("CODEX_PERSONAL_FILES manifest", () => {
 	it("tracks AGENTS.md and the bundled Samvada skill", () => {
 		expect(CODEX_PERSONAL_FILES.map((f) => f.src)).toEqual([
 			"AGENTS.md",
-			"skills/samvada-html-deliverables",
+			"skills/samvada-html-deliverables/SKILL.md",
+			"skills/samvada-html-deliverables/agents/openai.yaml",
+			"skills/samvada-html-deliverables/template.html",
 		]);
 	});
 });
@@ -63,7 +65,7 @@ describe("syncCodexConfig", () => {
 		);
 	});
 
-	it("deploys and round-trips the Samvada skill directory", async () => {
+	it("deploys and round-trips the Samvada skill files", async () => {
 		const skill = path.join("skills", "samvada-html-deliverables");
 		const bundledSkill = path.join(configsDir, skill);
 		const liveSkill = path.join(codexDir, skill);
@@ -85,6 +87,7 @@ describe("syncCodexConfig", () => {
 			);
 			fs.writeFileSync(path.join(liveSkill, relativePath), liveContents);
 		}
+		fs.writeFileSync(path.join(liveSkill, "stale.txt"), "do not bundle\n");
 		await backupCodexConfig({ srcDir: configsDir, codexHome });
 
 		for (const [relativePath, , liveContents] of files) {
@@ -92,6 +95,26 @@ describe("syncCodexConfig", () => {
 				fs.readFileSync(path.join(bundledSkill, relativePath), "utf8"),
 			).toBe(liveContents);
 		}
+		expect(fs.existsSync(path.join(bundledSkill, "stale.txt"))).toBe(false);
+	});
+
+	it("backs up a differing Samvada file before overwriting it", async () => {
+		const skill = path.join("skills", "samvada-html-deliverables");
+		const bundledSkill = path.join(configsDir, skill);
+		const liveSkill = path.join(codexDir, skill);
+		fs.mkdirSync(path.join(bundledSkill, "agents"), { recursive: true });
+		fs.mkdirSync(path.join(liveSkill, "agents"), { recursive: true });
+		fs.writeFileSync(path.join(bundledSkill, "SKILL.md"), "bundle skill\n");
+		fs.writeFileSync(path.join(liveSkill, "SKILL.md"), "live skill\n");
+
+		await syncCodexConfig({ srcDir: configsDir, codexHome });
+
+		expect(fs.readFileSync(path.join(liveSkill, "SKILL.md.bak"), "utf8")).toBe(
+			"live skill\n",
+		);
+		expect(fs.readFileSync(path.join(liveSkill, "SKILL.md"), "utf8")).toBe(
+			"bundle skill\n",
+		);
 	});
 });
 

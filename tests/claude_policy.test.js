@@ -31,6 +31,15 @@ function expectDesignedWorkContract(designedWork) {
 	);
 }
 
+function expectNoPositiveRoutingLedger(policy, completion) {
+	expect(policy.replace(completion, "")).not.toMatch(
+		/\b(?:routing|lane)\s+ledger\b/i,
+	);
+	expect(completion).toMatch(
+		/capability\/reasoning\s+routing[\s\S]*?not\s+a\s+task\s+tier[\s\S]*?lane\s+ledger[\s\S]*?caller\s+model\/effort\s+choice/i,
+	);
+}
+
 it("ships the public single-path Claude orchestration policy", () => {
 	const policy = fs.readFileSync(POLICY_PATH, "utf8");
 	const discovery = section(policy, "Discovery");
@@ -87,8 +96,10 @@ it("ships the public single-path Claude orchestration policy", () => {
 	expect(policy).not.toMatch(/\bSTANDARD\b/i);
 	expect(policy).not.toMatch(/\bone\s+ledger\s+line\b/i);
 	expect(policy).not.toContain("--tier");
-	expect(completion).toMatch(
-		/capability\/reasoning\s+routing[\s\S]*?not\s+a\s+task\s+tier[\s\S]*?lane\s+ledger[\s\S]*?caller\s+model\/effort\s+choice/i,
-	);
+	expectNoPositiveRoutingLedger(policy, completion);
+	const positiveLedgerPolicy = `${policy}\nRecord a routing ledger.`;
+	expect(() =>
+		expectNoPositiveRoutingLedger(positiveLedgerPolicy, completion),
+	).toThrow();
 	expect(policy.split("\n").length).toBeLessThan(300);
 });

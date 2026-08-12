@@ -1,13 +1,23 @@
 import { expect, it } from "bun:test";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
 const PROJECT_ROOT = path.resolve(import.meta.dir, "..");
-const PRIVATE_SOURCE_ROOT =
-	"/home/xzat/.claude/.worktrees/fixed-model-wrappers";
 const PRIVATE_SOURCE_SHA = "572bb5b8bd4d06302f559b0bac2391ebde0ca9a6";
+const PRIVATE_SOURCE_ROOT = process.env.HAOSHOKU_SAMVADA_SOURCE_ROOT;
 const SKILL_PATH = "skills/samvada-html-deliverables";
 const SKILL_FILES = ["SKILL.md", "agents/openai.yaml", "template.html"];
+const PINNED_DIGESTS = {
+	"CLAUDE.md":
+		"88b7d4ae8a6eda8bf04745c799d5fe80c5fbd28656196dfd55c3bce055b5dc7e",
+	"SKILL.md":
+		"5f2c924887f2ddf85e7952d6c8d6680b75bf7c4460897ca1ce46e025390111fe",
+	"agents/openai.yaml":
+		"526bcf76d2cd248eeb79102063f1dc75faabf2006d1807c137039dba20302dd3",
+	"template.html":
+		"9aef7a092acbb59199a289e19545da2436deb8a36cf5a35057ee46e5c03197a7",
+};
 const FORMER_IDENTIFIER = ["dvan", "dva"].join("");
 const activeCodexConfigFiles = [
 	"configs/codex/AGENTS.md",
@@ -15,6 +25,7 @@ const activeCodexConfigFiles = [
 ];
 
 function privateSource(relativePath) {
+	if (!PRIVATE_SOURCE_ROOT) return undefined;
 	const result = Bun.spawnSync(
 		[
 			"git",
@@ -29,23 +40,33 @@ function privateSource(relativePath) {
 	return result.stdout.toString();
 }
 
+function digest(contents) {
+	return createHash("sha256").update(contents).digest("hex");
+}
+
 it("keeps Samvada on the active public configuration boundary", () => {
 	const codexConfig = path.join(PROJECT_ROOT, "configs", "codex");
 	const codexAgents = path.join(codexConfig, "AGENTS.md");
 
 	for (const relativePath of SKILL_FILES) {
 		const bundledPath = path.join(codexConfig, SKILL_PATH, relativePath);
-		expect(fs.readFileSync(bundledPath, "utf8"), relativePath).toBe(
-			privateSource(path.join(SKILL_PATH, relativePath)),
-		);
+		const contents = fs.readFileSync(bundledPath, "utf8");
+		expect(digest(contents), relativePath).toBe(PINNED_DIGESTS[relativePath]);
+		if (PRIVATE_SOURCE_ROOT) {
+			expect(contents, relativePath).toBe(
+				privateSource(path.join(SKILL_PATH, relativePath)),
+			);
+		}
 	}
 
-	expect(
-		fs.readFileSync(
-			path.join(PROJECT_ROOT, "configs", "claude", "CLAUDE.md"),
-			"utf8",
-		),
-	).toBe(privateSource("CLAUDE.md"));
+	const claudePolicy = fs.readFileSync(
+		path.join(PROJECT_ROOT, "configs", "claude", "CLAUDE.md"),
+		"utf8",
+	);
+	expect(digest(claudePolicy), "CLAUDE.md").toBe(PINNED_DIGESTS["CLAUDE.md"]);
+	if (PRIVATE_SOURCE_ROOT) {
+		expect(claudePolicy).toBe(privateSource("CLAUDE.md"));
+	}
 
 	const activeCodexConfig = fs.readFileSync(codexAgents, "utf8");
 	expect(activeCodexConfig).toContain("samvada-html-deliverables");

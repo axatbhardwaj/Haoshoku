@@ -9,11 +9,13 @@ const CUSTOM_CODEX_DIR = path.join(PROJECT_ROOT, "configs", "codex");
 const CODEX_NPM_PACKAGE = "@openai/codex";
 
 // ~/.codex also holds runtime state (auth.json, *.sqlite, history.jsonl) —
-// only AGENTS.md and the bundled Samvada skill are reproducible config.
+// only AGENTS.md and the three bundled Samvada skill files are reproducible config.
 // Exported for the manifest test.
 export const CODEX_PERSONAL_FILES = [
 	{ src: "AGENTS.md" },
-	{ src: "skills/samvada-html-deliverables", directory: true },
+	{ src: "skills/samvada-html-deliverables/SKILL.md" },
+	{ src: "skills/samvada-html-deliverables/agents/openai.yaml" },
+	{ src: "skills/samvada-html-deliverables/template.html" },
 ];
 
 /** Resolve where a CODEX_PERSONAL_FILES entry lives on a given $HOME (inside ~/.codex/). */
@@ -51,11 +53,8 @@ export async function syncCodexConfig(options = {}) {
 		const srcPath = path.join(srcDir, file.src);
 		const destPath = codexFilePath(file.src, codexHome);
 		if (fs.existsSync(srcPath)) {
-			if (file.directory) {
-				fs.cpSync(srcPath, destPath, { recursive: true, force: true });
-			} else {
-				safeCopyFile(srcPath, destPath);
-			}
+			fs.mkdirSync(path.dirname(destPath), { recursive: true });
+			safeCopyFile(srcPath, destPath);
 			log.info(`Copied ${file.src}`);
 		} else {
 			log.warning(
@@ -78,11 +77,8 @@ export async function backupCodexConfig(options = {}) {
 		const livePath = codexFilePath(file.src, codexHome);
 		if (fs.existsSync(livePath)) {
 			const destPath = path.join(srcDir, file.src);
-			if (file.directory) {
-				fs.cpSync(livePath, destPath, { recursive: true, force: true });
-			} else {
-				fs.copyFileSync(livePath, destPath);
-			}
+			fs.mkdirSync(path.dirname(destPath), { recursive: true });
+			fs.copyFileSync(livePath, destPath);
 			log.info(`Backed up ${file.src}`);
 		}
 	}
