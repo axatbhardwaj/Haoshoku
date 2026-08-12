@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 8.4.1 - 2026-08-12
 
 - Make Meta+I switch to workspace 1, reclaim existing Claude and Codex windows there, and keep them tiled and unpinned.
 
