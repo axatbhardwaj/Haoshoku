@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 8.4.0 - 2026-08-12
 
 - Replace tiered Claude task routing with one capability-based path: Opus
   orchestrates, Sol handles reasoning/code/research, Luna runs at fixed maximum
