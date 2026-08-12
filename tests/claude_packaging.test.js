@@ -4,6 +4,24 @@ import os from "node:os";
 import path from "node:path";
 
 const PROJECT_ROOT = path.resolve(import.meta.dir, "..");
+const PUBLIC_RUNTIME_FILES = [
+	"configs/claude/agents/sol-wrapper.md",
+	"configs/claude/agents/luna-wrapper.md",
+	"configs/claude/agents/grok-wrapper.md",
+	"configs/claude/agents/madhyastha.md",
+	"configs/claude/agents/anveshaka.md",
+	"configs/claude/agents/run-codex-task.sh",
+	"configs/claude/agents/validate-codex-wrapper.sh",
+	"configs/claude/agents/codex-result.schema.json",
+	"configs/claude/agents/prepare-pr-review-render-workspace.sh",
+	"configs/claude/workflows/pr-review.js",
+	"configs/claude/workflows/review-station.js",
+	"configs/claude/skills/discovering-work/SKILL.md",
+	"configs/claude/skills/discovering-work/agents/openai.yaml",
+	"configs/claude/skills/samvada-html-deliverables/SKILL.md",
+	"configs/claude/skills/samvada-html-deliverables/agents/openai.yaml",
+	"configs/claude/skills/samvada-html-deliverables/template.html",
+];
 
 it("keeps packed configs/claude files free of literal home-directory paths", () => {
 	if (!Bun.which("npm")) return;
@@ -35,14 +53,12 @@ it("keeps packed configs/claude files free of literal home-directory paths", () 
 			.map((file) => file.path)
 			.filter((filePath) => filePath.startsWith("configs/claude/"));
 		expect(claudeFiles.length).toBeGreaterThan(0);
-		const policyFiles = claudeFiles.filter(
-			(filePath) =>
-				filePath.startsWith("configs/claude/agents/") ||
-				filePath.startsWith("configs/claude/workflows/"),
-		);
-		expect(policyFiles).toEqual([]);
+		expect(claudeFiles).toEqual(expect.arrayContaining(PUBLIC_RUNTIME_FILES));
 
-		const leakingFiles = claudeFiles.filter((filePath) => {
+		const baselineFiles = claudeFiles.filter(
+			(filePath) => !PUBLIC_RUNTIME_FILES.includes(filePath),
+		);
+		const leakingFiles = baselineFiles.filter((filePath) => {
 			const contents = fs.readFileSync(
 				path.join(PROJECT_ROOT, filePath),
 				"utf8",

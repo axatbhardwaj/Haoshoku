@@ -1,0 +1,42 @@
+{
+  "type": "object",
+  "required": ["status", "summary", "changed_paths", "verification", "assumptions", "blockers", "findings"],
+  "additionalProperties": false,
+  "properties": {
+    "status": { "type": "string", "enum": ["completed", "partial", "blocked", "failed"] },
+    "summary": { "type": "string" },
+    "changed_paths": { "type": "array", "items": { "type": "string" } },
+    "verification": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["command", "exit_code", "evidence", "phase"],
+        "additionalProperties": false,
+        "properties": {
+          "command": { "type": "string" },
+          "exit_code": { "type": "integer" },
+          "evidence": { "type": "string" },
+          "phase": { "type": "string", "enum": ["red", "green", "n/a"] }
+        }
+      }
+    },
+    "assumptions": { "type": "array", "items": { "type": "string" } },
+    "blockers": { "type": "array", "items": { "type": "string" } },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["file", "quote", "category", "reason", "proposed_diff", "confidence"],
+        "additionalProperties": false,
+        "properties": {
+          "file": { "type": "string" },
+          "quote": { "type": "string" },
+          "category": { "type": "string" },
+          "reason": { "type": "string" },
+          "proposed_diff": { "type": "string" },
+          "confidence": { "type": "string", "enum": ["high", "medium", "low"] }
+        }
+      }
+    }
+  }
+}
