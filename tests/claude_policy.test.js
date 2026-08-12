@@ -6,6 +6,9 @@ const POLICY_PATH = path.resolve(
 	import.meta.dir,
 	"../configs/claude/CLAUDE.md",
 );
+const APPROVED_LEDGER_SENTENCE =
+	"Capability/reasoning routing is not a task tier, score, lane ledger, or caller model/effort choice.";
+const ROUTING_LEDGER = /\b(?:routing|lane)\s+ledger\b/gi;
 
 function section(policy, title, level = 2) {
 	const hashes = "#".repeat(level);
@@ -32,11 +35,10 @@ function expectDesignedWorkContract(designedWork) {
 }
 
 function expectNoPositiveRoutingLedger(policy, completion) {
-	expect(policy.replace(completion, "")).not.toMatch(
-		/\b(?:routing|lane)\s+ledger\b/i,
-	);
-	expect(completion).toMatch(
-		/capability\/reasoning\s+routing[\s\S]*?not\s+a\s+task\s+tier[\s\S]*?lane\s+ledger[\s\S]*?caller\s+model\/effort\s+choice/i,
+	expect(policy.match(ROUTING_LEDGER)).toEqual(["lane ledger"]);
+	expect(completion).toContain(APPROVED_LEDGER_SENTENCE);
+	expect(policy.replace(APPROVED_LEDGER_SENTENCE, "")).not.toMatch(
+		ROUTING_LEDGER,
 	);
 }
 
@@ -100,6 +102,17 @@ it("ships the public single-path Claude orchestration policy", () => {
 	const positiveLedgerPolicy = `${policy}\nRecord a routing ledger.`;
 	expect(() =>
 		expectNoPositiveRoutingLedger(positiveLedgerPolicy, completion),
+	).toThrow();
+	const positiveCompletion = `${completion}\nRecord a routing ledger.`;
+	const policyWithPositiveCompletion = policy.replace(
+		completion,
+		positiveCompletion,
+	);
+	expect(() =>
+		expectNoPositiveRoutingLedger(
+			policyWithPositiveCompletion,
+			positiveCompletion,
+		),
 	).toThrow();
 	expect(policy.split("\n").length).toBeLessThan(300);
 });
