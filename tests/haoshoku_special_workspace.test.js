@@ -961,12 +961,12 @@ exit 17
 		return { address, class: className, workspace: { name: workspace } };
 	}
 
-	it("toggles the assistants workspace, reclaims exact windows, and probes clients once", async () => {
+	it("toggles the ChatGPT workspace, reclaims ChatGPT, ignores Claude, and probes once", async () => {
 		const clientProbeLog = path.join(directory, "client-probes");
 		const result = await run(["assistants"], {
 			clientProbeLog,
 			clients: JSON.stringify([
-				assistantClient("0xclaude", claudeClass, "special:assistants"),
+				assistantClient("0xclaude", claudeClass, "2"),
 				assistantClient("0xcodex", codexClass, "5"),
 			]),
 		});
@@ -981,10 +981,10 @@ exit 17
 		]);
 	});
 
-	it("does not move or relaunch exact assistants already on their special workspace", async () => {
+	it("does not move or relaunch ChatGPT already on its special workspace", async () => {
 		const result = await run(["assistants"], {
 			clients: JSON.stringify([
-				assistantClient("0xclaude", claudeClass, "special:assistants"),
+				assistantClient("0xclaude", claudeClass, "2"),
 				assistantClient("0xcodex", codexClass, "special:assistants"),
 			]),
 		});
@@ -995,14 +995,12 @@ exit 17
 		]);
 	});
 
-	it("launches missing assistants into their shared special workspace", async () => {
+	it("launches only missing ChatGPT into the assistants workspace", async () => {
 		const result = await run(["assistants"]);
 
 		expect(result.exitCode).toBe(0);
 		expect(dispatchCalls()).toEqual([
 			"dispatch togglespecialworkspace assistants",
-			"dispatch exec [workspace special:assistants silent] uwsm-app -- claude-desktop ",
-			"claude",
 			"dispatch exec [workspace special:assistants silent] uwsm-app -- codex-desktop ",
 			"codex-desktop",
 		]);
@@ -1011,7 +1009,7 @@ exit 17
 	it("does not let an uppercase ChatGPT decoy suppress the Codex launch", async () => {
 		const result = await run(["assistants"], {
 			clients: JSON.stringify([
-				assistantClient("0xclaude", claudeClass, "special:assistants"),
+				assistantClient("0xclaude", claudeClass, "2"),
 				assistantClient("0xdecoy", "ChatGPT", "special:assistants"),
 			]),
 		});

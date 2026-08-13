@@ -41,7 +41,7 @@ describe("Omarchy workspace overlay", () => {
 
 	it("uses monitor-following special workspaces for assistants, T3 Code, and Twitch", () => {
 		const assistantsBinding =
-			"bindd = SUPER, I, Show/focus/hide AI assistants workspace, exec, haoshoku-special-workspace assistants";
+			"bindd = SUPER, I, Show/focus/hide ChatGPT workspace, exec, haoshoku-special-workspace assistants";
 		const t3CodeBinding =
 			"bindd = SUPER, T, Show/focus/hide T3 Code workspace, exec, haoshoku-special-workspace t3code";
 		const twitchBinding =
@@ -168,7 +168,7 @@ describe("Omarchy workspace overlay", () => {
 
 	it("routes AI apps to unpinned special workspaces by exact class", () => {
 		const expectedRules = [
-			String.raw`windowrule = workspace special:assistants silent, match:class ^(com\.anthropic\.Claude|chatgpt)$`,
+			"windowrule = workspace special:assistants silent, match:class ^chatgpt$",
 			"windowrule = workspace special:t3code silent, match:class ^t3code$",
 		];
 		for (const overlay of [config, laptopConfig]) {
@@ -176,7 +176,7 @@ describe("Omarchy workspace overlay", () => {
 				.split(/\r?\n/)
 				.filter(
 					(line) =>
-						line.includes("match:class ^(com\\.anthropic\\.Claude|chatgpt)$") ||
+						line.includes("match:class ^chatgpt$") ||
 						line.includes("match:class ^t3code$"),
 				);
 

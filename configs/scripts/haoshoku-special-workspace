@@ -269,7 +269,6 @@ if [[ "$recipe" == assistants || "$recipe" == t3code ]]; then
 
   if [[ "$recipe" == assistants ]]; then
     class_apps=(
-      'com.anthropic.Claude:claude-desktop'
       'chatgpt:codex-desktop'
     )
   else
