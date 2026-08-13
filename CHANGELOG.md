@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 8.5.1 - 2026-08-13
 
 - Keep only ChatGPT on the monitor-following `special:assistants` workspace
   and its `Super+I` login/toggle path, leaving Claude Desktop unmanaged.
