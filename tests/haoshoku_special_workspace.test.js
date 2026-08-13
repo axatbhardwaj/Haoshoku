@@ -83,6 +83,7 @@ describe("haoshoku-special-workspace", () => {
 				monitor: "DP-1",
 				followsFocus: true,
 			},
+			twitch: { workspace: "twitch", monitor: "DP-1", followsFocus: true },
 		};
 
 		expect(Object.keys(recipes).sort()).toEqual(
@@ -100,6 +101,7 @@ describe("haoshoku-special-workspace", () => {
 	let chromium;
 	let claudeDesktop;
 	let codexDesktop;
+	let t3Code;
 	let focusedMonitorState;
 	let runtimeDirectory;
 	let specialMonitorState;
@@ -116,6 +118,7 @@ describe("haoshoku-special-workspace", () => {
 		chromium = path.join(directory, "brave-origin");
 		claudeDesktop = path.join(directory, ["claude", "desktop"].join("-"));
 		codexDesktop = path.join(directory, ["codex", "desktop"].join("-"));
+		t3Code = path.join(directory, "t3code");
 		focusedMonitorState = path.join(directory, "focused-monitor-state");
 		runtimeDirectory = path.join(directory, "runtime");
 		specialMonitorState = path.join(directory, "special-monitor-state");
@@ -245,6 +248,12 @@ printf 'codex-desktop\n' >> "$CALL_LOG"
 `,
 		);
 		fs.writeFileSync(
+			t3Code,
+			`#!/usr/bin/env bash
+printf 't3code\n' >> "$CALL_LOG"
+`,
+		);
+		fs.writeFileSync(
 			helper,
 			`#!/usr/bin/env bash
 case "$1" in
@@ -260,6 +269,7 @@ esac
 		fs.chmodSync(hyprctl, 0o755);
 		fs.chmodSync(claudeDesktop, 0o755);
 		fs.chmodSync(codexDesktop, 0o755);
+		fs.chmodSync(t3Code, 0o755);
 		fs.chmodSync(chromium, 0o755);
 		fs.chmodSync(helper, 0o755);
 		fs.chmodSync(path.join(directory, "systemctl"), 0o755);
@@ -611,13 +621,14 @@ fi
 		]);
 	});
 
-	for (const recipe of ["youtube", "crunchyroll"]) {
+	for (const [recipe, className] of [
+		["youtube", "brave-youtube.com__-Default"],
+		["crunchyroll", "brave-www.crunchyroll.com__-Default"],
+		["twitch", "brave-www.twitch.tv__-Default"],
+	]) {
 		const clients = JSON.stringify([
 			{
-				class:
-					recipe === "youtube"
-						? "brave-youtube.com__-Default"
-						: "brave-www.crunchyroll.com__-Default",
+				class: className,
 			},
 		]);
 
@@ -950,7 +961,7 @@ exit 17
 		return { address, class: className, workspace: { name: workspace } };
 	}
 
-	it("switches to workspace 1, reclaims exact assistant windows, and probes clients once", async () => {
+	it("toggles the assistants workspace, reclaims exact windows, and probes clients once", async () => {
 		const clientProbeLog = path.join(directory, "client-probes");
 		const result = await run(["assistants"], {
 			clientProbeLog,
@@ -962,36 +973,37 @@ exit 17
 
 		expect(result.exitCode).toBe(0);
 		expect(dispatchCalls()).toEqual([
-			"dispatch workspace 1",
-			"dispatch movetoworkspacesilent 1,address:0xclaude",
-			"dispatch movetoworkspacesilent 1,address:0xcodex",
+			"dispatch togglespecialworkspace assistants",
+			"dispatch movetoworkspacesilent special:assistants,address:0xcodex",
 		]);
 		expect(fs.readFileSync(clientProbeLog, "utf8").trim().split("\n")).toEqual([
 			"clients -j",
 		]);
 	});
 
-	it("does not move or relaunch exact assistants already on workspace 1", async () => {
+	it("does not move or relaunch exact assistants already on their special workspace", async () => {
 		const result = await run(["assistants"], {
 			clients: JSON.stringify([
-				assistantClient("0xclaude", claudeClass, "1"),
-				assistantClient("0xcodex", codexClass, "1"),
+				assistantClient("0xclaude", claudeClass, "special:assistants"),
+				assistantClient("0xcodex", codexClass, "special:assistants"),
 			]),
 		});
 
 		expect(result.exitCode).toBe(0);
-		expect(dispatchCalls()).toEqual(["dispatch workspace 1"]);
+		expect(dispatchCalls()).toEqual([
+			"dispatch togglespecialworkspace assistants",
+		]);
 	});
 
-	it("launches missing assistants into workspace 1 without special routing", async () => {
+	it("launches missing assistants into their shared special workspace", async () => {
 		const result = await run(["assistants"]);
 
 		expect(result.exitCode).toBe(0);
 		expect(dispatchCalls()).toEqual([
-			"dispatch workspace 1",
-			"dispatch exec [workspace 1 silent] uwsm-app -- claude-desktop ",
+			"dispatch togglespecialworkspace assistants",
+			"dispatch exec [workspace special:assistants silent] uwsm-app -- claude-desktop ",
 			"claude",
-			"dispatch exec [workspace 1 silent] uwsm-app -- codex-desktop ",
+			"dispatch exec [workspace special:assistants silent] uwsm-app -- codex-desktop ",
 			"codex-desktop",
 		]);
 	});
@@ -999,16 +1011,41 @@ exit 17
 	it("does not let an uppercase ChatGPT decoy suppress the Codex launch", async () => {
 		const result = await run(["assistants"], {
 			clients: JSON.stringify([
-				assistantClient("0xclaude", claudeClass, "1"),
-				assistantClient("0xdecoy", "ChatGPT", "1"),
+				assistantClient("0xclaude", claudeClass, "special:assistants"),
+				assistantClient("0xdecoy", "ChatGPT", "special:assistants"),
 			]),
 		});
 
 		expect(result.exitCode).toBe(0);
 		expect(dispatchCalls()).toEqual([
-			"dispatch workspace 1",
-			"dispatch exec [workspace 1 silent] uwsm-app -- codex-desktop ",
+			"dispatch togglespecialworkspace assistants",
+			"dispatch exec [workspace special:assistants silent] uwsm-app -- codex-desktop ",
 			"codex-desktop",
+		]);
+	});
+
+	it("toggles T3 Code and launches it into its own special workspace", async () => {
+		const result = await run(["t3code"]);
+
+		expect(result.exitCode).toBe(0);
+		expect(dispatchCalls()).toEqual([
+			"dispatch togglespecialworkspace t3code",
+			"dispatch exec [workspace special:t3code silent] uwsm-app -- t3code ",
+			"t3code",
+		]);
+	});
+
+	it("reclaims an existing T3 Code window without relaunching it", async () => {
+		const result = await run(["t3code"], {
+			clients: JSON.stringify([
+				assistantClient("0xt3", "t3code", "special:assistants"),
+			]),
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(dispatchCalls()).toEqual([
+			"dispatch togglespecialworkspace t3code",
+			"dispatch movetoworkspacesilent special:t3code,address:0xt3",
 		]);
 	});
 
@@ -1016,7 +1053,9 @@ exit 17
 		const result = await run(["assistants"], { clients: "not json" });
 
 		expect(result.exitCode).toBe(0);
-		expect(dispatchCalls()).toEqual(["dispatch workspace 1"]);
+		expect(dispatchCalls()).toEqual([
+			"dispatch togglespecialworkspace assistants",
+		]);
 	});
 
 	for (const [label, client] of [
@@ -1035,7 +1074,9 @@ exit 17
 			});
 
 			expect(result.exitCode).toBe(0);
-			expect(dispatchCalls()).toEqual(["dispatch workspace 1"]);
+			expect(dispatchCalls()).toEqual([
+				"dispatch togglespecialworkspace assistants",
+			]);
 		});
 	}
 
@@ -1056,7 +1097,9 @@ exit 17
 			});
 
 			expect(result.exitCode).toBe(0);
-			expect(dispatchCalls()).toEqual(["dispatch workspace 1"]);
+			expect(dispatchCalls()).toEqual([
+				"dispatch togglespecialworkspace assistants",
+			]);
 		});
 	}
 
@@ -1065,6 +1108,7 @@ exit 17
 		{ recipe: "youtube", url: "https://youtube.com/" },
 		{ recipe: "jiohotstar", url: "https://www.jiohotstar.com/" },
 		{ recipe: "crunchyroll", url: "https://www.crunchyroll.com/" },
+		{ recipe: "twitch", url: "https://www.twitch.tv/" },
 	]) {
 		// Mutation caught: omitting --class from this app launch lets it become
 		// the Flux singleton owner that creates later plain windows as "brave-origin".
@@ -1133,6 +1177,12 @@ exit 17
 			className: "brave-www.crunchyroll.com__-Default",
 			decoyClass: "brave-wwwXcrunchyrollXcom__-Default",
 			url: "https://www.crunchyroll.com/",
+		},
+		{
+			recipe: "twitch",
+			className: "brave-www.twitch.tv__-Default",
+			decoyClass: "brave-wwwXtwitchXtv__-Default",
+			url: "https://www.twitch.tv/",
 		},
 	]) {
 		it(`opens missing ${recipe} on DP-1 with the Flux app profile`, async () => {

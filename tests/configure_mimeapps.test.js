@@ -491,6 +491,29 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 		expect(desktop).toContain("StartupWMClass=brave-web.whatsapp.com__-Default");
 	});
 
+	it("deploys a Twitch launcher through the special-workspace helper", async () => {
+		await mimeapps.syncMimeappsConfig({
+			home: tmpHome,
+			projectRoot: PROJECT_ROOT,
+		});
+
+		const desktop = fs.readFileSync(
+			path.join(
+				tmpHome,
+				".local",
+				"share",
+				"applications",
+				"twitch.desktop",
+			),
+			"utf8",
+		);
+		expect(desktop).toContain("Name=Twitch");
+		expect(desktop).toContain("Exec=haoshoku-special-workspace twitch");
+		expect(desktop).toContain(
+			"StartupWMClass=brave-www.twitch.tv__-Default",
+		);
+	});
+
 	it("restores the working WhatsApp Exec on every later mimeapps sync", async () => {
 		const liveApplications = path.join(
 			tmpHome,
