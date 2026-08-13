@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- Move Claude Desktop and Codex Desktop into one monitor-following
+  `special:assistants` workspace on `Super+I`, reclaim existing windows there,
+  and launch the assistants automatically at login.
+- Give T3 Code its own monitor-following `special:t3code` workspace on
+  `Super+T`, replacing the former Tmux shortcut.
+- Add a Twitch Brave Origin app and monitor-following `special:twitch`
+  workspace on `Super+Shift+T`.
+
 ## 8.4.1 - 2026-08-12
 
 - Make Meta+I switch to workspace 1, reclaim existing Claude and Codex windows there, and keep them tiled and unpinned.
