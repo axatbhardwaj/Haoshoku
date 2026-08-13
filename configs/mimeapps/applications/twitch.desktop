@@ -5,6 +5,6 @@ Name=Twitch
 Comment=Open Twitch in the shared Brave Origin profile
 Exec=haoshoku-special-workspace twitch
 Terminal=false
-Categories=Network;AudioVideo;
+Categories=AudioVideo;Video;
 Icon=brave-origin
 StartupWMClass=brave-www.twitch.tv__-Default
