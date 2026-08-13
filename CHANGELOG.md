@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Keep only ChatGPT on the monitor-following `special:assistants` workspace
+  and its `Super+I` login/toggle path, leaving Claude Desktop unmanaged.
+
 ## 8.5.0 - 2026-08-13
 
 - Move Claude Desktop and Codex Desktop into one monitor-following
