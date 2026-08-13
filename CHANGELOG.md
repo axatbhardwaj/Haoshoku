@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 8.5.0 - 2026-08-13
 
 - Move Claude Desktop and Codex Desktop into one monitor-following
   `special:assistants` workspace on `Super+I`, reclaim existing windows there,
