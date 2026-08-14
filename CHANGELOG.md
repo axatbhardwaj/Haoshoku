@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Install the T3 Code desktop package through the Arch/Omarchy package list.
+- Configure T3 Code's upstream headless background service during Debian Server
+  setup and through the Debian-only `--server-t3-code` mode, with a compatible
+  Node.js gate, service verification, and manual pairing guidance.
+
 ## 8.5.1 - 2026-08-13
 
 - Keep only ChatGPT on the monitor-following `special:assistants` workspace

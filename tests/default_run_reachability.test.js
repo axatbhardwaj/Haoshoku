@@ -101,7 +101,12 @@ function deployModeFeaturesFromCli() {
 // Debian Server is headless: audio, MIME/browser scripts, and Omarchy display
 // configuration are desktop-only and intentionally remain on the Arch path.
 const DELIBERATE_OMISSIONS = {
-	arch: new Map(),
+	arch: new Map([
+		[
+			"--server-t3-code",
+			"Arch installs the desktop package instead of the Debian headless service.",
+		],
+	]),
 	"debian-server": new Map([
 		["--audio", "WirePlumber routing depends on desktop device profiles."],
 		["--mimeapps", "Default-app routing is a desktop-session concern."],
@@ -262,6 +267,9 @@ function runDebianDefaultPath() {
 			mock.module(${JSON.stringify(helperPath("configure_agent_os.js"))}, () => ({
 				configureAgentOs: record("agentOs"),
 			}));
+			mock.module(${JSON.stringify(helperPath("configure_t3_code_server.js"))}, () => ({
+				configureT3CodeServer: record("serverT3Code", true),
+			}));
 			const { runDebianServerSetup } = await import(${JSON.stringify(modulePath)});
 			await runDebianServerSetup();
 			console.log("DEFAULT_CALLS=" + JSON.stringify(calls));
@@ -313,7 +321,7 @@ function runSharedCliDefault(targetOs) {
 				runCachyOSSetup: async () => true,
 			}));
 			mock.module(${JSON.stringify(debianPath)}, () => ({
-				runDebianServerSetup: async () => {},
+				runDebianServerSetup: async () => true,
 			}));
 			mock.module(${JSON.stringify(skillsPath)}, () => ({
 				CACHE_DIR: "/haoshoku-test-cache",

@@ -95,6 +95,12 @@ describe("findActiveModeFlags", () => {
 		expect(findActiveModeFlags({ claude: true })).toEqual(["claude"]);
 	});
 
+	it("treats the T3 Code server installer as a one-shot mode", () => {
+		expect(findActiveModeFlags({ serverT3Code: true })).toEqual([
+			"serverT3Code",
+		]);
+	});
+
 	it("ignores falsy flag values", () => {
 		expect(findActiveModeFlags({ claude: false, skills: undefined })).toEqual(
 			[],

@@ -190,6 +190,7 @@ haoshoku --claude-update
 haoshoku --claude-bootstrap
 haoshoku --codex
 haoshoku --codex-backup
+haoshoku --server-t3-code
 haoshoku --device-type laptop
 haoshoku --audio
 haoshoku --audio-backup
@@ -220,10 +221,17 @@ haoshoku --os debian-server
 
 The Debian path remains deliberately headless. In addition to its server
 hardening, it installs the portable Claude, Codex, Agent OS, and PR-watch
-configuration; asks about Git, the private Claude policy, Superpowers, Claude
-stay-awake, Claude Remote Control, and automatic worktree cleanup; then reaches
-the common skills-sync offer. Superpowers is applied after any accepted policy
-checkout so the checkout cannot erase its registration.
+configuration and configures T3 Code's upstream-managed background service. It
+ensures Node.js satisfies T3 Code's current runtime range before running
+`npx --yes t3@latest service install`, then verifies the service without
+exposing it or creating a pairing token. Run `haoshoku --server-t3-code` to
+install or repair only this server component, and pair later with
+`npx t3@latest pair`.
+
+The full Debian path asks about Git, the private Claude policy, Superpowers,
+Claude stay-awake, Claude Remote Control, and automatic worktree cleanup; then
+reaches the common skills-sync offer. Superpowers is applied after any accepted
+policy checkout so the checkout cannot erase its registration.
 
 Debian Server does not ask for `deviceType`: that value only selects desktop
 audio and Hyprland/Omarchy variants. For the same reason the Debian path does

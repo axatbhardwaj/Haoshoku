@@ -41,4 +41,11 @@ describe("haoshoku CLI help", () => {
 			expect(source).toContain(`"${flag}"`);
 		}
 	});
+
+	it("documents the Debian-only T3 Code server mode", () => {
+		const help = output(["--help"]);
+		expect(help).toContain("--server-t3-code");
+		expect(help).toContain("Debian");
+		expect(help).toContain("headless");
+	});
 });
