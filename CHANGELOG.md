@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 8.5.4 - 2026-08-14
 
 - Replace Debian T3 Code's mandatory Tailscale installation, authentication,
   pairing, and Serve flow with headless T3 Connect authorization and its
