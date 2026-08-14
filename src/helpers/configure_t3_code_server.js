@@ -1,14 +1,24 @@
-import { commandExists, log, runCommand } from "../common/utils.js";
+import { log, runCommand } from "../common/utils.js";
 
 const NODESOURCE_SETUP_COMMAND =
 	"curl -fsSL https://deb.nodesource.com/setup_24.x | sudo bash -";
 const NODE_INSTALL_COMMAND = "sudo apt install -y nodejs";
 const T3_SERVICE_INSTALL_COMMAND = "npx --yes t3@latest service install";
 const T3_SERVICE_STATUS_COMMAND = "npx --yes t3@latest service status";
-const T3_TAILSCALE_PAIR_COMMAND = "npx --yes t3@latest pair --tailscale";
-const TAILSCALE_SERVE_STATUS_COMMAND = "tailscale serve status";
-const TAILSCALE_INSTALL_COMMAND =
-	"curl -fsSL https://tailscale.com/install.sh | sh";
+const T3_CONNECT_LINK_COMMAND = "npx --yes t3@latest connect link --headless";
+const T3_SERVICE_UPDATE_COMMAND = "npx --yes t3@latest service update";
+const T3_SERVICE_RESTART_COMMAND = "systemctl --user restart t3code.service";
+const T3_CONNECT_DIAGNOSTIC_COMMAND = "npx --yes t3@latest connect status";
+const T3_CONNECT_STATUS_ARGS = [
+	"npx",
+	"--yes",
+	"t3@latest",
+	"connect",
+	"status",
+	"--json",
+];
+const T3_CONNECT_POLL_INTERVAL_MS = 2000;
+const T3_CONNECT_MAX_ATTEMPTS = 30;
 
 function getNodeVersion() {
 	const result = Bun.spawnSync(["node", "--version"], {
@@ -19,44 +29,11 @@ function getNodeVersion() {
 	return new TextDecoder().decode(result.stdout).trim();
 }
 
-function getProcessUserContext() {
-	if (process.getuid?.() === 0) return { isRoot: true, username: null };
-
-	const result = Bun.spawnSync(["id", "-un"], {
-		stderr: "ignore",
-		stdout: "pipe",
-	});
-	if (result.exitCode !== 0) return { isRoot: false, username: null };
-	return {
-		isRoot: false,
-		username: new TextDecoder().decode(result.stdout).trim(),
-	};
-}
-
-function getTailscaleBackendState() {
-	const result = Bun.spawnSync(["tailscale", "status", "--json"], {
-		stderr: "ignore",
-		stdout: "pipe",
-	});
-	if (result.exitCode !== 0) return null;
-	return parseTailscaleBackendState(
-		new TextDecoder().decode(result.stdout).trim(),
-	);
-}
-
-export function parseTailscaleBackendState(output) {
-	try {
-		const state = JSON.parse(output)?.BackendState;
-		return typeof state === "string" ? state : null;
-	} catch {
-		return null;
-	}
-}
-
 export function parseT3ConnectStatus(output) {
 	try {
 		const value = JSON.parse(output);
-		if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+		if (!value || typeof value !== "object" || Array.isArray(value))
+			return null;
 		if (
 			typeof value.desired !== "boolean" ||
 			typeof value.authenticated !== "boolean" ||
@@ -92,10 +69,13 @@ export function canResumeT3Connect(status) {
 	);
 }
 
-export function isSafeUnixUsername(username) {
-	return (
-		typeof username === "string" && /^[a-z_][a-z0-9_-]*\$?$/i.test(username)
-	);
+export function readT3ConnectStatus({ spawnSyncImpl = Bun.spawnSync } = {}) {
+	const result = spawnSyncImpl(T3_CONNECT_STATUS_ARGS, {
+		stderr: "ignore",
+		stdout: "pipe",
+	});
+	if (result.exitCode !== 0) return null;
+	return parseT3ConnectStatus(new TextDecoder().decode(result.stdout).trim());
 }
 
 export function isT3NodeVersionSupported(version) {
@@ -140,88 +120,78 @@ export async function ensureT3NodeRuntime({
 	return true;
 }
 
-export async function ensureTailscaleService({
-	commandExistsImpl = commandExists,
-	getBackendStateImpl = getTailscaleBackendState,
-	getUserContextImpl = getProcessUserContext,
+export async function ensureT3Connect({
+	getConnectStatusImpl = readT3ConnectStatus,
 	runCommandImpl = runCommand,
+	sleepImpl = Bun.sleep,
+	maxAttempts = T3_CONNECT_MAX_ATTEMPTS,
 	logger = log,
 } = {}) {
-	if (!(await commandExistsImpl("tailscale"))) {
-		logger.info("Installing Tailscale for private T3 Code access...");
-		if (!(await runCommandImpl(TAILSCALE_INSTALL_COMMAND))) {
+	const initialStatus = await getConnectStatusImpl();
+	if (isT3ConnectReady(initialStatus)) {
+		logger.info(
+			"T3 Connect is already provisioned; keeping the existing link.",
+		);
+		return true;
+	}
+
+	if (canResumeT3Connect(initialStatus)) {
+		logger.info("Resuming the stored T3 Connect authorization...");
+	} else {
+		logger.info("Authorizing this server with T3 Connect...");
+		if (!(await runCommandImpl(T3_CONNECT_LINK_COMMAND))) {
 			logger.error(
-				`Tailscale installation failed. Retry with: ${TAILSCALE_INSTALL_COMMAND}`,
+				`T3 Connect authorization failed. Retry with: ${T3_CONNECT_LINK_COMMAND}`,
 			);
-			return false;
-		}
-		if (!(await commandExistsImpl("tailscale"))) {
-			logger.error("Tailscale was installed but its CLI is still unavailable.");
 			return false;
 		}
 	}
 
-	const userContext = await getUserContextImpl();
-	const privilegePrefix = userContext.isRoot ? "" : "sudo ";
-	const enableCommand = `${privilegePrefix}systemctl enable --now tailscaled`;
-	const enabledCommand = `${privilegePrefix}systemctl is-enabled tailscaled`;
-	const activeCommand = `${privilegePrefix}systemctl is-active tailscaled`;
-
-	if (!(await runCommandImpl(enableCommand))) {
+	if (!(await runCommandImpl(T3_SERVICE_UPDATE_COMMAND))) {
 		logger.error(
-			`Could not enable and start tailscaled. Retry with: ${enableCommand}`,
+			`T3 Code service update failed. Retry with: ${T3_SERVICE_UPDATE_COMMAND}`,
 		);
 		return false;
 	}
-	if (!(await runCommandImpl(enabledCommand))) {
+	if (!(await runCommandImpl(T3_SERVICE_RESTART_COMMAND))) {
 		logger.error(
-			`tailscaled is not enabled at boot. Retry with: ${enabledCommand}`,
+			`T3 Code service restart failed. Retry with: ${T3_SERVICE_RESTART_COMMAND}`,
 		);
 		return false;
 	}
-	if (!(await runCommandImpl(activeCommand))) {
-		logger.error(`tailscaled is not running. Retry with: ${activeCommand}`);
-		return false;
-	}
 
-	if ((await getBackendStateImpl()) !== "Running") {
-		const upCommand = `${privilegePrefix}tailscale up`;
-		logger.info("Connecting this server to its Tailnet...");
-		if (!(await runCommandImpl(upCommand))) {
-			logger.error(`Tailscale authentication failed. Retry with: ${upCommand}`);
-			return false;
+	logger.info("Waiting for the T3 Connect environment link and relay...");
+	const attempts =
+		Number.isInteger(maxAttempts) && maxAttempts > 0
+			? maxAttempts
+			: T3_CONNECT_MAX_ATTEMPTS;
+	for (let attempt = 0; attempt < attempts; attempt += 1) {
+		if (isT3ConnectReady(await getConnectStatusImpl())) {
+			if (!(await runCommandImpl(T3_SERVICE_STATUS_COMMAND))) {
+				logger.error(
+					`T3 Code service could not be verified after T3 Connect provisioning. Retry with: ${T3_SERVICE_STATUS_COMMAND}`,
+				);
+				return false;
+			}
+			return true;
 		}
-		if ((await getBackendStateImpl()) !== "Running") {
-			logger.error(
-				`Tailscale is not connected after authentication. Retry with: ${upCommand}`,
-			);
-			return false;
-		}
-	}
-
-	if (!userContext.isRoot) {
-		if (!isSafeUnixUsername(userContext.username)) {
-			logger.error(
-				"Could not resolve a safe Unix username for Tailscale operator access.",
-			);
-			return false;
-		}
-		const operatorCommand = `sudo tailscale set --operator=${userContext.username}`;
-		if (!(await runCommandImpl(operatorCommand))) {
-			logger.error(
-				`Could not grant Tailscale operator access. Retry with: ${operatorCommand}`,
-			);
-			return false;
+		if (attempt < attempts - 1) {
+			await sleepImpl(T3_CONNECT_POLL_INTERVAL_MS);
 		}
 	}
 
-	return true;
+	logger.error(
+		`T3 Connect did not finish provisioning. Inspect with: ${T3_CONNECT_DIAGNOSTIC_COMMAND}`,
+	);
+	return false;
 }
 
 export async function configureT3CodeServer({
 	ensureNodeImpl = ensureT3NodeRuntime,
-	ensureTailscaleImpl = ensureTailscaleService,
+	getConnectStatusImpl = readT3ConnectStatus,
 	runCommandImpl = runCommand,
+	sleepImpl = Bun.sleep,
+	maxConnectAttempts = T3_CONNECT_MAX_ATTEMPTS,
 	logger = log,
 } = {}) {
 	if (!(await ensureNodeImpl({ runCommandImpl, logger }))) return false;
@@ -239,27 +209,21 @@ export async function configureT3CodeServer({
 		);
 		return false;
 	}
-	if (!(await ensureTailscaleImpl({ runCommandImpl, logger }))) return false;
-
-	logger.info("Creating a private Tailscale pairing endpoint...");
-	if (!(await runCommandImpl(T3_TAILSCALE_PAIR_COMMAND))) {
-		logger.error(
-			`T3 Code Tailscale pairing failed. Retry with: ${T3_TAILSCALE_PAIR_COMMAND}`,
-		);
-		return false;
-	}
-	if (!(await runCommandImpl(TAILSCALE_SERVE_STATUS_COMMAND))) {
-		logger.error(
-			`Tailscale Serve could not be verified. Retry with: ${TAILSCALE_SERVE_STATUS_COMMAND}`,
-		);
+	if (
+		!(await ensureT3Connect({
+			getConnectStatusImpl,
+			runCommandImpl,
+			sleepImpl,
+			maxAttempts: maxConnectAttempts,
+			logger,
+		}))
+	) {
 		return false;
 	}
 
-	logger.success(
-		"T3 Code and Tailscale are running persistently with private Tailnet access.",
-	);
+	logger.success("T3 Code headless server service and T3 Connect are ready.");
 	logger.info(
-		"For unattended VPS access, disable key expiry for this device or use an appropriately tagged server auth key.",
+		"Open T3 Code on your phone and sign in to T3 Connect with the same account.",
 	);
 	return true;
 }

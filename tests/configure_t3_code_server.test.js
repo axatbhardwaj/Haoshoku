@@ -3,12 +3,10 @@ import {
 	canResumeT3Connect,
 	configureT3CodeServer,
 	ensureT3NodeRuntime,
-	ensureTailscaleService,
 	isT3ConnectReady,
-	isSafeUnixUsername,
 	isT3NodeVersionSupported,
 	parseT3ConnectStatus,
-	parseTailscaleBackendState,
+	readT3ConnectStatus,
 } from "../src/helpers/configure_t3_code_server.js";
 
 const silentLogger = {
@@ -16,6 +14,20 @@ const silentLogger = {
 	info() {},
 	success() {},
 	warning() {},
+};
+
+const readyStatus = {
+	desired: true,
+	authenticated: true,
+	linked: true,
+	relayUrl: "https://relay.t3.codes",
+	relayClientAvailable: true,
+};
+
+const pendingStatus = {
+	...readyStatus,
+	linked: false,
+	relayUrl: null,
 };
 
 describe("T3 Code Node.js compatibility", () => {
@@ -130,13 +142,7 @@ describe("T3 Connect status parsing", () => {
 	});
 
 	it("parses only readiness fields from T3 Connect JSON", () => {
-		expect(parseT3ConnectStatus(readyJson)).toEqual({
-			desired: true,
-			authenticated: true,
-			linked: true,
-			relayUrl: "https://relay.t3.codes",
-			relayClientAvailable: true,
-		});
+		expect(parseT3ConnectStatus(readyJson)).toEqual(readyStatus);
 	});
 
 	it("distinguishes ready and resumable pending states", () => {
@@ -156,247 +162,52 @@ describe("T3 Connect status parsing", () => {
 		expect(canResumeT3Connect(pending)).toBe(true);
 	});
 
+	it("rejects incomplete relay state as not ready or resumable", () => {
+		const missingClient = { ...readyStatus, relayClientAvailable: false };
+		const emptyRelay = { ...readyStatus, relayUrl: "  " };
+
+		expect(isT3ConnectReady(missingClient)).toBe(false);
+		expect(canResumeT3Connect(missingClient)).toBe(false);
+		expect(isT3ConnectReady(emptyRelay)).toBe(false);
+	});
+
 	it("rejects malformed and structurally invalid status", () => {
-		for (const output of [
-			"",
-			"not-json",
-			"[]",
-			"{}",
-			'{"desired":"yes"}',
-		]) {
+		for (const output of ["", "not-json", "[]", "{}", '{"desired":"yes"}']) {
 			expect(parseT3ConnectStatus(output)).toBeNull();
 		}
 	});
-});
 
-describe("Tailscale service preparation", () => {
-	it("enables and verifies an existing connected vendor service as root", async () => {
-		const commands = [];
-		const result = await ensureTailscaleService({
-			commandExistsImpl: async () => true,
-			getBackendStateImpl: () => "Running",
-			getUserContextImpl: () => ({ isRoot: true, username: null }),
-			logger: silentLogger,
-			runCommandImpl: async (command) => {
-				commands.push(command);
-				return true;
+	it("runs the machine-readable status command without retaining identifiers", () => {
+		const calls = [];
+		const result = readT3ConnectStatus({
+			spawnSyncImpl: (args, options) => {
+				calls.push({ args, options });
+				return {
+					exitCode: 0,
+					stdout: new TextEncoder().encode(readyJson),
+				};
 			},
 		});
 
-		expect(result).toBe(true);
-		expect(commands).toEqual([
-			"systemctl enable --now tailscaled",
-			"systemctl is-enabled tailscaled",
-			"systemctl is-active tailscaled",
+		expect(result).toEqual(readyStatus);
+		expect(calls).toEqual([
+			{
+				args: ["npx", "--yes", "t3@latest", "connect", "status", "--json"],
+				options: { stderr: "ignore", stdout: "pipe" },
+			},
 		]);
 	});
 
-	it("uses the official installer before starting the service when Tailscale is missing", async () => {
-		const commands = [];
-		const availability = [false, true];
-		const result = await ensureTailscaleService({
-			commandExistsImpl: async () => availability.shift() ?? true,
-			getBackendStateImpl: () => "Running",
-			getUserContextImpl: () => ({ isRoot: true, username: null }),
-			logger: silentLogger,
-			runCommandImpl: async (command) => {
-				commands.push(command);
-				return true;
-			},
-		});
-
-		expect(result).toBe(true);
-		expect(commands).toEqual([
-			"curl -fsSL https://tailscale.com/install.sh | sh",
-			"systemctl enable --now tailscaled",
-			"systemctl is-enabled tailscaled",
-			"systemctl is-active tailscaled",
-		]);
-	});
-
-	it("authenticates a disconnected root node once and rechecks connectivity", async () => {
-		const commands = [];
-		const states = ["NeedsLogin", "Running"];
-		const result = await ensureTailscaleService({
-			commandExistsImpl: async () => true,
-			getBackendStateImpl: () => states.shift() ?? null,
-			getUserContextImpl: () => ({ isRoot: true, username: null }),
-			logger: silentLogger,
-			runCommandImpl: async (command) => {
-				commands.push(command);
-				return true;
-			},
-		});
-
-		expect(result).toBe(true);
-		expect(commands).toEqual([
-			"systemctl enable --now tailscaled",
-			"systemctl is-enabled tailscaled",
-			"systemctl is-active tailscaled",
-			"tailscale up",
-		]);
-	});
-
-	it("uses sudo and grants the validated service owner operator access", async () => {
-		const commands = [];
-		const states = ["NeedsLogin", "Running"];
-		const result = await ensureTailscaleService({
-			commandExistsImpl: async () => true,
-			getBackendStateImpl: () => states.shift() ?? null,
-			getUserContextImpl: () => ({ isRoot: false, username: "deploy-user" }),
-			logger: silentLogger,
-			runCommandImpl: async (command) => {
-				commands.push(command);
-				return true;
-			},
-		});
-
-		expect(result).toBe(true);
-		expect(commands).toEqual([
-			"sudo systemctl enable --now tailscaled",
-			"sudo systemctl is-enabled tailscaled",
-			"sudo systemctl is-active tailscaled",
-			"sudo tailscale up",
-			"sudo tailscale set --operator=deploy-user",
-		]);
-	});
-
-	it("stops after a failed installer and never reaches systemd", async () => {
-		const commands = [];
-		const result = await ensureTailscaleService({
-			commandExistsImpl: async () => false,
-			getBackendStateImpl: () => "Running",
-			getUserContextImpl: () => ({ isRoot: true, username: null }),
-			logger: silentLogger,
-			runCommandImpl: async (command) => {
-				commands.push(command);
-				return false;
-			},
-		});
-
-		expect(result).toBe(false);
-		expect(commands).toEqual([
-			"curl -fsSL https://tailscale.com/install.sh | sh",
-		]);
-	});
-
-	it("stops at each systemd failure boundary before authentication", async () => {
-		const systemdCommands = [
-			"systemctl enable --now tailscaled",
-			"systemctl is-enabled tailscaled",
-			"systemctl is-active tailscaled",
-		];
-		for (const failingCommand of systemdCommands) {
-			const commands = [];
-			const result = await ensureTailscaleService({
-				commandExistsImpl: async () => true,
-				getBackendStateImpl: () => "NeedsLogin",
-				getUserContextImpl: () => ({ isRoot: true, username: null }),
-				logger: silentLogger,
-				runCommandImpl: async (command) => {
-					commands.push(command);
-					return command !== failingCommand;
-				},
-			});
-
-			expect(result).toBe(false);
-			expect(commands.at(-1)).toBe(failingCommand);
-			expect(commands).not.toContain("tailscale up");
-		}
-	});
-
-	it("rejects an incomplete login before pairing can continue", async () => {
-		const commands = [];
-		const result = await ensureTailscaleService({
-			commandExistsImpl: async () => true,
-			getBackendStateImpl: () => "NeedsLogin",
-			getUserContextImpl: () => ({ isRoot: true, username: null }),
-			logger: silentLogger,
-			runCommandImpl: async (command) => {
-				commands.push(command);
-				return true;
-			},
-		});
-
-		expect(result).toBe(false);
-		expect(commands.at(-1)).toBe("tailscale up");
-	});
-
-	it("rejects unsafe non-root usernames before granting operator access", async () => {
-		const commands = [];
-		const result = await ensureTailscaleService({
-			commandExistsImpl: async () => true,
-			getBackendStateImpl: () => "Running",
-			getUserContextImpl: () => ({
-				isRoot: false,
-				username: "deploy; reboot",
+	it("returns null when the status command fails", () => {
+		expect(
+			readT3ConnectStatus({
+				spawnSyncImpl: () => ({ exitCode: 1, stdout: new Uint8Array() }),
 			}),
-			logger: silentLogger,
-			runCommandImpl: async (command) => {
-				commands.push(command);
-				return true;
-			},
-		});
-
-		expect(result).toBe(false);
-		expect(commands).toEqual([
-			"sudo systemctl enable --now tailscaled",
-			"sudo systemctl is-enabled tailscaled",
-			"sudo systemctl is-active tailscaled",
-		]);
-	});
-
-	it("returns failure when operator access cannot be granted", async () => {
-		const commands = [];
-		const result = await ensureTailscaleService({
-			commandExistsImpl: async () => true,
-			getBackendStateImpl: () => "Running",
-			getUserContextImpl: () => ({ isRoot: false, username: "deploy" }),
-			logger: silentLogger,
-			runCommandImpl: async (command) => {
-				commands.push(command);
-				return !command.includes("set --operator");
-			},
-		});
-
-		expect(result).toBe(false);
-		expect(commands.at(-1)).toBe("sudo tailscale set --operator=deploy");
+		).toBeNull();
 	});
 });
 
 describe("T3 Code headless service configuration", () => {
-	it("installs the upstream service, prepares Tailscale, pairs privately, and verifies Serve", async () => {
-		const commands = [];
-		const messages = [];
-		const result = await configureT3CodeServer({
-			ensureNodeImpl: async () => true,
-			ensureTailscaleImpl: async () => true,
-			runCommandImpl: async (command) => {
-				commands.push(command);
-				return true;
-			},
-			logger: {
-				...silentLogger,
-				info: (message) => messages.push(message),
-				success: (message) => messages.push(message),
-			},
-		});
-
-		expect(result).toBe(true);
-		expect(commands).toEqual([
-			"npx --yes t3@latest service install",
-			"npx --yes t3@latest service status",
-			"npx --yes t3@latest pair --tailscale",
-			"tailscale serve status",
-		]);
-		expect(
-			messages.some((message) => message.includes("npx t3@latest pair")),
-		).toBe(false);
-		expect(messages.some((message) => message.includes("key expiry"))).toBe(
-			true,
-		);
-	});
-
 	it("does not invoke T3 when a compatible Node.js runtime cannot be prepared", async () => {
 		const commands = [];
 		const result = await configureT3CodeServer({
@@ -414,8 +225,13 @@ describe("T3 Code headless service configuration", () => {
 
 	it("skips the status probe when service installation fails", async () => {
 		const commands = [];
+		let statusCalls = 0;
 		const result = await configureT3CodeServer({
 			ensureNodeImpl: async () => true,
+			getConnectStatusImpl: async () => {
+				statusCalls += 1;
+				return readyStatus;
+			},
 			runCommandImpl: async (command) => {
 				commands.push(command);
 				return false;
@@ -425,12 +241,18 @@ describe("T3 Code headless service configuration", () => {
 
 		expect(result).toBe(false);
 		expect(commands).toEqual(["npx --yes t3@latest service install"]);
+		expect(statusCalls).toBe(0);
 	});
 
 	it("returns failure when the installed service cannot be verified", async () => {
 		const commands = [];
+		let statusCalls = 0;
 		const result = await configureT3CodeServer({
 			ensureNodeImpl: async () => true,
+			getConnectStatusImpl: async () => {
+				statusCalls += 1;
+				return readyStatus;
+			},
 			runCommandImpl: async (command) => {
 				commands.push(command);
 				return !command.endsWith("service status");
@@ -443,69 +265,168 @@ describe("T3 Code headless service configuration", () => {
 			"npx --yes t3@latest service install",
 			"npx --yes t3@latest service status",
 		]);
+		expect(statusCalls).toBe(0);
 	});
 
-	it("stops before pairing when Tailscale preparation fails", async () => {
+	it("keeps an already-ready Connect environment without relinking or restarting", async () => {
 		const commands = [];
+		const messages = [];
 		const result = await configureT3CodeServer({
 			ensureNodeImpl: async () => true,
-			ensureTailscaleImpl: async () => false,
-			logger: silentLogger,
+			getConnectStatusImpl: async () => readyStatus,
 			runCommandImpl: async (command) => {
 				commands.push(command);
 				return true;
 			},
+			logger: {
+				...silentLogger,
+				info: (message) => messages.push(message),
+				success: (message) => messages.push(message),
+			},
 		});
 
-		expect(result).toBe(false);
+		expect(result).toBe(true);
 		expect(commands).toEqual([
 			"npx --yes t3@latest service install",
+			"npx --yes t3@latest service status",
+		]);
+		expect(
+			messages.some((message) => message.includes("already provisioned")),
+		).toBe(true);
+	});
+
+	it("restarts a previously authorized pending environment without relinking", async () => {
+		const commands = [];
+		const statuses = [pendingStatus, readyStatus];
+		const result = await configureT3CodeServer({
+			ensureNodeImpl: async () => true,
+			getConnectStatusImpl: async () =>
+				statuses.length > 0 ? statuses.shift() : readyStatus,
+			runCommandImpl: async (command) => {
+				commands.push(command);
+				return true;
+			},
+			sleepImpl: async () => {},
+			logger: silentLogger,
+		});
+
+		expect(result).toBe(true);
+		expect(commands).toEqual([
+			"npx --yes t3@latest service install",
+			"npx --yes t3@latest service status",
+			"npx --yes t3@latest service update",
+			"systemctl --user restart t3code.service",
 			"npx --yes t3@latest service status",
 		]);
 	});
 
-	it("stops before Serve verification when private pairing fails", async () => {
+	it("links headlessly, restarts, polls, and verifies the service", async () => {
 		const commands = [];
-		const errors = [];
+		const sleeps = [];
+		const messages = [];
+		const statuses = [null, pendingStatus, readyStatus];
 		const result = await configureT3CodeServer({
 			ensureNodeImpl: async () => true,
-			ensureTailscaleImpl: async () => true,
-			logger: { ...silentLogger, error: (message) => errors.push(message) },
+			getConnectStatusImpl: async () =>
+				statuses.length > 0 ? statuses.shift() : readyStatus,
 			runCommandImpl: async (command) => {
 				commands.push(command);
-				return !command.includes("pair --tailscale");
+				return true;
+			},
+			sleepImpl: async (milliseconds) => sleeps.push(milliseconds),
+			logger: {
+				...silentLogger,
+				info: (message) => messages.push(message),
+				success: (message) => messages.push(message),
 			},
 		});
 
-		expect(result).toBe(false);
+		expect(result).toBe(true);
 		expect(commands).toEqual([
 			"npx --yes t3@latest service install",
 			"npx --yes t3@latest service status",
-			"npx --yes t3@latest pair --tailscale",
+			"npx --yes t3@latest connect link --headless",
+			"npx --yes t3@latest service update",
+			"systemctl --user restart t3code.service",
+			"npx --yes t3@latest service status",
 		]);
-		expect(errors.at(-1)).toContain("npx --yes t3@latest pair --tailscale");
+		expect(sleeps).toEqual([2000]);
+		expect(messages.some((message) => message.includes("phone"))).toBe(true);
+		expect(commands.some((command) => command.includes("tailscale"))).toBe(
+			false,
+		);
 	});
 
-	it("returns failure with the Serve retry command when verification fails", async () => {
-		const commands = [];
+	it("stops at each Connect command failure boundary", async () => {
+		for (const failingCommand of [
+			"npx --yes t3@latest connect link --headless",
+			"npx --yes t3@latest service update",
+			"systemctl --user restart t3code.service",
+		]) {
+			const commands = [];
+			const errors = [];
+			const result = await configureT3CodeServer({
+				ensureNodeImpl: async () => true,
+				getConnectStatusImpl: async () => null,
+				runCommandImpl: async (command) => {
+					commands.push(command);
+					return command !== failingCommand;
+				},
+				sleepImpl: async () => {},
+				logger: { ...silentLogger, error: (message) => errors.push(message) },
+			});
+
+			expect(result).toBe(false);
+			expect(commands.at(-1)).toBe(failingCommand);
+			expect(errors.at(-1)).toContain(failingCommand);
+			expect(commands.some((command) => command.includes("tailscale"))).toBe(
+				false,
+			);
+		}
+	});
+
+	it("times out when the environment never becomes ready", async () => {
 		const errors = [];
+		let statusCalls = 0;
+		let sleepCalls = 0;
 		const result = await configureT3CodeServer({
 			ensureNodeImpl: async () => true,
-			ensureTailscaleImpl: async () => true,
-			logger: { ...silentLogger, error: (message) => errors.push(message) },
-			runCommandImpl: async (command) => {
-				commands.push(command);
-				return command !== "tailscale serve status";
+			getConnectStatusImpl: async () => {
+				statusCalls += 1;
+				return pendingStatus;
 			},
+			runCommandImpl: async () => true,
+			sleepImpl: async () => {
+				sleepCalls += 1;
+			},
+			maxConnectAttempts: 2,
+			logger: { ...silentLogger, error: (message) => errors.push(message) },
 		});
 
 		expect(result).toBe(false);
-		expect(commands).toEqual([
-			"npx --yes t3@latest service install",
-			"npx --yes t3@latest service status",
-			"npx --yes t3@latest pair --tailscale",
-			"tailscale serve status",
-		]);
-		expect(errors.at(-1)).toContain("tailscale serve status");
+		expect(statusCalls).toBe(3);
+		expect(sleepCalls).toBe(1);
+		expect(errors.at(-1)).toContain("npx --yes t3@latest connect status");
+	});
+
+	it("fails when the provisioned service cannot be verified", async () => {
+		const commands = [];
+		const statuses = [pendingStatus, readyStatus];
+		let serviceStatusCalls = 0;
+		const result = await configureT3CodeServer({
+			ensureNodeImpl: async () => true,
+			getConnectStatusImpl: async () => statuses.shift() ?? readyStatus,
+			runCommandImpl: async (command) => {
+				commands.push(command);
+				if (!command.endsWith("service status")) return true;
+				serviceStatusCalls += 1;
+				return serviceStatusCalls === 1;
+			},
+			sleepImpl: async () => {},
+			logger: silentLogger,
+		});
+
+		expect(result).toBe(false);
+		expect(commands.at(-1)).toBe("npx --yes t3@latest service status");
 	});
 });
