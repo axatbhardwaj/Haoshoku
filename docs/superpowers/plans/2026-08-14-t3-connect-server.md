@@ -426,9 +426,13 @@ Expected: zero errors and warnings in changed JavaScript.
 
 Run: `git diff --check origin/stable...HEAD`
 
-Run: `rg -n "tailscale|Tailnet|pair --tailscale" src/helpers/configure_t3_code_server.js tests/configure_t3_code_server.test.js`
+Run: `rg -n "tailscale|Tailnet|pair --tailscale" src/helpers/configure_t3_code_server.js`
 
-Expected: diff check exits zero; the static search returns no matches.
+Run: `rg -n "ensureTailscaleService|parseTailscaleBackendState|isSafeUnixUsername" tests/configure_t3_code_server.test.js`
+
+Expected: diff check exits zero; both static searches return no matches. Negative
+test assertions may still contain the lowercase word `tailscale` to prove no
+such command was executed.
 
 - [ ] **Step 4: Run the full test suite**
 
