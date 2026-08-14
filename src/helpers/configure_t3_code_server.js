@@ -1,10 +1,12 @@
-import { log, runCommand } from "../common/utils.js";
+import { commandExists, log, runCommand } from "../common/utils.js";
 
 const NODESOURCE_SETUP_COMMAND =
 	"curl -fsSL https://deb.nodesource.com/setup_24.x | sudo bash -";
 const NODE_INSTALL_COMMAND = "sudo apt install -y nodejs";
 const T3_SERVICE_INSTALL_COMMAND = "npx --yes t3@latest service install";
 const T3_SERVICE_STATUS_COMMAND = "npx --yes t3@latest service status";
+const TAILSCALE_INSTALL_COMMAND =
+	"curl -fsSL https://tailscale.com/install.sh | sh";
 
 function getNodeVersion() {
 	const result = Bun.spawnSync(["node", "--version"], {
@@ -13,6 +15,46 @@ function getNodeVersion() {
 	});
 	if (result.exitCode !== 0) return null;
 	return new TextDecoder().decode(result.stdout).trim();
+}
+
+function getProcessUserContext() {
+	if (process.getuid?.() === 0) return { isRoot: true, username: null };
+
+	const result = Bun.spawnSync(["id", "-un"], {
+		stderr: "ignore",
+		stdout: "pipe",
+	});
+	if (result.exitCode !== 0) return { isRoot: false, username: null };
+	return {
+		isRoot: false,
+		username: new TextDecoder().decode(result.stdout).trim(),
+	};
+}
+
+function getTailscaleBackendState() {
+	const result = Bun.spawnSync(["tailscale", "status", "--json"], {
+		stderr: "ignore",
+		stdout: "pipe",
+	});
+	if (result.exitCode !== 0) return null;
+	return parseTailscaleBackendState(
+		new TextDecoder().decode(result.stdout).trim(),
+	);
+}
+
+export function parseTailscaleBackendState(output) {
+	try {
+		const state = JSON.parse(output)?.BackendState;
+		return typeof state === "string" ? state : null;
+	} catch {
+		return null;
+	}
+}
+
+export function isSafeUnixUsername(username) {
+	return (
+		typeof username === "string" && /^[a-z_][a-z0-9_-]*\$?$/i.test(username)
+	);
 }
 
 export function isT3NodeVersionSupported(version) {
@@ -54,6 +96,84 @@ export async function ensureT3NodeRuntime({
 		);
 		return false;
 	}
+	return true;
+}
+
+export async function ensureTailscaleService({
+	commandExistsImpl = commandExists,
+	getBackendStateImpl = getTailscaleBackendState,
+	getUserContextImpl = getProcessUserContext,
+	runCommandImpl = runCommand,
+	logger = log,
+} = {}) {
+	if (!(await commandExistsImpl("tailscale"))) {
+		logger.info("Installing Tailscale for private T3 Code access...");
+		if (!(await runCommandImpl(TAILSCALE_INSTALL_COMMAND))) {
+			logger.error(
+				`Tailscale installation failed. Retry with: ${TAILSCALE_INSTALL_COMMAND}`,
+			);
+			return false;
+		}
+		if (!(await commandExistsImpl("tailscale"))) {
+			logger.error("Tailscale was installed but its CLI is still unavailable.");
+			return false;
+		}
+	}
+
+	const userContext = await getUserContextImpl();
+	const privilegePrefix = userContext.isRoot ? "" : "sudo ";
+	const enableCommand = `${privilegePrefix}systemctl enable --now tailscaled`;
+	const enabledCommand = `${privilegePrefix}systemctl is-enabled tailscaled`;
+	const activeCommand = `${privilegePrefix}systemctl is-active tailscaled`;
+
+	if (!(await runCommandImpl(enableCommand))) {
+		logger.error(
+			`Could not enable and start tailscaled. Retry with: ${enableCommand}`,
+		);
+		return false;
+	}
+	if (!(await runCommandImpl(enabledCommand))) {
+		logger.error(
+			`tailscaled is not enabled at boot. Retry with: ${enabledCommand}`,
+		);
+		return false;
+	}
+	if (!(await runCommandImpl(activeCommand))) {
+		logger.error(`tailscaled is not running. Retry with: ${activeCommand}`);
+		return false;
+	}
+
+	if ((await getBackendStateImpl()) !== "Running") {
+		const upCommand = `${privilegePrefix}tailscale up`;
+		logger.info("Connecting this server to its Tailnet...");
+		if (!(await runCommandImpl(upCommand))) {
+			logger.error(`Tailscale authentication failed. Retry with: ${upCommand}`);
+			return false;
+		}
+		if ((await getBackendStateImpl()) !== "Running") {
+			logger.error(
+				`Tailscale is not connected after authentication. Retry with: ${upCommand}`,
+			);
+			return false;
+		}
+	}
+
+	if (!userContext.isRoot) {
+		if (!isSafeUnixUsername(userContext.username)) {
+			logger.error(
+				"Could not resolve a safe Unix username for Tailscale operator access.",
+			);
+			return false;
+		}
+		const operatorCommand = `sudo tailscale set --operator=${userContext.username}`;
+		if (!(await runCommandImpl(operatorCommand))) {
+			logger.error(
+				`Could not grant Tailscale operator access. Retry with: ${operatorCommand}`,
+			);
+			return false;
+		}
+	}
+
 	return true;
 }
 

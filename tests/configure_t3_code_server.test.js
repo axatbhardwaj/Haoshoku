@@ -2,7 +2,10 @@ import { describe, expect, it } from "bun:test";
 import {
 	configureT3CodeServer,
 	ensureT3NodeRuntime,
+	ensureTailscaleService,
+	isSafeUnixUsername,
 	isT3NodeVersionSupported,
+	parseTailscaleBackendState,
 } from "../src/helpers/configure_t3_code_server.js";
 
 const silentLogger = {
@@ -109,6 +112,231 @@ describe("T3 Code Node.js runtime preparation", () => {
 			"curl -fsSL https://deb.nodesource.com/setup_24.x | sudo bash -",
 			"sudo apt install -y nodejs",
 		]);
+	});
+});
+
+describe("Tailscale status parsing and account validation", () => {
+	it("accepts a running backend state from Tailscale JSON", () => {
+		expect(
+			parseTailscaleBackendState('{"BackendState":"Running","Self":{}}'),
+		).toBe("Running");
+	});
+
+	it("rejects malformed or incomplete Tailscale status output", () => {
+		for (const output of ["", "not-json", "{}", '{"BackendState":42}']) {
+			expect(parseTailscaleBackendState(output)).toBeNull();
+		}
+	});
+
+	it("accepts Unix usernames but rejects values unsafe for command interpolation", () => {
+		for (const username of ["deploy", "deploy-user", "_service", "build$"]) {
+			expect(isSafeUnixUsername(username)).toBe(true);
+		}
+		for (const username of [
+			null,
+			"",
+			"9deploy",
+			"deploy user",
+			"deploy; reboot",
+			"$(reboot)",
+		]) {
+			expect(isSafeUnixUsername(username)).toBe(false);
+		}
+	});
+});
+
+describe("Tailscale service preparation", () => {
+	it("enables and verifies an existing connected vendor service as root", async () => {
+		const commands = [];
+		const result = await ensureTailscaleService({
+			commandExistsImpl: async () => true,
+			getBackendStateImpl: () => "Running",
+			getUserContextImpl: () => ({ isRoot: true, username: null }),
+			logger: silentLogger,
+			runCommandImpl: async (command) => {
+				commands.push(command);
+				return true;
+			},
+		});
+
+		expect(result).toBe(true);
+		expect(commands).toEqual([
+			"systemctl enable --now tailscaled",
+			"systemctl is-enabled tailscaled",
+			"systemctl is-active tailscaled",
+		]);
+	});
+
+	it("uses the official installer before starting the service when Tailscale is missing", async () => {
+		const commands = [];
+		const availability = [false, true];
+		const result = await ensureTailscaleService({
+			commandExistsImpl: async () => availability.shift() ?? true,
+			getBackendStateImpl: () => "Running",
+			getUserContextImpl: () => ({ isRoot: true, username: null }),
+			logger: silentLogger,
+			runCommandImpl: async (command) => {
+				commands.push(command);
+				return true;
+			},
+		});
+
+		expect(result).toBe(true);
+		expect(commands).toEqual([
+			"curl -fsSL https://tailscale.com/install.sh | sh",
+			"systemctl enable --now tailscaled",
+			"systemctl is-enabled tailscaled",
+			"systemctl is-active tailscaled",
+		]);
+	});
+
+	it("authenticates a disconnected root node once and rechecks connectivity", async () => {
+		const commands = [];
+		const states = ["NeedsLogin", "Running"];
+		const result = await ensureTailscaleService({
+			commandExistsImpl: async () => true,
+			getBackendStateImpl: () => states.shift() ?? null,
+			getUserContextImpl: () => ({ isRoot: true, username: null }),
+			logger: silentLogger,
+			runCommandImpl: async (command) => {
+				commands.push(command);
+				return true;
+			},
+		});
+
+		expect(result).toBe(true);
+		expect(commands).toEqual([
+			"systemctl enable --now tailscaled",
+			"systemctl is-enabled tailscaled",
+			"systemctl is-active tailscaled",
+			"tailscale up",
+		]);
+	});
+
+	it("uses sudo and grants the validated service owner operator access", async () => {
+		const commands = [];
+		const states = ["NeedsLogin", "Running"];
+		const result = await ensureTailscaleService({
+			commandExistsImpl: async () => true,
+			getBackendStateImpl: () => states.shift() ?? null,
+			getUserContextImpl: () => ({ isRoot: false, username: "deploy-user" }),
+			logger: silentLogger,
+			runCommandImpl: async (command) => {
+				commands.push(command);
+				return true;
+			},
+		});
+
+		expect(result).toBe(true);
+		expect(commands).toEqual([
+			"sudo systemctl enable --now tailscaled",
+			"sudo systemctl is-enabled tailscaled",
+			"sudo systemctl is-active tailscaled",
+			"sudo tailscale up",
+			"sudo tailscale set --operator=deploy-user",
+		]);
+	});
+
+	it("stops after a failed installer and never reaches systemd", async () => {
+		const commands = [];
+		const result = await ensureTailscaleService({
+			commandExistsImpl: async () => false,
+			getBackendStateImpl: () => "Running",
+			getUserContextImpl: () => ({ isRoot: true, username: null }),
+			logger: silentLogger,
+			runCommandImpl: async (command) => {
+				commands.push(command);
+				return false;
+			},
+		});
+
+		expect(result).toBe(false);
+		expect(commands).toEqual([
+			"curl -fsSL https://tailscale.com/install.sh | sh",
+		]);
+	});
+
+	it("stops at each systemd failure boundary before authentication", async () => {
+		const systemdCommands = [
+			"systemctl enable --now tailscaled",
+			"systemctl is-enabled tailscaled",
+			"systemctl is-active tailscaled",
+		];
+		for (const failingCommand of systemdCommands) {
+			const commands = [];
+			const result = await ensureTailscaleService({
+				commandExistsImpl: async () => true,
+				getBackendStateImpl: () => "NeedsLogin",
+				getUserContextImpl: () => ({ isRoot: true, username: null }),
+				logger: silentLogger,
+				runCommandImpl: async (command) => {
+					commands.push(command);
+					return command !== failingCommand;
+				},
+			});
+
+			expect(result).toBe(false);
+			expect(commands.at(-1)).toBe(failingCommand);
+			expect(commands).not.toContain("tailscale up");
+		}
+	});
+
+	it("rejects an incomplete login before pairing can continue", async () => {
+		const commands = [];
+		const result = await ensureTailscaleService({
+			commandExistsImpl: async () => true,
+			getBackendStateImpl: () => "NeedsLogin",
+			getUserContextImpl: () => ({ isRoot: true, username: null }),
+			logger: silentLogger,
+			runCommandImpl: async (command) => {
+				commands.push(command);
+				return true;
+			},
+		});
+
+		expect(result).toBe(false);
+		expect(commands.at(-1)).toBe("tailscale up");
+	});
+
+	it("rejects unsafe non-root usernames before granting operator access", async () => {
+		const commands = [];
+		const result = await ensureTailscaleService({
+			commandExistsImpl: async () => true,
+			getBackendStateImpl: () => "Running",
+			getUserContextImpl: () => ({
+				isRoot: false,
+				username: "deploy; reboot",
+			}),
+			logger: silentLogger,
+			runCommandImpl: async (command) => {
+				commands.push(command);
+				return true;
+			},
+		});
+
+		expect(result).toBe(false);
+		expect(commands).toEqual([
+			"sudo systemctl enable --now tailscaled",
+			"sudo systemctl is-enabled tailscaled",
+			"sudo systemctl is-active tailscaled",
+		]);
+	});
+
+	it("returns failure when operator access cannot be granted", async () => {
+		const commands = [];
+		const result = await ensureTailscaleService({
+			commandExistsImpl: async () => true,
+			getBackendStateImpl: () => "Running",
+			getUserContextImpl: () => ({ isRoot: false, username: "deploy" }),
+			logger: silentLogger,
+			runCommandImpl: async (command) => {
+				commands.push(command);
+				return !command.includes("set --operator");
+			},
+		});
+
+		expect(result).toBe(false);
+		expect(commands.at(-1)).toBe("sudo tailscale set --operator=deploy");
 	});
 });
 
