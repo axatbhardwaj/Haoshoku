@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 8.5.3 - 2026-08-14
 
 - Make Debian T3 Code server setup install, enable, and verify Tailscale's
   persistent vendor service, authenticate disconnected nodes, create the
