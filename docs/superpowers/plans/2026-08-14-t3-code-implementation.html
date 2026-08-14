@@ -40,7 +40,8 @@
       <tr><td>Install, enable, and verify the vendor Tailscale service</td><td><code>src/helpers/configure_t3_code_server.js</code></td><td class="complete">Complete</td><td>Connected, install, login, operator, and service failure paths covered</td></tr>
       <tr><td>Pair through private Tailscale Serve and verify the endpoint</td><td>Helper and focused tests</td><td class="complete">Complete</td><td>Observed 4 expected RED failures; focused suite 25 pass, 0 fail</td></tr>
       <tr><td>Document private-only operation and unattended VPS policy</td><td><code>README.md</code>, <code>CHANGELOG.md</code>, helper index</td><td class="complete">Complete</td><td>Loopback, no-firewall, key-expiry, and tagged-auth-key guidance recorded</td></tr>
-      <tr><td>Verify and publish the patch release</td><td>Full suite, Biome, package, GitHub, npm</td><td class="active">Active</td><td>Fresh release evidence pending</td></tr>
+      <tr><td>Verify the durable Tailscale integration</td><td>Focused suite, full suite, Biome, diff, package</td><td class="complete">Complete</td><td>70 integration tests pass; full suite 1034 pass, 8 skip, 0 fail across 63 files; scoped Biome and diff checks clean; <code>npm pack --dry-run</code> succeeded</td></tr>
+      <tr><td>Publish and verify the patch release</td><td>Release script, GitHub, Actions, npm</td><td class="active">Active</td><td>Remote publication evidence pending</td></tr>
     </tbody>
   </table>
 

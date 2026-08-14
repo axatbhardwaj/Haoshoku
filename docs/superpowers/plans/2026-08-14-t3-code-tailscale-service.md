@@ -32,7 +32,7 @@
 - Produces: `parseTailscaleBackendState(output: string): string | null`, `isSafeUnixUsername(username: unknown): boolean`, and `ensureTailscaleService(options?): Promise<boolean>`.
 - `ensureTailscaleService()` options are `commandExistsImpl`, `getBackendStateImpl`, `getUserContextImpl`, `runCommandImpl`, and `logger`.
 
-- [ ] **Step 1: Write failing parser, validation, root, installation, authentication, and non-root tests**
+- [x] **Step 1: Write failing parser, validation, root, installation, authentication, and non-root tests**
 
 Add imports for the three produced functions, then add tests equivalent to:
 
@@ -59,13 +59,13 @@ expect(rootCommands).toEqual([
 
 Add separate cases proving that a missing CLI runs the official installer before systemd, a disconnected root runs `tailscale up` once and is re-probed, a non-root user uses `sudo systemctl`, `sudo tailscale up`, and `sudo tailscale set --operator=deploy-user`, and root skips the operator command. Add table-driven failure cases for installer, enable/start, `is-enabled`, `is-active`, post-login connectivity, unsafe username, and operator command failures; assert that later stages are absent from each command list.
 
-- [ ] **Step 2: Run the focused test and confirm RED**
+- [x] **Step 2: Run the focused test and confirm RED**
 
 Run: `bun test tests/configure_t3_code_server.test.js`
 
 Expected: FAIL because the new exports do not exist.
 
-- [ ] **Step 3: Implement parsing, user resolution, and the minimal Tailscale lifecycle**
+- [x] **Step 3: Implement parsing, user resolution, and the minimal Tailscale lifecycle**
 
 Add constants for the official installer and Tailscale commands. Parse JSON defensively:
 
@@ -88,13 +88,13 @@ Resolve root with `process.getuid?.() === 0`; for non-root, execute `id -un` thr
 
 Implement `ensureTailscaleService()` in this exact stage order: detect/install/recheck CLI, root-aware enable/start, verify enabled, verify active, probe state, root-aware `tailscale up` only when not running, re-probe, then set a validated non-root operator. Return `false` and log the concrete failing retry command at every boundary.
 
-- [ ] **Step 4: Run the focused tests and confirm GREEN**
+- [x] **Step 4: Run the focused tests and confirm GREEN**
 
 Run: `bun test tests/configure_t3_code_server.test.js`
 
 Expected: all Tailscale lifecycle and existing Node/T3 tests pass.
 
-- [ ] **Step 5: Commit the lifecycle deliverable**
+- [x] **Step 5: Commit the lifecycle deliverable**
 
 ```bash
 git add tests/configure_t3_code_server.test.js src/helpers/configure_t3_code_server.js
@@ -111,7 +111,7 @@ git commit -m "feat: configure durable Tailscale service"
 - Consumes: `ensureTailscaleService(options?): Promise<boolean>` from Task 1.
 - Produces: `configureT3CodeServer({ ensureNodeImpl, ensureTailscaleImpl, runCommandImpl, logger }): Promise<boolean>` with ordered T3 install, T3 status, Tailscale preparation, pairing, and Serve verification.
 
-- [ ] **Step 1: Replace manual-pairing assertions with private-pairing tests**
+- [x] **Step 1: Replace manual-pairing assertions with private-pairing tests**
 
 Inject `ensureTailscaleImpl: async () => true` into outer-flow tests. Change the success command expectation to:
 
@@ -128,23 +128,23 @@ expect(messages.some((message) => message.includes("key expiry"))).toBe(true);
 
 Add tests proving Tailscale preparation failure prevents pairing, pairing failure prevents Serve verification and logs its exact retry command, and Serve failure returns false and logs `tailscale serve status`.
 
-- [ ] **Step 2: Run the focused test and confirm RED**
+- [x] **Step 2: Run the focused test and confirm RED**
 
 Run: `bun test tests/configure_t3_code_server.test.js`
 
 Expected: FAIL because `configureT3CodeServer()` still prints manual pairing guidance and does not call the new stages.
 
-- [ ] **Step 3: Implement ordered private pairing and verification**
+- [x] **Step 3: Implement ordered private pairing and verification**
 
 Add `ensureTailscaleImpl = ensureTailscaleService` to the injected dependencies. After T3 status succeeds, call it with `{ runCommandImpl, logger }`; stop on false. Then execute `npx --yes t3@latest pair --tailscale` and `tailscale serve status` in order, returning false and logging the exact retry command when either fails. On success, state that T3 and Tailscale are running persistently and remind unattended VPS operators to disable key expiry for this device or use an appropriately tagged server auth key.
 
-- [ ] **Step 4: Run the focused tests and confirm GREEN**
+- [x] **Step 4: Run the focused tests and confirm GREEN**
 
 Run: `bun test tests/configure_t3_code_server.test.js`
 
 Expected: all focused tests pass and no old manual pairing assertion remains.
 
-- [ ] **Step 5: Commit the integration deliverable**
+- [x] **Step 5: Commit the integration deliverable**
 
 ```bash
 git add tests/configure_t3_code_server.test.js src/helpers/configure_t3_code_server.js
@@ -163,21 +163,21 @@ git commit -m "feat: pair T3 through Tailscale Serve"
 - Consumes: the behavior implemented by Tasks 1 and 2.
 - Produces: operator instructions and a completed develop-feature progress artifact.
 
-- [ ] **Step 1: Update user and maintainer documentation**
+- [x] **Step 1: Update user and maintainer documentation**
 
 Document that both Debian entry points install/enable `tailscaled`, authenticate interactively when required, preserve the loopback-only T3 listener, run upstream private pairing, verify Serve, and do not open a firewall port. Include the unattended VPS key-expiry/tagged-auth-key reminder. Add an `Unreleased` changelog entry and update the helper index description.
 
-- [ ] **Step 2: Update the HTML implementation tracker**
+- [x] **Step 2: Update the HTML implementation tracker**
 
 Replace the obsolete “No automatic pairing, Tailscale setup” constraint with the approved private-only constraints. Add rows for lifecycle tests, implementation, private pairing, documentation, and release verification; set completed work to `complete` and release work to `active` until publication is verified.
 
-- [ ] **Step 3: Verify documentation consistency**
+- [x] **Step 3: Verify documentation consistency**
 
 Run: `rg -n "Pair a client later|No automatic pairing|server-t3-code|tailscaled|key expiry|3773" README.md CHANGELOG.md src/helpers/CLAUDE.md docs/superpowers/plans/2026-08-14-t3-code-implementation.html`
 
 Expected: no obsolete manual-pairing/no-Tailscale claims; both entry points, persistence, key expiry, and private-only behavior are present.
 
-- [ ] **Step 4: Commit the documentation deliverable**
+- [x] **Step 4: Commit the documentation deliverable**
 
 ```bash
 git add README.md CHANGELOG.md src/helpers/CLAUDE.md docs/superpowers/plans/2026-08-14-t3-code-implementation.html
@@ -194,7 +194,7 @@ git commit -m "docs: explain private T3 server access"
 - Consumes: all prior committed deliverables and the repository release script.
 - Produces: a clean verified branch, patch tag, GitHub release, successful release workflow, and matching npm `latest` version.
 
-- [ ] **Step 1: Run fresh verification**
+- [x] **Step 1: Run fresh verification**
 
 Run:
 
@@ -208,7 +208,7 @@ npm pack --dry-run
 
 Expected: focused and full tests pass, scoped Biome and diff checks are clean, and the npm package dry run succeeds. If repository-wide lint is also run, record any pre-existing unrelated baseline findings separately.
 
-- [ ] **Step 2: Mark verification complete and commit the tracker**
+- [x] **Step 2: Mark verification complete and commit the tracker**
 
 Record the exact test counts and package evidence in the HTML tracker, set implementation verification to `complete`, and keep publication `active`.
 

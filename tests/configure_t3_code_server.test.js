@@ -459,9 +459,7 @@ describe("T3 Code headless service configuration", () => {
 			"npx --yes t3@latest service status",
 			"npx --yes t3@latest pair --tailscale",
 		]);
-		expect(errors.at(-1)).toContain(
-			"npx --yes t3@latest pair --tailscale",
-		);
+		expect(errors.at(-1)).toContain("npx --yes t3@latest pair --tailscale");
 	});
 
 	it("returns failure with the Serve retry command when verification fails", async () => {
