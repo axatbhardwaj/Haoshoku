@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 8.5.2 - 2026-08-14
 
 - Install the T3 Code desktop package through the Arch/Omarchy package list.
 - Configure T3 Code's upstream headless background service during Debian Server
