@@ -17,8 +17,8 @@
 </head>
 <body>
   <h1>Haoshoku T3 Code Integration</h1>
-  <p><strong>Goal:</strong> Install <code>t3code-bin</code> on Arch/Omarchy and configure a durable, private T3 Code server on Debian through <code>--server-t3-code</code> and the normal Debian setup.</p>
-  <p><strong>Design:</strong> <a href="../specs/2026-08-14-t3-code-integration-design.md">initial integration</a> · <a href="../specs/2026-08-14-t3-code-tailscale-service-design.md">approved Tailscale enhancement</a> · <a href="2026-08-14-t3-code-tailscale-service.md">implementation plan</a></p>
+  <p><strong>Goal:</strong> Install <code>t3code-bin</code> on Arch/Omarchy and configure a durable T3 Code server on Debian through <code>--server-t3-code</code> and the normal Debian setup, using T3 Connect for phone access.</p>
+  <p><strong>Design:</strong> <a href="../specs/2026-08-14-t3-code-integration-design.md">initial integration</a> · <a href="../specs/2026-08-14-t3-code-tailscale-service-design.md">historical Tailscale enhancement</a> · <a href="../specs/2026-08-14-t3-connect-server-design.md">approved T3 Connect replacement</a> · <a href="2026-08-14-t3-connect-server.md">current implementation plan</a></p>
 
   <h2>Implementation plan</h2>
   <table>
@@ -29,6 +29,18 @@
       <tr><td>Wire Debian default setup and one-shot CLI mode test-first</td><td><code>haoshoku.js</code>, <code>src/common/cli_utils.js</code>, Debian and CLI tests</td><td class="complete">Complete</td><td>Observed 5 expected RED failures; combined focused suite GREEN</td></tr>
       <tr><td>Add the Arch desktop package and user documentation</td><td><code>common/paru_applist.txt</code>, <code>README.md</code>, <code>CHANGELOG.md</code></td><td class="complete">Complete</td><td><code>t3code-bin</code> added; documentation updated</td></tr>
       <tr><td>Verify the integrated change</td><td>Focused tests, full suite, Biome, diff, package dry run</td><td class="complete">Complete</td><td>Full suite: 1005 pass, 8 skip, 0 fail; scoped Biome and diff checks clean; <code>npm pack --dry-run</code> succeeded. Repository-wide lint retains 9 unrelated baseline errors and 15 warnings.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>T3 Connect replacement</h2>
+  <table>
+    <thead><tr><th>Task</th><th>Files</th><th>Status</th><th>Evidence</th></tr></thead>
+    <tbody>
+      <tr><td>Approve and record the replacement design</td><td><code>docs/superpowers/specs/2026-08-14-t3-connect-server-design.md</code></td><td class="complete">Complete</td><td>Approved in conversation and committed as <code>3cdd436</code></td></tr>
+      <tr><td>Plan the status parser and T3 Connect lifecycle test-first</td><td><code>docs/superpowers/plans/2026-08-14-t3-connect-server.md</code></td><td class="complete">Complete</td><td>JSON contract confirmed against published T3 v0.0.33; inline execution selected by session policy</td></tr>
+      <tr><td>Replace Tailscale orchestration with idempotent T3 Connect setup</td><td>Helper and focused tests</td><td class="active">Active</td><td>Baseline: 1034 pass, 8 skip, 0 fail</td></tr>
+      <tr><td>Update CLI, README, changelog, and helper guidance</td><td>User-facing contracts</td><td class="pending">Pending</td><td>Awaiting implementation</td></tr>
+      <tr><td>Verify, integrate, and publish patch release</td><td>Full suite, Biome, package, stable, GitHub, npm</td><td class="pending">Pending</td><td>Awaiting implementation</td></tr>
     </tbody>
   </table>
 
@@ -48,8 +60,8 @@
   <h2>Constraints</h2>
   <ul>
     <li>Keep T3 on <code>127.0.0.1:3773</code>; no public binding, firewall changes, Funnel, or token logging.</li>
-    <li>Use T3 Code's own user-service lifecycle and Tailscale's vendor <code>tailscaled.service</code>.</li>
-    <li>Pair only through private Tailscale Serve after both persistent services are verified.</li>
+    <li>Use T3 Code's own user-service and managed-relay lifecycle; execute no Tailscale command in the new setup.</li>
+    <li>Authorize through T3 Connect headlessly, preserve intentional root ownership, and never capture authorization codes.</li>
     <li>Reject the one-shot flag outside the Debian family before mutation.</li>
     <li>Preserve all unrelated dirty files in the primary checkout.</li>
   </ul>
