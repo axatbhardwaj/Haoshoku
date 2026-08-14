@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- Replace Debian T3 Code's mandatory Tailscale installation, authentication,
+  pairing, and Serve flow with headless T3 Connect authorization and its
+  upstream-managed relay client.
+- Preserve ready or pending T3 Connect credentials across reruns, restart the
+  current user's T3 service only when provisioning is needed, and verify the
+  environment link without opening ports or changing Nginx, DNS, or firewall
+  policy.
+
 ## 8.5.3 - 2026-08-14
 
 - Make Debian T3 Code server setup install, enable, and verify Tailscale's

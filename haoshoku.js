@@ -96,7 +96,7 @@ program
 	)
 	.option(
 		"--server-t3-code",
-		"Configure the T3 Code headless server service on Debian",
+		"Configure the T3 Code headless service and T3 Connect on Debian",
 	)
 	.option("--skills", "Sync skills from configured sources")
 	.option("--skills-update", "Update cached skill sources")
