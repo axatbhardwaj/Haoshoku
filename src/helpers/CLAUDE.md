@@ -10,7 +10,7 @@ Standalone setup scripts for specific tools.
 | `configure_claude_stay_awake.js` | claude-stay-awake sleep inhibitor deploy/enable/backup | Adding or debugging the Claude sleep inhibitor |
 | `configure_claude_remote_control.js` | Claude Remote Control trust/disclaimer seed, supervisor + user-unit deploy/enable/backup | Adding or debugging persistent Claude Remote Control sessions |
 | `configure_pr_watch.js` | pr-watch PR watcher sync/backup | Adding or debugging the PR watcher deploy |
-| `configure_t3_code_server.js` | Debian T3 Code headless service setup | Adding or debugging the T3 Code server lifecycle |
+| `configure_t3_code_server.js` | Debian T3 Code service plus durable private Tailscale lifecycle | Adding or debugging T3/Tailscale server setup, pairing, or Serve verification |
 | `configure_git.js`    | Git user and signing setup             | Modifying automated git configuration         |
 | `configure_kde_theme.js` | KDE Ocean theme backup/sync/activate | Adding KDE theme features, debugging deploy |
 | `configure_zed.js`    | Zed config backup/sync (sanitized)     | Adding Zed config features, debugging sync    |

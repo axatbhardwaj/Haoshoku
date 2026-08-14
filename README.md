@@ -223,10 +223,18 @@ The Debian path remains deliberately headless. In addition to its server
 hardening, it installs the portable Claude, Codex, Agent OS, and PR-watch
 configuration and configures T3 Code's upstream-managed background service. It
 ensures Node.js satisfies T3 Code's current runtime range before running
-`npx --yes t3@latest service install`, then verifies the service without
-exposing it or creating a pairing token. Run `haoshoku --server-t3-code` to
-install or repair only this server component, and pair later with
-`npx t3@latest pair`.
+`npx --yes t3@latest service install`. It also installs Tailscale when needed,
+enables and verifies the vendor `tailscaled.service`, and prompts for Tailnet
+authentication when the server is not connected. T3 remains bound to
+`127.0.0.1:3773`; Haoshoku does not open that port or add a firewall rule.
+
+After both persistent services are healthy, Haoshoku runs
+`npx --yes t3@latest pair --tailscale` and leaves its private HTTPS pairing
+output attached to your terminal, then verifies the Tailscale Serve endpoint.
+Run `haoshoku --server-t3-code` to install or repair only this complete server
+component; normal Debian setup uses the same flow. For an unattended VPS,
+disable key expiry for the device or enroll it with an appropriately tagged
+server auth key under your Tailnet policy so private access does not expire.
 
 The full Debian path asks about Git, the private Claude policy, Superpowers,
 Claude stay-awake, Claude Remote Control, and automatic worktree cleanup; then

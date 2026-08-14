@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Make Debian T3 Code server setup install, enable, and verify Tailscale's
+  persistent vendor service, authenticate disconnected nodes, create the
+  private Tailscale Serve pairing endpoint, and verify it without exposing
+  T3's loopback port or changing firewall policy.
+- Support both root VPS installs and ordinary sudo-capable users, including
+  validated Tailscale operator access for the user that owns the T3 service.
+
 ## 8.5.2 - 2026-08-14
 
 - Install the T3 Code desktop package through the Arch/Omarchy package list.

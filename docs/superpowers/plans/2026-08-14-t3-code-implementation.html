@@ -17,8 +17,8 @@
 </head>
 <body>
   <h1>Haoshoku T3 Code Integration</h1>
-  <p><strong>Goal:</strong> Install <code>t3code-bin</code> on Arch/Omarchy and configure the upstream T3 Code headless service on Debian through <code>--server-t3-code</code> and the normal Debian setup.</p>
-  <p><strong>Design:</strong> <a href="../specs/2026-08-14-t3-code-integration-design.md">approved specification</a></p>
+  <p><strong>Goal:</strong> Install <code>t3code-bin</code> on Arch/Omarchy and configure a durable, private T3 Code server on Debian through <code>--server-t3-code</code> and the normal Debian setup.</p>
+  <p><strong>Design:</strong> <a href="../specs/2026-08-14-t3-code-integration-design.md">initial integration</a> · <a href="../specs/2026-08-14-t3-code-tailscale-service-design.md">approved Tailscale enhancement</a> · <a href="2026-08-14-t3-code-tailscale-service.md">implementation plan</a></p>
 
   <h2>Implementation plan</h2>
   <table>
@@ -32,10 +32,23 @@
     </tbody>
   </table>
 
+  <h2>Durable Tailscale enhancement</h2>
+  <table>
+    <thead><tr><th>Task</th><th>Files</th><th>Status</th><th>Evidence</th></tr></thead>
+    <tbody>
+      <tr><td>Specify root/non-root service, authentication, validation, and failure boundaries test-first</td><td><code>tests/configure_t3_code_server.test.js</code></td><td class="complete">Complete</td><td>Observed missing-export RED; lifecycle suite GREEN</td></tr>
+      <tr><td>Install, enable, and verify the vendor Tailscale service</td><td><code>src/helpers/configure_t3_code_server.js</code></td><td class="complete">Complete</td><td>Connected, install, login, operator, and service failure paths covered</td></tr>
+      <tr><td>Pair through private Tailscale Serve and verify the endpoint</td><td>Helper and focused tests</td><td class="complete">Complete</td><td>Observed 4 expected RED failures; focused suite 25 pass, 0 fail</td></tr>
+      <tr><td>Document private-only operation and unattended VPS policy</td><td><code>README.md</code>, <code>CHANGELOG.md</code>, helper index</td><td class="complete">Complete</td><td>Loopback, no-firewall, key-expiry, and tagged-auth-key guidance recorded</td></tr>
+      <tr><td>Verify and publish the patch release</td><td>Full suite, Biome, package, GitHub, npm</td><td class="active">Active</td><td>Fresh release evidence pending</td></tr>
+    </tbody>
+  </table>
+
   <h2>Constraints</h2>
   <ul>
-    <li>No automatic pairing, Tailscale setup, public binding, firewall changes, or token logging.</li>
-    <li>Use T3 Code's own <code>service install</code> and <code>service status</code> lifecycle.</li>
+    <li>Keep T3 on <code>127.0.0.1:3773</code>; no public binding, firewall changes, Funnel, or token logging.</li>
+    <li>Use T3 Code's own user-service lifecycle and Tailscale's vendor <code>tailscaled.service</code>.</li>
+    <li>Pair only through private Tailscale Serve after both persistent services are verified.</li>
     <li>Reject the one-shot flag outside the Debian family before mutation.</li>
     <li>Preserve all unrelated dirty files in the primary checkout.</li>
   </ul>
