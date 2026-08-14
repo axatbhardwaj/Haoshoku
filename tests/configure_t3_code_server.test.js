@@ -341,11 +341,12 @@ describe("Tailscale service preparation", () => {
 });
 
 describe("T3 Code headless service configuration", () => {
-	it("installs the upstream service, verifies it, and prints pairing guidance", async () => {
+	it("installs the upstream service, prepares Tailscale, pairs privately, and verifies Serve", async () => {
 		const commands = [];
 		const messages = [];
 		const result = await configureT3CodeServer({
 			ensureNodeImpl: async () => true,
+			ensureTailscaleImpl: async () => true,
 			runCommandImpl: async (command) => {
 				commands.push(command);
 				return true;
@@ -361,8 +362,15 @@ describe("T3 Code headless service configuration", () => {
 		expect(commands).toEqual([
 			"npx --yes t3@latest service install",
 			"npx --yes t3@latest service status",
+			"npx --yes t3@latest pair --tailscale",
+			"tailscale serve status",
 		]);
-		expect(messages).toContain("Pair a client later with: npx t3@latest pair");
+		expect(
+			messages.some((message) => message.includes("npx t3@latest pair")),
+		).toBe(false);
+		expect(messages.some((message) => message.includes("key expiry"))).toBe(
+			true,
+		);
 	});
 
 	it("does not invoke T3 when a compatible Node.js runtime cannot be prepared", async () => {
@@ -411,5 +419,71 @@ describe("T3 Code headless service configuration", () => {
 			"npx --yes t3@latest service install",
 			"npx --yes t3@latest service status",
 		]);
+	});
+
+	it("stops before pairing when Tailscale preparation fails", async () => {
+		const commands = [];
+		const result = await configureT3CodeServer({
+			ensureNodeImpl: async () => true,
+			ensureTailscaleImpl: async () => false,
+			logger: silentLogger,
+			runCommandImpl: async (command) => {
+				commands.push(command);
+				return true;
+			},
+		});
+
+		expect(result).toBe(false);
+		expect(commands).toEqual([
+			"npx --yes t3@latest service install",
+			"npx --yes t3@latest service status",
+		]);
+	});
+
+	it("stops before Serve verification when private pairing fails", async () => {
+		const commands = [];
+		const errors = [];
+		const result = await configureT3CodeServer({
+			ensureNodeImpl: async () => true,
+			ensureTailscaleImpl: async () => true,
+			logger: { ...silentLogger, error: (message) => errors.push(message) },
+			runCommandImpl: async (command) => {
+				commands.push(command);
+				return !command.includes("pair --tailscale");
+			},
+		});
+
+		expect(result).toBe(false);
+		expect(commands).toEqual([
+			"npx --yes t3@latest service install",
+			"npx --yes t3@latest service status",
+			"npx --yes t3@latest pair --tailscale",
+		]);
+		expect(errors.at(-1)).toContain(
+			"npx --yes t3@latest pair --tailscale",
+		);
+	});
+
+	it("returns failure with the Serve retry command when verification fails", async () => {
+		const commands = [];
+		const errors = [];
+		const result = await configureT3CodeServer({
+			ensureNodeImpl: async () => true,
+			ensureTailscaleImpl: async () => true,
+			logger: { ...silentLogger, error: (message) => errors.push(message) },
+			runCommandImpl: async (command) => {
+				commands.push(command);
+				return command !== "tailscale serve status";
+			},
+		});
+
+		expect(result).toBe(false);
+		expect(commands).toEqual([
+			"npx --yes t3@latest service install",
+			"npx --yes t3@latest service status",
+			"npx --yes t3@latest pair --tailscale",
+			"tailscale serve status",
+		]);
+		expect(errors.at(-1)).toContain("tailscale serve status");
 	});
 });

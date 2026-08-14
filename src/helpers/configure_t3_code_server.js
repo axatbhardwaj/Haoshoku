@@ -5,6 +5,8 @@ const NODESOURCE_SETUP_COMMAND =
 const NODE_INSTALL_COMMAND = "sudo apt install -y nodejs";
 const T3_SERVICE_INSTALL_COMMAND = "npx --yes t3@latest service install";
 const T3_SERVICE_STATUS_COMMAND = "npx --yes t3@latest service status";
+const T3_TAILSCALE_PAIR_COMMAND = "npx --yes t3@latest pair --tailscale";
+const TAILSCALE_SERVE_STATUS_COMMAND = "tailscale serve status";
 const TAILSCALE_INSTALL_COMMAND =
 	"curl -fsSL https://tailscale.com/install.sh | sh";
 
@@ -179,6 +181,7 @@ export async function ensureTailscaleService({
 
 export async function configureT3CodeServer({
 	ensureNodeImpl = ensureT3NodeRuntime,
+	ensureTailscaleImpl = ensureTailscaleService,
 	runCommandImpl = runCommand,
 	logger = log,
 } = {}) {
@@ -197,8 +200,27 @@ export async function configureT3CodeServer({
 		);
 		return false;
 	}
+	if (!(await ensureTailscaleImpl({ runCommandImpl, logger }))) return false;
 
-	logger.success("T3 Code headless server service is installed and running.");
-	logger.info("Pair a client later with: npx t3@latest pair");
+	logger.info("Creating a private Tailscale pairing endpoint...");
+	if (!(await runCommandImpl(T3_TAILSCALE_PAIR_COMMAND))) {
+		logger.error(
+			`T3 Code Tailscale pairing failed. Retry with: ${T3_TAILSCALE_PAIR_COMMAND}`,
+		);
+		return false;
+	}
+	if (!(await runCommandImpl(TAILSCALE_SERVE_STATUS_COMMAND))) {
+		logger.error(
+			`Tailscale Serve could not be verified. Retry with: ${TAILSCALE_SERVE_STATUS_COMMAND}`,
+		);
+		return false;
+	}
+
+	logger.success(
+		"T3 Code and Tailscale are running persistently with private Tailnet access.",
+	);
+	logger.info(
+		"For unattended VPS access, disable key expiry for this device or use an appropriately tagged server auth key.",
+	);
 	return true;
 }
