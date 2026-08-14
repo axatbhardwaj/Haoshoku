@@ -53,6 +53,45 @@ export function parseTailscaleBackendState(output) {
 	}
 }
 
+export function parseT3ConnectStatus(output) {
+	try {
+		const value = JSON.parse(output);
+		if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+		if (
+			typeof value.desired !== "boolean" ||
+			typeof value.authenticated !== "boolean" ||
+			typeof value.linked !== "boolean"
+		) {
+			return null;
+		}
+		return {
+			desired: value.desired,
+			authenticated: value.authenticated,
+			linked: value.linked,
+			relayUrl: typeof value.relayUrl === "string" ? value.relayUrl : null,
+			relayClientAvailable: value.relayClient?.status === "available",
+		};
+	} catch {
+		return null;
+	}
+}
+
+export function isT3ConnectReady(status) {
+	return Boolean(
+		status?.desired &&
+			status.authenticated &&
+			status.linked &&
+			status.relayUrl?.trim() &&
+			status.relayClientAvailable,
+	);
+}
+
+export function canResumeT3Connect(status) {
+	return Boolean(
+		status?.desired && status.authenticated && status.relayClientAvailable,
+	);
+}
+
 export function isSafeUnixUsername(username) {
 	return (
 		typeof username === "string" && /^[a-z_][a-z0-9_-]*\$?$/i.test(username)

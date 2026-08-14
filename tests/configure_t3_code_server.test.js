@@ -1,10 +1,13 @@
 import { describe, expect, it } from "bun:test";
 import {
+	canResumeT3Connect,
 	configureT3CodeServer,
 	ensureT3NodeRuntime,
 	ensureTailscaleService,
+	isT3ConnectReady,
 	isSafeUnixUsername,
 	isT3NodeVersionSupported,
+	parseT3ConnectStatus,
 	parseTailscaleBackendState,
 } from "../src/helpers/configure_t3_code_server.js";
 
@@ -115,32 +118,53 @@ describe("T3 Code Node.js runtime preparation", () => {
 	});
 });
 
-describe("Tailscale status parsing and account validation", () => {
-	it("accepts a running backend state from Tailscale JSON", () => {
-		expect(
-			parseTailscaleBackendState('{"BackendState":"Running","Self":{}}'),
-		).toBe("Running");
+describe("T3 Connect status parsing", () => {
+	const readyJson = JSON.stringify({
+		desired: true,
+		authenticated: true,
+		linked: true,
+		cloudUserId: "must-not-be-retained",
+		relayUrl: "https://relay.t3.codes",
+		publishAgentActivity: false,
+		relayClient: { status: "available", source: "managed" },
 	});
 
-	it("rejects malformed or incomplete Tailscale status output", () => {
-		for (const output of ["", "not-json", "{}", '{"BackendState":42}']) {
-			expect(parseTailscaleBackendState(output)).toBeNull();
-		}
+	it("parses only readiness fields from T3 Connect JSON", () => {
+		expect(parseT3ConnectStatus(readyJson)).toEqual({
+			desired: true,
+			authenticated: true,
+			linked: true,
+			relayUrl: "https://relay.t3.codes",
+			relayClientAvailable: true,
+		});
 	});
 
-	it("accepts Unix usernames but rejects values unsafe for command interpolation", () => {
-		for (const username of ["deploy", "deploy-user", "_service", "build$"]) {
-			expect(isSafeUnixUsername(username)).toBe(true);
-		}
-		for (const username of [
-			null,
+	it("distinguishes ready and resumable pending states", () => {
+		const ready = parseT3ConnectStatus(readyJson);
+		const pending = parseT3ConnectStatus(
+			JSON.stringify({
+				desired: true,
+				authenticated: true,
+				linked: false,
+				relayUrl: null,
+				relayClient: { status: "available" },
+			}),
+		);
+
+		expect(isT3ConnectReady(ready)).toBe(true);
+		expect(isT3ConnectReady(pending)).toBe(false);
+		expect(canResumeT3Connect(pending)).toBe(true);
+	});
+
+	it("rejects malformed and structurally invalid status", () => {
+		for (const output of [
 			"",
-			"9deploy",
-			"deploy user",
-			"deploy; reboot",
-			"$(reboot)",
+			"not-json",
+			"[]",
+			"{}",
+			'{"desired":"yes"}',
 		]) {
-			expect(isSafeUnixUsername(username)).toBe(false);
+			expect(parseT3ConnectStatus(output)).toBeNull();
 		}
 	});
 });
