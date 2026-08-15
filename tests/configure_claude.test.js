@@ -35,6 +35,28 @@ describe("PERSONAL_FILES manifest", () => {
 		);
 		expect(fs.existsSync(bundledGitignore)).toBe(false);
 	});
+
+	it("every manifest entry exists in the real source bundle", () => {
+		const configsDir = path.resolve(import.meta.dir, "..", "configs", "claude");
+		for (const file of PERSONAL_FILES) {
+			expect(
+				fs.existsSync(path.join(configsDir, file.src)),
+				`missing bundle file: ${file.src}`,
+			).toBe(true);
+		}
+	});
+
+	it("keeps every bundled SKILL.md within the 150-line hard cap", () => {
+		const configsDir = path.resolve(import.meta.dir, "..", "configs", "claude");
+		for (const file of PERSONAL_FILES) {
+			if (!file.src.endsWith("SKILL.md")) continue;
+			const lines = fs
+				.readFileSync(path.join(configsDir, file.src), "utf-8")
+				.trimEnd()
+				.split("\n").length;
+			expect(lines, `${file.src} exceeds 150 lines`).toBeLessThanOrEqual(150);
+		}
+	});
 });
 
 describe("bootstrapClaudePolicy()", () => {
