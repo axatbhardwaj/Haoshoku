@@ -38,9 +38,9 @@ const RUNTIME_FILES = [
 ];
 const PINNED_DIGESTS = {
 	"agents/sol-wrapper.md":
-		"0bb91f67917c3740a8fc01c293a9230e537e12e33910b9a88d81048237a0fddd",
+		"f5382cf2cc9b75197556a143e02fa4afe1ab80e2688dba73946aa40581f6a5b6",
 	"agents/luna-wrapper.md":
-		"b1fe482b3a2568dfcfb438bd5234fa08714751b01ff13fd7acc66ce87ec07740",
+		"92a65d590128fe1c8608a36d016264d7fa5482c0ce4c637ad42203e9d30dabad",
 	"agents/grok-wrapper.md":
 		"69f0876934f8aeea6ec62d90d694ea481b1bc1906b2ea16a9a40cbb14e1b4130",
 	"agents/madhyastha.md":
@@ -48,11 +48,11 @@ const PINNED_DIGESTS = {
 	"agents/anveshaka.md":
 		"42926e8bb514f634ff067bddf728f468a7b8c542a7bf6853dc884720d27e1577",
 	"agents/fable-planner.md":
-		"130badf76f146093d21f0a97125fb06aba1b24b9b1b1f5c1344122dcf808ba06",
+		"f3f8f61d17972237eff9d6282007b65cb45133ce5f551bb44756f7da0f780567",
 	"agents/opus-reviewer.md":
 		"471946a434a78b02c1cdd1f8ff7101be4d1ef594272a3909d5d61bcb79415256",
 	"agents/run-codex-task.sh":
-		"c104edb98749f936367fa2812d7063674c78f53a3206a64d83940e71b5e67166",
+		"3df152f35c71e96c529d7804c2fd40c44edb92fb6f6f2324dc1bc59773b3ac24",
 	"agents/validate-codex-wrapper.sh":
 		"2240c08f1dabf3c04c71fe9b5ec44722657444de717415c6ae684ef67fa3f957",
 	"agents/codex-result.schema.json":
@@ -64,9 +64,9 @@ const PINNED_DIGESTS = {
 	"skills/discovering-work/agents/openai.yaml":
 		"61d4bfdd85a518acacc2ec655f483049173290946faca7536b436857ca5d7583",
 	"skills/implement-work/SKILL.md":
-		"1808a58572cf5210ac8b673db8dd62171e070c4b5be2ed49f43d5ee9e424018d",
+		"2a32cbde04ffa5c7e4bee5492b1bbb64f07da728741a6468cc3ffe81abe9d24e",
 	"skills/review-pr/SKILL.md":
-		"e2338426d66f887864ed5621cd96f5d654ae15339fe0dcad895f21d6cf905b55",
+		"a59c68c8196bf45e1352d779f44ca352059d5dfeea089dac063c5064616a4786",
 	"skills/create-pr/SKILL.md":
 		"af13f63d3a2bf5f5b30db6760b06e7ea0ba6b6a435df47cbfb584c02c0a2c2f1",
 	"skills/brainstorm/SKILL.md":

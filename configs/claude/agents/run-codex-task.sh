@@ -5,7 +5,7 @@
 # machine-readable report.
 #
 # Modes of invocation:
-#   Foreground:  run-codex-task.sh --mode M --model X --workspace D --prompt-file F [--effort E --effort-justification J]
+#   Foreground:  run-codex-task.sh --mode M --model X --workspace D --prompt-file F [--tier T]
 #   Detached:    ... same args plus --detach   -> prints {launcher_status:"detached", run_dir}
 #                and runs the codex+report flow in a setsid child that survives
 #                the caller's 10-minute Bash-tool cap.
@@ -22,10 +22,10 @@ set -u
 
 command -v jq >/dev/null 2>&1 || { echo "run-codex-task.sh requires jq (pacman -S jq / apt install jq)" >&2; exit 69; }
 
-usage() { echo "usage: run-codex-task.sh --mode implementation|review|research --model sol|luna --workspace <dir> --prompt-file <path> [--brief-file <path> --brief-sha256 <64-hex>] [--attribution-path <repo-relative-path>] [--effort xhigh|max --effort-justification <token>] [--tier default|fast|priority|flex] [--persist] [--resume <session_id>] [--resume-from-pointer] [--detach] [--worktree-on-contention] | --wait <run_dir> [--wait-seconds <n>]  (research requires sol, is read-only, and defaults effort to medium with a distinct receipt; ordinary sol review remains xhigh; luna is fixed at max; --attribution-path is Luna implementation only; implementation:medium is forbidden)" >&2; exit 64; }
+usage() { echo "usage: run-codex-task.sh --mode implementation|review|research --model sol|luna --workspace <dir> --prompt-file <path> [--brief-file <path> --brief-sha256 <64-hex>] [--attribution-path <repo-relative-path>] [--tier default|fast|priority|flex] [--persist] [--resume <session_id>] [--resume-from-pointer] [--detach] [--worktree-on-contention] | --wait <run_dir> [--wait-seconds <n>]  (research requires sol and is read-only; efforts are model-fixed with no escalation: sol high in every mode, luna max; luna always runs the priority/fast tier; --attribution-path is Luna implementation only)" >&2; exit 64; }
 
 # bare fallback: fail toward more thinking
-MODE="" MODEL="" WORKSPACE="" PROMPT_FILE="" BRIEF_FILE="" BRIEF_SHA256="" BRIEF_EMBEDDED=0 ATTRIBUTION_PATH="" EFFORT="xhigh" EFFORT_ARG="" EFFORT_JUSTIFICATION="" EFFORT_SOURCE="" RESEARCH_DISPATCH=0 TIER="" DETACH=0 RUN_DIR_ARG="" WAIT_DIR="" WAIT_SECS=540 PERSIST=0 RESUME_ID="" RESUME_REQUESTED=0 RESUME_FROM_POINTER=0 RESUME_SOURCE_ARG="" RESUME_SOURCE="" CODEX_SESSION_ID="" SESSION_ID_SOURCE="none" SESSION_POINTER="" SESSION_POINTER_UPDATE="" SESSION_POINTER_HEALED=0 SESSION_POINTER_KEY="" WORKTREE_ON_CONTENTION=0 WORKTREE_PATH="" WORKTREE_ORIGIN="" BASELINE_SNAPSHOT_READY=0 BASELINE_GIT_ROOT=""
+MODE="" MODEL="" WORKSPACE="" PROMPT_FILE="" BRIEF_FILE="" BRIEF_SHA256="" BRIEF_EMBEDDED=0 ATTRIBUTION_PATH="" EFFORT="" EFFORT_ARG="" EFFORT_JUSTIFICATION="" EFFORT_SOURCE="" RESEARCH_DISPATCH=0 TIER="" DETACH=0 RUN_DIR_ARG="" WAIT_DIR="" WAIT_SECS=540 PERSIST=0 RESUME_ID="" RESUME_REQUESTED=0 RESUME_FROM_POINTER=0 RESUME_SOURCE_ARG="" RESUME_SOURCE="" CODEX_SESSION_ID="" SESSION_ID_SOURCE="none" SESSION_POINTER="" SESSION_POINTER_UPDATE="" SESSION_POINTER_HEALED=0 SESSION_POINTER_KEY="" WORKTREE_ON_CONTENTION=0 WORKTREE_PATH="" WORKTREE_ORIGIN="" BASELINE_SNAPSHOT_READY=0 BASELINE_GIT_ROOT=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --mode) MODE="${2:-}"; shift 2 || usage ;;
@@ -76,12 +76,12 @@ fi
 
 [ -n "$MODE" ] && [ -n "$MODEL" ] && [ -n "$WORKSPACE" ] && [ -n "$PROMPT_FILE" ] || usage
 
-# Mode -> sandbox and the sol mode-default effort are decided HERE, together, in code.
-# Model-specific effort policy is applied after the model allowlist below.
+# Mode -> sandbox is decided HERE, in code. Effort is model-fixed, not
+# mode-derived: sol is pinned at high, luna at max (resolved below).
 case "$MODE" in
-  implementation) SANDBOX="workspace-write"; MODE_EFFORT="high" ;;
-  review)         SANDBOX="read-only";       MODE_EFFORT="xhigh" ;;
-  research)       SANDBOX="read-only";       MODE_EFFORT="medium"; RESEARCH_DISPATCH=1 ;;
+  implementation) SANDBOX="workspace-write" ;;
+  review)         SANDBOX="read-only" ;;
+  research)       SANDBOX="read-only"; RESEARCH_DISPATCH=1 ;;
   *) echo "invalid --mode: $MODE" >&2; exit 64 ;;
 esac
 
@@ -125,41 +125,17 @@ if [ "$MODE" = "research" ] && [ "$MODEL" != "sol" ]; then
   exit 64
 fi
 
-# Research is a first-class, auditable mode: it requires sol, stays read-only, and
-# defaults to medium without an override token. Ordinary code review remains xhigh
-# by default and may escalate to max.
-JUST_RE='^[a-z0-9][a-z0-9-]*:[A-Za-z0-9._/~=^@:+-]+$'   # <reason-slug>:<context>
+# Efforts are model-fixed with no escalation path: sol runs high in every mode
+# (implementation, review, and research alike), luna runs max. A redundant
+# --effort naming the fixed value is accepted; any other value, and any
+# justification, is rejected.
 case "$MODEL" in
-  sol)
-    if [ "$RESEARCH_DISPATCH" -eq 1 ]; then
-      EFFORT="medium"; EFFORT_SOURCE="research_default"
-    else
-      EFFORT="$MODE_EFFORT"; EFFORT_SOURCE="mode_default"
-    fi
-    ;;
-  luna)  EFFORT="max";              EFFORT_SOURCE="model_default" ;;
+  sol)   EFFORT="high"; EFFORT_SOURCE="model_default" ;;
+  luna)  EFFORT="max";  EFFORT_SOURCE="model_default" ;;
 esac
 if [ -n "$EFFORT_ARG" ]; then
-  if [ "$MODEL" = "luna" ]; then
-    [ "$EFFORT_ARG" = "max" ] || { echo "effort not allowed: luna is fixed at max" >&2; exit 64; }
-    [ -z "$EFFORT_JUSTIFICATION" ] || { echo "luna max is fixed and takes no effort justification" >&2; exit 64; }
-  elif [ "$RESEARCH_DISPATCH" -eq 1 ]; then
-    case "$EFFORT_ARG" in
-      xhigh|max) EFFORT_SOURCE="escalated" ;;
-      *) echo "effort not allowed: research defaults to medium and may escalate to xhigh|max; redundant or lower explicit efforts are rejected" >&2; exit 64 ;;
-    esac
-  else
-    case "$MODEL:$MODE:$EFFORT_ARG" in
-      sol:implementation:xhigh|sol:implementation:max|sol:review:max)
-        EFFORT_SOURCE="escalated"
-        ;;
-      *) echo "effort not allowed: model=$MODEL mode=$MODE defaults to $EFFORT; permitted moves are sol implementation:xhigh|max and sol review:max; sol review:medium is not permitted; implementation:medium is never allowed" >&2; exit 64 ;;
-    esac
-  fi
-  if [ "$MODEL" != "luna" ]; then
-    [[ "$EFFORT_JUSTIFICATION" =~ $JUST_RE ]] || { echo "--effort requires --effort-justification <reason-slug>:<context> (e.g. inadequate-result:/tmp/codex-wrapper/run-abc)" >&2; exit 64; }
-  fi
-  EFFORT="$EFFORT_ARG"
+  [ "$EFFORT_ARG" = "$EFFORT" ] || { echo "effort not allowed: $MODEL is fixed at $EFFORT in every mode" >&2; exit 64; }
+  [ -z "$EFFORT_JUSTIFICATION" ] || { echo "$MODEL $EFFORT is fixed and takes no effort justification" >&2; exit 64; }
 else
   [ -z "$EFFORT_JUSTIFICATION" ] || { echo "--effort-justification without --effort" >&2; exit 64; }
 fi
@@ -168,6 +144,14 @@ case "$TIER" in
   ""|default|priority|flex) ;;
   *) echo "tier not in allowlist: $TIER" >&2; exit 64 ;;
 esac
+# Luna always runs the priority ("fast") tier. A redundant fast/priority is
+# accepted; any other explicit tier is rejected.
+if [ "$MODEL" = "luna" ]; then
+  case "$TIER" in
+    ""|priority) TIER="priority" ;;
+    *) echo "tier not allowed: luna is fixed at priority (fast)" >&2; exit 64 ;;
+  esac
+fi
 
 if [ -n "$BRIEF_FILE" ] && [ -z "$BRIEF_SHA256" ]; then
   echo "--brief-file requires --brief-sha256" >&2
@@ -522,7 +506,7 @@ report() {  # report <status> <codex_exit> <result_valid>
   fi
   if jq -n \
     --arg run_dir "$RUN_DIR" --arg mode "$MODE" --arg model "$MODEL_ID" \
-    --arg sandbox "$SANDBOX" --arg effort "$EFFORT" --arg effort_source "${EFFORT_SOURCE:-}" --arg effort_justification "${EFFORT_JUSTIFICATION:-}" --argjson research_dispatch "$RESEARCH_DISPATCH" --arg gateway_marker "${CODEX_WRAPPER_GATEWAY:-}" \
+    --arg sandbox "$SANDBOX" --arg effort "$EFFORT" --arg effort_source "${EFFORT_SOURCE:-}" --arg effort_justification "${EFFORT_JUSTIFICATION:-}" --arg tier "${TIER:-}" --argjson research_dispatch "$RESEARCH_DISPATCH" --arg gateway_marker "${CODEX_WRAPPER_GATEWAY:-}" \
     --arg workspace "$WORKSPACE" --arg attribution_path "$ATTRIBUTION_PATH" --arg brief_file "$BRIEF_FILE" --arg brief_sha256 "$BRIEF_SHA256" --argjson brief_embedded "$BRIEF_EMBEDDED" \
     --arg started "$STARTED_AT" --arg completed "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     --arg launcher_status "$1" --argjson codex_exit "${2:-null}" --argjson result_valid "${3:-false}" \
@@ -572,6 +556,7 @@ report() {  # report <status> <codex_exit> <result_valid>
       effort:$effort,
       effort_source:($effort_source | if . == "" then null else . end),
       effort_justification:($effort_justification | if . == "" then null else . end),
+      tier:($tier | if . == "" then "default" else . end),
       research_dispatch:($research_dispatch == 1),
       gateway_marker:($gateway_marker | if . == "" then null else . end),
       workspace:$workspace,
@@ -760,11 +745,10 @@ if [ "$DETACH" -eq 1 ]; then
   PERSIST_OPT=""; [ "$PERSIST" -eq 1 ] && PERSIST_OPT="--persist"
   # The lock is taken in the child, not here, so the child needs this flag too.
   WORKTREE_OPT=""; [ "$WORKTREE_ON_CONTENTION" -eq 1 ] && WORKTREE_OPT="--worktree-on-contention"
-  # The child re-derives effort from --mode and --model; forwarding the derived value self-rejects.
+  # The child re-derives the model-fixed effort from --model; nothing to forward.
   setsid "$0" --mode "$MODE" --model "$MODEL" --workspace "$WORKSPACE" \
     --prompt-file "$RUN_DIR/prompt.md" \
     ${ATTRIBUTION_PATH:+--attribution-path "$ATTRIBUTION_PATH"} \
-    ${EFFORT_ARG:+--effort "$EFFORT_ARG"} ${EFFORT_ARG:+--effort-justification "$EFFORT_JUSTIFICATION"} \
     ${TIER:+--tier "$TIER"} \
     ${PERSIST_OPT:+$PERSIST_OPT} ${RESUME_ID:+--resume "$RESUME_ID"} \
     ${WORKTREE_OPT:+$WORKTREE_OPT} \

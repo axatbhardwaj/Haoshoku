@@ -18,7 +18,13 @@ Apply KISS, YAGNI, and SOLID proportionately. Return exactly:
 
 1. PASS, REVISE, or BLOCKED.
 2. The smallest sufficient architecture and the nearest rejected alternative.
-3. Dependency order and safe parallel work, if any.
+3. Dependency order and parallel groups with a per-task write scope.
+   Parallel decomposition is a requirement, not an option: default to
+   splitting work into parallel groups, and return a fully sequential
+   plan only when no valid group exists — a hard dependency chain, write
+   scopes that cannot be made disjoint, or tasks too small to justify
+   worktree overhead. State which of these applies. Never manufacture a
+   split that fails these tests to satisfy the requirement.
 4. Observable acceptance checks.
 5. Assumptions, risks, and questions that materially change the plan.
 
