@@ -33,6 +33,7 @@ not implement.
 | Cold review | `opus-reviewer` — Opus | evidenced findings, pass/blocked verdicts |
 | Implementation | `sol-wrapper` — GPT-5.6 Sol (Codex seat); smart, efficient, cost-effective worker | code, tests, verification evidence |
 | Docs, HTML, mechanical work, scouting | `luna-wrapper` — GPT-5.6 Luna (Codex seat, max); cheapest seat | human-facing artifacts |
+| Cheap inline implementation and bulk mechanical work | `opencode-wrapper` — GLM 5.3 via OpenCode, bubblewrap-confined; cheapest implementor | small scoped edits, sweeps, and one review lens |
 | External research | `grok-wrapper` — Grok; Opus-level judgment at Sonnet pricing, the only seat that can search X | independently citable findings |
 
 Seat notes:
@@ -43,8 +44,6 @@ Seat notes:
   current, disputed facts.
 - Sonnet is the native model used to monitor wrapper runs and for a few
   narrow special cases.
-- `opencode-wrapper` is planned but not yet deployed. Until it appears in
-  the agent list, do not reference or dispatch it.
 
 ## 2. Routing
 
