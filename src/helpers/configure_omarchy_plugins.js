@@ -42,7 +42,8 @@ export async function configureOmarchyPlugins({
 	runCommandImpl = runOmarchyCommand,
 	logImpl = log,
 } = {}) {
-	const plugins = manifest ?? JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
+	const plugins =
+		manifest ?? JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
 
 	let installed = [];
 	try {
@@ -53,7 +54,13 @@ export async function configureOmarchyPlugins({
 			"--json",
 		]);
 		if (listed.exitCode === 0) {
-			installed = JSON.parse(listed.stdout);
+			const parsed = JSON.parse(listed.stdout);
+			if (!Array.isArray(parsed)) {
+				throw new Error(
+					`expected a JSON array from plugin list, got ${parsed === null ? "null" : typeof parsed}`,
+				);
+			}
+			installed = parsed;
 		} else {
 			logImpl.warning(
 				`omarchy plugin list failed (exit code ${listed.exitCode}) — treating all manifest plugins as missing.`,
