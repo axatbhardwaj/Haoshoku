@@ -1,0 +1,52 @@
+[
+	{
+		"id": "crmne.hyprmoncfg",
+		"url": "https://github.com/crmne/omarchy-hyprmoncfg.git",
+		"manualAuth": "Needs the hyprmoncfg AUR package and daemon (installed separately; not handled by this installer)"
+	},
+	{
+		"id": "crmne.mpris",
+		"url": "https://github.com/crmne/omarchy-mpris.git",
+		"manualAuth": null
+	},
+	{
+		"id": "dorneles.lock-keys",
+		"url": "https://github.com/jvlianodorneles/lock-keys.git",
+		"manualAuth": null
+	},
+	{
+		"id": "white.nights",
+		"url": "https://github.com/nightdevil00/white.nights.git",
+		"manualAuth": null
+	},
+	{
+		"id": "robzolkos.agent-usage",
+		"url": "https://github.com/robzolkos/omarchy-agent-usage.git",
+		"manualAuth": null
+	},
+	{
+		"id": "robzolkos.github",
+		"url": "https://github.com/robzolkos/omarchy-github.git",
+		"manualAuth": "GitHub token"
+	},
+	{
+		"id": "tmn73.calendar",
+		"url": "https://github.com/tmn73/omarchy-calendar.git",
+		"manualAuth": "Google OAuth"
+	},
+	{
+		"id": "io.github.treramey.raindrop-bookmarks",
+		"url": "https://github.com/treramey/omarchy-raindrop-bookmarks.git",
+		"manualAuth": "Raindrop API token"
+	},
+	{
+		"id": "hass",
+		"url": "https://github.com/konradk/hass.git",
+		"manualAuth": "Home Assistant URL + long-lived token"
+	},
+	{
+		"id": "omaconnect",
+		"url": "https://github.com/jitendradara12/omaconnect.git",
+		"manualAuth": "KDE Connect pairing"
+	}
+]
