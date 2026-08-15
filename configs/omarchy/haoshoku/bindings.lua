@@ -43,27 +43,27 @@ o.bind("SUPER + N", "Editor", "omarchy-launch-editor")
 o.bind("SUPER + Z", "Zed", "uwsm-app -- zeditor --new")
 -- Always open a new Zed window on SUPER+Z, rather than focusing an existing one.
 
-hl.unbind("SHIFT + SUPER + RETURN")
+hl.unbind("SUPER + SHIFT + RETURN")
 o.bind("SUPER + SHIFT + RETURN", "Browser", "omarchy-launch-browser")
-hl.unbind("ALT + SHIFT + SUPER + F")
+hl.unbind("SUPER + SHIFT + ALT + F")
 o.bind(
   "SUPER + ALT + SHIFT + F",
   "File manager (cwd)",
   "uwsm-app -- nautilus --new-window \"$(omarchy-cmd-terminal-cwd)\""
 )
-hl.unbind("SHIFT + SUPER + B")
+hl.unbind("SUPER + SHIFT + B")
 o.bind("SUPER + SHIFT + B", "Browser", "omarchy-launch-browser")
-hl.unbind("ALT + SHIFT + SUPER + B")
+hl.unbind("SUPER + SHIFT + ALT + B")
 o.bind("SUPER + SHIFT + ALT + B", "Browser (private)", "omarchy-launch-browser --private")
-hl.unbind("ALT + SHIFT + SUPER + M")
+hl.unbind("SUPER + SHIFT + ALT + M")
 o.bind(
   "SUPER + SHIFT + ALT + M",
   "Music TUI",
   "omarchy-launch-or-focus-tui cliamp"
 )
-hl.unbind("SHIFT + SUPER + D")
+hl.unbind("SUPER + SHIFT + D")
 o.bind("SUPER + SHIFT + D", "Docker", "omarchy-launch-tui lazydocker")
-hl.unbind("SHIFT + SUPER + W")
+hl.unbind("SUPER + SHIFT + W")
 o.bind(
   "SUPER + SHIFT + W",
   "Typora",
@@ -103,13 +103,13 @@ o.bind(
   "omarchy-launch-or-focus \"brave-photos\\.google\\.com__-Default\" \"haoshoku-chromium-flux --app=https://photos.google.com/\""
 )
 
-hl.unbind("ALT + SHIFT + SUPER + A")
+hl.unbind("SUPER + SHIFT + ALT + A")
 o.bind(
   "SUPER + SHIFT + ALT + A",
   "Grok",
   "omarchy-launch-or-focus \"brave-grok\\.com__-Default\" \"haoshoku-chromium-flux --app=https://grok.com\""
 )
-hl.unbind("ALT + SHIFT + SUPER + G")
+hl.unbind("SUPER + SHIFT + ALT + G")
 o.bind(
   "SUPER + SHIFT + ALT + G",
   "WhatsApp",
@@ -122,7 +122,7 @@ o.bind(
 -- make the URL argument dead code. The criterion is intent, not whether the
 -- URL bears a path: stable app destinations stay focus-aware, while one-shot
 -- actions such as X Post stay launch-only.
-hl.unbind("ALT + SHIFT + SUPER + X")
+hl.unbind("SUPER + SHIFT + ALT + X")
 o.bind(
   "SUPER + SHIFT + ALT + X",
   "X Post",
@@ -133,7 +133,7 @@ o.bind(
 -- + WhatsApp), bound in the workspace module. Google Messages used the same
 -- modifier set spelled SUPER SHIFT CTRL, so one keypress fired both binds and
 -- toggled the workspace back off. Launch Google Messages from Walker.
-hl.unbind("CTRL + SHIFT + SUPER + G")
+hl.unbind("SUPER + CTRL + SHIFT + G")
 
 -- Add extra bindings here, for example:
 -- o.bind("SUPER + SHIFT + R", nil, "alacritty -e ssh your-server")

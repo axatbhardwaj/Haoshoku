@@ -35,6 +35,107 @@ function unbindCalls(source) {
 	return [...source.matchAll(/hl\.unbind\("([^"]+)"\)/g)].map(([call]) => call);
 }
 
+const modifierOrder = new Map(
+	["SUPER", "CTRL", "SHIFT", "ALT"].map((modifier, index) => [modifier, index]),
+);
+
+function canonicalLuaChord(chord) {
+	const parts = chord.split(" + ");
+	const key = parts.pop();
+	return [
+		...parts.toSorted(
+			(left, right) => modifierOrder.get(left) - modifierOrder.get(right),
+		),
+		key,
+	].join(" + ");
+}
+
+function luaBindingOperations(source, owner) {
+	const executableSource = source.replace(/--.*$/gm, "");
+	return [
+		...executableSource.matchAll(/(hl\.unbind|o\.bind)\(\s*"([^"]+)"/g),
+	].map(([, operation, chord]) => ({
+		chord: canonicalLuaChord(chord),
+		owner,
+		type: operation === "hl.unbind" ? "unbind" : "bind",
+	}));
+}
+
+function workspaceReclaimState(
+	bindingsSource,
+	workspaceSource,
+	effectiveOrder,
+) {
+	const bindingsOperations = luaBindingOperations(
+		bindingsSource,
+		"bindings.lua",
+	);
+	const workspaceOperations = luaBindingOperations(
+		workspaceSource,
+		"workspace overlay",
+	);
+	const bindingsUnbound = new Set(
+		bindingsOperations
+			.filter(({ type }) => type === "unbind")
+			.map(({ chord }) => chord),
+	);
+	const bindingsBound = new Set(
+		bindingsOperations
+			.filter(({ type }) => type === "bind")
+			.map(({ chord }) => chord),
+	);
+	const workspaceBound = new Set(
+		workspaceOperations
+			.filter(({ type }) => type === "bind")
+			.map(({ chord }) => chord),
+	);
+	const reclaimed = [...workspaceBound]
+		.filter((chord) => bindingsUnbound.has(chord))
+		.toSorted();
+	const active = new Map();
+	for (const operations of effectiveOrder) {
+		for (const operation of operations) {
+			if (operation.type === "unbind") active.delete(operation.chord);
+			else active.set(operation.chord, operation.owner);
+		}
+	}
+
+	return {
+		boundInBindings: reclaimed.filter((chord) => bindingsBound.has(chord)),
+		notOwnedByWorkspaceAfterLoad: reclaimed.filter(
+			(chord) => active.get(chord) !== "workspace overlay",
+		),
+		reclaimed,
+	};
+}
+
+function deletedKeyViolations(overlays, swaps) {
+	const operations = overlays.flatMap(({ owner, source }) =>
+		luaBindingOperations(source, owner),
+	);
+	return swaps
+		.filter(({ reason }) => reason === "deleted_by_user")
+		.flatMap((swap) => {
+			const chord = canonicalLuaChord(
+				swap.hl_unbind.match(/^hl\.unbind\("([^"]+)"\)$/)?.[1] ?? "",
+			);
+			const unboundIn = operations
+				.filter(
+					(operation) =>
+						operation.type === "unbind" && operation.chord === chord,
+				)
+				.map(({ owner }) => owner);
+			const reboundIn = operations
+				.filter(
+					(operation) => operation.type === "bind" && operation.chord === chord,
+				)
+				.map(({ owner }) => owner);
+			return unboundIn.length > 0 && reboundIn.length === 0
+				? []
+				: [{ chord, reboundIn, unboundIn }];
+		});
+}
+
 function count(source, pattern) {
 	return source.match(pattern)?.length ?? 0;
 }
@@ -117,6 +218,117 @@ function checkLuaSyntax(file) {
 }
 
 describe("Omarchy v4 Lua overlay", () => {
+	it("spells every Lua unbind in canonical modifier order", () => {
+		const noncanonical = readExistingOverlays().flatMap(({ file, source }) =>
+			[...source.matchAll(/hl\.unbind\("([^"]+)"\)/g)].flatMap(([, chord]) => {
+				const canonical = canonicalLuaChord(chord);
+				return chord === canonical
+					? []
+					: [{ canonical, chord, file: path.basename(file) }];
+			}),
+		);
+
+		expect(noncanonical).toEqual([]);
+	});
+
+	it("loads bindings before every workspace-overlay reclaim", () => {
+		const bindingsSource = fs.readFileSync(overlayPaths[0], "utf8");
+
+		for (const workspacePath of overlayPaths.slice(1)) {
+			const workspaceSource = fs.readFileSync(workspacePath, "utf8");
+			const bindingsOperations = luaBindingOperations(
+				bindingsSource,
+				"bindings.lua",
+			);
+			const workspaceOperations = luaBindingOperations(
+				workspaceSource,
+				"workspace overlay",
+			);
+			const state = workspaceReclaimState(bindingsSource, workspaceSource, [
+				bindingsOperations,
+				workspaceOperations,
+			]);
+			const reversedLoadState = workspaceReclaimState(
+				bindingsSource,
+				workspaceSource,
+				[workspaceOperations, bindingsOperations],
+			);
+
+			expect(state.reclaimed, path.basename(workspacePath)).toContain(
+				"SUPER + SHIFT + G",
+			);
+			expect(state.boundInBindings, path.basename(workspacePath)).toEqual([]);
+			expect(
+				state.notOwnedByWorkspaceAfterLoad,
+				path.basename(workspacePath),
+			).toEqual([]);
+			expect(
+				reversedLoadState.notOwnedByWorkspaceAfterLoad,
+				`${path.basename(workspacePath)} reversed-order mutation`,
+			).toEqual(state.reclaimed);
+		}
+	});
+
+	it("keeps every deleted_by_user chord suppressed across all Lua overlays", () => {
+		const overlays = readExistingOverlays().map(({ file, source }) => ({
+			owner: path.basename(file),
+			source,
+		}));
+		const swaps = JSON.parse(fs.readFileSync(swapsPath, "utf8")).swaps;
+		const resurrectedSource = `${overlays[1].source}\no.bind("SUPER + SHIFT + A", "Regression mutation", "false")\n`;
+
+		expect(deletedKeyViolations(overlays, swaps)).toEqual([]);
+		expect(
+			deletedKeyViolations(
+				[
+					overlays[0],
+					{ ...overlays[1], source: resurrectedSource },
+					overlays[2],
+				],
+				swaps,
+			),
+		).toContainEqual({
+			chord: "SUPER + SHIFT + A",
+			reboundIn: ["workspaces-pc.lua"],
+			unboundIn: ["bindings.lua"],
+		});
+	});
+
+	it("unbinds the stock Google Maps chord before both stash-window bindings", () => {
+		const workspaceResults = overlayPaths.slice(1).map((file) => ({
+			file: path.basename(file),
+			unbindImmediatelyPrecedesBind:
+				/hl\.unbind\("SUPER \+ SHIFT \+ S"\)\s*o\.bind\(\s*"SUPER \+ SHIFT \+ S"/.test(
+					fs.readFileSync(file, "utf8"),
+				),
+		}));
+		const swap = JSON.parse(fs.readFileSync(swapsPath, "utf8")).swaps.find(
+			(entry) => entry.hl_unbind === 'hl.unbind("SUPER + SHIFT + S")',
+		);
+
+		expect(workspaceResults).toEqual([
+			{
+				file: "workspaces-pc.lua",
+				unbindImmediatelyPrecedesBind: true,
+			},
+			{
+				file: "workspaces-laptop.lua",
+				unbindImmediatelyPrecedesBind: true,
+			},
+		]);
+		expect(swap).toEqual({
+			config_file: "configs/omarchy/haoshoku/workspaces-pc.lua",
+			key_combination_taken: "SUPER SHIFT, S",
+			hl_unbind: 'hl.unbind("SUPER + SHIFT + S")',
+			previous_binding:
+				'bindd = SUPER SHIFT, S, Google Maps, exec, omarchy-launch-or-focus-webapp "Google Maps" "https://maps.google.com/"',
+			moved_from_dispatcher: "exec",
+			moved_from_arg:
+				'omarchy-launch-or-focus-webapp "Google Maps" "https://maps.google.com/"',
+			reason: "superseded_by_workspace_toggle",
+		});
+	});
+
 	it("links every distinct Lua unbind to exactly one registry entry in both directions", () => {
 		const missingLuaFiles = overlayPaths
 			.filter((file) => !fs.existsSync(file))
@@ -216,7 +428,7 @@ describe("Omarchy v4 Lua overlay", () => {
 				env: 0,
 			},
 			"workspaces-pc.lua": {
-				unbind: 3,
+				unbind: 4,
 				bind: 24,
 				window: 24,
 				workspace: 0,
@@ -224,7 +436,7 @@ describe("Omarchy v4 Lua overlay", () => {
 				env: 1,
 			},
 			"workspaces-laptop.lua": {
-				unbind: 3,
+				unbind: 4,
 				bind: 24,
 				window: 24,
 				workspace: 11,

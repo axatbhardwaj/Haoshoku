@@ -125,6 +125,7 @@ o.bind("SUPER + SHIFT + X", "Show/focus/hide X workspace", "haoshoku-special-wor
 -- bindings.lua unbinds SUPER+SHIFT+G; this module deliberately reclaims it.
 -- hyprland.lua must require bindings before this workspace module so the later bind wins.
 o.bind("SUPER + SHIFT + G", "Toggle gaming workspace", "haoshoku-gaming-workspace toggle")
+hl.unbind("SUPER + SHIFT + S")
 o.bind(
   "SUPER + SHIFT + S",
   "Stash focused window",

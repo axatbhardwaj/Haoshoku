@@ -98,6 +98,12 @@ function canonicalKeyCombination(modifiers, key) {
 	return `${modifiers.trim().split(/\s+/).toSorted().join(" ")}, ${key.trim()}`;
 }
 
+function luaKeyCombination(chord) {
+	const parts = chord.split(" + ");
+	const key = parts.pop();
+	return `${parts.join(" ")}, ${key}`;
+}
+
 function bindingOperation(line) {
 	const match = line.match(/^(unbind|bindd?)\s*=\s*([^,]+),\s*([^,]+)/);
 	if (!match) return null;
@@ -534,7 +540,9 @@ describe("Omarchy keybinding swaps", () => {
 					.map((line) => line.replace(/,\s*#.*$/, "").replace(/,\s*$/, "")),
 			);
 
-			for (const swap of swapsDocument.swaps) {
+			for (const swap of swapsDocument.swaps.filter(
+				(swap) => !swap.config_file.endsWith(".lua"),
+			)) {
 				const recorded = parseBinding(swap.previous_binding);
 				const omarchyBinding = defaultBindings.find((binding) => {
 					const parsed = parseBinding(binding);
@@ -577,10 +585,20 @@ describe("Omarchy keybinding swaps", () => {
 	for (const [configFile, swaps] of swapsByRepoConfig) {
 		it(`documents every unbind in ${configFile}`, () => {
 			const config = fs.readFileSync(repoConfigPath(configFile), "utf8");
+			const documented = swaps.map((swap) => swap.key_combination_taken);
+			if (configFile.endsWith(".lua")) {
+				const unbinds = [...config.matchAll(/hl\.unbind\("([^"]+)"\)/g)].map(
+					([, chord]) => luaKeyCombination(chord),
+				);
+				expect(documented.every((unbind) => unbinds.includes(unbind))).toBe(
+					true,
+				);
+				return;
+			}
+
 			const unbinds = [...config.matchAll(/^unbind\s*=\s*(.+)$/gm)].map(
 				([, combination]) => combination.trim(),
 			);
-			const documented = swaps.map((swap) => swap.key_combination_taken);
 			expect(documented.toSorted()).toEqual(unbinds.toSorted());
 		});
 	}
@@ -775,9 +793,25 @@ describe("Omarchy keybinding swaps", () => {
 		(swap) => swap.reason === "superseded_by_workspace_toggle",
 	)) {
 		it(`orders the unbind before the replacement ${swap.key_combination_taken} workspace toggle`, () => {
-			const bindingLines = fs
-				.readFileSync(repoConfigPath(swap.config_file), "utf8")
-				.split("\n");
+			const bindingSource = fs.readFileSync(
+				repoConfigPath(swap.config_file),
+				"utf8",
+			);
+			if (swap.config_file.endsWith(".lua")) {
+				const chord = swap.hl_unbind.match(/^hl\.unbind\("([^"]+)"\)$/)?.[1];
+				const unbindIndex = bindingSource.indexOf(swap.hl_unbind);
+				const replacementIndex = bindingSource.search(
+					new RegExp(
+						`o\\.bind\\(\\s*"${chord.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`,
+					),
+				);
+
+				expect(unbindIndex).toBeGreaterThan(-1);
+				expect(replacementIndex).toBeGreaterThan(unbindIndex);
+				return;
+			}
+
+			const bindingLines = bindingSource.split("\n");
 			const workspaceLines = fs.readFileSync(configPath, "utf8").split("\n");
 			const unbindIndex = bindingLines.indexOf(
 				`unbind = ${swap.key_combination_taken}`,

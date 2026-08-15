@@ -51,10 +51,29 @@ if [[ "$probe" == "$FAILED_PROBE" && ( -z "$FAILED_PROBE_CALL" || "$matching_pro
     non-zero-exit) exit 23 ;;
   esac
 elif [[ "$probe" == "monitors -j" ]]; then
-  printf '[{"name":"DP-1","focused":true,"specialWorkspace":{"name":"%s"}},{"name":"DP-2","focused":false,"specialWorkspace":{"name":""}},{"name":"HDMI-A-1","focused":false,"specialWorkspace":{"name":""}}]\n' "$VISIBLE_WORKSPACE"
+  dp1_workspace=""
+  dp2_workspace=""
+  hdmi_workspace=""
+  case "$VISIBLE_MONITOR" in
+    DP-1) dp1_workspace="$VISIBLE_WORKSPACE" ;;
+    DP-2) dp2_workspace="$VISIBLE_WORKSPACE" ;;
+    HDMI-A-1) hdmi_workspace="$VISIBLE_WORKSPACE" ;;
+  esac
+  printf '[{"name":"DP-1","focused":true,"specialWorkspace":{"name":"%s"}},{"name":"DP-2","focused":false,"specialWorkspace":{"name":"%s"}},{"name":"HDMI-A-1","focused":false,"specialWorkspace":{"name":"%s"}}]\n' "$dp1_workspace" "$dp2_workspace" "$hdmi_workspace"
 elif [[ "$probe" == "clients -j" ]]; then
   printf '%s\n' "$CLIENTS_JSON"
 elif [[ "$1" == "dispatch" ]]; then
+	matching_dispatch_call=0
+	if [[ "$2" == "$FAILED_DISPATCH" ]]; then
+		if [[ -r "$DISPATCH_CALL_COUNT" ]]; then
+			read -r matching_dispatch_call < "$DISPATCH_CALL_COUNT"
+		fi
+		((matching_dispatch_call += 1))
+		printf '%s\n' "$matching_dispatch_call" > "$DISPATCH_CALL_COUNT"
+	fi
+	if [[ "$2" == "$FAILED_DISPATCH" && ( -z "$FAILED_DISPATCH_CALL" || "$matching_dispatch_call" == "$FAILED_DISPATCH_CALL" ) ]]; then
+		exit 42
+	fi
   if [[ -n "\${DISPATCH_DIAGNOSTIC:-}" ]]; then
     printf '%s\n' "$DISPATCH_DIAGNOSTIC" >&2
     exit 42
@@ -130,6 +149,9 @@ esac
 		clientsJson = "[]",
 		chromiumLog = "",
 		failedProbeCall = "",
+		failedDispatch = "",
+		failedDispatchCall = "",
+		visibleMonitor = "DP-1",
 	) {
 		const proc = Bun.spawn([script, ...args], {
 			env: {
@@ -137,8 +159,11 @@ esac
 				HOME: directory,
 				CLIENTS_JSON: clientsJson,
 				DISPATCH_DIAGNOSTIC: dispatchDiagnostic,
+				DISPATCH_CALL_COUNT: path.join(directory, "dispatch-call-count"),
 				CHROMIUM_LOG: chromiumLog,
 				DISPATCH_LOG: log,
+				FAILED_DISPATCH: failedDispatch,
+				FAILED_DISPATCH_CALL: failedDispatchCall,
 				FAILED_PROBE: failedProbe,
 				FAILED_PROBE_CALL: failedProbeCall,
 				PATH: commandDirectory,
@@ -148,6 +173,7 @@ esac
 				VISIBLE_WORKSPACE: visibleWorkspace
 					? `special:${visibleWorkspace}`
 					: "",
+				VISIBLE_MONITOR: visibleMonitor,
 			},
 			stdout: "pipe",
 			stderr: "pipe",
@@ -171,6 +197,58 @@ esac
 			exitCode: 42,
 			stderr: `${diagnostic}\n`,
 		});
+	});
+
+	it("continues gathering assistants after a stale address dispatch fails", async () => {
+		const clients = JSON.stringify([
+			{ address: "0x1", class: "chatgpt", workspace: { name: "1" } },
+			{ address: "0x2", class: "chatgpt", workspace: { name: "2" } },
+		]);
+		const result = await run(
+			["assistants"],
+			"",
+			"non-zero-exit",
+			"",
+			"",
+			clients,
+			"",
+			"",
+			"movetoworkspacesilent",
+			"1",
+		);
+
+		expect(result).toEqual({
+			dispatches: [
+				"dispatch togglespecialworkspace assistants",
+				"dispatch movetoworkspacesilent special:assistants,address:0x2",
+			],
+			exitCode: 0,
+			stderr: "",
+		});
+	});
+
+	it("still ensures Haki Kitty after focusing its visible monitor fails", async () => {
+		const result = await run(
+			["haki"],
+			"",
+			"non-zero-exit",
+			"haki",
+			"",
+			"[]",
+			"",
+			"",
+			"focusmonitor",
+			"",
+			"DP-2",
+		);
+
+		expect(result.exitCode).toBe(0);
+		expect(result.stderr).toBe("");
+		expect(result.dispatches).toHaveLength(1);
+		expect(result.dispatches[0]).toStartWith(
+			"dispatch exec [workspace special:haki silent] uwsm-app -- kitty ",
+		);
+		expect(result.dispatches[0]).toContain("--class haoshoku-haki");
 	});
 
 	it("reveals a warm browser workspace when Brave Origin URL forwarding fails", async () => {
