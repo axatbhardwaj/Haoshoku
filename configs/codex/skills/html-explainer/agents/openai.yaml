@@ -1,0 +1,4 @@
+interface:
+  display_name: "HTML Explainer"
+  short_description: "Create polished offline HTML deliverables"
+  default_prompt: "Use $html-explainer to create a polished self-contained HTML report."

@@ -17,7 +17,7 @@ import {
 } from "../src/os_scripts/cachyos.js";
 
 describe("user app configuration", () => {
-	it("runs the Warp configurator in the normal app setup path", async () => {
+	it("runs the Kitty configurator and never reactivates Warp", async () => {
 		const events = [];
 		const record = (name) => async () => events.push(name);
 
@@ -27,7 +27,10 @@ describe("user app configuration", () => {
 			configureAudioImpl: record("audio"),
 			configureBashImpl: record("bash"),
 			configureFastfetchImpl: record("fastfetch"),
-			configureWarpImpl: record("warp"),
+			configureKittyImpl: record("kitty"),
+			configureWarpImpl: async () => {
+				throw new Error("Warp configuration must remain dormant");
+			},
 			runCommandImpl: record("uosc"),
 			enableServicesImpl: record("services"),
 			configureClaudeImpl: record("claude"),
@@ -43,7 +46,7 @@ describe("user app configuration", () => {
 			"audio",
 			"bash",
 			"fastfetch",
-			"warp",
+			"kitty",
 			"uosc",
 			"services",
 			"claude",

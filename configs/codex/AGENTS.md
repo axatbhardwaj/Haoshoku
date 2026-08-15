@@ -177,7 +177,7 @@ Engine note: Claude Code uses the slash commands installed to `.claude/commands/
 
 Markdown files are not the primary way to communicate work product ([Thariq's "the unreasonable effectiveness of HTML"](https://claude.com/blog/using-claude-code-the-unreasonable-effectiveness-of-html)). Any document produced for a human to read — specs, plans for approval, research/ADRs, reports, audits, PR reviews, todo/status views — is a **single self-contained dark-mode HTML file**. Conversation replies stay plain text; this rule is about files.
 
-**Format source (mandatory):** every HTML deliverable uses the bundled `samvada-html-deliverables` skill. Read `~/.codex/skills/samvada-html-deliverables/SKILL.md` and `template.html` from that same directory before writing; never restyle from scratch. Each deliverable declares its `samvada-artifact-meta` JSON block with a `samvada.artifact.*` schema. The quality bar below is what that skill implements.
+**Format source (mandatory):** every HTML deliverable uses the bundled `html-explainer` skill. Read `~/.codex/skills/html-explainer/SKILL.md` and `template.html` from that same directory before writing; never restyle from scratch. Each deliverable declares its `artifact-meta` JSON block with a `artifact.*` schema. The quality bar below is what that skill implements.
 
 Quality bar, every file:
 - **Dark mode, always** — near-black background, comfortable contrast, one accent color, no flash-of-white.

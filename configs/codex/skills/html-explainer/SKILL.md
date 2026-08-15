@@ -1,9 +1,9 @@
 ---
-name: samvada-html-deliverables
+name: html-explainer
 description: Use when creating HTML files for human readers, including reports, explainers, specs, plans, reviews, audits, research write-ups, and status pages.
 ---
 
-# Samvada HTML Deliverables
+# HTML Explainer
 
 ## Overview
 
@@ -15,7 +15,7 @@ Copy `template.html` and fill it with real content.
 
 Every page has these parts, in order:
 
-1. A concise `<title>` and `samvada-artifact-meta` JSON block containing
+1. A concise `<title>` and `artifact-meta` JSON block containing
    `schema`, `artifact_type`, `title`, `date`, and `basis`.
 2. The template's `:root` token block verbatim, including
    `color-scheme: dark;`.

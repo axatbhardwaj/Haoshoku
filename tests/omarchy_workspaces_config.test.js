@@ -39,12 +39,9 @@ describe("Omarchy workspace overlay", () => {
 		}
 	});
 
-	it("uses dedicated special-workspace toggles and workspace 1 assistants", () => {
-		const assistantsBinding =
-			"bindd = SUPER, I, Workspace 1 and AI assistants, exec, haoshoku-special-workspace assistants";
+	it("uses dedicated special-workspace toggles and leaves Meta+I unbound", () => {
 		const toggleBinds = [
 			"bindd = SUPER, A, Show/focus/hide Haki session, exec, haoshoku-special-workspace haki",
-			assistantsBinding,
 			"bindd = SUPER, M, Show/focus/hide music workspace, exec, haoshoku-special-workspace music",
 			"bindd = SUPER, O, Show/focus/hide 1Password workspace, exec, haoshoku-special-workspace 1password",
 			"bindd = SUPER, G, Show/focus/hide communication workspace, exec, haoshoku-special-workspace communication",
@@ -59,18 +56,18 @@ describe("Omarchy workspace overlay", () => {
 		];
 		for (const bind of toggleBinds) expect(config).toContain(bind);
 		for (const overlay of [config, laptopConfig]) {
-			expect(overlay).toContain(assistantsBinding);
+			expect(overlay).not.toMatch(/^bind\w* = SUPER, I,/m);
 		}
 		expect(
 			config.split("\n").filter(
 				(line) =>
 					line.startsWith("bindd = SUPER, ") &&
 					!line.includes("haoshoku-special-workspace numbered ") &&
-					// Eleven helper-backed toggles plus the stash toggle.
+					// Ten helper-backed toggles plus the stash toggle.
 					(line.includes("haoshoku-special-workspace") ||
 						line.endsWith("togglespecialworkspace, stash")),
 			),
-		).toHaveLength(12);
+		).toHaveLength(11);
 		expect(config).toContain(
 			"bindd = SUPER SHIFT, S, Stash focused window, movetoworkspacesilent, special:stash",
 		);
@@ -122,16 +119,23 @@ describe("Omarchy workspace overlay", () => {
 		);
 	});
 
-	it("routes workspace 7 through tagged Warp without a broad class placement rule", () => {
+	it("routes workspace 7 through a dedicated Kitty class", () => {
 		expect(config).toContain(
-			"bindd = SUPER, code:16, Workspace 7 and Warp, exec, haoshoku-special-workspace numbered 7 warp",
+			"bindd = SUPER, code:16, Workspace 7 and Kitty, exec, haoshoku-special-workspace numbered 7 kitty",
 		);
 		expect(config).toContain(
-			"exec-once = haoshoku-special-workspace numbered-login 7 warp",
+			"exec-once = haoshoku-special-workspace numbered-login 7 kitty",
 		);
 		for (const overlay of [config, laptopConfig]) {
-			expect(overlay).not.toContain("haoshoku-ws7");
-			expect(overlay).not.toContain("haoshoku-haki");
+			expect(overlay).toContain(
+				"windowrule = workspace 7 silent, match:class ^haoshoku-ws7$",
+			);
+			expect(overlay).toContain(
+				"windowrule = workspace special:haki, match:class ^haoshoku-haki$",
+			);
+			expect(overlay).toContain(
+				"windowrule = workspace special:agents, match:class ^haoshoku-agents$",
+			);
 			expect(overlay).not.toMatch(/match:class \^dev\\\.warp\\\.Warp\$/);
 		}
 	});
@@ -145,12 +149,15 @@ describe("Omarchy workspace overlay", () => {
 		);
 	});
 
-	it("routes both AI assistants by exact class to workspace 1 silently", () => {
+	it("routes Claude to workspace 1 and ChatGPT to workspace 2 silently", () => {
 		const expectedRules = [
 			String.raw`windowrule = workspace 1 silent, match:class ^com\.anthropic\.Claude$`,
-			"windowrule = workspace 1 silent, match:class ^chatgpt$",
+			"windowrule = workspace 2 silent, match:class ^chatgpt$",
 		];
 		for (const overlay of [config, laptopConfig]) {
+			expect(overlay).toContain(
+				"exec-once = haoshoku-special-workspace assistants",
+			);
 			const assistantRules = overlay
 				.split(/\r?\n/)
 				.filter(
@@ -166,6 +173,12 @@ describe("Omarchy workspace overlay", () => {
 			expect(overlay).not.toContain("special:assistants");
 		}
 		expect("chatgpt-desktop").not.toMatch(/^chatgpt$/);
+	});
+
+	it("leaves the stock Meta+1 workspace switch enabled in both device overlays", () => {
+		for (const overlay of [config, laptopConfig]) {
+			expect(overlay).not.toContain("unbind = SUPER, code:10");
+		}
 	});
 
 	for (const { workspace, classPattern, decoyClass } of [

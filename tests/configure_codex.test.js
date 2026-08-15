@@ -11,12 +11,12 @@ import {
 } from "../src/helpers/configure_codex.js";
 
 describe("CODEX_PERSONAL_FILES manifest", () => {
-	it("tracks AGENTS.md and the bundled Samvada skill", () => {
+	it("tracks AGENTS.md and the bundled HTML Explainer skill", () => {
 		expect(CODEX_PERSONAL_FILES.map((f) => f.src)).toEqual([
 			"AGENTS.md",
-			"skills/samvada-html-deliverables/SKILL.md",
-			"skills/samvada-html-deliverables/agents/openai.yaml",
-			"skills/samvada-html-deliverables/template.html",
+			"skills/html-explainer/SKILL.md",
+			"skills/html-explainer/agents/openai.yaml",
+			"skills/html-explainer/template.html",
 		]);
 	});
 });
@@ -29,7 +29,7 @@ describe("syncCodexConfig", () => {
 		codexHome = path.join(tmpDir, "codex-home");
 		codexDir = path.join(codexHome, ".codex");
 		fs.mkdirSync(configsDir, { recursive: true });
-		fs.mkdirSync(path.join(configsDir, "skills", "samvada-html-deliverables"), {
+		fs.mkdirSync(path.join(configsDir, "skills", "html-explainer"), {
 			recursive: true,
 		});
 	});
@@ -65,8 +65,8 @@ describe("syncCodexConfig", () => {
 		);
 	});
 
-	it("deploys and round-trips the Samvada skill files", async () => {
-		const skill = path.join("skills", "samvada-html-deliverables");
+	it("deploys and round-trips the HTML Explainer skill files", async () => {
+		const skill = path.join("skills", "html-explainer");
 		const bundledSkill = path.join(configsDir, skill);
 		const liveSkill = path.join(codexDir, skill);
 		const files = [
@@ -98,8 +98,8 @@ describe("syncCodexConfig", () => {
 		expect(fs.existsSync(path.join(bundledSkill, "stale.txt"))).toBe(false);
 	});
 
-	it("backs up a differing Samvada file before overwriting it", async () => {
-		const skill = path.join("skills", "samvada-html-deliverables");
+	it("backs up a differing HTML Explainer file before overwriting it", async () => {
+		const skill = path.join("skills", "html-explainer");
 		const bundledSkill = path.join(configsDir, skill);
 		const liveSkill = path.join(codexDir, skill);
 		fs.mkdirSync(path.join(bundledSkill, "agents"), { recursive: true });

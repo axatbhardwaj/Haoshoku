@@ -195,7 +195,7 @@ describe("configureOmarchyWorkspaces", () => {
 		expect(commands).toEqual([
 			"hyprctl reload",
 			"hyprctl configerrors",
-			`'${path.join(home, ".local", "bin", "haoshoku-special-workspace")}' numbered-login 7 warp`,
+			`'${path.join(home, ".local", "bin", "haoshoku-special-workspace")}' numbered-login 7 kitty`,
 		]);
 		expect(result.validated).toBe(true);
 	});
@@ -238,7 +238,7 @@ fi
 		});
 
 		expect(fs.readFileSync(dispatchLog, "utf8")).toContain(
-			"dispatch exec [workspace 7 silent] uwsm-app -- warp-terminal",
+			"dispatch exec [workspace 7 silent] uwsm-app -- kitty --class haoshoku-ws7",
 		);
 	});
 
@@ -256,7 +256,7 @@ if [[ "$1 $2" == "clients -j" ]]; then
 elif [[ "$1" == "dispatch" ]]; then
   printf '%s\\n' "$*" >> "$DISPATCH_LOG"
   if [[ "$2" == "exec" ]]; then
-    printf '%s\\n' '[{"address":"0xinstall","class":"dev.warp.Warp","tags":["haoshoku-ws7"],"workspace":{"name":"7"}}]' > "$CLIENTS_STATE"
+    printf '%s\\n' '[{"address":"0xinstall","class":"haoshoku-ws7","workspace":{"name":"7"}}]' > "$CLIENTS_STATE"
   fi
 fi
 `,
@@ -266,14 +266,14 @@ fi
 		const runCommandImpl = async (command) => {
 			if (command === "hyprctl reload" || command === "hyprctl configerrors")
 				return true;
-			if (!command.endsWith(" numbered-login 7 warp")) return false;
+			if (!command.endsWith(" numbered-login 7 kitty")) return false;
 			ensureRuns += 1;
 			const proc = Bun.spawn(
 				[
 					path.join(home, ".local", "bin", "haoshoku-special-workspace"),
 					"numbered-login",
 					"7",
-					"warp",
+					"kitty",
 				],
 				{
 					env: {

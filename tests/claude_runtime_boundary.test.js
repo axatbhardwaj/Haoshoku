@@ -40,7 +40,7 @@ const PINNED_DIGESTS = {
 	"agents/sol-wrapper.md":
 		"0bb91f67917c3740a8fc01c293a9230e537e12e33910b9a88d81048237a0fddd",
 	"agents/luna-wrapper.md":
-		"14e29dc607942ec1bc6b397a6c7bd37c8417b13757bcb3a4825421d5c444a8b1",
+		"b1fe482b3a2568dfcfb438bd5234fa08714751b01ff13fd7acc66ce87ec07740",
 	"agents/grok-wrapper.md":
 		"69f0876934f8aeea6ec62d90d694ea481b1bc1906b2ea16a9a40cbb14e1b4130",
 	"agents/madhyastha.md":
@@ -76,9 +76,9 @@ const PINNED_DIGESTS = {
 	"skills/linear-ticketing/SKILL.md":
 		"d64b3708c28792518862e78a56673e0bb353b6af05c2750a6c0fca299f3fd33a",
 	"skills/html-explainer/SKILL.md":
-		"0743a27646b8a2050e24590e794c9e24b1ba4fac17002330a524e5a4df28aa62",
+		"7224676536d3628b24a5175c8bd9d4ebcd8eadc7b4d17121edb2878ebb3fd6a0",
 	"skills/html-explainer/template.html":
-		"9aef7a092acbb59199a289e19545da2436deb8a36cf5a35057ee46e5c03197a7",
+		"f467f7333d3812705f77bec340a47c18a22f4fd1c1dd19a1502214627028e5c3",
 };
 
 function digest(contents) {

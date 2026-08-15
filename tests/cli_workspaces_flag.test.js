@@ -52,7 +52,7 @@ describe("--workspaces CLI mode", () => {
 		expect(commands).toEqual([
 			"hyprctl reload",
 			"hyprctl configerrors",
-			`'${path.join(tmpHome, ".local", "bin", "haoshoku-special-workspace")}' numbered-login 7 warp`,
+			`'${path.join(tmpHome, ".local", "bin", "haoshoku-special-workspace")}' numbered-login 7 kitty`,
 		]);
 	});
 

@@ -18,7 +18,7 @@ const activeTextRouteFiles = [
 	"configs/scripts/haoshoku-special-workspace",
 ];
 const retiredTerminalLauncher =
-	/\b(?:kitty|foot|ghostty|alacritty|konsole|agents-toggle)\b/i;
+	/\b(?:warp-terminal|foot|ghostty|alacritty|konsole|agents-toggle)\b/i;
 
 function activeRuntimeText(relativePath) {
 	return fs
@@ -46,7 +46,7 @@ function kdeServiceLaunches(kdeShortcuts) {
 }
 
 describe("active terminal caller boundary", () => {
-	it("keeps all active terminal command routes on Warp while retaining Kitty fallback", () => {
+	it("keeps all active terminal command routes on Kitty while retaining Warp dormant", () => {
 		for (const relativePath of activeTextRouteFiles.filter(
 			(path) => path !== "configs/caelestia/cli.json",
 		)) {
@@ -101,7 +101,7 @@ describe("active terminal caller boundary", () => {
 		expect(activeTextRouteFiles).not.toContain("CHANGELOG.md");
 	});
 
-	it("assigns KDE Meta+Return to Warp and uses a terminal-neutral Fastfetch logo", () => {
+	it("assigns KDE Meta+Return to Kitty and uses a terminal-neutral Fastfetch logo", () => {
 		const kdeShortcuts = fs.readFileSync(
 			path.join(root, "configs", "kde_shortcuts.kksrc"),
 			"utf8",
@@ -112,9 +112,9 @@ describe("active terminal caller boundary", () => {
 				expect(launch, desktopId).toBe("none");
 			}
 		}
-		expect(serviceLaunches.get("kitty.desktop")).toBe("none");
+		expect(serviceLaunches.get("kitty.desktop")).toBe("Meta+Return");
 		expect(serviceLaunches.get("org.kde.konsole.desktop")).toBe("none");
-		expect(serviceLaunches.get("dev.warp.Warp.desktop")).toBe("Meta+Return");
+		expect(serviceLaunches.get("dev.warp.Warp.desktop")).toBe("none");
 
 		const fastfetch = Bun.JSONC.parse(
 			fs.readFileSync(

@@ -508,26 +508,20 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		expect(toggles).not.toContain("vivaldi");
 	});
 
-	it("ships configs/warp/tab_configs/agents.toml as a Claude-only tab", () => {
-		const t = fs.readFileSync(
-			path.join(PROJECT_ROOT, "configs", "warp", "tab_configs", "agents.toml"),
-			"utf8",
-		);
-		// Assert against directives only. The file documents the split it used
-		// to be, so matching raw text would fail on the comment's own history.
-		const directives = t
-			.split("\n")
-			.filter((line) => !line.trim().startsWith("#"))
-			.join("\n");
-
-		expect(directives).toContain("claude -r io");
-		// Super+A opens Claude alone. Codex is started by hand when wanted, so
-		// there is no second pane and therefore no root split to declare.
-		expect(directives).not.toContain("codex");
-		expect(directives).not.toContain("split =");
-		expect(
-			fs.existsSync(path.join(PROJECT_ROOT, "configs", "kitty", "kitty.conf")),
-		).toBe(true);
+	it("ships Kitty Haki and agents as Claude-over-Codex split sessions", () => {
+		for (const [filename, topCommand] of [
+			["haki.session", "/home/xzat/.local/bin/haoshoku-claude-local"],
+			["agents.session", "claude -r io"],
+		]) {
+			const session = fs.readFileSync(
+				path.join(PROJECT_ROOT, "configs", "kitty", filename),
+				"utf8",
+			);
+			expect(session).toContain("layout splits");
+			expect(session).toContain(topCommand);
+			expect(session).toContain("launch --location=hsplit --dont-take-focus");
+			expect(session).toMatch(/exec codex/);
+		}
 	});
 
 	it("maps special-workspace toggles to the expected apps", () => {
@@ -597,7 +591,7 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 			enable: true,
 			match: [
 				{
-					class: "dev.warp.Warp",
+					class: "kitty",
 					title: "btop",
 					workspace: { name: "special:sysmon" },
 				},
@@ -638,7 +632,7 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		);
 	});
 
-	it("routes Super+A through the tagged Warp agents recipe and Super+D to HDMI-A-1 on PC", () => {
+	it("routes Super+A through the Kitty agents recipe and Super+D to HDMI-A-1 on PC", () => {
 		const conf = fs.readFileSync(
 			path.join(CONFIGS_CAELESTIA_DIR, "hypr-user-pc.conf"),
 			"utf8",
@@ -651,14 +645,16 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		expect(unbindIndex).toBeGreaterThanOrEqual(0);
 		expect(bindIndex).toBeGreaterThan(unbindIndex);
 		expect(conf).not.toContain("agents-toggle");
-		expect(conf).not.toContain("kitty-agents");
+		expect(conf).toContain(
+			"windowrule = workspace special:agents, match:class ^haoshoku-agents$",
+		);
 		expect(conf).toContain(
 			"bind = $kbCommunication, exec, hyprctl dispatch focusmonitor HDMI-A-1 && caelestia toggle communication",
 		);
 		expect(conf).not.toContain("caelestia toggle claude");
 	});
 
-	it("routes Super+I to native claude-desktop alone on DP-2 for PC", () => {
+	it("leaves Super+I unbound in both variants", () => {
 		const conf = fs.readFileSync(
 			path.join(CONFIGS_CAELESTIA_DIR, "hypr-user-pc.conf"),
 			"utf8",
@@ -667,9 +663,13 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		expect(conf).toContain(
 			String.raw`windowrule = workspace special:claude-desktop, match:class com\.anthropic\.Claude`,
 		);
-		expect(conf).toContain(
-			"bind = Super, I, exec, hyprctl dispatch focusmonitor DP-2 && /home/xzat/.local/bin/claude-desktop-toggle",
-		);
+		for (const file of ["hypr-user-pc.conf", "hypr-user-laptop.conf"]) {
+			const variant = fs.readFileSync(
+				path.join(CONFIGS_CAELESTIA_DIR, file),
+				"utf8",
+			);
+			expect(variant).not.toMatch(/^bind = Super, I,/m);
+		}
 		// The ChatGPT PWA no longer shares the workspace, so nothing should
 		// route its class here — under either Brave app-id spelling.
 		expect(conf).not.toContain("cadlkienfkclaiaibeoongdcgmdikeeg");
@@ -712,12 +712,14 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		);
 		expect(conf).toContain("unbind = $kbGoToWs, 7");
 		expect(conf).toContain(
-			"bind = $kbGoToWs, 7, exec, hyprctl dispatch focusmonitor DP-2 && /home/xzat/.local/bin/haoshoku-special-workspace numbered 7 warp",
+			"bind = $kbGoToWs, 7, exec, hyprctl dispatch focusmonitor DP-2 && /home/xzat/.local/bin/haoshoku-special-workspace numbered 7 kitty",
 		);
 		expect(conf).toContain(
-			"exec-once = /home/xzat/.local/bin/haoshoku-special-workspace numbered-login 7 warp",
+			"exec-once = /home/xzat/.local/bin/haoshoku-special-workspace numbered-login 7 kitty",
 		);
-		expect(conf).not.toContain("haoshoku-ws7");
+		expect(conf).toContain(
+			"windowrule = workspace 7 silent, match:class ^haoshoku-ws7$",
+		);
 		expect(conf).not.toContain("kitty-workspace-7");
 	});
 
@@ -741,7 +743,7 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		expect(conf).not.toMatch(/workspace\s*=\s*10\s*,\s*monitor:/);
 	});
 
-	it("routes Super+A through the tagged Warp agents recipe without monitor forcing on laptop", () => {
+	it("routes Super+A through the Kitty agents recipe without monitor forcing on laptop", () => {
 		const conf = fs.readFileSync(
 			path.join(CONFIGS_CAELESTIA_DIR, "hypr-user-laptop.conf"),
 			"utf8",
@@ -754,7 +756,9 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		expect(unbindIndex).toBeGreaterThanOrEqual(0);
 		expect(bindIndex).toBeGreaterThan(unbindIndex);
 		expect(conf).not.toContain("agents-toggle");
-		expect(conf).not.toContain("kitty-agents");
+		expect(conf).toContain(
+			"windowrule = workspace special:agents, match:class ^haoshoku-agents$",
+		);
 		// Laptop has eDP-1, not DP-2/HDMI-A-1 — no focusmonitor forcing on Super+A
 		expect(conf).not.toMatch(/focusmonitor\s+DP-2/);
 		expect(conf).not.toContain("caelestia toggle claude");
@@ -838,7 +842,7 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 			'hyprctl dispatch exec "[workspace 2 silent] app2unit -- steam"',
 			'hyprctl dispatch exec "[workspace 4 silent] app2unit -- discord"',
 			"bind = $kbGoToWs, 6, exec, hyprctl dispatch workspace 6",
-			"bind = $kbGoToWs, 7, exec, /home/xzat/.local/bin/haoshoku-special-workspace numbered 7 warp",
+			"bind = $kbGoToWs, 7, exec, /home/xzat/.local/bin/haoshoku-special-workspace numbered 7 kitty",
 			"hyprshot -m output -m active",
 		];
 
@@ -1010,7 +1014,7 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 		}
 	});
 
-	it("binds Super+A to the shared Warp agents recipe in both hypr-user variants", () => {
+	it("binds Super+A to the shared Kitty agents recipe in both hypr-user variants", () => {
 		for (const file of ["hypr-user-pc.conf", "hypr-user-laptop.conf"]) {
 			const conf = fs.readFileSync(
 				path.join(CONFIGS_CAELESTIA_DIR, file),
@@ -1025,6 +1029,16 @@ describe("seeded configs/caelestia/ (in-tree static configs)", () => {
 			expect(bindIndex).toBeGreaterThan(unbindIndex);
 			expect(conf).not.toContain("caelestia toggle agents");
 			expect(conf).not.toContain("agents-toggle");
+		}
+	});
+
+	it("leaves the stock Meta+1 workspace switch enabled in both variants", () => {
+		for (const file of ["hypr-user-pc.conf", "hypr-user-laptop.conf"]) {
+			const conf = fs.readFileSync(
+				path.join(CONFIGS_CAELESTIA_DIR, file),
+				"utf8",
+			);
+			expect(conf).not.toContain("unbind = $kbGoToWs, 1");
 		}
 	});
 

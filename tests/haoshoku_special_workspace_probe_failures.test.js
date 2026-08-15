@@ -222,7 +222,7 @@ esac
 			});
 		});
 
-		it(`[${failure}] Haki client probe fails closed without Warp ownership actions`, async () => {
+		it(`[${failure}] Haki client probe fails closed without Kitty ownership actions`, async () => {
 			const result = await run(["haki"], "clients -j", failure);
 
 			expect(result.exitCode).toBe(0);
@@ -258,9 +258,9 @@ esac
 		});
 	}
 
-	it("rejects a multi-document client probe before launching Warp", async () => {
+	it("rejects a multi-document client probe before launching Kitty", async () => {
 		const result = await run(
-			["numbered-login", "7", "warp"],
+			["numbered-login", "7", "kitty"],
 			"",
 			"non-zero-exit",
 			"",
@@ -282,9 +282,9 @@ esac
 	});
 
 	for (const failure of ["invalid-json", "empty-output", "non-zero-exit"]) {
-		it(`[${failure}] numbered Warp initial probe performs no ownership action`, async () => {
+		it(`[${failure}] numbered Kitty initial probe performs no ownership action`, async () => {
 			const result = await run(
-				["numbered-login", "7", "warp"],
+				["numbered-login", "7", "kitty"],
 				"clients -j",
 				failure,
 			);
@@ -303,65 +303,9 @@ esac
 		});
 	}
 
-	it("does not guess an address after a Warp poll probe fails", async () => {
+	it("launches a missing numbered Kitty without address polling", async () => {
 		const result = await run(
-			["numbered-login", "7", "warp"],
-			"clients -j",
-			"invalid-json",
-			"",
-			"",
-			"[]",
-			"",
-			"2",
-		);
-
-		expect(result.exitCode).toBe(0);
-		expect(result.stderr).toBe("");
-		expect(
-			result.dispatches.filter((dispatch) =>
-				dispatch.startsWith("dispatch exec "),
-			),
-		).toHaveLength(1);
-		expect(
-			result.dispatches.filter((dispatch) =>
-				["dispatch tagwindow ", "dispatch movetoworkspace"].some((prefix) =>
-					dispatch.startsWith(prefix),
-				),
-			),
-		).toEqual([]);
-	});
-
-	it("does not guess an address after a later Warp poll exits nonzero", async () => {
-		const result = await run(
-			["numbered-login", "7", "warp"],
-			"clients -j",
-			"non-zero-exit",
-			"",
-			"",
-			"[]",
-			"",
-			"2",
-		);
-
-		expect(result.exitCode).toBe(0);
-		expect(result.stderr).toBe("");
-		expect(
-			result.dispatches.filter((dispatch) =>
-				dispatch.startsWith("dispatch exec "),
-			),
-		).toHaveLength(1);
-		expect(
-			result.dispatches.filter((dispatch) =>
-				["dispatch tagwindow ", "dispatch movetoworkspace"].some((prefix) =>
-					dispatch.startsWith(prefix),
-				),
-			),
-		).toEqual([]);
-	});
-
-	it("leaves one launched Warp unowned when its new address never appears", async () => {
-		const result = await run(
-			["numbered-login", "7", "warp"],
+			["numbered-login", "7", "kitty"],
 			"",
 			"non-zero-exit",
 		);
@@ -375,9 +319,7 @@ esac
 		).toHaveLength(1);
 		expect(
 			result.dispatches.filter((dispatch) =>
-				["dispatch tagwindow ", "dispatch movetoworkspace"].some((prefix) =>
-					dispatch.startsWith(prefix),
-				),
+				dispatch.startsWith("dispatch movetoworkspace"),
 			),
 		).toEqual([]);
 	});
@@ -413,7 +355,7 @@ esac
 				name: "numbered communication",
 				args: ["numbered", "3", "communication-numbered"],
 			},
-			{ name: "numbered Warp", args: ["numbered", "7", "warp"] },
+			{ name: "numbered Kitty", args: ["numbered", "7", "kitty"] },
 			{ name: "numbered notion", args: ["numbered", "4", "notion"] },
 			{ name: "browser", args: ["browser", "flux"] },
 			{ name: "browser-toggle", args: ["browser-toggle", "flux"] },

@@ -24,7 +24,7 @@ print, and the foot stamp.
 
 Every page has these parts, in order:
 
-1. A concise `<title>` and `samvada-artifact-meta` JSON block containing
+1. A concise `<title>` and `artifact-meta` JSON block containing
    `schema`, `artifact_type`, `title`, `date`, and `basis`.
 2. The template's `:root` token block verbatim, including
    `color-scheme: dark;`.

@@ -9,13 +9,13 @@ const CUSTOM_CODEX_DIR = path.join(PROJECT_ROOT, "configs", "codex");
 const CODEX_NPM_PACKAGE = "@openai/codex";
 
 // ~/.codex also holds runtime state (auth.json, *.sqlite, history.jsonl) —
-// only AGENTS.md and the three bundled Samvada skill files are reproducible config.
+// only AGENTS.md and the three bundled HTML Explainer skill files are reproducible config.
 // Exported for the manifest test.
 export const CODEX_PERSONAL_FILES = [
 	{ src: "AGENTS.md" },
-	{ src: "skills/samvada-html-deliverables/SKILL.md" },
-	{ src: "skills/samvada-html-deliverables/agents/openai.yaml" },
-	{ src: "skills/samvada-html-deliverables/template.html" },
+	{ src: "skills/html-explainer/SKILL.md" },
+	{ src: "skills/html-explainer/agents/openai.yaml" },
+	{ src: "skills/html-explainer/template.html" },
 ];
 
 /** Resolve where a CODEX_PERSONAL_FILES entry lives on a given $HOME (inside ~/.codex/). */

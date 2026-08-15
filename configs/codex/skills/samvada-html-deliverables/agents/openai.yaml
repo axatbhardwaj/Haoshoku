@@ -1,4 +1,0 @@
-interface:
-  display_name: "Samvada HTML Deliverables"
-  short_description: "Create polished offline HTML deliverables"
-  default_prompt: "Use $samvada-html-deliverables to create a polished self-contained HTML report."

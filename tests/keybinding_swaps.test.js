@@ -345,11 +345,21 @@ describe("Omarchy keybinding swaps", () => {
 		});
 	});
 
-	it("routes SUPER+A to tag-owned Warp Haki without class placement", () => {
+	it("does not suppress the stock Meta+1 workspace switch", () => {
+		const workspaces = fs.readFileSync(configPath, "utf8");
+		const deletedWorkspaceOne = swapsDocument.swaps.find(
+			(swap) => swap.key_combination_taken === "SUPER, code:10",
+		);
+
+		expect(deletedWorkspaceOne).toBeUndefined();
+		expect(workspaces).not.toContain("unbind = SUPER, code:10");
+	});
+
+	it("routes SUPER+A to the class-owned Kitty Haki session", () => {
 		const workspaces = fs.readFileSync(configPath, "utf8");
 		expect({
 			binding: activeBindingsFor(workspaces, "SUPER", "A"),
-			obsoleteHakiClassPlacement: workspaces
+			hakiClassPlacement: workspaces
 				.split("\n")
 				.filter((line) => line.includes("match:class ^haoshoku-haki$")),
 			broadWarpClassPlacement: workspaces
@@ -359,7 +369,9 @@ describe("Omarchy keybinding swaps", () => {
 			binding: [
 				"bindd = SUPER, A, Show/focus/hide Haki session, exec, haoshoku-special-workspace haki",
 			],
-			obsoleteHakiClassPlacement: [],
+			hakiClassPlacement: [
+				"windowrule = workspace special:haki, match:class ^haoshoku-haki$",
+			],
 			broadWarpClassPlacement: [],
 		});
 	});
