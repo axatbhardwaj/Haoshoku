@@ -87,7 +87,7 @@ describe("configureKitty", () => {
 
 		const deployedConfig = fs.readFileSync(deployedConfigPath, "utf8");
 		expect(deployedConfig).toMatch(
-			/^include[ \t]+~\/\.config\/omarchy\/current\/theme\/kitty\.conf[ \t]*$/m,
+			/^include[ \t]+~\/\.local\/state\/omarchy\/current\/theme\/kitty\.conf[ \t]*$/m,
 		);
 		expect(deployedConfig.match(/^background_opacity(?:[ \t]|$)/m)).toBeNull();
 	});
@@ -98,7 +98,7 @@ describe("configureKitty", () => {
 			"utf8",
 		);
 		expect(source).toContain(
-			"if not test -r ~/.config/omarchy/current/theme/kitty.conf\n" +
+			"if not test -r ~/.local/state/omarchy/current/theme/kitty.conf\n" +
 				"        cat ~/.local/state/caelestia/sequences.txt 2>/dev/null\n" +
 				"    end",
 		);
