@@ -72,15 +72,14 @@ The Arch setup:
   workspaces 1–3 and 8 on DP-1, 4–5 and 9 on HDMI-A-1, and 6, 7, and 10 on
   DP-2. The laptop variant removes monitor pins for a single-monitor layout
   while keeping the same workspace behavior, window rules, and bindings;
-- adds two-key special-workspace toggles under `Super`: A Haki (a Kitty
-  Claude-over-Codex split),
+- adds two-key special-workspace toggles under `Super`: A Haki (the tagged Warp
+  `haki` tab), I AI assistants (Claude Desktop and Codex Desktop) on ordinary
+  workspace 1,
   M music, O 1Password, G communication, B Flux Brave Origin,
   D DeFi Brave Origin,
   S stash, and `Super+Shift+X` X (`Super+Shift+S` stashes the focused window);
   see the canonical swaps JSON above for every Omarchy default relocated or
   superseded to make room;
-- leaves `Super+I` unbound and preserves Omarchy's stock `Super+1` switch to
-  workspace 1; Claude and ChatGPT still auto-launch onto workspaces 1 and 2;
 - adds a `Super+Shift+G` toggle for ephemeral gaming workspace 11. Use
   `haoshoku-gaming-workspace place -- %command%` as a Steam launch option to
   move the launched game's process-tree windows there;
@@ -117,8 +116,8 @@ does not run `git clean`, so Omarchy's managed
 The optional Claude Remote Control setup runs persistent Claude sessions from
 three fixed roots: `haki` at `$HOME`, `dev` at `$HOME/dev`, and `work` at
 `$HOME/Work`. Instances whose roots do not exist are skipped with a warning.
-On Omarchy, `Super+A` opens a dedicated Kitty Haki session on the special workspace,
-with Claude above a fresh Codex pane below; Caelestia and KDE use Kitty
+On Omarchy, `Super+A` opens the tagged Warp `haki` tab on the special workspace,
+with Claude above a fresh Codex pane below; Caelestia and KDE use their own Warp
 `agents` routes. Set `claudeSessionName` in
 `~/.haoshoku.json` only to resume a named Haki Claude session. A missing or null
 value starts plain Claude; a
@@ -224,10 +223,29 @@ The Debian path remains deliberately headless. In addition to its server
 hardening, it installs the portable Claude, Codex, Agent OS, and PR-watch
 configuration and configures T3 Code's upstream-managed background service. It
 ensures Node.js satisfies T3 Code's current runtime range before running
-`npx --yes t3@latest service install`, then verifies the service without
-exposing it or creating a pairing token. Run `haoshoku --server-t3-code` to
-install or repair only this server component, and pair later with
-`npx t3@latest pair`.
+`npx --yes t3@latest service install` and verifying the service.
+
+Haoshoku then inspects T3 Connect's machine-readable status. An existing
+provisioned link is left running without reauthorization or restart. Otherwise,
+Haoshoku runs `npx --yes t3@latest connect link --headless` in the attached
+terminal, allowing T3 to install and verify its managed relay client and guide
+you through browser authorization. It updates and restarts `t3code.service`,
+waits for the environment link and relay to become ready, and verifies the
+service again. The service belongs to the account that runs Haoshoku, including
+root when root ownership is intentional.
+
+T3 remains bound to `127.0.0.1:3773`; Haoshoku does not create an Nginx virtual
+host, change DNS, open that port, or add a firewall rule. After setup, open the
+T3 Code phone app, choose T3 Connect, and sign in with the same account used
+during authorization. The phone does not need Tailscale. Run
+`haoshoku --server-t3-code` to install or repair only this complete server
+component; normal Debian setup uses the same flow.
+
+If the server previously used Haoshoku v8.5.3's Tailscale integration, inspect
+`tailscale serve status` after confirming T3 Connect works. Only when it still
+shows the old T3 HTTPS handler, remove that handler with
+`tailscale serve --https=443 off`. `No serve config` means cleanup is already
+complete; Haoshoku never changes existing Tailscale routes automatically.
 
 The full Debian path asks about Git, the private Claude policy, Superpowers,
 Claude stay-awake, Claude Remote Control, and automatic worktree cleanup; then

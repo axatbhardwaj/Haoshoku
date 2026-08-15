@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const CLI = path.resolve(import.meta.dir, "..", "haoshoku.js");
+const README = path.resolve(import.meta.dir, "..", "README.md");
 
 function output(args) {
 	const result = Bun.spawnSync([process.execPath, CLI, ...args], {
@@ -44,8 +45,18 @@ describe("haoshoku CLI help", () => {
 
 	it("documents the Debian-only T3 Code server mode", () => {
 		const help = output(["--help"]);
+		const normalizedHelp = help.replace(/\s+/g, " ");
 		expect(help).toContain("--server-t3-code");
 		expect(help).toContain("Debian");
 		expect(help).toContain("headless");
+		expect(normalizedHelp).toContain("T3 Connect");
+		expect(help).not.toContain("Tailscale");
+	});
+
+	it("documents T3 Connect instead of mandatory Tailscale server access", () => {
+		const readme = fs.readFileSync(README, "utf8");
+		expect(readme).toContain("npx --yes t3@latest connect link --headless");
+		expect(readme).not.toContain("It also installs Tailscale when needed");
+		expect(readme).not.toContain("pair --tailscale");
 	});
 });

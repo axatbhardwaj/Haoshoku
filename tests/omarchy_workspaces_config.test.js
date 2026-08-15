@@ -39,9 +39,18 @@ describe("Omarchy workspace overlay", () => {
 		}
 	});
 
-	it("uses dedicated special-workspace toggles and leaves Meta+I unbound", () => {
+	it("uses monitor-following special workspaces for assistants, T3 Code, and Twitch", () => {
+		const assistantsBinding =
+			"bindd = SUPER, I, Show/focus/hide ChatGPT workspace, exec, haoshoku-special-workspace assistants";
+		const t3CodeBinding =
+			"bindd = SUPER, T, Show/focus/hide T3 Code workspace, exec, haoshoku-special-workspace t3code";
+		const twitchBinding =
+			"bindd = SUPER SHIFT, T, Show/focus/hide Twitch workspace, exec, haoshoku-special-workspace twitch";
 		const toggleBinds = [
 			"bindd = SUPER, A, Show/focus/hide Haki session, exec, haoshoku-special-workspace haki",
+			assistantsBinding,
+			t3CodeBinding,
+			twitchBinding,
 			"bindd = SUPER, M, Show/focus/hide music workspace, exec, haoshoku-special-workspace music",
 			"bindd = SUPER, O, Show/focus/hide 1Password workspace, exec, haoshoku-special-workspace 1password",
 			"bindd = SUPER, G, Show/focus/hide communication workspace, exec, haoshoku-special-workspace communication",
@@ -56,18 +65,23 @@ describe("Omarchy workspace overlay", () => {
 		];
 		for (const bind of toggleBinds) expect(config).toContain(bind);
 		for (const overlay of [config, laptopConfig]) {
-			expect(overlay).not.toMatch(/^bind\w* = SUPER, I,/m);
+			for (const binding of [assistantsBinding, t3CodeBinding, twitchBinding]) {
+				expect(overlay).toContain(binding);
+			}
+			expect(overlay).toContain(
+				"exec-once = haoshoku-special-workspace assistants",
+			);
 		}
 		expect(
 			config.split("\n").filter(
 				(line) =>
 					line.startsWith("bindd = SUPER, ") &&
 					!line.includes("haoshoku-special-workspace numbered ") &&
-					// Ten helper-backed toggles plus the stash toggle.
+					// Twelve unshifted helper-backed toggles plus the stash toggle.
 					(line.includes("haoshoku-special-workspace") ||
 						line.endsWith("togglespecialworkspace, stash")),
 			),
-		).toHaveLength(11);
+		).toHaveLength(13);
 		expect(config).toContain(
 			"bindd = SUPER SHIFT, S, Stash focused window, movetoworkspacesilent, special:stash",
 		);
@@ -83,6 +97,16 @@ describe("Omarchy workspace overlay", () => {
 		expect(config).toContain(
 			"bindd = SUPER, D, Toggle DeFi Brave Origin workspace, exec, haoshoku-special-workspace browser-toggle defi",
 		);
+	});
+
+	it("makes T3 Code the sole SUPER+T binding across both overlays", () => {
+		const superTBindings = `${bindingsConfig}\n${config}`
+			.split(/\r?\n/)
+			.filter((line) => line.startsWith("bindd = SUPER, T,"));
+
+		expect(superTBindings).toEqual([
+			"bindd = SUPER, T, Show/focus/hide T3 Code workspace, exec, haoshoku-special-workspace t3code",
+		]);
 	});
 
 	it("keeps the DEFI profile violet in both border states while Flux inherits the theme", () => {
@@ -119,23 +143,16 @@ describe("Omarchy workspace overlay", () => {
 		);
 	});
 
-	it("routes workspace 7 through a dedicated Kitty class", () => {
+	it("routes workspace 7 through tagged Warp without a broad class placement rule", () => {
 		expect(config).toContain(
-			"bindd = SUPER, code:16, Workspace 7 and Kitty, exec, haoshoku-special-workspace numbered 7 kitty",
+			"bindd = SUPER, code:16, Workspace 7 and Warp, exec, haoshoku-special-workspace numbered 7 warp",
 		);
 		expect(config).toContain(
-			"exec-once = haoshoku-special-workspace numbered-login 7 kitty",
+			"exec-once = haoshoku-special-workspace numbered-login 7 warp",
 		);
 		for (const overlay of [config, laptopConfig]) {
-			expect(overlay).toContain(
-				"windowrule = workspace 7 silent, match:class ^haoshoku-ws7$",
-			);
-			expect(overlay).toContain(
-				"windowrule = workspace special:haki, match:class ^haoshoku-haki$",
-			);
-			expect(overlay).toContain(
-				"windowrule = workspace special:agents, match:class ^haoshoku-agents$",
-			);
+			expect(overlay).not.toContain("haoshoku-ws7");
+			expect(overlay).not.toContain("haoshoku-haki");
 			expect(overlay).not.toMatch(/match:class \^dev\\\.warp\\\.Warp\$/);
 		}
 	});
@@ -149,36 +166,27 @@ describe("Omarchy workspace overlay", () => {
 		);
 	});
 
-	it("routes Claude to workspace 1 and ChatGPT to workspace 2 silently", () => {
+	it("routes AI apps to unpinned special workspaces by exact class", () => {
 		const expectedRules = [
-			String.raw`windowrule = workspace 1 silent, match:class ^com\.anthropic\.Claude$`,
-			"windowrule = workspace 2 silent, match:class ^chatgpt$",
+			"windowrule = workspace special:assistants silent, match:class ^chatgpt$",
+			"windowrule = workspace special:t3code silent, match:class ^t3code$",
 		];
 		for (const overlay of [config, laptopConfig]) {
-			expect(overlay).toContain(
-				"exec-once = haoshoku-special-workspace assistants",
-			);
-			const assistantRules = overlay
+			const aiRules = overlay
 				.split(/\r?\n/)
 				.filter(
 					(line) =>
-						line.includes("match:class ^com\\.anthropic\\.Claude$") ||
-						line.includes("match:class ^chatgpt$"),
+						line.includes("match:class ^chatgpt$") ||
+						line.includes("match:class ^t3code$"),
 				);
 
-			expect(assistantRules).toEqual(expectedRules);
-			for (const rule of assistantRules) {
+			expect(aiRules).toEqual(expectedRules);
+			for (const rule of aiRules) {
 				expect(rule).not.toMatch(/(?:float|pin|size|fullscreen|monitor)/);
 			}
-			expect(overlay).not.toContain("special:assistants");
+			expect(overlay).not.toMatch(/^workspace = special:(?:assistants|t3code),/m);
 		}
 		expect("chatgpt-desktop").not.toMatch(/^chatgpt$/);
-	});
-
-	it("leaves the stock Meta+1 workspace switch enabled in both device overlays", () => {
-		for (const overlay of [config, laptopConfig]) {
-			expect(overlay).not.toContain("unbind = SUPER, code:10");
-		}
 	});
 
 	for (const { workspace, classPattern, decoyClass } of [
@@ -201,6 +209,11 @@ describe("Omarchy workspace overlay", () => {
 			workspace: "reanime",
 			classPattern: "^brave-reanime\\.to__home-Default$",
 			decoyClass: "brave-reanimeXto__home-Default",
+		},
+		{
+			workspace: "twitch",
+			classPattern: "^brave-www\\.twitch\\.tv__-Default$",
+			decoyClass: "brave-wwwXtwitchXtv__-Default",
 		},
 	]) {
 		it(`routes ${workspace} by its escaped app-derived Brave class without silent placement`, () => {

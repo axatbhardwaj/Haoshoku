@@ -2,10 +2,6 @@
 
 ## Unreleased
 
-- Install the T3 Code desktop package through the Arch/Omarchy package list.
-- Configure T3 Code's upstream headless background service during Debian Server
-  setup and through the Debian-only `--server-t3-code` mode, with a compatible
-  Node.js gate, service verification, and manual pairing guidance.
 - Add the fixed, bubblewrap-confined OpenCode GLM seat with receipt and
   workspace-attribution enforcement for wrapper-dispatched work.
 - Add the Sonnet-supervised `opencode-wrapper` agent and package its fixed
@@ -13,6 +9,43 @@
 - Parse OpenCode export receipts from raw JSON stdout with a one-retry
   leading-preamble fallback, and let operators bypass network-resolving PATH
   shims with a validated `OPENCODE_SEAT_BIN` real-binary override.
+
+## 8.5.4 - 2026-08-14
+
+- Replace Debian T3 Code's mandatory Tailscale installation, authentication,
+  pairing, and Serve flow with headless T3 Connect authorization and its
+  upstream-managed relay client.
+- Preserve ready or pending T3 Connect credentials across reruns, restart the
+  current user's T3 service only when provisioning is needed, and verify the
+  environment link without opening ports or changing Nginx, DNS, or firewall
+  policy.
+
+## 8.5.3 - 2026-08-14
+
+- Make Debian T3 Code server setup install, enable, and verify Tailscale's
+  persistent vendor service, authenticate disconnected nodes, create the
+  private Tailscale Serve pairing endpoint, and verify it without exposing
+  T3's loopback port or changing firewall policy.
+- Support both root VPS installs and ordinary sudo-capable users, including
+  validated Tailscale operator access for the user that owns the T3 service.
+
+## 8.5.2 - 2026-08-14
+
+
+## 8.5.1 - 2026-08-13
+
+- Keep only ChatGPT on the monitor-following `special:assistants` workspace
+  and its `Super+I` login/toggle path, leaving Claude Desktop unmanaged.
+
+## 8.5.0 - 2026-08-13
+
+- Move Claude Desktop and Codex Desktop into one monitor-following
+  `special:assistants` workspace on `Super+I`, reclaim existing windows there,
+  and launch the assistants automatically at login.
+- Give T3 Code its own monitor-following `special:t3code` workspace on
+  `Super+T`, replacing the former Tmux shortcut.
+- Add a Twitch Brave Origin app and monitor-following `special:twitch`
+  workspace on `Super+Shift+T`.
 
 ## 8.4.1 - 2026-08-12
 

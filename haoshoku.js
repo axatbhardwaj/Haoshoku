@@ -62,7 +62,7 @@ const program = new Command();
 program
 	.name("haoshoku")
 	.description("Haoshoku: portable setup for Arch / Omarchy and Debian Server.")
-	.version("8.4.1")
+	.version("8.5.4")
 	.addHelpText("before", getBanner());
 
 program
@@ -96,7 +96,7 @@ program
 	)
 	.option(
 		"--server-t3-code",
-		"Configure the T3 Code headless server service on Debian",
+		"Configure the T3 Code headless service and T3 Connect on Debian",
 	)
 	.option("--skills", "Sync skills from configured sources")
 	.option("--skills-update", "Update cached skill sources")
