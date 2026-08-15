@@ -64,7 +64,7 @@ const PINNED_DIGESTS = {
 	"agents/run-codex-task.sh":
 		"faef3eddc4dddafc2a1bf2d2edf45a13e710519266dd88507da259f97e5fd4d6",
 	"agents/run-opencode-seat.sh":
-		"136408268a79467043c0f10bcf3d7660ba5649271cfe9d6a8a5bc4e99570c184",
+		"476e35ed2469a3f4b5c6f1e5baa1c022432ef8cfaaed03c4f831b5e560a50307",
 	"agents/validate-codex-wrapper.sh":
 		"250dcf53eddc87a3af3a40bf4be1e7d2b651557b71da5a93b9d413d5ca06be66",
 	"agents/codex-result.schema.json":

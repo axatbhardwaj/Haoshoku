@@ -351,7 +351,7 @@ SANDBOX_ISOLATION=(
   --proc /proc --tmpfs /run --tmpfs /tmp
   "${RESOLVER_MOUNTS[@]}"
   --unsetenv DBUS_SESSION_BUS_ADDRESS --unsetenv DISPLAY --unsetenv WAYLAND_DISPLAY
-  --unsetenv SSH_AUTH_SOCK --unsetenv XAUTHORITY
+  --unsetenv SSH_AUTH_SOCK --unsetenv XAUTHORITY --unsetenv CODEX_WRAPPER_GATEWAY
 )
 
 run_managed_process "$RUN_DIR/version.out" "$STDERR_PATH" 15 \

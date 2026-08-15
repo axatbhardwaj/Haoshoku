@@ -551,6 +551,27 @@ describe("opencode seat launcher fail-closed gates", () => {
 		}
 	});
 
+	it("strips the gateway marker from the sandboxed worker environment", () => {
+		const fixture = makeLauncherFixture();
+		installSuccessfulBwrap(fixture);
+		try {
+			const result = runLauncher(
+				fixture,
+				implementationArgs(fixture.workspace),
+				"opencode-wrapper",
+			);
+			expect(result.exitCode, result.stderr.toString()).toBe(0);
+			const args = fs.readFileSync(fixture.bwrapArgsLog, "utf8").split("\n");
+			const pairCount = (flag, value) =>
+				args.filter((arg, index) => arg === flag && args[index + 1] === value)
+					.length;
+			expect(pairCount("--unsetenv", "DISPLAY")).toBe(3);
+			expect(pairCount("--unsetenv", "CODEX_WRAPPER_GATEWAY")).toBe(3);
+		} finally {
+			fs.rmSync(fixture.root, { force: true, recursive: true });
+		}
+	});
+
 	it("restores the host resolver file read-only inside private run", () => {
 		const fixture = makeLauncherFixture();
 		installSuccessfulBwrap(fixture);
