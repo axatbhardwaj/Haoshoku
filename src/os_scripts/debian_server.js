@@ -10,6 +10,7 @@ import {
 	runCommand,
 	safeCopyFile,
 } from "../common/utils.js";
+import { configureAgentOs } from "../helpers/configure_agent_os.js";
 import {
 	bootstrapClaudePolicy,
 	configureClaude,
@@ -18,10 +19,10 @@ import {
 import { configureClaudeRemoteControl } from "../helpers/configure_claude_remote_control.js";
 import { configureClaudeStayAwake } from "../helpers/configure_claude_stay_awake.js";
 import { configureCodex } from "../helpers/configure_codex.js";
-import { configureAgentOs } from "../helpers/configure_agent_os.js";
-import { configureGit } from "../helpers/configure_git.js";
 import { installGhStack } from "../helpers/configure_gh_stack.js";
+import { configureGit } from "../helpers/configure_git.js";
 import { configurePrWatch } from "../helpers/configure_pr_watch.js";
+import { configureT3CodeServer } from "../helpers/configure_t3_code_server.js";
 import { syncWorktreeCleanup } from "../helpers/configure_worktree_cleanup.js";
 
 // --- Constants ---
@@ -242,21 +243,6 @@ export async function setupFirewall({
 	}
 }
 
-async function installNodejs() {
-	if (await commandExists("node")) {
-		log.info("Node.js already installed.");
-		return;
-	}
-
-	log.info("Installing Node.js LTS...");
-	await withSpinner("Installing Node.js", async () => {
-		await runCommand(
-			"curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo bash -",
-		);
-		await runCommand("sudo apt install -y nodejs");
-	});
-}
-
 /**
  * Build the fail2ban `jail.local` content for the [sshd] jail.
  *
@@ -319,10 +305,10 @@ export async function runDebianServerSetup() {
 	await installEssentials();
 	await setupSsh();
 	await configureFishShell();
-	await installNodejs();
 	await installDocker();
 	await setupFirewall();
 	await configureFail2ban();
+	const t3CodeConfigured = await configureT3CodeServer();
 
 	// Debian Server deliberately receives only portable/headless developer tools.
 	// Device type is not asked because it routes audio and Hyprland/Omarchy
@@ -350,7 +336,7 @@ export async function runDebianServerSetup() {
 			`GitHub gh-stack extension installation failed (${err?.message ?? err}) — continuing with remaining server setup.`,
 		);
 	}
-	if (await promptUser("Enable Superpowers plugin for Claude Code?", false)) {
+	if (await promptUser("Enable Superpowers plugin for Claude Code?", true)) {
 		try {
 			await installSuperpowers();
 		} catch (err) {
@@ -388,5 +374,11 @@ export async function runDebianServerSetup() {
 	await configureCodex();
 	await configureAgentOs();
 
+	if (!t3CodeConfigured) {
+		log.error("Debian Server setup finished, but T3 Code was not configured.");
+		return false;
+	}
+
 	log.success("Debian Server setup finished.");
+	return true;
 }

@@ -22,6 +22,7 @@ import {
 import { configureClaudeRemoteControl } from "../helpers/configure_claude_remote_control.js";
 import { configureClaudeStayAwake } from "../helpers/configure_claude_stay_awake.js";
 import { configureCodex } from "../helpers/configure_codex.js";
+import { configureKitty } from "../helpers/configure_kitty.js";
 import { installGhStack } from "../helpers/configure_gh_stack.js";
 import { promptDeviceType } from "../helpers/configure_hyprland.js";
 import { configureMimeapps } from "../helpers/configure_mimeapps.js";
@@ -29,7 +30,6 @@ import { configureOmarchyMonitors } from "../helpers/configure_omarchy_monitors.
 import { configureOmarchyWorkspaces } from "../helpers/configure_omarchy_workspaces.js";
 import { configureOmazed } from "../helpers/configure_omazed.js";
 import { configurePrWatch } from "../helpers/configure_pr_watch.js";
-import { configureWarp } from "../helpers/configure_warp.js";
 import { syncWorktreeCleanup } from "../helpers/configure_worktree_cleanup.js";
 import { installUserScripts } from "../helpers/install_user_scripts.js";
 
@@ -546,7 +546,7 @@ export async function configureUserApps({
 	configureAudioImpl = configureAudio,
 	configureBashImpl = configureBash,
 	configureFastfetchImpl = configureFastfetch,
-	configureWarpImpl = configureWarp,
+	configureKittyImpl = configureKitty,
 	runCommandImpl = runCommand,
 	enableServicesImpl = enableServices,
 	configureClaudeImpl = configureClaude,
@@ -578,7 +578,7 @@ export async function configureUserApps({
 
 	configureBashImpl();
 	await configureFastfetchImpl();
-	await configureWarpImpl();
+	await configureKittyImpl();
 
 	log.info("Installing uosc for MPV...");
 	await runCommandImpl(`curl -fsSL ${UOSC_INSTALL_URL} | bash`);
@@ -608,7 +608,7 @@ export async function configureUserApps({
 		}
 	}
 	if (
-		await promptUserImpl("Enable Superpowers plugin for Claude Code?", false)
+		await promptUserImpl("Enable Superpowers plugin for Claude Code?", true)
 	) {
 		try {
 			await installSuperpowersImpl();
