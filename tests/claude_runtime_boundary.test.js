@@ -27,6 +27,12 @@ const RUNTIME_FILES = [
 	"agents/prepare-pr-review-render-workspace.sh",
 	"skills/discovering-work/SKILL.md",
 	"skills/discovering-work/agents/openai.yaml",
+	"skills/implement-work/SKILL.md",
+	"skills/review-pr/SKILL.md",
+	"skills/create-pr/SKILL.md",
+	"skills/brainstorm/SKILL.md",
+	"skills/babysit-pr/SKILL.md",
+	"skills/linear-ticketing/SKILL.md",
 	"skills/html-explainer/SKILL.md",
 	"skills/html-explainer/template.html",
 ];
@@ -57,6 +63,18 @@ const PINNED_DIGESTS = {
 		"9d618579ceabafdf4f336122b6f58648fd3c001e3ecc69f5b7502b95db494471",
 	"skills/discovering-work/agents/openai.yaml":
 		"61d4bfdd85a518acacc2ec655f483049173290946faca7536b436857ca5d7583",
+	"skills/implement-work/SKILL.md":
+		"92c6f685f6e49462bf610bd232983f6cd6d144be051486d5954eba0caadcbe30",
+	"skills/review-pr/SKILL.md":
+		"e5c22c1ac575e694bd32e49cdb5f18b9b05709df5fc3325c1b71155bf695a481",
+	"skills/create-pr/SKILL.md":
+		"fea160a5202c685a8d2bcc9d40bf4f00cfb84741da7800bcf863622587ea3041",
+	"skills/brainstorm/SKILL.md":
+		"245439c989e18de7d91041afc21cf5fd9ca09ea22b003fbd8a96ec499ed96bf5",
+	"skills/babysit-pr/SKILL.md":
+		"bb8a8d528d10456da7d34c26b6962093b6c6ecd44f1e5401dff98c8a81f1e21b",
+	"skills/linear-ticketing/SKILL.md":
+		"9270c6ac60ef0bdeffa0f15cc7c26bb63c21b09460587d1e17c2fcac205d257d",
 	"skills/html-explainer/SKILL.md":
 		"b8472ce89304e5cbf78ace52fdc69995ea91c449b0befb7aec0bfac1d5147b5a",
 	"skills/html-explainer/template.html":

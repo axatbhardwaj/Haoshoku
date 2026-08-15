@@ -18,6 +18,12 @@ const PUBLIC_RUNTIME_FILES = [
 	"configs/claude/agents/prepare-pr-review-render-workspace.sh",
 	"configs/claude/skills/discovering-work/SKILL.md",
 	"configs/claude/skills/discovering-work/agents/openai.yaml",
+	"configs/claude/skills/implement-work/SKILL.md",
+	"configs/claude/skills/review-pr/SKILL.md",
+	"configs/claude/skills/create-pr/SKILL.md",
+	"configs/claude/skills/brainstorm/SKILL.md",
+	"configs/claude/skills/babysit-pr/SKILL.md",
+	"configs/claude/skills/linear-ticketing/SKILL.md",
 	"configs/claude/skills/html-explainer/SKILL.md",
 	"configs/claude/skills/html-explainer/template.html",
 ];

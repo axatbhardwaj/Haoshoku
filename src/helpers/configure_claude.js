@@ -67,6 +67,12 @@ export const PERSONAL_FILES = [
 	{ src: "agents/prepare-pr-review-render-workspace.sh" },
 	{ src: "skills/discovering-work/SKILL.md" },
 	{ src: "skills/discovering-work/agents/openai.yaml" },
+	{ src: "skills/implement-work/SKILL.md" },
+	{ src: "skills/review-pr/SKILL.md" },
+	{ src: "skills/create-pr/SKILL.md" },
+	{ src: "skills/brainstorm/SKILL.md" },
+	{ src: "skills/babysit-pr/SKILL.md" },
+	{ src: "skills/linear-ticketing/SKILL.md" },
 	{ src: "skills/html-explainer/SKILL.md" },
 	{ src: "skills/html-explainer/template.html" },
 ];
