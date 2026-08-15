@@ -332,6 +332,7 @@ describe("Omarchy keybinding swaps", () => {
 			closeWindowRegistry: {
 				config_file: "configs/omarchy/bindings.conf",
 				key_combination_taken: "SUPER, W",
+				hl_unbind: 'hl.unbind("SUPER + W")',
 				previous_binding: "bindd = SUPER, W, Close window, killactive",
 				moved_from_dispatcher: "killactive",
 				moved_from_arg: "",
@@ -423,6 +424,7 @@ describe("Omarchy keybinding swaps", () => {
 			registry: {
 				config_file: "configs/omarchy/bindings.conf",
 				key_combination_taken: "SUPER, J",
+				hl_unbind: 'hl.unbind("SUPER + J")',
 				previous_binding:
 					"bindd = SUPER, J, Toggle window split, layoutmsg, togglesplit",
 				moved_from_dispatcher: "layoutmsg",
@@ -489,6 +491,7 @@ describe("Omarchy keybinding swaps", () => {
 		expect(deletedChatgpt).toEqual({
 			config_file: "configs/omarchy/bindings.conf",
 			key_combination_taken: "SUPER SHIFT, A",
+			hl_unbind: 'hl.unbind("SUPER + SHIFT + A")',
 			previous_binding:
 				'bindd = SUPER SHIFT, A, ChatGPT, exec, omarchy-launch-webapp "https://chatgpt.com"',
 			moved_from_dispatcher: "exec",

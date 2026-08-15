@@ -5,7 +5,7 @@ recipe="${1:-}"
 profiles_helper="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/haoshoku-chromium-profiles"
 
 dispatch() {
-  hyprctl dispatch "$@" >/dev/null || true
+  hyprctl dispatch "$@" >/dev/null
 }
 
 has_client() {

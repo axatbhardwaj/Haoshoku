@@ -4,6 +4,7 @@
 		{
 			"config_file": "configs/omarchy/workspaces-pc.conf",
 			"key_combination_taken": "SUPER, G",
+			"hl_unbind": "hl.unbind(\"SUPER + G\")",
 			"previous_binding": "bindd = SUPER, G, Toggle window grouping, togglegroup",
 			"moved_from_dispatcher": "togglegroup",
 			"moved_from_arg": "",
@@ -15,6 +16,7 @@
 		{
 			"config_file": "configs/omarchy/workspaces-pc.conf",
 			"key_combination_taken": "SUPER, O",
+			"hl_unbind": "hl.unbind(\"SUPER + O\")",
 			"previous_binding": "bindd = SUPER, O, Pop window out (float & pin), exec, omarchy-hyprland-window-pop",
 			"moved_from_dispatcher": "exec",
 			"moved_from_arg": "omarchy-hyprland-window-pop",
@@ -26,6 +28,7 @@
 		{
 			"config_file": "configs/omarchy/workspaces-pc.conf",
 			"key_combination_taken": "SUPER, S",
+			"hl_unbind": "hl.unbind(\"SUPER + S\")",
 			"previous_binding": "bindd = SUPER, S, Toggle scratchpad, togglespecialworkspace, scratchpad",
 			"moved_from_dispatcher": "togglespecialworkspace",
 			"moved_from_arg": "scratchpad",
@@ -37,6 +40,7 @@
 		{
 			"config_file": "configs/omarchy/bindings.conf",
 			"key_combination_taken": "SUPER, F",
+			"hl_unbind": "hl.unbind(\"SUPER + F\")",
 			"previous_binding": "bindd = SUPER, F, Full screen, fullscreen, 0",
 			"moved_from_dispatcher": "fullscreen",
 			"moved_from_arg": "0",
@@ -48,6 +52,7 @@
 		{
 			"config_file": "configs/omarchy/bindings.conf",
 			"key_combination_taken": "SUPER, J",
+			"hl_unbind": "hl.unbind(\"SUPER + J\")",
 			"previous_binding": "bindd = SUPER, J, Toggle window split, layoutmsg, togglesplit",
 			"moved_from_dispatcher": "layoutmsg",
 			"moved_from_arg": "togglesplit",
@@ -59,6 +64,7 @@
 		{
 			"config_file": "configs/omarchy/bindings.conf",
 			"key_combination_taken": "SUPER, P",
+			"hl_unbind": "hl.unbind(\"SUPER + P\")",
 			"previous_binding": "bindd = SUPER, P, Pseudo window, pseudo",
 			"moved_from_dispatcher": "pseudo",
 			"moved_from_arg": "",
@@ -70,6 +76,7 @@
 		{
 			"config_file": "configs/omarchy/bindings.conf",
 			"key_combination_taken": "SUPER, T",
+			"hl_unbind": "hl.unbind(\"SUPER + T\")",
 			"previous_binding": "bindd = SUPER, T, Toggle window floating/tiling, togglefloating",
 			"moved_from_dispatcher": "togglefloating",
 			"moved_from_arg": "",
@@ -81,6 +88,7 @@
 		{
 			"config_file": "configs/omarchy/bindings.conf",
 			"key_combination_taken": "SUPER, W",
+			"hl_unbind": "hl.unbind(\"SUPER + W\")",
 			"previous_binding": "bindd = SUPER, W, Close window, killactive",
 			"moved_from_dispatcher": "killactive",
 			"moved_from_arg": "",
@@ -92,6 +100,7 @@
 		{
 			"config_file": "configs/omarchy/bindings.conf",
 			"key_combination_taken": "SUPER SHIFT, X",
+			"hl_unbind": "hl.unbind(\"SUPER + SHIFT + X\")",
 			"previous_binding": "bindd = SUPER SHIFT, X, X, exec, omarchy-launch-webapp \"https://x.com/\"",
 			"moved_from_dispatcher": "exec",
 			"moved_from_arg": "omarchy-launch-webapp \"https://x.com/\"",
@@ -100,6 +109,7 @@
 		{
 			"config_file": "configs/omarchy/bindings.conf",
 			"key_combination_taken": "SUPER, RETURN",
+			"hl_unbind": "hl.unbind(\"SUPER + RETURN\")",
 			"previous_binding": "bindd = SUPER, RETURN, Terminal, exec, uwsm-app -- xdg-terminal-exec --dir=\"$(omarchy-cmd-terminal-cwd)\"",
 			"moved_from_dispatcher": "exec",
 			"moved_from_arg": "uwsm-app -- xdg-terminal-exec --dir=\"$(omarchy-cmd-terminal-cwd)\"",
@@ -108,6 +118,7 @@
 		{
 			"config_file": "configs/omarchy/bindings.conf",
 			"key_combination_taken": "SHIFT SUPER, RETURN",
+			"hl_unbind": "hl.unbind(\"SHIFT + SUPER + RETURN\")",
 			"previous_binding": "bindd = SUPER SHIFT, RETURN, Browser, exec, omarchy-launch-browser",
 			"moved_from_dispatcher": "exec",
 			"moved_from_arg": "omarchy-launch-browser",
@@ -116,6 +127,7 @@
 		{
 			"config_file": "configs/omarchy/bindings.conf",
 			"key_combination_taken": "ALT SHIFT SUPER, F",
+			"hl_unbind": "hl.unbind(\"ALT + SHIFT + SUPER + F\")",
 			"previous_binding": "bindd = SUPER ALT SHIFT, F, File manager (cwd), exec, uwsm-app -- nautilus --new-window \"$(omarchy-cmd-terminal-cwd)\"",
 			"moved_from_dispatcher": "exec",
 			"moved_from_arg": "uwsm-app -- nautilus --new-window \"$(omarchy-cmd-terminal-cwd)\"",
@@ -124,6 +136,7 @@
 		{
 			"config_file": "configs/omarchy/bindings.conf",
 			"key_combination_taken": "SHIFT SUPER, B",
+			"hl_unbind": "hl.unbind(\"SHIFT + SUPER + B\")",
 			"previous_binding": "bindd = SUPER SHIFT, B, Browser, exec, omarchy-launch-browser",
 			"moved_from_dispatcher": "exec",
 			"moved_from_arg": "omarchy-launch-browser",
@@ -132,6 +145,7 @@
 		{
 			"config_file": "configs/omarchy/bindings.conf",
 			"key_combination_taken": "ALT SHIFT SUPER, B",
+			"hl_unbind": "hl.unbind(\"ALT + SHIFT + SUPER + B\")",
 			"previous_binding": "bindd = SUPER SHIFT ALT, B, Browser (private), exec, omarchy-launch-browser --private",
 			"moved_from_dispatcher": "exec",
 			"moved_from_arg": "omarchy-launch-browser --private",
@@ -140,6 +154,7 @@
 		{
 			"config_file": "configs/omarchy/bindings.conf",
 			"key_combination_taken": "ALT SHIFT SUPER, M",
+			"hl_unbind": "hl.unbind(\"ALT + SHIFT + SUPER + M\")",
 			"previous_binding": "bindd = SUPER SHIFT ALT, M, Music TUI, exec, omarchy-launch-or-focus-tui cliamp",
 			"moved_from_dispatcher": "exec",
 			"moved_from_arg": "omarchy-launch-or-focus-tui cliamp",
@@ -148,6 +163,7 @@
 		{
 			"config_file": "configs/omarchy/bindings.conf",
 			"key_combination_taken": "SHIFT SUPER, D",
+			"hl_unbind": "hl.unbind(\"SHIFT + SUPER + D\")",
 			"previous_binding": "bindd = SUPER SHIFT, D, Docker, exec, omarchy-launch-tui lazydocker",
 			"moved_from_dispatcher": "exec",
 			"moved_from_arg": "omarchy-launch-tui lazydocker",
@@ -156,6 +172,7 @@
 		{
 			"config_file": "configs/omarchy/bindings.conf",
 			"key_combination_taken": "SHIFT SUPER, W",
+			"hl_unbind": "hl.unbind(\"SHIFT + SUPER + W\")",
 			"previous_binding": "bindd = SUPER SHIFT, W, Typora, exec, uwsm-app -- typora --enable-wayland-ime",
 			"moved_from_dispatcher": "exec",
 			"moved_from_arg": "uwsm-app -- typora --enable-wayland-ime",
@@ -164,6 +181,7 @@
 		{
 			"config_file": "configs/omarchy/bindings.conf",
 			"key_combination_taken": "SUPER SHIFT, A",
+			"hl_unbind": "hl.unbind(\"SUPER + SHIFT + A\")",
 			"previous_binding": "bindd = SUPER SHIFT, A, ChatGPT, exec, omarchy-launch-webapp \"https://chatgpt.com\"",
 			"moved_from_dispatcher": "exec",
 			"moved_from_arg": "omarchy-launch-webapp \"https://chatgpt.com\"",
@@ -172,6 +190,7 @@
 		{
 			"config_file": "configs/omarchy/bindings.conf",
 			"key_combination_taken": "ALT SHIFT SUPER, A",
+			"hl_unbind": "hl.unbind(\"ALT + SHIFT + SUPER + A\")",
 			"previous_binding": "bindd = SUPER SHIFT ALT, A, Grok, exec, omarchy-launch-webapp \"https://grok.com\"",
 			"moved_from_dispatcher": "exec",
 			"moved_from_arg": "omarchy-launch-webapp \"https://grok.com\"",
@@ -180,6 +199,7 @@
 		{
 			"config_file": "configs/omarchy/bindings.conf",
 			"key_combination_taken": "SUPER SHIFT, C",
+			"hl_unbind": "hl.unbind(\"SUPER + SHIFT + C\")",
 			"previous_binding": "bindd = SUPER SHIFT, C, Calendar, exec, <removed>",
 			"moved_from_dispatcher": "exec",
 			"moved_from_arg": "<removed>",
@@ -189,6 +209,7 @@
 		{
 			"config_file": "configs/omarchy/bindings.conf",
 			"key_combination_taken": "ALT SHIFT SUPER, G",
+			"hl_unbind": "hl.unbind(\"ALT + SHIFT + SUPER + G\")",
 			"previous_binding": "bindd = SUPER SHIFT ALT, G, WhatsApp, exec, omarchy-launch-or-focus-webapp WhatsApp \"https://web.whatsapp.com/\"",
 			"moved_from_dispatcher": "exec",
 			"moved_from_arg": "omarchy-launch-or-focus-webapp WhatsApp \"https://web.whatsapp.com/\"",
@@ -197,6 +218,7 @@
 		{
 			"config_file": "configs/omarchy/bindings.conf",
 			"key_combination_taken": "ALT SHIFT SUPER, X",
+			"hl_unbind": "hl.unbind(\"ALT + SHIFT + SUPER + X\")",
 			"previous_binding": "bindd = SUPER SHIFT ALT, X, X Post, exec, omarchy-launch-webapp \"https://x.com/compose/post\"",
 			"moved_from_dispatcher": "exec",
 			"moved_from_arg": "omarchy-launch-webapp \"https://x.com/compose/post\"",
@@ -205,6 +227,7 @@
 		{
 			"config_file": "configs/omarchy/bindings.conf",
 			"key_combination_taken": "CTRL SHIFT SUPER, G",
+			"hl_unbind": "hl.unbind(\"CTRL + SHIFT + SUPER + G\")",
 			"previous_binding": "bindd = SUPER SHIFT CTRL, G, Google Messages, exec, omarchy-launch-or-focus-webapp \"Google Messages\" \"https://messages.google.com/web/conversations\"",
 			"moved_from_dispatcher": "exec",
 			"moved_from_arg": "omarchy-launch-or-focus-webapp \"Google Messages\" \"https://messages.google.com/web/conversations\"",
@@ -213,6 +236,7 @@
 		{
 			"config_file": "configs/omarchy/bindings.conf",
 			"key_combination_taken": "SUPER ALT, RETURN",
+			"hl_unbind": "hl.unbind(\"SUPER + ALT + RETURN\")",
 			"previous_binding": "bindd = SUPER ALT, RETURN, Tmux, exec, uwsm-app -- xdg-terminal-exec --dir=\"$(omarchy-cmd-terminal-cwd)\" bash -c \"tmux attach || tmux new -s Work\"",
 			"moved_from_dispatcher": "exec",
 			"moved_from_arg": "uwsm-app -- xdg-terminal-exec --dir=\"$(omarchy-cmd-terminal-cwd)\" bash -c \"tmux attach || tmux new -s Work\"",
@@ -221,6 +245,7 @@
 		{
 			"config_file": "configs/omarchy/bindings.conf",
 			"key_combination_taken": "SUPER SHIFT, F",
+			"hl_unbind": "hl.unbind(\"SUPER + SHIFT + F\")",
 			"previous_binding": "bindd = SUPER SHIFT, F, File manager, exec, uwsm-app -- nautilus --new-window",
 			"moved_from_dispatcher": "exec",
 			"moved_from_arg": "uwsm-app -- nautilus --new-window",
@@ -229,6 +254,7 @@
 		{
 			"config_file": "configs/omarchy/bindings.conf",
 			"key_combination_taken": "SUPER SHIFT, M",
+			"hl_unbind": "hl.unbind(\"SUPER + SHIFT + M\")",
 			"previous_binding": "bindd = SUPER SHIFT, M, Music, exec, omarchy-launch-or-focus spotify",
 			"moved_from_dispatcher": "exec",
 			"moved_from_arg": "omarchy-launch-or-focus spotify",
@@ -237,6 +263,7 @@
 		{
 			"config_file": "configs/omarchy/bindings.conf",
 			"key_combination_taken": "SUPER SHIFT, N",
+			"hl_unbind": "hl.unbind(\"SUPER + SHIFT + N\")",
 			"previous_binding": "bindd = SUPER SHIFT, N, Editor, exec, omarchy-launch-editor",
 			"moved_from_dispatcher": "exec",
 			"moved_from_arg": "omarchy-launch-editor",
@@ -245,6 +272,7 @@
 		{
 			"config_file": "configs/omarchy/bindings.conf",
 			"key_combination_taken": "SUPER SHIFT, G",
+			"hl_unbind": "hl.unbind(\"SUPER + SHIFT + G\")",
 			"previous_binding": "bindd = SUPER SHIFT, G, Signal, exec, omarchy-launch-or-focus ^signal$ \"uwsm-app -- signal-desktop\"",
 			"moved_from_dispatcher": "exec",
 			"moved_from_arg": "omarchy-launch-or-focus ^signal$ \"uwsm-app -- signal-desktop\"",
@@ -253,6 +281,7 @@
 		{
 			"config_file": "configs/omarchy/bindings.conf",
 			"key_combination_taken": "SUPER SHIFT, O",
+			"hl_unbind": "hl.unbind(\"SUPER + SHIFT + O\")",
 			"previous_binding": "bindd = SUPER SHIFT, O, Obsidian, exec, omarchy-launch-or-focus ^obsidian$ \"uwsm-app -- obsidian\"",
 			"moved_from_dispatcher": "exec",
 			"moved_from_arg": "omarchy-launch-or-focus ^obsidian$ \"uwsm-app -- obsidian\"",
@@ -261,6 +290,7 @@
 		{
 			"config_file": "configs/omarchy/bindings.conf",
 			"key_combination_taken": "SUPER SHIFT, SLASH",
+			"hl_unbind": "hl.unbind(\"SUPER + SHIFT + SLASH\")",
 			"previous_binding": "bindd = SUPER SHIFT, SLASH, Passwords, exec, uwsm-app -- 1password",
 			"moved_from_dispatcher": "exec",
 			"moved_from_arg": "uwsm-app -- 1password",
@@ -269,6 +299,7 @@
 		{
 			"config_file": "configs/omarchy/bindings.conf",
 			"key_combination_taken": "SUPER SHIFT, E",
+			"hl_unbind": "hl.unbind(\"SUPER + SHIFT + E\")",
 			"previous_binding": "bindd = SUPER SHIFT, E, Email, exec, <removed>",
 			"moved_from_dispatcher": "exec",
 			"moved_from_arg": "<removed>",
@@ -278,6 +309,7 @@
 		{
 			"config_file": "configs/omarchy/bindings.conf",
 			"key_combination_taken": "SUPER SHIFT, Y",
+			"hl_unbind": "hl.unbind(\"SUPER + SHIFT + Y\")",
 			"previous_binding": "bindd = SUPER SHIFT, Y, YouTube, exec, omarchy-launch-webapp \"https://youtube.com/\"",
 			"moved_from_dispatcher": "exec",
 			"moved_from_arg": "omarchy-launch-webapp \"https://youtube.com/\"",
@@ -286,6 +318,7 @@
 		{
 			"config_file": "configs/omarchy/bindings.conf",
 			"key_combination_taken": "SUPER SHIFT, P",
+			"hl_unbind": "hl.unbind(\"SUPER + SHIFT + P\")",
 			"previous_binding": "bindd = SUPER SHIFT, P, Google Photos, exec, omarchy-launch-or-focus-webapp \"Google Photos\" \"https://photos.google.com/\"",
 			"moved_from_dispatcher": "exec",
 			"moved_from_arg": "omarchy-launch-or-focus-webapp \"Google Photos\" \"https://photos.google.com/\"",

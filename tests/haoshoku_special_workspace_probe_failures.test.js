@@ -162,14 +162,14 @@ esac
 		};
 	}
 
-	it("preserves dispatch diagnostics while allowing the recipe to continue", async () => {
+	it("preserves dispatch diagnostics and propagates the failure", async () => {
 		const diagnostic = "hyprctl dispatch rejected test request";
 		const result = await run(["stash"], "", "non-zero-exit", "", diagnostic);
 
 		expect(result).toEqual({
 			dispatches: [],
-			exitCode: 0,
-			stderr: `${diagnostic}\n${diagnostic}\n`,
+			exitCode: 42,
+			stderr: `${diagnostic}\n`,
 		});
 	});
 
@@ -341,7 +341,7 @@ esac
 		});
 	}
 
-	it("exits successfully for every accepted recipe when Hyprland is unavailable", async () => {
+	it("propagates Hyprland unavailability for every accepted recipe that dispatches", async () => {
 		fs.writeFileSync(
 			path.join(commandDirectory, "hyprctl"),
 			"#!/usr/bin/env bash\nexit 1\n",
@@ -374,7 +374,7 @@ esac
 			{ name: "reanime", args: ["reanime"] },
 		]) {
 			const result = await run(args, "", "non-zero-exit");
-			expect(result.exitCode, name).toBe(0);
+			expect(result.exitCode, name).toBe(1);
 			expect(result.stderr, name).toBe("");
 		}
 	});
