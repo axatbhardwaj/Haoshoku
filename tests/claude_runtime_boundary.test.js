@@ -52,7 +52,7 @@ const PINNED_DIGESTS = {
 	"agents/opus-reviewer.md":
 		"471946a434a78b02c1cdd1f8ff7101be4d1ef594272a3909d5d61bcb79415256",
 	"agents/run-codex-task.sh":
-		"3df152f35c71e96c529d7804c2fd40c44edb92fb6f6f2324dc1bc59773b3ac24",
+		"faef3eddc4dddafc2a1bf2d2edf45a13e710519266dd88507da259f97e5fd4d6",
 	"agents/validate-codex-wrapper.sh":
 		"2240c08f1dabf3c04c71fe9b5ec44722657444de717415c6ae684ef67fa3f957",
 	"agents/codex-result.schema.json":

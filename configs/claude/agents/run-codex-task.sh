@@ -8,7 +8,8 @@
 #   Foreground:  run-codex-task.sh --mode M --model X --workspace D --prompt-file F [--tier T]
 #   Detached:    ... same args plus --detach   -> prints {launcher_status:"detached", run_dir}
 #                and runs the codex+report flow in a setsid child that survives
-#                the caller's 10-minute Bash-tool cap.
+#                the caller's 10-minute Bash-tool cap. launcher.pid is written as
+#                two lines, pid=<decimal> then pgid=<decimal>; JSON also returns both.
 #   Standing:    --persist drops --ephemeral so the session is recorded and resumable;
 #                report.json carries codex_session_id. --resume <id> (UUID-shaped)
 #                continues a recorded session (implies persist). --resume-from-pointer
@@ -17,15 +18,20 @@
 #   Wait/poll:   run-codex-task.sh --wait <run_dir> [--wait-seconds N]
 #                blocks (<=N s, default 540) until report.json exists, then cats it
 #                (exit 0 on launcher_status ok, 5 otherwise); prints
-#                {"launcher_status":"still_running"} and exits 7 on poll timeout.
+#                {"launcher_status":"died"} and exits 9 when a recorded group is dead,
+#                or {"launcher_status":"still_running"} and exits 7 on poll timeout.
+#   Abort:       run-codex-task.sh --abort <run_dir> terminates the recorded process
+#                group and atomically publishes aborted (exit 8), or abort_failed
+#                when identity/signal safety cannot be established (exit 10).
+#                An existing report retains exit 0/5.
 set -u
 
 command -v jq >/dev/null 2>&1 || { echo "run-codex-task.sh requires jq (pacman -S jq / apt install jq)" >&2; exit 69; }
 
-usage() { echo "usage: run-codex-task.sh --mode implementation|review|research --model sol|luna --workspace <dir> --prompt-file <path> [--brief-file <path> --brief-sha256 <64-hex>] [--attribution-path <repo-relative-path>] [--tier default|fast|priority|flex] [--persist] [--resume <session_id>] [--resume-from-pointer] [--detach] [--worktree-on-contention] | --wait <run_dir> [--wait-seconds <n>]  (research requires sol and is read-only; efforts are model-fixed with no escalation: sol high in every mode, luna max; luna always runs the priority/fast tier; --attribution-path is Luna implementation only)" >&2; exit 64; }
+usage() { echo "usage: run-codex-task.sh --mode implementation|review|research --model sol|luna --workspace <dir> --prompt-file <path> [--brief-file <path> --brief-sha256 <64-hex>] [--attribution-path <repo-relative-path>] [--tier default|fast|priority|flex] [--persist] [--resume <session_id>] [--resume-from-pointer] [--detach] [--worktree-on-contention] | --wait <run_dir> [--wait-seconds <n>] | --abort <run_dir>  (--abort publishes aborted/exit 8 or abort_failed/exit 10; --wait reports died and exits 9; research requires sol and is read-only; efforts are model-fixed with no escalation: sol high in every mode, luna max; luna always runs the priority/fast tier; --attribution-path is Luna implementation only)" >&2; exit 64; }
 
 # bare fallback: fail toward more thinking
-MODE="" MODEL="" WORKSPACE="" PROMPT_FILE="" BRIEF_FILE="" BRIEF_SHA256="" BRIEF_EMBEDDED=0 ATTRIBUTION_PATH="" EFFORT="" EFFORT_ARG="" EFFORT_JUSTIFICATION="" EFFORT_SOURCE="" RESEARCH_DISPATCH=0 TIER="" DETACH=0 RUN_DIR_ARG="" WAIT_DIR="" WAIT_SECS=540 PERSIST=0 RESUME_ID="" RESUME_REQUESTED=0 RESUME_FROM_POINTER=0 RESUME_SOURCE_ARG="" RESUME_SOURCE="" CODEX_SESSION_ID="" SESSION_ID_SOURCE="none" SESSION_POINTER="" SESSION_POINTER_UPDATE="" SESSION_POINTER_HEALED=0 SESSION_POINTER_KEY="" WORKTREE_ON_CONTENTION=0 WORKTREE_PATH="" WORKTREE_ORIGIN="" BASELINE_SNAPSHOT_READY=0 BASELINE_GIT_ROOT=""
+MODE="" MODEL="" WORKSPACE="" PROMPT_FILE="" BRIEF_FILE="" BRIEF_SHA256="" BRIEF_EMBEDDED=0 ATTRIBUTION_PATH="" EFFORT="" EFFORT_ARG="" EFFORT_JUSTIFICATION="" EFFORT_SOURCE="" RESEARCH_DISPATCH=0 TIER="" DETACH=0 RUN_DIR_ARG="" WAIT_DIR="" WAIT_SECS=540 ABORT_DIR="" PERSIST=0 RESUME_ID="" RESUME_REQUESTED=0 RESUME_FROM_POINTER=0 RESUME_SOURCE_ARG="" RESUME_SOURCE="" CODEX_SESSION_ID="" SESSION_ID_SOURCE="none" SESSION_POINTER="" SESSION_POINTER_UPDATE="" SESSION_POINTER_HEALED=0 SESSION_POINTER_KEY="" WORKTREE_ON_CONTENTION=0 WORKTREE_PATH="" WORKTREE_ORIGIN="" BASELINE_SNAPSHOT_READY=0 BASELINE_GIT_ROOT=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --mode) MODE="${2:-}"; shift 2 || usage ;;
@@ -47,13 +53,149 @@ while [ $# -gt 0 ]; do
     --run-dir) RUN_DIR_ARG="${2:-}"; shift 2 || usage ;;   # internal: detached self-reinvocation
     --wait) WAIT_DIR="${2:-}"; shift 2 || usage ;;
     --wait-seconds) WAIT_SECS="${2:-}"; shift 2 || usage ;;
+    --abort) ABORT_DIR="${2:-}"; shift 2 || usage ;;
     *) usage ;;
   esac
 done
 
+valid_measured_process_group_id() {
+  local value="${1:-}"
+  [[ "$value" =~ ^[1-9][0-9]{0,9}$ ]] && [ "$value" -le 2147483647 ]
+}
+
+valid_signal_process_group_id() {
+  valid_measured_process_group_id "$1" && [ "$1" -gt 1 ]
+}
+
+read_launcher_identity() { # read_launcher_identity <launcher.pid>; sets LAUNCHER_PID/PGID
+  local pid_line pgid_line extra
+  LAUNCHER_PID="" LAUNCHER_PGID=""
+  [ -f "$1" ] && [ ! -L "$1" ] || return 1
+  {
+    IFS= read -r pid_line || return 1
+    IFS= read -r pgid_line || return 1
+    ! IFS= read -r extra || return 1
+  } < "$1"
+  [[ "$pid_line" =~ ^pid=([1-9][0-9]{0,9})$ ]] || return 1
+  LAUNCHER_PID="${BASH_REMATCH[1]}"
+  [[ "$pgid_line" =~ ^pgid=([1-9][0-9]{0,9})$ ]] || return 1
+  LAUNCHER_PGID="${BASH_REMATCH[1]}"
+  [ "$LAUNCHER_PID" -gt 1 ] && [ "$LAUNCHER_PID" -le 2147483647 ] || return 1
+  valid_signal_process_group_id "$LAUNCHER_PGID"
+}
+
+process_group_is_live() {
+  ps -eo pgid=,stat= 2>/dev/null |
+    awk -v pgid="$1" '$1 == pgid && $2 !~ /^Z/ { found=1; exit } END { exit found ? 0 : 1 }'
+}
+
+publish_report_once() { # publish_report_once <prepared-temp-file> <report.json>
+  ln "$1" "$2" 2>/dev/null
+}
+
+validate_run_dir() { # validate_run_dir <path>; sets VALIDATED_RUN_DIR
+  local canonical parent base
+  VALIDATED_RUN_DIR=""
+  [ -d "$1" ] && [ ! -L "$1" ] || return 1
+  canonical=$(realpath -e -- "$1" 2>/dev/null) || return 1
+  [ "$canonical" = "$1" ] || return 1
+  parent=${canonical%/*}
+  base=${canonical##*/}
+  [ "$parent" = "/tmp/codex-wrapper" ] || return 1
+  [[ "$base" =~ ^run-[A-Za-z0-9]{8}$ ]] || return 1
+  VALIDATED_RUN_DIR="$canonical"
+}
+
+print_report_and_exit() { # print_report_and_exit <report.json>
+  cat "$1"
+  if [ -s "$1" ] &&
+    jq -se 'length == 1 and (.[0] | type == "object" and (.launcher_status | type == "string"))' "$1" >/dev/null 2>&1 &&
+    [ "$(jq -sr '.[0].launcher_status' "$1")" = "ok" ]; then
+    exit 0
+  fi
+  exit 5
+}
+
+# ---- Abort mode: terminate only a recorded, safe process group and publish once. ----
+if [ -n "$ABORT_DIR" ]; then
+  [ -z "$WAIT_DIR" ] || usage
+  validate_run_dir "$ABORT_DIR" || { echo "refusing invalid --abort run dir: $ABORT_DIR" >&2; exit 64; }
+  ABORT_DIR="$VALIDATED_RUN_DIR"
+
+  if [ -e "$ABORT_DIR/report.json" ] || [ -L "$ABORT_DIR/report.json" ]; then
+    print_report_and_exit "$ABORT_DIR/report.json"
+  fi
+
+  ABORT_STATUS="aborted"
+  ABORT_EXIT=8
+  ABORT_FAILURE_REASON=""
+  LAUNCHER_IDENTITY_PATH="$ABORT_DIR/launcher.pid"
+  if [ -e "$LAUNCHER_IDENTITY_PATH" ] || [ -L "$LAUNCHER_IDENTITY_PATH" ]; then
+    if read_launcher_identity "$LAUNCHER_IDENTITY_PATH"; then
+      OWN_PGID=$(ps -o pgid= -p "$$" 2>/dev/null | tr -d '[:space:]')
+      if ! valid_measured_process_group_id "$OWN_PGID"; then
+        ABORT_FAILURE_REASON="own process group could not be measured safely"
+      elif [ "$LAUNCHER_PGID" = "$OWN_PGID" ]; then
+        ABORT_FAILURE_REASON="launcher process group is unsafe to signal"
+      elif process_group_is_live "$LAUNCHER_PGID"; then
+        kill -TERM -- "-$LAUNCHER_PGID" 2>/dev/null || true
+        for _ in $(seq 1 30); do
+          process_group_is_live "$LAUNCHER_PGID" || break
+          sleep 0.1
+        done
+        if process_group_is_live "$LAUNCHER_PGID"; then
+          kill -KILL -- "-$LAUNCHER_PGID" 2>/dev/null || true
+          for _ in $(seq 1 30); do
+            process_group_is_live "$LAUNCHER_PGID" || break
+            sleep 0.1
+          done
+          if process_group_is_live "$LAUNCHER_PGID"; then
+            ABORT_FAILURE_REASON="launcher process group remained live after TERM/KILL"
+          fi
+        fi
+      fi
+    elif [ -L "$LAUNCHER_IDENTITY_PATH" ]; then
+      ABORT_FAILURE_REASON="launcher.pid is a symlink"
+    elif [ ! -f "$LAUNCHER_IDENTITY_PATH" ]; then
+      ABORT_FAILURE_REASON="launcher.pid is not a regular file"
+    else
+      ABORT_FAILURE_REASON="malformed launcher identity file"
+    fi
+  fi
+
+  if [ -n "$ABORT_FAILURE_REASON" ]; then
+    ABORT_STATUS="abort_failed"
+    ABORT_EXIT=10
+  fi
+
+  if [ -e "$ABORT_DIR/report.json" ] || [ -L "$ABORT_DIR/report.json" ]; then
+    print_report_and_exit "$ABORT_DIR/report.json"
+  fi
+
+  ABORT_REPORT_TMP="$ABORT_DIR/.report.abort.$$"
+  if jq -n --arg status "$ABORT_STATUS" --arg run_dir "$ABORT_DIR" --arg reason "$ABORT_FAILURE_REASON" \
+    '{launcher_status:$status, run_dir:$run_dir} + if $reason == "" then {} else {reason:$reason} end' \
+    > "$ABORT_REPORT_TMP" 2>/dev/null &&
+    publish_report_once "$ABORT_REPORT_TMP" "$ABORT_DIR/report.json"; then
+    rm -f "$ABORT_REPORT_TMP"
+    cat "$ABORT_DIR/report.json"
+    if [ "$ABORT_STATUS" = "abort_failed" ]; then
+      echo "abort failed: $ABORT_FAILURE_REASON; child could not be identified or stopped and must be found manually with: ps aux | grep run-codex-task" >&2
+    fi
+    exit "$ABORT_EXIT"
+  fi
+  rm -f "$ABORT_REPORT_TMP"
+  if [ -e "$ABORT_DIR/report.json" ] || [ -L "$ABORT_DIR/report.json" ]; then
+    print_report_and_exit "$ABORT_DIR/report.json"
+  fi
+  echo "cannot publish abort report: $ABORT_DIR/report.json" >&2
+  exit 73
+fi
+
 # ---- Wait/poll mode: no codex involved, safe to call repeatedly. ----
 if [ -n "$WAIT_DIR" ]; then
-  case "$WAIT_DIR" in /tmp/codex-wrapper/run-*) ;; *) echo "refusing --wait outside /tmp/codex-wrapper: $WAIT_DIR" >&2; exit 64 ;; esac
+  validate_run_dir "$WAIT_DIR" || { echo "refusing invalid --wait run dir: $WAIT_DIR" >&2; exit 64; }
+  WAIT_DIR="$VALIDATED_RUN_DIR"
   case "$WAIT_SECS" in ''|*[!0-9]*) usage ;; esac
   ELAPSED=0
   while :; do
@@ -66,6 +208,11 @@ if [ -n "$WAIT_DIR" ]; then
       # Atomic report publication makes any visible invalid file terminal, not in-progress.
       jq -n --arg run_dir "$WAIT_DIR" '{launcher_status:"invalid_report", run_dir:$run_dir}'
       exit 5
+    fi
+    if [ -e "$WAIT_DIR/launcher.pid" ] && read_launcher_identity "$WAIT_DIR/launcher.pid" &&
+      ! process_group_is_live "$LAUNCHER_PGID"; then
+      jq -n --arg run_dir "$WAIT_DIR" '{launcher_status:"died", run_dir:$run_dir}'
+      exit 9
     fi
     [ "$ELAPSED" -ge "$WAIT_SECS" ] && break
     sleep 5; ELAPSED=$((ELAPSED + 5))
@@ -590,20 +737,24 @@ report() {  # report <status> <codex_exit> <result_valid>
           {actual_changes_uncertainty_truncation:{exceeded_fingerprint_bound:truncation($bound_exceeded_paths)}} else {} end)
       + (if $baseline_snapshot_ready == 0 or $baseline_truncations == {} then {} else {pre_existing_dirty_state_truncation:$baseline_truncations} end))' \
     > "$report_tmp" 2>/dev/null &&
-    jq -se 'length == 1 and (.[0] | type == "object" and (.launcher_status | type == "string"))' "$report_tmp" >/dev/null 2>&1 &&
-    mv -f "$report_tmp" "$RUN_DIR/report.json"; then
-    rm -f "$changed_file" "$staged_file" "$untracked_file" "$baseline_changed_file" "$baseline_staged_file" "$baseline_untracked_file" "$bound_exceeded_file" \
-      "$current_prefix-modified.z" "$current_prefix-staged.z" "$current_prefix-untracked.z" "$fallback_tmp"
-    cat "$RUN_DIR/report.json"
-    return 0
+    jq -se 'length == 1 and (.[0] | type == "object" and (.launcher_status | type == "string"))' "$report_tmp" >/dev/null 2>&1; then
+    if publish_report_once "$report_tmp" "$RUN_DIR/report.json" ||
+      [ -e "$RUN_DIR/report.json" ] || [ -L "$RUN_DIR/report.json" ]; then
+      rm -f "$changed_file" "$staged_file" "$untracked_file" "$baseline_changed_file" "$baseline_staged_file" "$baseline_untracked_file" "$bound_exceeded_file" \
+        "$current_prefix-modified.z" "$current_prefix-staged.z" "$current_prefix-untracked.z" "$report_tmp" "$fallback_tmp"
+      cat "$RUN_DIR/report.json"
+      return 0
+    fi
   fi
   rm -f "$changed_file" "$staged_file" "$untracked_file" "$baseline_changed_file" "$baseline_staged_file" "$baseline_untracked_file" "$bound_exceeded_file" \
     "$current_prefix-modified.z" "$current_prefix-staged.z" "$current_prefix-untracked.z" "$report_tmp"
   # Keep waiters from hanging even when jq or primary report construction fails.
   if printf '%s\n' '{"launcher_status":"report_generation_failed"}' > "$fallback_tmp" 2>/dev/null &&
-    mv -f "$fallback_tmp" "$RUN_DIR/report.json" 2>/dev/null; then
+    { publish_report_once "$fallback_tmp" "$RUN_DIR/report.json" ||
+      [ -e "$RUN_DIR/report.json" ] || [ -L "$RUN_DIR/report.json" ]; }; then
     cat "$RUN_DIR/report.json"
   fi
+  rm -f "$fallback_tmp"
   return 0
 }
 
@@ -746,6 +897,11 @@ if [ "$DETACH" -eq 1 ]; then
   # The lock is taken in the child, not here, so the child needs this flag too.
   WORKTREE_OPT=""; [ "$WORKTREE_ON_CONTENTION" -eq 1 ] && WORKTREE_OPT="--worktree-on-contention"
   # The child re-derives the model-fixed effort from --model; nothing to forward.
+  PARENT_PGID=$(ps -o pgid= -p "$$" 2>/dev/null | tr -d '[:space:]')
+  if ! valid_measured_process_group_id "$PARENT_PGID"; then
+    echo "cannot determine launcher parent process group" >&2
+    exit 73
+  fi
   setsid "$0" --mode "$MODE" --model "$MODEL" --workspace "$WORKSPACE" \
     --prompt-file "$RUN_DIR/prompt.md" \
     ${ATTRIBUTION_PATH:+--attribution-path "$ATTRIBUTION_PATH"} \
@@ -754,8 +910,32 @@ if [ "$DETACH" -eq 1 ]; then
     ${WORKTREE_OPT:+$WORKTREE_OPT} \
     --resume-source "$RESUME_SOURCE" --run-dir "$RUN_DIR" \
     >/dev/null 2>>"$RUN_DIR/detach.log" </dev/null &
-  jq -n --arg run_dir "$RUN_DIR" --arg pid "$!" \
-    '{launcher_status:"detached", run_dir:$run_dir, child_pid:($pid|tonumber)}'
+  CHILD_PID=$!
+  CHILD_PGID=""
+  for _ in $(seq 1 100); do
+    CANDIDATE_PGID=$(ps -o pgid= -p "$CHILD_PID" 2>/dev/null | tr -d '[:space:]')
+    if valid_signal_process_group_id "$CANDIDATE_PGID" && [ "$CANDIDATE_PGID" != "$PARENT_PGID" ]; then
+      CHILD_PGID="$CANDIDATE_PGID"
+      break
+    fi
+    kill -0 "$CHILD_PID" 2>/dev/null || break
+    sleep 0.01
+  done
+  if [ -z "$CHILD_PGID" ]; then
+    echo "cannot determine detached child process group: $CHILD_PID" >&2
+    kill -TERM "$CHILD_PID" 2>/dev/null || true
+    exit 73
+  fi
+  LAUNCHER_PID_TMP="$RUN_DIR/.launcher.pid.$$"
+  if ! printf 'pid=%s\npgid=%s\n' "$CHILD_PID" "$CHILD_PGID" > "$LAUNCHER_PID_TMP" ||
+    ! mv -f "$LAUNCHER_PID_TMP" "$RUN_DIR/launcher.pid"; then
+    rm -f "$LAUNCHER_PID_TMP"
+    kill -TERM -- "-$CHILD_PGID" 2>/dev/null || true
+    echo "cannot write launcher identity: $RUN_DIR/launcher.pid" >&2
+    exit 73
+  fi
+  jq -n --arg run_dir "$RUN_DIR" --arg pid "$CHILD_PID" --arg pgid "$CHILD_PGID" \
+    '{launcher_status:"detached", run_dir:$run_dir, child_pid:($pid|tonumber), child_pgid:($pgid|tonumber)}'
   exit 0
 fi
 
