@@ -8,7 +8,7 @@
 [ "$#" -eq 1 ] || { echo "Blocked: wrapper identity is required; failing closed." >&2; exit 2; }
 WRAPPER_GATEWAY=$1
 case "$WRAPPER_GATEWAY" in
-  sol-wrapper|luna-wrapper) ;;
+  sol-wrapper|luna-wrapper|opencode-wrapper) ;;
   *) echo "Blocked: invalid wrapper identity: ${WRAPPER_GATEWAY:-<empty>}; failing closed." >&2; exit 2 ;;
 esac
 
@@ -111,7 +111,9 @@ allow_with_gateway_marker() {
   /usr/bin/jq -n \
     --arg reason "$1" \
     --arg command "CODEX_WRAPPER_GATEWAY=$WRAPPER_GATEWAY $2" \
-    '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"allow",permissionDecisionReason:$reason,updatedInput:{command:$command}}}'
+    --arg gateway "$WRAPPER_GATEWAY" \
+    '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"allow",permissionDecisionReason:$reason,
+      updatedInput:({command:$command} + if $gateway == "opencode-wrapper" then {timeout:600000} else {} end)}}'
   exit 0
 }
 
@@ -280,6 +282,7 @@ ARG='[A-Za-z0-9._/~=^@:+-]+'
 # whole, not shadowed by the --resume alternative. --resume-source is deliberately absent:
 # it is internal to the launcher's own detached self-reinvocation, never wrapper-issued.
 LAUNCHER_ARGS_RE="^( --resume-from-pointer| --detach| --persist| --(mode|model|workspace|prompt-file|brief-file|brief-sha256|attribution-path|effort-justification|effort|tier|wait|wait-seconds|resume) ${ARG})+$" # Convention, not necessity: POSIX ERE is leftmost-longest, so this ordering is not required; it matches this file's existing style.
+OPENCODE_LAUNCHER_ARGS_RE="^( --(mode|workspace|prompt-file|scope-file) ${ARG})+$"
 
 trusted_home_for_uid() {
   local name password entry_uid gid gecos entry_home shell
@@ -307,6 +310,34 @@ safe_launcher_command() {
     *) return 1 ;;
   esac
   [[ "$args" =~ $LAUNCHER_ARGS_RE ]] && safe_wrapper_route
+}
+
+safe_opencode_launcher_command() {
+  local trusted_home launcher args mode="" mode_count=0 workspace_count=0 prompt_count=0 scope_count=0 token i
+  local -a words
+  [ "$WRAPPER_GATEWAY" = "opencode-wrapper" ] || return 1
+  trusted_home=$(trusted_home_for_uid) || return 1
+  [ "${HOME:-}" = "$trusted_home" ] || return 1
+  case "$CMD" in *" "*) launcher=${CMD%% *}; args=${CMD#"$launcher"} ;; *) return 1 ;; esac
+  case "$launcher" in
+    '~/.claude/agents/run-opencode-seat.sh'|"$trusted_home/.claude/agents/run-opencode-seat.sh") ;;
+    *) return 1 ;;
+  esac
+  [[ "$args" =~ $OPENCODE_LAUNCHER_ARGS_RE ]] || return 1
+  read -r -a words <<< "$CMD"
+  for ((i = 1; i < ${#words[@]}; i += 2)); do
+    token=${words[$i]}
+    case "$token" in
+      --mode) mode=${words[$((i + 1))]}; mode_count=$((mode_count + 1)) ;;
+      --workspace) workspace_count=$((workspace_count + 1)) ;;
+      --prompt-file) prompt_count=$((prompt_count + 1)) ;;
+      --scope-file) scope_count=$((scope_count + 1)) ;;
+      *) return 1 ;;
+    esac
+  done
+  [ "$mode_count" -eq 1 ] && [ "$workspace_count" -eq 1 ] && [ "$prompt_count" -eq 1 ] || return 1
+  { [ "$mode" = implementation ] && [ "$scope_count" -eq 1 ]; } ||
+    { [ "$mode" = review ] && [ "$scope_count" -eq 0 ]; }
 }
 
 safe_render_workspace_command() {
@@ -369,6 +400,7 @@ safe_wrapper_route() {
 }
 
 safe_launcher_command && allow_with_gateway_marker "approved codex launcher" "$CMD"
+safe_opencode_launcher_command && allow_with_gateway_marker "approved OpenCode launcher" "$CMD"
 safe_render_workspace_command && allow "approved Luna document workspace helper"
 safe_git_command && safe_git_runtime && allow "read-only git inspection"
 
@@ -379,5 +411,5 @@ case "$CMD" in
     ;;
 esac
 
-echo "Blocked by codex-wrapper policy. Allowed: the run-codex-task.sh launcher, Luna's fixed render-workspace helper, read-only git (rev-parse/status/diff/log/show/ls-files), mkdir under /tmp/codex-wrapper — single commands, no shell metacharacters. Got: $CMD" >&2
+echo "Blocked by codex-wrapper policy. Allowed: the identity-specific fixed launcher, Luna's fixed render-workspace helper, read-only git (rev-parse/status/diff/log/show/ls-files), mkdir under /tmp/codex-wrapper — single commands, no shell metacharacters. Got: $CMD" >&2
 exit 2

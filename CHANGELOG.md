@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+- Install the T3 Code desktop package through the Arch/Omarchy package list.
+- Configure T3 Code's upstream headless background service during Debian Server
+  setup and through the Debian-only `--server-t3-code` mode, with a compatible
+  Node.js gate, service verification, and manual pairing guidance.
+- Add the fixed, bubblewrap-confined OpenCode GLM seat with receipt and
+  workspace-attribution enforcement for wrapper-dispatched work.
+- Add the Sonnet-supervised `opencode-wrapper` agent and package its fixed
+  launcher as part of the public Claude runtime.
+- Parse OpenCode export receipts from raw JSON stdout with a one-retry
+  leading-preamble fallback, and let operators bypass network-resolving PATH
+  shims with a validated `OPENCODE_SEAT_BIN` real-binary override.
+
 ## 8.4.1 - 2026-08-12
 
 - Make Meta+I switch to workspace 1, reclaim existing Claude and Codex windows there, and keep them tiled and unpinned.

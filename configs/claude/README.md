@@ -7,7 +7,7 @@ Public Claude Code personal-file bundle deployed to `~/.claude/`.
 | Bundle source | Live destination | Direction |
 | --- | --- | --- |
 | `CLAUDE.md`, `statusline-command.sh`, `gitignore.template` | `~/.claude/` (`gitignore.template` maps to `.gitignore`) | Both |
-| Three wrapper agents, two role definitions, two native planner/reviewer agents, launcher, validation hook, result schema, and render-workspace preparer | `~/.claude/agents/` | Deploy |
+| Four wrapper agents, two role definitions, two native planner/reviewer agents, launchers (`run-codex-task.sh` and `run-opencode-seat.sh`), validation hook, result schema, and render-workspace preparer | `~/.claude/agents/` | Deploy |
 | Orchestration skills (`implement-work`, `review-pr`, `create-pr`, `brainstorm`, `babysit-pr`, `linear-ticketing`, `html-explainer`, `discovering-work`) | `~/.claude/skills/` | Deploy |
 
 `haoshoku --claude` uses this explicit public fallback manifest; it never walks

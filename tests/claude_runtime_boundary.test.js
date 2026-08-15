@@ -16,12 +16,14 @@ const PRIVATE_SOURCE_SHA = "413cf10231e8c5fa339666e6ccfea6a5a4ec3735";
 const RUNTIME_FILES = [
 	"agents/sol-wrapper.md",
 	"agents/luna-wrapper.md",
+	"agents/opencode-wrapper.md",
 	"agents/grok-wrapper.md",
 	"agents/madhyastha.md",
 	"agents/anveshaka.md",
 	"agents/fable-planner.md",
 	"agents/opus-reviewer.md",
 	"agents/run-codex-task.sh",
+	"agents/run-opencode-seat.sh",
 	"agents/validate-codex-wrapper.sh",
 	"agents/codex-result.schema.json",
 	"agents/prepare-pr-review-render-workspace.sh",
@@ -41,6 +43,8 @@ const PINNED_DIGESTS = {
 		"f5382cf2cc9b75197556a143e02fa4afe1ab80e2688dba73946aa40581f6a5b6",
 	"agents/luna-wrapper.md":
 		"92a65d590128fe1c8608a36d016264d7fa5482c0ce4c637ad42203e9d30dabad",
+	"agents/opencode-wrapper.md":
+		"35b39ea71699f3ccfd2a7ba5857002e97cd13bc962ddb9765391fac6f24e64ed",
 	"agents/grok-wrapper.md":
 		"69f0876934f8aeea6ec62d90d694ea481b1bc1906b2ea16a9a40cbb14e1b4130",
 	"agents/madhyastha.md":
@@ -53,8 +57,10 @@ const PINNED_DIGESTS = {
 		"471946a434a78b02c1cdd1f8ff7101be4d1ef594272a3909d5d61bcb79415256",
 	"agents/run-codex-task.sh":
 		"faef3eddc4dddafc2a1bf2d2edf45a13e710519266dd88507da259f97e5fd4d6",
+	"agents/run-opencode-seat.sh":
+		"0f7bb1e9ad4bbef90b602113dffd9ad7d9f9ffa533d837bd699959113db73f3c",
 	"agents/validate-codex-wrapper.sh":
-		"2240c08f1dabf3c04c71fe9b5ec44722657444de717415c6ae684ef67fa3f957",
+		"250dcf53eddc87a3af3a40bf4be1e7d2b651557b71da5a93b9d413d5ca06be66",
 	"agents/codex-result.schema.json":
 		"cccad847ac6a90694bbad15daddc42f4a55f7219a5ed9f717db4dcdfc7e4bfa0",
 	"agents/prepare-pr-review-render-workspace.sh":
@@ -136,6 +142,7 @@ it("deploys the complete public Claude fallback runtime into a fresh home", asyn
 		}
 		for (const executable of [
 			"agents/run-codex-task.sh",
+			"agents/run-opencode-seat.sh",
 			"agents/validate-codex-wrapper.sh",
 			"agents/prepare-pr-review-render-workspace.sh",
 		]) {
