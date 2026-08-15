@@ -1,15 +1,24 @@
 ---
-name: samvada-html-deliverables
+name: html-explainer
 description: Use when creating HTML files for human readers, including reports, explainers, specs, plans, reviews, audits, research write-ups, and status pages.
 ---
 
-# Samvada HTML Deliverables
+# HTML Explainer
 
 ## Overview
 
 Use one visual language for every human-facing HTML file: dark ground, a
 role-colored actor duel, mono machine words, and diagram-led sections.
 Copy `template.html` and fill it with real content.
+
+## Authorship
+
+Dispatch `luna-wrapper` (implementation mode) to author the page; delegate
+only the declared destination file and give it this skill's output contract
+plus `template.html` as evidence. Validate the result yourself before
+delivery: metadata JSON, fully self-contained offline page (no external
+loads; citation links allowed), desktop and mobile widths, reduced-motion,
+print, and the foot stamp.
 
 ## Output contract
 

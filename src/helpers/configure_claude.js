@@ -67,9 +67,8 @@ export const PERSONAL_FILES = [
 	{ src: "workflows/review-station.js" },
 	{ src: "skills/discovering-work/SKILL.md" },
 	{ src: "skills/discovering-work/agents/openai.yaml" },
-	{ src: "skills/samvada-html-deliverables/SKILL.md" },
-	{ src: "skills/samvada-html-deliverables/agents/openai.yaml" },
-	{ src: "skills/samvada-html-deliverables/template.html" },
+	{ src: "skills/html-explainer/SKILL.md" },
+	{ src: "skills/html-explainer/template.html" },
 ];
 
 /** Resolve where a PERSONAL_FILES entry lives on a given $HOME (inside ~/.claude/). */
