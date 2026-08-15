@@ -88,6 +88,25 @@ small edit at a time. Guard against it:
 - A failed or unverifiable dispatch creates visible review debt. It never
   becomes a clean result.
 
+Dispatches are monitored to completion. You own this; it is not delegated:
+
+- A dispatch is finished when you have read its `report.json` and checked
+  its claims against the workspace — not when the agent returns, and not
+  when a notification arrives. An agent that returns "still running" or
+  "waiting for a notification" has NOT reported; poll the run directory
+  yourself until the report exists.
+- Never leave a dispatch unattended across turns. If it outlives your turn,
+  say so with the run directory path and resume polling next turn.
+- A run directory with no `report.json` means the run was killed or died.
+  Its files are unverified: revert to the last committed state and redo.
+  Do not adopt them because they look complete.
+- Stopping a wrapper does NOT stop its detached launcher child. After any
+  abort, find the launcher process and kill its whole process group, then
+  confirm no survivors (`ps aux | grep run-codex-task`). An orphan keeps
+  writing the workspace with nobody watching.
+- Setting a goal without monitoring is pointless: the goal is met by
+  verified results, never by dispatches you launched and stopped watching.
+
 ## 5. Plans
 
 A plan names the executing agent for each task. A plan whose steps are bare
