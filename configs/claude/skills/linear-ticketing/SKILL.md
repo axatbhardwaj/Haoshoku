@@ -1,6 +1,6 @@
 ---
 name: linear-ticketing
-description: Use for creating, updating, or organizing Linear tickets and ticket trees.
+description: Create, update, or organize Linear tickets and trees.
 ---
 
 # Linear Ticketing

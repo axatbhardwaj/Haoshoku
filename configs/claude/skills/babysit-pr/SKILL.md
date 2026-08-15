@@ -1,6 +1,6 @@
 ---
 name: babysit-pr
-description: Use to watch an existing GitHub PR through CI and review feedback, autonomously fixing and pushing after Opus review; not for creating or initially reviewing a PR.
+description: Watch an existing PR; autonomously fix and push after review.
 ---
 
 # Babysit PR

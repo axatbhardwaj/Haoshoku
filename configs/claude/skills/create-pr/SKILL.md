@@ -1,6 +1,6 @@
 ---
 name: create-pr
-description: Use when local changes are ready to become GitHub pull requests; not for PR review or babysitting.
+description: Local changes ready to become GitHub pull requests.
 ---
 
 # Create PR

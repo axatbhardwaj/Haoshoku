@@ -1,6 +1,6 @@
 ---
 name: html-explainer
-description: Use when creating HTML files for human readers, including reports, explainers, specs, plans, reviews, audits, research write-ups, and status pages.
+description: Create human-facing HTML reports, explainers, specs, plans, or reviews.
 ---
 
 # HTML Explainer

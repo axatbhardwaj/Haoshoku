@@ -1,6 +1,6 @@
 ---
 name: implement-work
-description: Use for implementing features, changes, or bugfixes; not for review-only work. Runs the Fable-plan, Sol-review, Sol-implement, Opus-review pipeline.
+description: Implement features, changes, or bugfixes; not review-only work.
 ---
 
 # Implement Work

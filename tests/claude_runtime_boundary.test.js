@@ -64,19 +64,19 @@ const PINNED_DIGESTS = {
 	"skills/discovering-work/agents/openai.yaml":
 		"61d4bfdd85a518acacc2ec655f483049173290946faca7536b436857ca5d7583",
 	"skills/implement-work/SKILL.md":
-		"92c6f685f6e49462bf610bd232983f6cd6d144be051486d5954eba0caadcbe30",
+		"9e4f35afb795a7434f733022806c26a5909fb0f79617fc76724185dd625d5bee",
 	"skills/review-pr/SKILL.md":
-		"a7fd35f6c36848e06481c525c1a5f7821e63e350e3ddbc291268a5b3b5203d1e",
+		"e2338426d66f887864ed5621cd96f5d654ae15339fe0dcad895f21d6cf905b55",
 	"skills/create-pr/SKILL.md":
-		"fea160a5202c685a8d2bcc9d40bf4f00cfb84741da7800bcf863622587ea3041",
+		"af13f63d3a2bf5f5b30db6760b06e7ea0ba6b6a435df47cbfb584c02c0a2c2f1",
 	"skills/brainstorm/SKILL.md":
-		"f8dde48847f10ad56bb16f9a407af3ac61b4a4c76cfda7594ca1c0163549f1f4",
+		"638a3d1555064af8ff068113872fff869e562787ff0beb90ef4986f6492359bd",
 	"skills/babysit-pr/SKILL.md":
-		"bb8a8d528d10456da7d34c26b6962093b6c6ecd44f1e5401dff98c8a81f1e21b",
+		"3c3cae8efd059caa09d4888a74ae1fca2c9604d49ce4cc64b77e60ecc2b4c105",
 	"skills/linear-ticketing/SKILL.md":
-		"9270c6ac60ef0bdeffa0f15cc7c26bb63c21b09460587d1e17c2fcac205d257d",
+		"d64b3708c28792518862e78a56673e0bb353b6af05c2750a6c0fca299f3fd33a",
 	"skills/html-explainer/SKILL.md":
-		"b8472ce89304e5cbf78ace52fdc69995ea91c449b0befb7aec0bfac1d5147b5a",
+		"0743a27646b8a2050e24590e794c9e24b1ba4fac17002330a524e5a4df28aa62",
 	"skills/html-explainer/template.html":
 		"9aef7a092acbb59199a289e19545da2436deb8a36cf5a35057ee46e5c03197a7",
 };

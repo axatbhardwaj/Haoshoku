@@ -1,6 +1,6 @@
 ---
 name: brainstorm
-description: Use to research, explore, compare, or validate an idea before committing to work; not for changing existing code. Grills the user first, ends with cross-model validation.
+description: Research, compare, or validate an idea; any grill request.
 ---
 
 # Brainstorm

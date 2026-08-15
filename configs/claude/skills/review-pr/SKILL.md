@@ -1,6 +1,6 @@
 ---
 name: review-pr
-description: "Use to review existing code changes: pull request, branch diff, or patch; not to implement fixes."
+description: Review a pull request, branch diff, or patch; not implement.
 ---
 
 # Review PR
