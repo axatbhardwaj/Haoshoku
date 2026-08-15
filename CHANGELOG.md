@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Make the OpenCode seat, run-codex-task lifecycle, and Kitty theme tests
+  hermetic so they provision their own state instead of depending on the
+  developer machine, unblocking the npm publish workflow on a clean runner.
+
 ## 8.6.0 - 2026-08-15
 
 - Add the fixed, bubblewrap-confined OpenCode GLM seat with receipt and
