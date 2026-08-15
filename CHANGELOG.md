@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 8.6.0 - 2026-08-15
 
 - Add the fixed, bubblewrap-confined OpenCode GLM seat with receipt and
   workspace-attribution enforcement for wrapper-dispatched work.
