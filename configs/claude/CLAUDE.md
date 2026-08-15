@@ -107,6 +107,24 @@ Dispatches are monitored to completion. You own this; it is not delegated:
 - Setting a goal without monitoring is pointless: the goal is met by
   verified results, never by dispatches you launched and stopped watching.
 
+You are not the only agent using the shared run directories. Other sessions
+dispatch the same wrappers against the same launcher:
+
+- Pin YOUR run directory when you dispatch and refer to it by name forever
+  after. Never act on "the newest run dir": a finishing run's mtime updates
+  when it writes its report, so it can outrank a run that just started, and
+  the newest directory may belong to another agent entirely.
+- NEVER kill by process pattern. `pkill -f run-codex-task`, or signalling a
+  pgid harvested from `ps | grep`, will kill other agents' legitimate work.
+  Abort only your own run: `run-codex-task.sh --abort <your-run-dir>`, which
+  signals exactly the pgid recorded in that run's `launcher.pid`.
+- `blocked_concurrent_dispatch` means another agent holds the workspace lock
+  and is working. Wait for it or use an isolated worktree. Never break the
+  lock, and never assume the holder is a stale run of your own.
+- Before declaring a process an orphan, confirm it belongs to a run you
+  started. An unfamiliar dispatch is far more likely to be a peer session
+  than a runaway.
+
 ## 5. Plans
 
 A plan names the executing agent for each task. A plan whose steps are bare
