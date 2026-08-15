@@ -117,6 +117,13 @@ dispatch the same wrappers against the same launcher:
   pgid harvested from `ps | grep`, will kill other agents' legitimate work.
   Abort only your own run: `run-codex-task.sh --abort <your-run-dir>`, which
   signals exactly the pgid recorded in that run's `launcher.pid`.
+- `pgrep -f` and `pgrep -fc` match the searching command's OWN command
+  line — a dispatch check can false-positive on your own shell (two real
+  failures today: a phantom "dispatch in flight" blocking a deploy, and
+  a near-miss orphan scare). Use a self-immune form (`ps -eo pid=,args=
+  | grep -E "bash .*/run-codex-task\.sh" | grep -v grep`), or better,
+  check the run's `launcher.pid` pgid. Prefer named artifacts (run dir,
+  `launcher.pid`, `report.json`) over process-table matches.
 - `blocked_concurrent_dispatch` means another agent holds the workspace lock
   and is working. Wait for it or use an isolated worktree. Never break the
   lock, and never assume the holder is a stale run of your own.
