@@ -50,11 +50,13 @@ avoids a registry migration that could risk a duplicate-class validation
 hazard, so future maintainers must not “fix” the apparent naming mismatch or
 break the matching windowrules.
 
-Workspace 7 uses the `haoshoku-special-workspace numbered 7 warp` recipe.
-Exact-address tags, not Warp's shared class, identify its owned window;
-`exec-once` and the post-reload helper call use `numbered-login 7 warp`.
-Never add a broad `dev.warp.Warp` placement rule. `SUPER+Return` and `SUPER+T`
-remain Omarchy's `xdg-terminal-exec` routes, whose XDG default is Warp.
+Workspace 7 uses the `haoshoku-special-workspace numbered 7 kitty` recipe.
+The exact `haoshoku-ws7` class identifies its owned window; `exec-once` and the
+post-reload helper call use `numbered-login 7 kitty`. Haki and agents use their
+own exact Kitty classes and split sessions. `SUPER+Return` remains Omarchy's
+`xdg-terminal-exec` route, whose XDG default is Kitty; `SUPER+T` opens T3 Code.
+The assistants recipe runs at login and on `SUPER+I`, managing only ChatGPT in
+`special:assistants`; T3 Code and Twitch use their own special workspaces.
 
 One appearance carve-out is **`hooks/theme-set.d/`**: its post-processing
 hooks run AFTER Omarchy sets a theme. They do not author Omarchy appearance;

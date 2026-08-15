@@ -13,11 +13,11 @@ Template configuration files copied to user's `~/.config/` during setup.
 | Directory       | What                                | When to read                              |
 | --------------- | ----------------------------------- | ----------------------------------------- |
 | `alacritty/`    | Alacritty terminal config           | Modifying Alacritty settings              |
-| `kitty/`        | Installed-but-inactive Kitty fallback config + the terminal-agnostic OSC-palette regeneration tool | Modifying fallback font/window settings or re-syncing the Caelestia palette |
+| `kitty/`        | Primary terminal config, Haki/agents split sessions, and the terminal-agnostic OSC-palette regeneration tool | Modifying terminal settings, split sessions, or re-syncing the Caelestia palette |
 | `ghostty/`      | Retained legacy Ghostty config; installed but no longer deployed or wired to keybinds | Reviewing the former Ghostty setup |
 | `fastfetch/`    | Fastfetch system info config        | Modifying system info display             |
 | `fish/`         | Fish shell config                   | Modifying shell behavior, aliases         |
-| `warp/`         | Primary XDG terminal, Warp tab configs, and shipped Elysian theme deployment | Modifying Warp routing, tab config, or theme |
+| `warp/`         | Retained dormant Warp tab configs and shipped Elysian theme | Reviewing the former Warp setup |
 | `vencord/`      | Vencord Discord theme               | Modifying Discord appearance              |
 | `claude/`       | Claude Code personal config (copied)    | Modifying settings, backup/restore        |
 | `claude-remote-control/` | Claude Remote Control tmux supervisor + systemd user-unit template | Modifying persistent Claude sessions, restart behavior, or attach lifecycle |

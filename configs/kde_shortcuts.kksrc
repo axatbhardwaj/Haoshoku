@@ -349,7 +349,7 @@ _launch=Meta+G
 _launch=Meta+G
 
 [services][kitty.desktop]
-_launch=none
+_launch=Meta+Return
 
 [services][cursor-cursor.desktop]
 _launch=Meta+C
@@ -358,7 +358,7 @@ _launch=Meta+C
 _launch=Meta+C
 
 [services][dev.warp.Warp.desktop]
-_launch=Meta+Return
+_launch=none
 
 [services][org.kde.konsole.desktop]
 _launch=none

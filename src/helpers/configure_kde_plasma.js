@@ -5,13 +5,13 @@ import path from "node:path";
 import { log, runCommand } from "../common/utils.js";
 
 const APP_SHORTCUTS = [
-	["terminal", "Terminal", "warp-terminal", "Meta+T"],
+	["terminal", "Terminal", "kitty", "Meta+T"],
 	["files", "Files", "dolphin", "Meta+E"],
 	["editor", "Editor", "zeditor", "Meta+C"],
 	[
 		"agents",
 		"Agents",
-		"warp-terminal warp://tab_config/agents?new_window=true",
+		"kitty --class=haoshoku-agents --title=agents --session=~/.config/kitty/agents.session",
 		"Meta+A",
 	],
 	["claude", "Claude", "claude-desktop", "Meta+I"],

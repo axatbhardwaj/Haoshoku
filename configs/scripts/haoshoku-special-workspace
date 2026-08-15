@@ -24,10 +24,11 @@ has_client_class() {
     workspace) jq_filter='any(.[]?; type == "object" and .class == $class and ((.workspace.name // "") | tostring) == $workspace)' ;;
     stray) jq_filter='first(.[]? | select(type == "object" and .class == $class and ((.workspace.name // "") | tostring) != $workspace) | .address | select(type == "string" and length > 0)) // false' ;;
   esac
+  jq_filter="if length == 1 and (.[0] | type == \"array\") then (.[0] | $jq_filter) else error(\"invalid client stream\") end"
   # Keep the PIPESTATUS capture inside this group. A trailing `|| true` resets
   # PIPESTATUS to 0, making every failed probe report "client present".
   {
-    hyprctl clients -j 2>/dev/null | jq -er --arg class "$class" --arg workspace "$workspace" "$jq_filter" 2>/dev/null
+    hyprctl clients -j 2>/dev/null | jq -ser --arg class "$class" --arg workspace "$workspace" "$jq_filter" 2>/dev/null
     probe_statuses=("${PIPESTATUS[@]}")
   } || true
   if (( probe_statuses[0] != 0 || probe_statuses[1] > 1 )); then
@@ -48,6 +49,27 @@ launch_if_missing() {
   local workspace="$1" pattern="$2"
   shift 2
   has_client "$pattern" || launch "$workspace" "$@"
+}
+
+ensure_kitty() {
+  local workspace="$1" class="$2" session="${3:-}" stray probe_status=0
+  has_client_class "$class" "$workspace" workspace >/dev/null || probe_status=$?
+  case "$probe_status" in
+    0|2) return 0 ;;
+  esac
+
+  probe_status=0
+  stray="$(has_client_class "$class" "$workspace" stray)" || probe_status=$?
+  case "$probe_status" in
+    0) dispatch movetoworkspacesilent "$workspace,address:$stray" ;;
+    1)
+      if [[ -n "$session" ]]; then
+        launch "$workspace" kitty --class "$class" --title "${class#haoshoku-}" --session "$session"
+      else
+        launch "$workspace" kitty --class "$class" -d "$HOME"
+      fi
+      ;;
+  esac
 }
 
 assistant_clients() {
@@ -90,151 +112,6 @@ assistant_addresses_outside_workspace() {
   ' <<<"$clients"
 }
 
-warp_clients() {
-  local clients
-  clients="$(hyprctl clients -j 2>/dev/null)" || return 1
-  jq -se 'length == 1 and (.[0] | type == "array")' <<<"$clients" >/dev/null 2>&1 || return 1
-  printf '%s\n' "$clients"
-}
-
-find_owned_warp_addresses() {
-  local clients="$1" tag="$2"
-  jq -c --arg tag "$tag" '[
-    .[]? | select(
-      type == "object"
-      and .class == "dev.warp.Warp"
-      and (.address | type == "string" and length > 0)
-      and any(.tags?[]?; . == $tag)
-    ) | .address
-  ]
-  ' <<<"$clients"
-}
-
-find_warp_workspace() {
-  local clients="$1" address="$2"
-  jq -r --arg address "$address" '
-    first(.[]? | select(.address == $address) | .workspace.name // empty) // empty
-  ' <<<"$clients"
-}
-
-find_adoptable_warp_addresses() {
-  local clients="$1" workspace="$2"
-  jq -c --arg workspace "$workspace" '[
-    .[]? | select(
-      type == "object"
-      and .class == "dev.warp.Warp"
-      and (.address | type == "string" and length > 0)
-      and ((.workspace.name // "") | tostring) == $workspace
-      and (any(.tags?[]?; type == "string" and startswith("haoshoku-")) | not)
-    ) | .address
-  ]
-  ' <<<"$clients"
-}
-
-warp_addresses() {
-  local clients="$1"
-  jq -c '[.[]? | select(
-    type == "object"
-    and .class == "dev.warp.Warp"
-    and (.address | type == "string" and length > 0)
-  ) | .address]' <<<"$clients"
-}
-
-find_new_warp_addresses() {
-  local clients="$1" before_addresses="$2"
-  jq -c --argjson before "$before_addresses" '[
-    .[]? | select(
-      type == "object"
-      and .class == "dev.warp.Warp"
-      and (.address | type == "string" and length > 0)
-      and (.address as $address | $before | index($address) | not)
-      and (any(.tags?[]?; type == "string" and startswith("haoshoku-")) | not)
-    ) | .address
-  ]
-  ' <<<"$clients"
-}
-
-unique_warp_address() {
-  local addresses="$1" count
-  count="$(jq -r 'length' <<<"$addresses")" || return 2
-  case "$count" in
-    0) return 1 ;;
-    1) jq -er '.[0] | select(type == "string" and length > 0)' <<<"$addresses" ;;
-    *) return 2 ;;
-  esac
-}
-
-ensure_warp_locked() {
-  local workspace="$1" tag="$2" uri="$3" adopt_existing="${4:-false}" tab_uri="${5:-}"
-  local clients owned_addresses owned_address owned_workspace
-  local adoptable_addresses adoptable_address before_addresses new_addresses new_address
-  local attempt candidate_status
-  clients="$(warp_clients)" || return 0
-
-  owned_addresses="$(find_owned_warp_addresses "$clients" "$tag")" || return 0
-  if owned_address="$(unique_warp_address "$owned_addresses")"; then
-    owned_workspace="$(find_warp_workspace "$clients" "$owned_address")"
-    [[ "$owned_workspace" == "$workspace" ]] || \
-      dispatch movetoworkspacesilent "$workspace,address:$owned_address"
-    return 0
-  else
-    candidate_status=$?
-  fi
-  [[ "$candidate_status" == 1 ]] || return 0
-
-  if [[ "$adopt_existing" == true ]]; then
-    adoptable_addresses="$(find_adoptable_warp_addresses "$clients" "$workspace")" || return 0
-    if adoptable_address="$(unique_warp_address "$adoptable_addresses")"; then
-      dispatch tagwindow "+$tag" "address:$adoptable_address"
-      return 0
-    else
-      candidate_status=$?
-    fi
-    [[ "$candidate_status" == 1 ]] || return 0
-  fi
-
-  before_addresses="$(warp_addresses "$clients")"
-  launch "$workspace" warp-terminal "$uri"
-  for attempt in {1..10}; do
-    clients="$(warp_clients)" || return 0
-    new_addresses="$(find_new_warp_addresses "$clients" "$before_addresses")" || return 0
-    if new_address="$(unique_warp_address "$new_addresses")"; then
-      dispatch tagwindow "+$tag" "address:$new_address"
-      dispatch movetoworkspacesilent "$workspace,address:$new_address"
-      if [[ -n "$tab_uri" ]]; then
-        dispatch focuswindow "address:$new_address"
-        launch "$workspace" warp-terminal "$tab_uri"
-      fi
-      return 0
-    else
-      candidate_status=$?
-    fi
-    [[ "$candidate_status" == 1 ]] || return 0
-    if (( attempt < 10 )); then
-      sleep 0.1
-    fi
-  done
-
-}
-
-ensure_warp() {
-  local runtime_dir lock_fd result=0
-  runtime_dir="${XDG_RUNTIME_DIR:-}"
-  [[ -n "$runtime_dir" && -d "$runtime_dir" ]] || return 0
-  command -v flock >/dev/null 2>&1 || return 0
-  if ! exec {lock_fd}>"$runtime_dir/haoshoku-warp-ownership.lock"; then
-    return 0
-  fi
-  if ! flock "$lock_fd"; then
-    exec {lock_fd}>&-
-    return 0
-  fi
-  ensure_warp_locked "$@" || result=$?
-  flock -u "$lock_fd" >/dev/null 2>&1 || true
-  exec {lock_fd}>&-
-  return "$result"
-}
-
 if [[ "$recipe" == numbered || "$recipe" == numbered-login ]]; then
   [[ $# -eq 3 ]] || { echo "usage: haoshoku-special-workspace $recipe WORKSPACE APP" >&2; exit 2; }
   workspace="$2" app="$3"
@@ -248,7 +125,7 @@ if [[ "$recipe" == numbered || "$recipe" == numbered-login ]]; then
       launch_if_missing "$workspace" '^teams-for-linux$' teams-for-linux
       launch_if_missing "$workspace" '^(TelegramDesktop|org\.telegram\.desktop)$' Telegram
       ;;
-    warp) ensure_warp "$workspace" "haoshoku-ws${workspace}" "warp://action/new_window?path=$HOME" true ;;
+    kitty) ensure_kitty "$workspace" "haoshoku-ws${workspace}" ;;
     notion)
       # Brave Origin ignores --class under --app and derives the class from the URL instead.
       launch_if_missing "$workspace" '^brave-www\.notion\.so__-Default$' brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/notion" --app=https://www.notion.so/
@@ -405,8 +282,8 @@ if [[ -n "$browser_profile" ]]; then
 elif [[ "$recipe" == haki || "$recipe" == agents ]]; then
   focus_or_toggle_special_workspace
   case "$recipe" in
-    haki) ensure_warp "special:$workspace" haoshoku-haki "warp://action/new_window?path=$HOME" false "warp://tab_config/haki" ;;
-    agents) ensure_warp "special:$workspace" haoshoku-agents "warp://action/new_window?path=$HOME" false "warp://tab_config/agents" ;;
+    haki) ensure_kitty "special:$workspace" haoshoku-haki "$HOME/.config/kitty/haki.session" ;;
+    agents) ensure_kitty "special:$workspace" haoshoku-agents "$HOME/.config/kitty/agents.session" ;;
   esac
   exit 0
 elif [[ "$follows_focus" == true ]]; then

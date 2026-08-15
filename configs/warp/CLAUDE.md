@@ -1,7 +1,7 @@
 # configs/warp/
 
-Warp is the primary XDG terminal. Its configuration is deployed by
-`configureWarp()` (`src/helpers/configure_warp.js`).
+Warp is retained as a dormant fallback. Its legacy configuration helper remains
+available for manual recovery, but normal setup and active launchers use Kitty.
 
 ## Files
 
@@ -20,18 +20,13 @@ custom-theme object, and `override_opacity = 77`. The palette is a direct port o
 Omarchy Elysian Kitty roles and ANSI colors. Warp ignores shell OSC palette injection
 (`warpdotdev/warp#3108`), so a native custom theme is required.
 
-The normal CachyOS user-app setup calls `configureWarp()` again. It restores the
-Elysian theme, every shipped top-level tab config, and the XDG preference for
-Warp. Kitty remains installed with its config as an inactive fallback.
+Normal CachyOS user-app setup calls `configureKitty()` and does not invoke
+`configureWarp()`.
 
-## Agent tab configs
+## Dormant agent tab configs
 
 Haki is the two-pane Meta+A layout: Claude above a fresh Codex pane below.
 `tab_configs/agents.toml` remains the separate Claude-only contract.
 
-`tab_configs/haki.toml` and `tab_configs/agents.toml` deploy to
-`${XDG_DATA_HOME:-~/.local/share}/warp-terminal/tab_configs/`. The shared
-`haoshoku-special-workspace` helper launches their `warp://tab_config/...` URIs,
-then tags the exact new window address (`haoshoku-haki` or `haoshoku-agents`).
-Workspace 7 uses the same exact-address ownership pattern (`haoshoku-ws7`).
-Never place Warp with a broad `dev.warp.Warp` class rule: all Warp windows share it.
+These files are no longer deployed or launched by normal setup. The active
+equivalents are `configs/kitty/haki.session` and `agents.session`.

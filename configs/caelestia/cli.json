@@ -36,7 +36,7 @@
     "sysmon": {
       "btop": {
         "enable": true,
-        "match": [{"class": "dev.warp.Warp", "title": "btop", "workspace": {"name": "special:sysmon"}}],
+        "match": [{"class": "kitty", "title": "btop", "workspace": {"name": "special:sysmon"}}],
         "command": ["xdg-terminal-exec", "--", "env", "LC_ALL=C.UTF-8", "fish", "-C", "exec btop"]
       }
     },

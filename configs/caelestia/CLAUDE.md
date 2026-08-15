@@ -22,7 +22,7 @@ Both variants share the portable bits (keybinds, special-workspace toggles, app 
 
 ## Notes
 
-- Both variants launch the primary XDG terminal for `Super+T`, tagged Warp for `Super+A` (agents) and `Super+7`, and carry no broad Warp class rule. `haoshoku-special-workspace` owns the Haki/agents and numbered Warp recipes through exact-address tags; Kitty stays installed only as an inactive fallback.
-- `shell.json`'s `general.apps.terminal` must be `["xdg-terminal-exec", "--"]`. Caelestia appends a command to that array, and `--` preserves forwarding to the XDG-selected Warp terminal. `configureCaelestiaShell()` preserves all unrelated `general`, `general.apps`, services, and top-level values while retaining malformed-file backups.
+- Both variants launch the primary XDG-selected Kitty for `Super+T`, the Kitty agents split for `Super+A`, and a dedicated Kitty on `Super+7`. `haoshoku-special-workspace` owns them through exact Kitty classes.
+- `shell.json`'s `general.apps.terminal` must be `["xdg-terminal-exec", "--"]`. Caelestia appends a command to that array, and `--` preserves forwarding to the XDG-selected Kitty terminal. `configureCaelestiaShell()` preserves all unrelated `general`, `general.apps`, services, and top-level values while retaining malformed-file backups.
 - Hypr-user variants contain machine-specific `monitor = ...` lines keyed by connector name. Edit those if monitor topology changes (e.g. you connect a new external).
 - The catch-all `monitor = , preferred, auto, 1` in both variants handles unexpected outputs (occasional TV/projector on the laptop, hot-plug on the PC).

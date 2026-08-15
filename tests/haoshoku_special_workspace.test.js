@@ -101,15 +101,11 @@ describe("haoshoku-special-workspace", () => {
 	let chromium;
 	let claudeDesktop;
 	let codexDesktop;
+	let kittyCall;
 	let t3Code;
 	let focusedMonitorState;
-	let runtimeDirectory;
 	let specialMonitorState;
 	let specialState;
-	let tmuxLog;
-	let tmuxState;
-	let warpCall;
-	let warpCalls;
 	beforeEach(() => {
 		directory = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-special-"));
 		log = path.join(directory, "calls");
@@ -118,21 +114,13 @@ describe("haoshoku-special-workspace", () => {
 		chromium = path.join(directory, "brave-origin");
 		claudeDesktop = path.join(directory, ["claude", "desktop"].join("-"));
 		codexDesktop = path.join(directory, ["codex", "desktop"].join("-"));
+		kittyCall = path.join(directory, "kitty-call");
 		t3Code = path.join(directory, "t3code");
 		focusedMonitorState = path.join(directory, "focused-monitor-state");
-		runtimeDirectory = path.join(directory, "runtime");
 		specialMonitorState = path.join(directory, "special-monitor-state");
 		specialState = path.join(directory, "special-workspace-state");
-		tmuxLog = path.join(directory, "tmux-call");
-		tmuxState = path.join(directory, "tmux-session");
-		warpCall = path.join(directory, "warp-call");
-		warpCalls = path.join(directory, "warp-calls");
 		fs.writeFileSync(focusedMonitorState, "DP-1");
 		fs.writeFileSync(specialMonitorState, "DP-1");
-		fs.mkdirSync(runtimeDirectory);
-		const flock = Bun.which("flock");
-		if (!flock) throw new Error("missing test dependency: flock");
-		fs.symlinkSync(flock, path.join(directory, "flock"));
 		const hyprctl = path.join(directory, "hyprctl");
 		const uwsmApp = path.join(directory, "uwsm-app");
 		const helperDirectory = path.join(directory, ".local", "bin");
@@ -219,13 +207,9 @@ exec "$@"
 `,
 		);
 		fs.writeFileSync(
-			path.join(directory, "warp-terminal"),
+			path.join(directory, "kitty"),
 			`#!/usr/bin/env bash
-printf '%s\\0' "$@" > "$WARP_CALL"
-printf '%s\\n' "$*" >> "$WARP_CALLS"
-if [[ -n "\${HYPR_CLIENTS_STATE:-}" && -n "\${WARP_CLIENTS_AFTER_LAUNCH:-}" ]]; then
-  printf '%s\\n' "$WARP_CLIENTS_AFTER_LAUNCH" > "$HYPR_CLIENTS_STATE"
-fi
+printf '%s\\0' "$@" > "$KITTY_CALL"
 `,
 		);
 		fs.writeFileSync(
@@ -269,12 +253,12 @@ esac
 		fs.chmodSync(hyprctl, 0o755);
 		fs.chmodSync(claudeDesktop, 0o755);
 		fs.chmodSync(codexDesktop, 0o755);
+		fs.chmodSync(path.join(directory, "kitty"), 0o755);
 		fs.chmodSync(t3Code, 0o755);
 		fs.chmodSync(chromium, 0o755);
 		fs.chmodSync(helper, 0o755);
 		fs.chmodSync(path.join(directory, "systemctl"), 0o755);
 		fs.chmodSync(uwsmApp, 0o755);
-		fs.chmodSync(path.join(directory, "warp-terminal"), 0o755);
 	});
 	afterEach(() => fs.rmSync(directory, { recursive: true, force: true }));
 
@@ -290,7 +274,6 @@ esac
 			liveMonitors = ["DP-1", "DP-2", "HDMI-A-1"],
 			visibleWorkspace,
 			visibleMonitor = "DP-1",
-			warpClientsAfterLaunch,
 		} = {},
 	) {
 		if (clientsState !== undefined) {
@@ -317,15 +300,10 @@ esac
 				BROWSER_CALL: browserCall,
 				CALL_LOG: log,
 				FOCUSED_MONITOR_STATE: focusedMonitorState,
+				KITTY_CALL: kittyCall,
 				LIVE_MONITORS: liveMonitors.join(" "),
 				SPECIAL_STATE: specialState,
 				SPECIAL_MONITOR_STATE: specialMonitorState,
-				TMUX_LOG: tmuxLog,
-				TMUX_STATE: tmuxState,
-				XDG_RUNTIME_DIR: runtimeDirectory,
-				WARP_CALL: warpCall,
-				WARP_CALLS: warpCalls,
-				WARP_CLIENTS_AFTER_LAUNCH: warpClientsAfterLaunch ?? "",
 				PATH: `${directory}:${process.env.PATH}`,
 				...env,
 			},
@@ -342,16 +320,11 @@ esac
 		return fs.readFileSync(log, "utf8").trim().split("\n");
 	}
 
-	function warpArguments() {
-		if (!fs.existsSync(warpCall)) return null;
-		const argv = fs.readFileSync(warpCall, "utf8").split("\0");
+	function kittyArguments() {
+		if (!fs.existsSync(kittyCall)) return null;
+		const argv = fs.readFileSync(kittyCall, "utf8").split("\0");
 		if (argv.at(-1) === "") argv.pop();
 		return argv;
-	}
-
-	function warpLaunches() {
-		if (!fs.existsSync(warpCalls)) return [];
-		return fs.readFileSync(warpCalls, "utf8").trim().split("\n");
 	}
 
 	function installClaudeArgumentRecorder() {
@@ -415,14 +388,13 @@ fi
 
 	const fluxClient = JSON.stringify([{ class: "chromium-flux" }]);
 	const hakiClient = JSON.stringify([
-		warpClient("0xhaki", "special:haki", ["haoshoku-haki"]),
+		kittyClient("0xhaki", "special:haki", "haoshoku-haki"),
 	]);
-	function warpClient(address, workspace, tags = []) {
+	function kittyClient(address, workspace, className) {
 		return {
 			address,
-			class: "dev.warp.Warp",
+			class: className,
 			workspace: { name: workspace },
-			tags,
 		};
 	}
 	const xClient = JSON.stringify([{ class: "brave-x.com__-Default" }]);
@@ -1694,480 +1666,274 @@ printf 'signal-desktop\\n' >> "$CALL_LOG"
 		expect(dispatchCalls()).toContain("signal-desktop");
 	});
 
-	// Mutations caught: a class-only Warp lookup cannot distinguish unrelated
-	// windows; omitting the address selector can tag or move the wrong one.
-	it("keeps an owned Warp in place and reclaims only its stranded address", async () => {
-		const owned = warpClient("0xowned", "7", ["haoshoku-ws7"]);
-		const inPlace = await run(["numbered", "7", "warp"], {
-			clientsState: JSON.stringify([owned, warpClient("0xother", "7")]),
+	// Exact class plus target workspace is Kitty's ownership contract. A matching
+	// client stays put; the same class elsewhere is reclaimed by its address.
+	it("keeps an owned Kitty in place and reclaims only its stranded address", async () => {
+		const owned = kittyClient("0xowned", "7", "haoshoku-ws7");
+		const inPlace = await run(["numbered", "7", "kitty"], {
+			clientsState: JSON.stringify([
+				owned,
+				kittyClient("0xother", "7", "kitty"),
+			]),
 		});
 
 		expect(inPlace.exitCode).toBe(0);
-		expect(warpArguments()).toBeNull();
+		expect(kittyArguments()).toBeNull();
 		expect(dispatchCalls()).toEqual(["dispatch workspace 7"]);
 
 		fs.rmSync(log, { force: true });
-		const stranded = await run(["numbered", "7", "warp"], {
+		const stranded = await run(["numbered", "7", "kitty"], {
 			clientsState: JSON.stringify([
 				{ ...owned, workspace: { name: "special:stash" } },
-				warpClient("0xother", "7"),
+				kittyClient("0xother", "7", "kitty"),
 			]),
 		});
 
 		expect(stranded.exitCode).toBe(0);
+		expect(kittyArguments()).toBeNull();
 		expect(dispatchCalls()).toEqual([
 			"dispatch workspace 7",
 			"dispatch movetoworkspacesilent 7,address:0xowned",
 		]);
 	});
 
-	it("adopts only an unowned Warp already on the numbered workspace", async () => {
-		const result = await run(["numbered-login", "8", "warp"], {
+	it("launches its owned numbered Kitty instead of adopting unrelated Kitty classes", async () => {
+		const result = await run(["numbered-login", "8", "kitty"], {
 			clientsState: JSON.stringify([
-				warpClient("0xadopt", "8"),
-				warpClient("0xother-owner", "8", ["haoshoku-ws7"]),
-				warpClient("0xelsewhere", "9"),
+				kittyClient("0xplain", "8", "kitty"),
+				kittyClient("0xother-owner", "8", "haoshoku-ws7"),
+				kittyClient("0xelsewhere", "9", "kitty"),
 			]),
 		});
 
 		expect(result.exitCode).toBe(0);
-		expect(warpArguments()).toBeNull();
+		expect(kittyArguments()).toEqual([
+			"--class",
+			"haoshoku-ws8",
+			"-d",
+			directory,
+		]);
 		expect(dispatchCalls()).toEqual([
-			"dispatch tagwindow +haoshoku-ws8 address:0xadopt",
+			`dispatch exec [workspace 8 silent] uwsm-app -- kitty --class haoshoku-ws8 -d ${directory}`,
 		]);
 	});
 
-	it("fails closed when multiple unowned Warps are adoptable", async () => {
-		const result = await run(["numbered-login", "8", "warp"], {
+	it("does not treat multiple unrelated Kitty windows as owned", async () => {
+		const result = await run(["numbered-login", "8", "kitty"], {
 			clientsState: JSON.stringify([
-				warpClient("0xadopt-one", "8"),
-				warpClient("0xadopt-two", "8"),
+				kittyClient("0xplain-one", "8", "kitty"),
+				kittyClient("0xplain-two", "8", "kitty"),
 			]),
 		});
 
 		expect(result.exitCode).toBe(0);
-		expect(warpArguments()).toBeNull();
-		expect(fs.existsSync(log)).toBe(false);
+		expect(kittyArguments()).toEqual([
+			"--class",
+			"haoshoku-ws8",
+			"-d",
+			directory,
+		]);
+		expect(dispatchCalls()).toHaveLength(1);
+		expect(dispatchCalls()[0]).toContain(
+			"dispatch exec [workspace 8 silent] uwsm-app -- kitty --class haoshoku-ws8",
+		);
 	});
 
-	it("launches, tags, and moves only the new Warp when other owners exist", async () => {
-		const result = await run(["numbered", "7", "warp"], {
-			clientsState: JSON.stringify([
-				warpClient("0xother-owner", "7", ["haoshoku-haki"]),
-				warpClient("0xunrelated", "4"),
-			]),
-			warpClientsAfterLaunch: JSON.stringify([
-				warpClient("0xother-owner", "7", ["haoshoku-haki"]),
-				warpClient("0xunrelated", "4"),
-				warpClient("0xnew", "7"),
-			]),
+	it("launches a missing numbered Kitty once and is idempotent after it appears", async () => {
+		const first = await run(["numbered", "7", "kitty"], {
+			clientsState: "[]",
 		});
 
-		expect(result.exitCode).toBe(0);
-		expect(warpArguments()).toEqual([
-			`warp://action/new_window?path=${directory}`,
+		expect(first.exitCode).toBe(0);
+		expect(kittyArguments()).toEqual([
+			"--class",
+			"haoshoku-ws7",
+			"-d",
+			directory,
 		]);
 		expect(dispatchCalls()).toEqual([
 			"dispatch workspace 7",
-			expect.stringContaining(
-				"dispatch exec [workspace 7 silent] uwsm-app -- warp-terminal ",
-			),
-			"dispatch tagwindow +haoshoku-ws7 address:0xnew",
-			"dispatch movetoworkspacesilent 7,address:0xnew",
+			`dispatch exec [workspace 7 silent] uwsm-app -- kitty --class haoshoku-ws7 -d ${directory}`,
 		]);
 
 		fs.rmSync(log, { force: true });
-		fs.rmSync(warpCall, { force: true });
-		const repeated = await run(["numbered-login", "7", "warp"], {
+		fs.rmSync(kittyCall, { force: true });
+		const repeated = await run(["numbered-login", "7", "kitty"], {
 			clientsState: JSON.stringify([
-				warpClient("0xnew", "7", ["haoshoku-ws7"]),
+				kittyClient("0xowned", "7", "haoshoku-ws7"),
 			]),
 		});
 
 		expect(repeated.exitCode).toBe(0);
-		expect(warpArguments()).toBeNull();
+		expect(kittyArguments()).toBeNull();
 		expect(fs.existsSync(log)).toBe(false);
 	});
 
-	it("fails closed when multiple unowned Warps appear after launch", async () => {
-		const result = await run(["numbered-login", "7", "warp"], {
-			clientsState: "[]",
-			warpClientsAfterLaunch: JSON.stringify([
-				warpClient("0xnew-one", "7"),
-				warpClient("0xnew-two", "7"),
+	it("reclaims only the first same-class Kitty stray without launching", async () => {
+		const result = await run(["numbered-login", "7", "kitty"], {
+			clientsState: JSON.stringify([
+				kittyClient("0xfirst", "special:stash", "haoshoku-ws7"),
+				kittyClient("0xsecond", "9", "haoshoku-ws7"),
 			]),
 		});
 
 		expect(result.exitCode).toBe(0);
-		expect(warpArguments()).toEqual([
-			`warp://action/new_window?path=${directory}`,
+		expect(kittyArguments()).toBeNull();
+		expect(dispatchCalls()).toEqual([
+			"dispatch movetoworkspacesilent 7,address:0xfirst",
 		]);
-		expect(dispatchCalls()).toHaveLength(1);
-		expect(dispatchCalls()[0]).toContain(
-			"dispatch exec [workspace 7 silent] uwsm-app -- warp-terminal ",
-		);
 	});
 
-	it("fails closed when its user runtime lock cannot be opened", async () => {
-		const result = await run(["numbered-login", "7", "warp"], {
-			clientsState: "[]",
-			warpClientsAfterLaunch: JSON.stringify([warpClient("0xnew", "7")]),
-			env: { XDG_RUNTIME_DIR: path.join(directory, "missing-runtime") },
+	it("fails closed when the Kitty client probe is malformed", async () => {
+		const result = await run(["numbered-login", "7", "kitty"], {
+			clientsState: "not json",
 		});
 
 		expect(result.exitCode).toBe(0);
-		expect(warpArguments()).toBeNull();
+		expect(kittyArguments()).toBeNull();
 		expect(fs.existsSync(log)).toBe(false);
 	});
 
-	async function runConcurrentWarpOwnership(targetScript, label) {
-		const raceDirectory = fs.mkdtempSync(
-			path.join(directory, `warp-race-${label}-`),
-		);
-		const commandDirectory = path.join(raceDirectory, "commands");
-		const clients = path.join(raceDirectory, "clients.json");
-		const clientsLock = path.join(raceDirectory, "clients.lock");
-		const initialProbes = path.join(raceDirectory, "initial-probes");
-		const launches = path.join(raceDirectory, "launches");
-		const runtime = path.join(raceDirectory, "runtime");
-		const dispatches = path.join(raceDirectory, "dispatches");
-		fs.mkdirSync(commandDirectory);
-		fs.mkdirSync(runtime);
-		fs.writeFileSync(clients, "[]\n");
-		const ownershipLock = path.join(runtime, "haoshoku-warp-ownership.lock");
-		fs.writeFileSync(
-			path.join(commandDirectory, "hyprctl"),
-			`#!/usr/bin/env bash
-update_clients() {
-  local filter="$1" temporary
-  exec 9>"$RACE_CLIENTS_LOCK"
-  flock 9
-  temporary="$(mktemp "$RACE_DIRECTORY/clients.XXXXXX")"
-  jq "$filter" "$RACE_CLIENTS" > "$temporary"
-  mv "$temporary" "$RACE_CLIENTS"
-  flock -u 9
-  exec 9>&-
-}
-increment() {
-  local file="$1" count=0
-  exec 9>"$RACE_CLIENTS_LOCK"
-  flock 9
-  [[ -r "$file" ]] && read -r count < "$file"
-  ((count += 1))
-  printf '%s\\n' "$count" > "$file"
-  flock -u 9
-  exec 9>&-
-}
-lock_is_held() {
-  [[ -e "$RACE_OWNERSHIP_LOCK" ]] || return 1
-  exec 8>"$RACE_OWNERSHIP_LOCK"
-  if flock -n 8; then
-    flock -u 8
-    exec 8>&-
-    return 1
-  fi
-  exec 8>&-
-}
-if [[ "$1 $2" == "clients -j" ]]; then
-  if lock_is_held; then
-    cat "$RACE_CLIENTS"
-  else
-    increment "$RACE_INITIAL_PROBES"
-    for attempt in {1..100}; do
-      [[ -r "$RACE_INITIAL_PROBES" ]] && read -r count < "$RACE_INITIAL_PROBES"
-      ((count >= 2)) && break
-      sleep 0.01
-    done
-    printf '[]\\n'
-  fi
-elif [[ "$1 $2" == "monitors -j" ]]; then
-  printf '[{"name":"DP-1","focused":true,"specialWorkspace":{"name":""}},{"name":"DP-2","focused":false,"specialWorkspace":{"name":""}}]\\n'
-elif [[ "$1" == "dispatch" && "$2" == "tagwindow" ]]; then
-  tag="\${3#+}" address="\${4#address:}"
-  update_clients "map(if .address == \\"$address\\" then .tags = ((.tags + [\\"$tag\\"]) | unique) else . end)"
-  printf '%s\\n' "$*" >> "$RACE_DISPATCHES"
-elif [[ "$1" == "dispatch" && "$2" == "movetoworkspacesilent" ]]; then
-  workspace="\${3%,address:*}" address="\${3#*,address:}"
-  update_clients "map(if .address == \\"$address\\" then .workspace.name = \\"$workspace\\" else . end)"
-  printf '%s\\n' "$*" >> "$RACE_DISPATCHES"
-elif [[ "$1" == "dispatch" && "$2" == "exec" ]]; then
-  printf '%s\\n' "$*" >> "$RACE_DISPATCHES"
-  bash -c "\${3#*] }"
-else
-  printf '%s\\n' "$*" >> "$RACE_DISPATCHES"
-fi
-`,
-		);
-		fs.writeFileSync(
-			path.join(commandDirectory, "warp-terminal"),
-			`#!/usr/bin/env bash
-if [[ "$RACE_RECIPE" == haki ]]; then address=0xhaki; workspace=special:haki; else address=0xagents; workspace=special:agents; fi
-printf '%s\\n' "$1" >> "$RACE_LAUNCHES"
-[[ "$1" == warp://action/new_window* ]] || exit 0
-if [[ -e "$RACE_OWNERSHIP_LOCK" ]] && ! flock -n "$RACE_OWNERSHIP_LOCK"; then
-  jq --arg address "$address" --arg workspace "$workspace" '. + [{address:$address,class:"dev.warp.Warp",workspace:{name:$workspace},tags:[]}]' "$RACE_CLIENTS" > "$RACE_CLIENTS.next"
-  mv "$RACE_CLIENTS.next" "$RACE_CLIENTS"
-else
-  increment() {
-    local count=0
-    exec 9>"$RACE_CLIENTS_LOCK"
-    flock 9
-    [[ -r "$RACE_LAUNCHES" ]] && count="$(wc -l < "$RACE_LAUNCHES")"
-    flock -u 9
-    exec 9>&-
-    printf '%s\\n' "$count"
-  }
-  while (( $(increment) < 2 )); do sleep 0.01; done
-  exec 9>"$RACE_CLIENTS_LOCK"
-  flock 9
-  printf '[{"address":"0xshared","class":"dev.warp.Warp","workspace":{"name":"special:race"},"tags":[]}]\\n' > "$RACE_CLIENTS"
-  flock -u 9
-  exec 9>&-
-fi
-`,
-		);
-		fs.writeFileSync(
-			path.join(commandDirectory, "uwsm-app"),
-			'#!/usr/bin/env bash\nexec "$@"\n',
-		);
-		for (const command of ["hyprctl", "warp-terminal", "uwsm-app"])
-			fs.chmodSync(path.join(commandDirectory, command), 0o755);
-		const environment = {
-			...process.env,
-			HOME: directory,
-			PATH: `${commandDirectory}:${directory}:${process.env.PATH}`,
-			RACE_CLIENTS: clients,
-			RACE_CLIENTS_LOCK: clientsLock,
-			RACE_DIRECTORY: raceDirectory,
-			RACE_DISPATCHES: dispatches,
-			RACE_INITIAL_PROBES: initialProbes,
-			RACE_LAUNCHES: launches,
-			RACE_OWNERSHIP_LOCK: ownershipLock,
-			XDG_RUNTIME_DIR: runtime,
-		};
-		const processes = ["haki", "agents"].map((recipe) =>
-			Bun.spawn([targetScript, recipe], {
-				env: { ...environment, RACE_RECIPE: recipe },
-				stderr: "pipe",
-			}),
-		);
-		const exitCodes = await Promise.all(
-			processes.map((process) => process.exited),
-		);
-		return {
-			clients: JSON.parse(fs.readFileSync(clients, "utf8")),
-			dispatches: fs.existsSync(dispatches)
-				? fs.readFileSync(dispatches, "utf8").trim().split("\n")
-				: [],
-			exitCodes,
-			launches: fs.existsSync(launches)
-				? fs.readFileSync(launches, "utf8").trim().split("\n")
-				: [],
-		};
-	}
-
-	function assertDistinctWarpOwnership(race) {
-		expect(race.exitCodes).toEqual([0, 0]);
-		expect(race.launches.sort()).toEqual([
-			`warp://action/new_window?path=${directory}`,
-			`warp://action/new_window?path=${directory}`,
-			"warp://tab_config/agents",
-			"warp://tab_config/haki",
+	it("keeps Haki and agents ownership distinct by exact Kitty class", async () => {
+		const clients = JSON.stringify([
+			kittyClient("0xhaki", "special:haki", "haoshoku-haki"),
+			kittyClient("0xagents", "special:agents", "haoshoku-agents"),
 		]);
-		expect(
-			race.clients
-				.map(({ address, tags, workspace }) => ({ address, tags, workspace }))
-				.sort((left, right) => left.address.localeCompare(right.address)),
-		).toEqual([
-			{
-				address: "0xagents",
-				tags: ["haoshoku-agents"],
-				workspace: { name: "special:agents" },
-			},
-			{
-				address: "0xhaki",
-				tags: ["haoshoku-haki"],
-				workspace: { name: "special:haki" },
-			},
-		]);
-		expect(
-			race.dispatches
-				.filter((dispatch) =>
-					dispatch.startsWith("dispatch movetoworkspacesilent"),
-				)
-				.sort(),
-		).toEqual([
-			"dispatch movetoworkspacesilent special:agents,address:0xagents",
-			"dispatch movetoworkspacesilent special:haki,address:0xhaki",
-		]);
-	}
-
-	it("serializes concurrent Haki and agents Warp ownership into distinct windows", async () => {
-		assertDistinctWarpOwnership(
-			await runConcurrentWarpOwnership(script, "locked"),
-		);
-	});
-
-	it("proves the distinct-owner race assertion fails without the ownership lock", async () => {
-		const source = fs.readFileSync(script, "utf8");
-		const unlocked = path.join(
-			directory,
-			"haoshoku-special-workspace-unlocked",
-		);
-		const mutated = source.replace(
-			/ensure_warp\(\) \{[\s\S]*?\n\}\n\nif \[\[ "\$recipe"/,
-			'ensure_warp() {\n  ensure_warp_locked "$@"\n}\n\nif [[ "$recipe"',
-		);
-		expect(mutated).not.toBe(source);
-		fs.writeFileSync(unlocked, mutated);
-		fs.chmodSync(unlocked, 0o755);
-
-		const race = await runConcurrentWarpOwnership(unlocked, "unlocked");
-		expect(() => assertDistinctWarpOwnership(race)).toThrow();
-	});
-
-	it("does not claim a concurrently created Warp owned by another Haoshoku tag", async () => {
-		const result = await run(["numbered-login", "7", "warp"], {
-			clientsState: "[]",
-			warpClientsAfterLaunch: JSON.stringify([
-				warpClient("0xforeign", "7", ["haoshoku-agents"]),
-			]),
-		});
-
-		expect(result.exitCode).toBe(0);
-		expect(warpArguments()).toEqual([
-			`warp://action/new_window?path=${directory}`,
-		]);
-		expect(dispatchCalls()).toHaveLength(1);
-		expect(dispatchCalls()[0]).toContain(
-			"dispatch exec [workspace 7 silent] uwsm-app -- warp-terminal ",
-		);
-	});
-
-	it("uses distinct Haki and agents Warp tab-config ownership", async () => {
-		for (const { recipe, address, tag, uri } of [
-			{
-				recipe: "haki",
-				address: "0xhaki",
-				tag: "haoshoku-haki",
-				uri: "warp://tab_config/haki",
-			},
-			{
-				recipe: "agents",
-				address: "0xagents",
-				tag: "haoshoku-agents",
-				uri: "warp://tab_config/agents",
-			},
-		]) {
+		for (const recipe of ["haki", "agents"]) {
 			fs.rmSync(log, { force: true });
-			fs.rmSync(warpCall, { force: true });
-			fs.rmSync(warpCalls, { force: true });
-			const result = await run([recipe], {
-				clientsState: "[]",
-				warpClientsAfterLaunch: JSON.stringify([
-					warpClient(address, `special:${recipe}`),
-				]),
-			});
+			fs.rmSync(kittyCall, { force: true });
+			fs.rmSync(specialState, { force: true });
+			const result = await run([recipe], { clients });
 
 			expect(result.exitCode, recipe).toBe(0);
-			expect(warpLaunches(), recipe).toEqual([
-				`warp://action/new_window?path=${directory}`,
-				uri,
-			]);
+			expect(kittyArguments(), recipe).toBeNull();
 			expect(dispatchCalls(), recipe).toEqual([
 				"dispatch focusmonitor DP-2",
 				`dispatch togglespecialworkspace ${recipe}`,
-				expect.stringContaining(
-					`dispatch exec [workspace special:${recipe} silent] uwsm-app -- warp-terminal `,
-				),
-				`dispatch tagwindow +${tag} address:${address}`,
-				`dispatch movetoworkspacesilent special:${recipe},address:${address}`,
-				`dispatch focuswindow address:${address}`,
-				expect.stringContaining(
-					`dispatch exec [workspace special:${recipe} silent] uwsm-app -- warp-terminal `,
-				),
 			]);
 		}
 	});
 
-	// Mutation caught: allowing named tabs to adopt a plain Warp skips their
-	// tab-config URI and assigns the workspace tag to the pre-existing window.
-	it("launches named Warp tabs instead of adopting a plain special-workspace Warp", async () => {
-		for (const { recipe, tag, uri } of [
+	it("does not let a case-variant Kitty class suppress the Haki launch", async () => {
+		const result = await run(["haki"], {
+			clientsState: JSON.stringify([
+				kittyClient("0xdecoy", "special:haki", "Haoshoku-Haki"),
+			]),
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(kittyArguments()).toEqual([
+			"--class",
+			"haoshoku-haki",
+			"--title",
+			"haki",
+			"--session",
+			`${directory}/.config/kitty/haki.session`,
+		]);
+	});
+
+	it("does not claim a Kitty owned by another Haoshoku class", async () => {
+		const result = await run(["numbered-login", "7", "kitty"], {
+			clientsState: JSON.stringify([
+				kittyClient("0xforeign", "7", "haoshoku-agents"),
+			]),
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(kittyArguments()).toEqual([
+			"--class",
+			"haoshoku-ws7",
+			"-d",
+			directory,
+		]);
+		expect(dispatchCalls()).toHaveLength(1);
+		expect(dispatchCalls()[0]).toContain(
+			"dispatch exec [workspace 7 silent] uwsm-app -- kitty --class haoshoku-ws7",
+		);
+	});
+
+	it("uses distinct Haki and agents Kitty classes and sessions", async () => {
+		for (const { recipe, className, session } of [
 			{
 				recipe: "haki",
-				tag: "haoshoku-haki",
-				uri: "warp://tab_config/haki",
+				className: "haoshoku-haki",
+				session: "haki.session",
 			},
 			{
 				recipe: "agents",
-				tag: "haoshoku-agents",
-				uri: "warp://tab_config/agents",
+				className: "haoshoku-agents",
+				session: "agents.session",
 			},
 		]) {
 			fs.rmSync(log, { force: true });
-			fs.rmSync(warpCall, { force: true });
-			fs.rmSync(warpCalls, { force: true });
+			fs.rmSync(kittyCall, { force: true });
+			fs.rmSync(specialState, { force: true });
+			const result = await run([recipe], { clientsState: "[]" });
+
+			expect(result.exitCode, recipe).toBe(0);
+			expect(kittyArguments(), recipe).toEqual([
+				"--class",
+				className,
+				"--title",
+				recipe,
+				"--session",
+				`${directory}/.config/kitty/${session}`,
+			]);
+			expect(dispatchCalls(), recipe).toEqual([
+				"dispatch focusmonitor DP-2",
+				`dispatch togglespecialworkspace ${recipe}`,
+				`dispatch exec [workspace special:${recipe} silent] uwsm-app -- kitty --class ${className} --title ${recipe} --session ${directory}/.config/kitty/${session}`,
+			]);
+		}
+	});
+
+	it("launches named Kitty sessions instead of adopting a plain Kitty", async () => {
+		for (const { recipe, className, session } of [
+			{
+				recipe: "haki",
+				className: "haoshoku-haki",
+				session: "haki.session",
+			},
+			{
+				recipe: "agents",
+				className: "haoshoku-agents",
+				session: "agents.session",
+			},
+		]) {
+			fs.rmSync(log, { force: true });
+			fs.rmSync(kittyCall, { force: true });
+			fs.rmSync(specialState, { force: true });
 			const result = await run([recipe], {
 				clientsState: JSON.stringify([
-					warpClient("0xplain", `special:${recipe}`),
-				]),
-				warpClientsAfterLaunch: JSON.stringify([
-					warpClient("0xplain", `special:${recipe}`),
-					warpClient("0xnew", `special:${recipe}`),
+					kittyClient("0xplain", `special:${recipe}`, "kitty"),
 				]),
 			});
 
 			expect(result.exitCode, recipe).toBe(0);
-			expect(warpLaunches(), recipe).toEqual([
-				`warp://action/new_window?path=${directory}`,
-				uri,
-			]);
-			expect(dispatchCalls(), recipe).toEqual([
-				"dispatch focusmonitor DP-2",
-				`dispatch togglespecialworkspace ${recipe}`,
-				expect.stringContaining(
-					`dispatch exec [workspace special:${recipe} silent] uwsm-app -- warp-terminal `,
-				),
-				`dispatch tagwindow +${tag} address:0xnew`,
-				`dispatch movetoworkspacesilent special:${recipe},address:0xnew`,
-				"dispatch focuswindow address:0xnew",
-				expect.stringContaining(
-					`dispatch exec [workspace special:${recipe} silent] uwsm-app -- warp-terminal `,
-				),
+			expect(kittyArguments(), recipe).toEqual([
+				"--class",
+				className,
+				"--title",
+				recipe,
+				"--session",
+				`${directory}/.config/kitty/${session}`,
 			]);
 		}
 	});
 
-	// Mutations caught: relying on `?new_window=true` lets Warp deduplicate the
-	// launch, while adopting the existing client claims an unrelated window.
-	it("creates a dedicated Warp before loading a restored named tab", async () => {
-		const restored = warpClient("0xrestored", "special:haki");
+	it("reclaims a restored Haki Kitty instead of launching a duplicate", async () => {
 		const result = await run(["haki"], {
-			clientsState: JSON.stringify([restored]),
-			warpClientsAfterLaunch: JSON.stringify([
-				restored,
-				warpClient("0xnew", "special:haki"),
+			clientsState: JSON.stringify([
+				kittyClient("0xrestored", "special:stash", "haoshoku-haki"),
 			]),
 		});
 
 		expect(result.exitCode).toBe(0);
-		expect(warpLaunches()).toEqual([
-			`warp://action/new_window?path=${directory}`,
-			"warp://tab_config/haki",
-		]);
+		expect(kittyArguments()).toBeNull();
 		expect(dispatchCalls()).toEqual([
 			"dispatch focusmonitor DP-2",
 			"dispatch togglespecialworkspace haki",
-			expect.stringContaining(
-				"dispatch exec [workspace special:haki silent] uwsm-app -- warp-terminal ",
-			),
-			"dispatch tagwindow +haoshoku-haki address:0xnew",
-			"dispatch movetoworkspacesilent special:haki,address:0xnew",
-			"dispatch focuswindow address:0xnew",
-			expect.stringContaining(
-				"dispatch exec [workspace special:haki silent] uwsm-app -- warp-terminal ",
-			),
+			"dispatch movetoworkspacesilent special:haki,address:0xrestored",
 		]);
 	});
 

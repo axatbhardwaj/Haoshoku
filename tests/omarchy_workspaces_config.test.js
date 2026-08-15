@@ -143,16 +143,23 @@ describe("Omarchy workspace overlay", () => {
 		);
 	});
 
-	it("routes workspace 7 through tagged Warp without a broad class placement rule", () => {
+	it("routes workspace 7, Haki, and agents through exact Kitty classes", () => {
 		expect(config).toContain(
-			"bindd = SUPER, code:16, Workspace 7 and Warp, exec, haoshoku-special-workspace numbered 7 warp",
+			"bindd = SUPER, code:16, Workspace 7 and Kitty, exec, haoshoku-special-workspace numbered 7 kitty",
 		);
 		expect(config).toContain(
-			"exec-once = haoshoku-special-workspace numbered-login 7 warp",
+			"exec-once = haoshoku-special-workspace numbered-login 7 kitty",
 		);
 		for (const overlay of [config, laptopConfig]) {
-			expect(overlay).not.toContain("haoshoku-ws7");
-			expect(overlay).not.toContain("haoshoku-haki");
+			expect(overlay).toContain(
+				"windowrule = workspace 7 silent, match:class ^haoshoku-ws7$",
+			);
+			expect(overlay).toContain(
+				"windowrule = workspace special:haki, match:class ^haoshoku-haki$",
+			);
+			expect(overlay).toContain(
+				"windowrule = workspace special:agents, match:class ^haoshoku-agents$",
+			);
 			expect(overlay).not.toMatch(/match:class \^dev\\\.warp\\\.Warp\$/);
 		}
 	});

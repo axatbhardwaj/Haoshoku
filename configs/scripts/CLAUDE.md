@@ -13,7 +13,7 @@ binary acts as a PATH-shadow wrapper for that binary.
 | `haoshoku-chromium-flux` | Launches Brave Origin on the isolated Flux profile and preserves that profile through Omarchy web-app launch parsing. | Changing the Flux profile, wrapper name, or paired desktop entry |
 | `haoshoku-chromium-profiles` | Validates and queries the configured browser profile registry, with portable Flux and DeFi fallbacks. | Changing registry validation, defaults, or profile lookup |
 | `haoshoku-gaming-workspace` | Toggles ephemeral gaming workspace 11 and wraps Steam launches to place process-tree windows there. | Changing gaming workspace focus, process matching, placement, or launch wrapping |
-| `haoshoku-special-workspace` | Implements numbered-app launchers, exact-address tagged Warp ownership for workspace 7/Haki/agents, and focus/show/hide behavior for named app and browser special workspaces. | Changing workspace recipes, placement, reclaim/launch-if-missing behavior, or browser toggles |
+| `haoshoku-special-workspace` | Implements numbered-app launchers, exact-class Kitty ownership for workspace 7/Haki/agents, ChatGPT and T3 Code modes, and focus/show/hide behavior for named app and browser special workspaces including Twitch. | Changing workspace recipes, placement, reclaim/launch-if-missing behavior, or browser toggles |
 | `haoshoku-zed-glass` | Post-processes Omazed's generated Zed theme with dotted `background.appearance`, alpha-adjusted surfaces, and neutral borders. | Changing Zed transparency, Omazed hooks, or protected theme surfaces |
 | `mic-toggle` | Toggles the default microphone through `wpctl` or `pactl` and reports the resulting state. | Changing microphone controls or notifications |
 
@@ -32,13 +32,13 @@ binary acts as a PATH-shadow wrapper for that binary.
   retired; JioHotstar is now available through the unrelated `Super+J` Brave
   webapp special workspace.
 - Retired AI web-app launcher `ai-webapps-toggle` is intentionally removed and
-  cleaned from `~/.local/bin/`; `Super+I` now routes through
-  `haoshoku-special-workspace`.
+  cleaned from `~/.local/bin/`; `Super+I` and the login-time invocation route
+  ChatGPT through `haoshoku-special-workspace assistants`, while Claude is ignored.
 - Retired standalone workspace-7 helpers are cleaned from `~/.local/bin/`.
-  Workspace 7 is owned by `haoshoku-special-workspace numbered 7 warp`; Warp
-  tags one exact address as `haoshoku-ws7` and reclaims only that address if it
-  moves. The `haki` and `agents` recipes similarly tag their dedicated Warp tab
-  windows. Kitty remains installed but inactive as the recoverable fallback.
+  Workspace 7 is owned by `haoshoku-special-workspace numbered 7 kitty`; its
+  dedicated `haoshoku-ws7` class lets the helper reclaim only that window if it
+  moves. The `haki` and `agents` recipes use their own Kitty classes and split
+  session files under `~/.config/kitty/`.
 - A managed browser profile `.monitor` remains required for registry schema stability,
   but browser workspaces normally follow the focused monitor instead of that
   value. It is used only as a fallback when Hyprland transiently reports no

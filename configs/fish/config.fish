@@ -56,7 +56,9 @@ if status is-interactive
     abbr la 'ls -a'
     abbr lla 'ls -la'
 
-    cat ~/.local/state/caelestia/sequences.txt 2>/dev/null
+    if not test -r ~/.config/omarchy/current/theme/kitty.conf
+        cat ~/.local/state/caelestia/sequences.txt 2>/dev/null
+    end
 
     # OSC 133 prompt marker for foot terminal scroll-by-prompt.
     function mark_prompt_start --on-event fish_prompt
