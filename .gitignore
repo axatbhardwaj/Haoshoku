@@ -335,3 +335,9 @@ BRANCH-NOTES.md
 
 # Planning artifacts: specs and plans are never committed (CLAUDE.md §7)
 docs/superpowers/
+
+# Hyprmoncfg profile backups
+/configs/hyprmoncfg/profiles/*.bak.*
+
+# Worktree dependency symlink
+/node_modules
