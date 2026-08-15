@@ -332,3 +332,6 @@ BRANCH-NOTES.md
 
 # Local Git worktrees
 /.worktrees/
+
+# Planning artifacts: specs and plans are never committed (CLAUDE.md §7)
+docs/superpowers/
