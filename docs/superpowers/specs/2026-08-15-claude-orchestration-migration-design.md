@@ -160,9 +160,12 @@ All live in `configs/claude/skills/<name>/SKILL.md`, deployed to
 - **Added**: `fable-planner.md` (model: fable — planning/adjudication prompt)
   and `opus-reviewer.md` (model: opus — cold-review prompt), so skills
   reference stable agents instead of repeating prompts.
-- **Removed from manifest**: `prepare-pr-review-render-workspace.sh`,
-  `workflows/pr-review.js`, `workflows/review-station.js` (retired with the
-  static-workflow approach).
+- **Removed from manifest**: `workflows/pr-review.js`,
+  `workflows/review-station.js` (retired with the static-workflow approach).
+  `prepare-pr-review-render-workspace.sh` is **kept**: luna-wrapper's
+  implementation mode is built around its staged-write mechanism (Luna
+  writes to a temp workspace; the caller publishes verified bytes to the
+  declared destination), which html-explainer and create-pr depend on.
 
 ## Haoshoku integration
 
