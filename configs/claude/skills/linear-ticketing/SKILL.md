@@ -20,7 +20,9 @@ Linear tools are unavailable.
 
 ## Review
 
-- A trivial standalone ticket: write it yourself.
+- A trivial standalone ticket: write it yourself. The allowance is per
+  request, not per ticket — a second related ticket makes the set
+  non-trivial and takes the review below.
 - Technical, ambiguous, dependency-heavy, or multi-ticket work: spawn
   `opus-reviewer` (read-only) with the draft tree and evidence to challenge
   duplication, scope, decomposition, acceptance criteria, blocker

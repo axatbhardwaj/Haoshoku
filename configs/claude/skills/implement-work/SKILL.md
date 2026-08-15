@@ -18,11 +18,26 @@ gates, adjudication, or user decisions inside a workflow — those stay with
 the orchestrator between phases. This pipeline is sequential by design; the
 rule rarely triggers here.
 
-## Trivial bypass
+## Trivial bypass — budgeted per request, not per edit
 
-Handle directly (no pipeline) only if the change is local, reversible,
-low-risk, interface-neutral, small, unambiguous, and obviously verifiable.
-When uncertain, take the pipeline.
+Handle directly only if the change is local, reversible, low-risk,
+interface-neutral, small, unambiguous, and obviously verifiable. When
+uncertain, take the pipeline.
+
+The budget is cumulative across the whole request, not reset per edit.
+Take the pipeline for the remainder of the request as soon as any of these
+becomes true:
+
+- bypassed edits have touched **3 or more files**;
+- a **second related change** follows the first (a sequence of small edits
+  serving one goal is one non-trivial change, not many trivial ones);
+- a rename, move, or delete crosses a file boundary others reference;
+- you are about to edit something an agent, launcher, or test resolves by
+  path or digest.
+
+Re-justifying triviality edit by edit is the failure mode this budget
+exists to stop. Count what you have already done before claiming the next
+edit is small.
 
 ## Pipeline
 
@@ -54,5 +69,8 @@ When uncertain, take the pipeline.
   Reject path-only packets.
 - A seat failure blocks its phase and is reported; never silently fall back
   to a native model for implementation.
+- **Your own green test run is not the Opus gate.** Passing tests are an
+  input to step 6, never a substitute for it. "Tests pass, done" skips the
+  gate; a bare self-approval is not evidence.
 - Completion evidence = Opus `pass` + Sol's report covering the exact
   base/HEAD. Downstream skills (create-pr) require it fresh.

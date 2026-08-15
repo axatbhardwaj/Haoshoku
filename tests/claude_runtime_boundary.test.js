@@ -64,7 +64,7 @@ const PINNED_DIGESTS = {
 	"skills/discovering-work/agents/openai.yaml":
 		"61d4bfdd85a518acacc2ec655f483049173290946faca7536b436857ca5d7583",
 	"skills/implement-work/SKILL.md":
-		"9e4f35afb795a7434f733022806c26a5909fb0f79617fc76724185dd625d5bee",
+		"1808a58572cf5210ac8b673db8dd62171e070c4b5be2ed49f43d5ee9e424018d",
 	"skills/review-pr/SKILL.md":
 		"e2338426d66f887864ed5621cd96f5d654ae15339fe0dcad895f21d6cf905b55",
 	"skills/create-pr/SKILL.md":
@@ -74,7 +74,7 @@ const PINNED_DIGESTS = {
 	"skills/babysit-pr/SKILL.md":
 		"3c3cae8efd059caa09d4888a74ae1fca2c9604d49ce4cc64b77e60ecc2b4c105",
 	"skills/linear-ticketing/SKILL.md":
-		"d64b3708c28792518862e78a56673e0bb353b6af05c2750a6c0fca299f3fd33a",
+		"3612162702391ebebf93c6f177bfebbd036386fa7fd348d2b49ef5a0ae8c48d8",
 	"skills/html-explainer/SKILL.md":
 		"7224676536d3628b24a5175c8bd9d4ebcd8eadc7b4d17121edb2878ebb3fd6a0",
 	"skills/html-explainer/template.html":
