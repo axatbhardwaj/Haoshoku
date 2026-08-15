@@ -150,9 +150,13 @@ All live in `configs/claude/skills/<name>/SKILL.md`, deployed to
 ## Agents
 
 `configs/claude/agents/` — deployed to `~/.claude/agents/`:
-- **Kept as-is**: `sol-wrapper.md`, `luna-wrapper.md`, `grok-wrapper.md`,
+- **Kept**: `sol-wrapper.md`, `luna-wrapper.md`, `grok-wrapper.md`,
   `run-codex-task.sh`, `validate-codex-wrapper.sh`,
-  `codex-result.schema.json`, `madhyastha.md`, `anveshaka.md`.
+  `codex-result.schema.json`, `madhyastha.md`, `anveshaka.md`. Skills reach
+  Codex seats only through the wrappers, never the launcher directly.
+  One amendment: `sol-wrapper.md` and `luna-wrapper.md` frontmatter effort
+  rises `low` → `medium` (verification judgment: report-vs-workspace checks,
+  failure classification); `grok-wrapper.md` stays at `low`.
 - **Added**: `fable-planner.md` (model: fable — planning/adjudication prompt)
   and `opus-reviewer.md` (model: opus — cold-review prompt), so skills
   reference stable agents instead of repeating prompts.
