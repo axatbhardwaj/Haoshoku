@@ -7,6 +7,8 @@ const HOME = homedir();
 const PROJECT_ROOT = path.resolve(__dirname, "..", "..");
 const CUSTOM_CODEX_DIR = path.join(PROJECT_ROOT, "configs", "codex");
 const CODEX_NPM_PACKAGE = "@openai/codex";
+const SUPERPOWERS_SKILLS_COMMAND =
+	"npx -y skills@latest add obra/superpowers -a codex -g -y";
 
 // ~/.codex also holds runtime state (auth.json, *.sqlite, history.jsonl) —
 // only AGENTS.md and the three bundled HTML Explainer skill files are reproducible config.
@@ -39,6 +41,27 @@ export async function installCodex({
 
 	log.info("Installing Codex CLI...");
 	await run(`bun install -g ${CODEX_NPM_PACKAGE}`);
+}
+
+/**
+ * Install obra/superpowers skills for Codex.
+ *
+ * The skills CLI writes to the shared ~/.agents/skills/ directory and registers
+ * the skills for Codex (among other agents); Codex's own ~/.codex/skills/ holds
+ * only the bundled html-explainer format source. The install is idempotent, so
+ * re-running setup re-syncs rather than duplicating. A failure here is never
+ * fatal: it costs process skills, not the Codex configuration itself.
+ */
+export async function installCodexSuperpowers({ run = runCommand } = {}) {
+	log.info("Installing superpowers skills for Codex...");
+	try {
+		await run(SUPERPOWERS_SKILLS_COMMAND);
+		log.success("Superpowers skills installed for Codex.");
+	} catch (err) {
+		log.warning(
+			`superpowers skill install failed (${err?.message ?? err}) — continuing. Retry with: ${SUPERPOWERS_SKILLS_COMMAND}`,
+		);
+	}
 }
 
 /** Deploy personal config from the Haoshoku template to ~/.codex/. */
@@ -90,5 +113,6 @@ export async function backupCodexConfig(options = {}) {
 export async function configureCodex(options = {}) {
 	const { installOptions, ...syncOptions } = options;
 	await installCodex(installOptions);
+	await installCodexSuperpowers(installOptions);
 	await syncCodexConfig(syncOptions);
 }

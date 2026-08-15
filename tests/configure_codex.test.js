@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { log } from "../src/common/utils.js";
 import {
 	backupCodexConfig,
 	CODEX_PERSONAL_FILES,
@@ -174,11 +175,48 @@ describe("configureCodex", () => {
 				},
 			});
 
-			expect(commands).toEqual(["bun install -g @openai/codex"]);
+			expect(commands).toEqual([
+				"bun install -g @openai/codex",
+				"npx -y skills@latest add obra/superpowers -a codex -g -y",
+			]);
 			expect(fs.readFileSync(path.join(codexDir, "AGENTS.md"), "utf-8")).toBe(
 				"BUNDLE",
 			);
 		} finally {
+			fs.rmSync(tmpDir, { recursive: true, force: true });
+		}
+	});
+
+	it("continues Codex setup when the superpowers skill install fails", async () => {
+		const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-codex-"));
+		const warnings = [];
+		const originalWarning = log.warning;
+		log.warning = (message) => warnings.push(message);
+		try {
+			const codexHome = path.join(tmpDir, "codex-home");
+			const srcDir = path.join(tmpDir, "configs", "codex");
+			fs.mkdirSync(srcDir, { recursive: true });
+			fs.writeFileSync(path.join(srcDir, "AGENTS.md"), "BUNDLE");
+
+			await configureCodex({
+				srcDir,
+				codexHome,
+				installOptions: {
+					commandExists: () => true,
+					run: async (cmd) => {
+						if (cmd.includes("skills@latest")) throw new Error("network down");
+						return true;
+					},
+				},
+			});
+
+			// The bundle still deploys; only the optional skill install is lost.
+			expect(
+				fs.readFileSync(path.join(codexHome, ".codex", "AGENTS.md"), "utf-8"),
+			).toBe("BUNDLE");
+			expect(warnings.join("\n")).toContain("superpowers");
+		} finally {
+			log.warning = originalWarning;
 			fs.rmSync(tmpDir, { recursive: true, force: true });
 		}
 	});
