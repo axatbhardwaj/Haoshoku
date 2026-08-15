@@ -10,17 +10,16 @@ const PUBLIC_RUNTIME_FILES = [
 	"configs/claude/agents/grok-wrapper.md",
 	"configs/claude/agents/madhyastha.md",
 	"configs/claude/agents/anveshaka.md",
+	"configs/claude/agents/fable-planner.md",
+	"configs/claude/agents/opus-reviewer.md",
 	"configs/claude/agents/run-codex-task.sh",
 	"configs/claude/agents/validate-codex-wrapper.sh",
 	"configs/claude/agents/codex-result.schema.json",
 	"configs/claude/agents/prepare-pr-review-render-workspace.sh",
-	"configs/claude/workflows/pr-review.js",
-	"configs/claude/workflows/review-station.js",
 	"configs/claude/skills/discovering-work/SKILL.md",
 	"configs/claude/skills/discovering-work/agents/openai.yaml",
-	"configs/claude/skills/samvada-html-deliverables/SKILL.md",
-	"configs/claude/skills/samvada-html-deliverables/agents/openai.yaml",
-	"configs/claude/skills/samvada-html-deliverables/template.html",
+	"configs/claude/skills/html-explainer/SKILL.md",
+	"configs/claude/skills/html-explainer/template.html",
 ];
 
 it("keeps packed configs/claude files free of literal home-directory paths", () => {

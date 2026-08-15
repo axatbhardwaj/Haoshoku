@@ -19,6 +19,8 @@ const RUNTIME_FILES = [
 	"agents/grok-wrapper.md",
 	"agents/madhyastha.md",
 	"agents/anveshaka.md",
+	"agents/fable-planner.md",
+	"agents/opus-reviewer.md",
 	"agents/run-codex-task.sh",
 	"agents/validate-codex-wrapper.sh",
 	"agents/codex-result.schema.json",
@@ -39,6 +41,10 @@ const PINNED_DIGESTS = {
 		"cc7278ea49f202acf7a1336ae9e20cce1eb716a199856419c56c71a8fbc89d7f",
 	"agents/anveshaka.md":
 		"42926e8bb514f634ff067bddf728f468a7b8c542a7bf6853dc884720d27e1577",
+	"agents/fable-planner.md":
+		"130badf76f146093d21f0a97125fb06aba1b24b9b1b1f5c1344122dcf808ba06",
+	"agents/opus-reviewer.md":
+		"471946a434a78b02c1cdd1f8ff7101be4d1ef594272a3909d5d61bcb79415256",
 	"agents/run-codex-task.sh":
 		"c104edb98749f936367fa2812d7063674c78f53a3206a64d83940e71b5e67166",
 	"agents/validate-codex-wrapper.sh":
