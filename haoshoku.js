@@ -37,7 +37,11 @@ import {
 	backupMimeappsConfig,
 	syncMimeappsConfig,
 } from "./src/helpers/configure_mimeapps.js";
-import { configureOmarchyMonitors } from "./src/helpers/configure_omarchy_monitors.js";
+import {
+	backupHyprmoncfg,
+	configureHyprmoncfg,
+} from "./src/helpers/configure_hyprmoncfg.js";
+import { configureOmarchyPlugins } from "./src/helpers/configure_omarchy_plugins.js";
 import { configureOmarchyWorkspaces } from "./src/helpers/configure_omarchy_workspaces.js";
 import {
 	backupPrWatch,
@@ -150,12 +154,21 @@ program
 	)
 	.option(
 		"--workspaces",
-		"Deploy workspace config to ~/.config/hypr/, install helper script to ~/.local/bin/, add source line to ~/.config/hypr/hyprland.conf, and reload Hyprland",
+		"Deploy the two Lua overlay modules under ~/.config/hypr/haoshoku/, install the helper script, and register the two requires in ~/.config/hypr/hyprland.lua",
 	)
 	.option(
 		"--monitors",
-		"Deploy the device-routed monitor config to ~/.config/hypr/monitors.conf and reload Hyprland",
+		"Deploy hyprmoncfg profile JSON to ~/.config/hyprmoncfg/profiles/, ensure and enable hyprmoncfg",
 	)
+	.option(
+		"--hyprmoncfg-backup",
+		"Backup live hyprmoncfg profile JSON to configs/hyprmoncfg/profiles/",
+	)
+	.option(
+		"--omarchy-plugins",
+		"Configure the Omarchy plugins declared in common/omarchy-plugins.json",
+	)
+	.option("--3-4-migrate", "Migrate an Omarchy 3 configuration to Omarchy 4")
 	.option(
 		"--brave-managed-policies",
 		"Configure Brave managed policies used by Omarchy browser theming",
@@ -353,7 +366,34 @@ async function runAction(options) {
 	}
 
 	if (options.monitors) {
-		await configureOmarchyMonitors();
+		await configureHyprmoncfg();
+		return;
+	}
+
+	if (options.hyprmoncfgBackup) {
+		await backupHyprmoncfg();
+		return;
+	}
+
+	if (options.omarchyPlugins) {
+		await configureOmarchyPlugins();
+		return;
+	}
+
+	if (options["34Migrate"]) {
+		const { migrateOmarchy3To4 } = await import(
+			"./src/helpers/migrate_omarchy_3_to_4.js"
+		);
+		const result = await migrateOmarchy3To4();
+		const status = result?.status ?? "failed";
+		const summary = `Omarchy 3→4 migration status: ${status}`;
+		if (status === "completed") {
+			log.success(summary);
+		} else {
+			if (status === "failed") log.error(summary);
+			else log.warning(summary);
+			process.exitCode = 1;
+		}
 		return;
 	}
 

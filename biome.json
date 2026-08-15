@@ -4,5 +4,12 @@
 		"enabled": true,
 		"clientKind": "git",
 		"useIgnoreFile": true
+	},
+	"files": {
+		"includes": [
+			"**",
+			"!tests/shell/fixtures/activeworkspace-empty.json",
+			"!tests/shell/fixtures/clients-malformed.json"
+		]
 	}
 }

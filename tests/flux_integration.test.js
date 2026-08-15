@@ -21,7 +21,8 @@ const bindingsPath = path.join(
 	repoRoot,
 	"configs",
 	"omarchy",
-	"bindings.conf",
+	"haoshoku",
+	"bindings.lua",
 );
 const scriptsPath = path.join(repoRoot, "configs", "scripts");
 
@@ -120,32 +121,41 @@ describe("Flux Brave Origin integration", () => {
 	});
 
 	it("routes every focus-aware web app through an explicit Brave profile", () => {
-		const lines = fs.readFileSync(bindingsPath, "utf8").split(/\r?\n/);
-		const sectionStart = lines.indexOf("# --- Web apps ---");
-		const sectionEnd = lines.indexOf("# Add extra bindings", sectionStart);
-		expect(sectionStart).toBeGreaterThan(-1);
-		expect(sectionEnd).toBeGreaterThan(sectionStart);
-
-		const activeBindings = lines
-			.slice(sectionStart + 1, sectionEnd)
-			.filter((line) => line.startsWith("bindd = "));
-		const braveFocusAwareBinding =
-			/, exec, omarchy-launch-or-focus "brave-[^"]+" "(?:haoshoku-chromium-flux|brave-origin --user-data-dir=\$HOME\/\.config\/brave-haoshoku\/[^"\s]+) --app=https?:\/\/[^"]+"$/;
-		const launchOnlyActionBinding =
-			/, exec, omarchy-launch-webapp "https?:\/\/[^"]+"$/;
-
-		expect(activeBindings.length).toBeGreaterThan(0);
-		expect(
-			activeBindings.filter(
-				(line) =>
-					!braveFocusAwareBinding.test(line) &&
-					!launchOnlyActionBinding.test(line),
-			),
-		).toEqual([]);
-		expect(activeBindings).toContain(
-			'bindd = SUPER SHIFT ALT, G, WhatsApp, exec, omarchy-launch-or-focus "brave-web\\.whatsapp\\.com__-Default" "brave-origin --user-data-dir=$HOME/.config/brave-haoshoku/whatsapp --app=https://web.whatsapp.com/"',
+		const bindings = fs.readFileSync(bindingsPath, "utf8");
+		const webApps = bindings.slice(
+			bindings.indexOf("-- Web apps"),
+			bindings.indexOf("-- CTRL SHIFT SUPER", bindings.indexOf("-- Web apps")),
 		);
-		expect(fs.readFileSync(bindingsPath, "utf8")).not.toContain("Chromium");
+		const bindingsByChord = new Map(
+			[
+				...webApps.matchAll(
+					/o\.bind\(\s*"([^"]+)"\s*,\s*"([^"]+)"\s*,\s*"((?:\\.|[^"])*)"\s*\)/gs,
+				),
+			].map(([, chord, description, command]) => [
+				chord,
+				{ command: command.replaceAll('\\"', '"'), description },
+			]),
+		);
+
+		expect(bindingsByChord.get("SUPER + P")).toEqual({
+			description: "Google Photos",
+			command:
+				'omarchy-launch-or-focus "brave-photos\\\\.google\\\\.com__-Default" "haoshoku-chromium-flux --app=https://photos.google.com/"',
+		});
+		expect(bindingsByChord.get("SUPER + SHIFT + ALT + A")).toEqual({
+			description: "Grok",
+			command:
+				'omarchy-launch-or-focus "brave-grok\\\\.com__-Default" "haoshoku-chromium-flux --app=https://grok.com"',
+		});
+		expect(bindingsByChord.get("SUPER + SHIFT + ALT + G")).toEqual({
+			description: "WhatsApp",
+			command:
+				'omarchy-launch-or-focus "brave-web\\\\.whatsapp\\\\.com__-Default" "brave-origin --user-data-dir=$HOME/.config/brave-haoshoku/whatsapp --app=https://web.whatsapp.com/"',
+		});
+		expect(bindingsByChord.get("SUPER + SHIFT + ALT + X")?.command).toBe(
+			'omarchy-launch-webapp "https://x.com/compose/post"',
+		);
+		expect(bindings).not.toContain("Chromium");
 	});
 
 	it("stamps every literal Flux-profile Brave Origin launch with the Flux class", () => {

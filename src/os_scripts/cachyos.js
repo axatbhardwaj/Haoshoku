@@ -24,9 +24,10 @@ import { configureClaudeStayAwake } from "../helpers/configure_claude_stay_awake
 import { configureCodex } from "../helpers/configure_codex.js";
 import { configureKitty } from "../helpers/configure_kitty.js";
 import { installGhStack } from "../helpers/configure_gh_stack.js";
+import { configureHyprmoncfg } from "../helpers/configure_hyprmoncfg.js";
 import { promptDeviceType } from "../helpers/configure_hyprland.js";
 import { configureMimeapps } from "../helpers/configure_mimeapps.js";
-import { configureOmarchyMonitors } from "../helpers/configure_omarchy_monitors.js";
+import { configureOmarchyPlugins } from "../helpers/configure_omarchy_plugins.js";
 import { configureOmarchyWorkspaces } from "../helpers/configure_omarchy_workspaces.js";
 import { configureOmazed } from "../helpers/configure_omazed.js";
 import { configurePrWatch } from "../helpers/configure_pr_watch.js";
@@ -660,13 +661,15 @@ export async function runCachyOSSetup({
 	configureUserAppsImpl = configureUserApps,
 	promptDeviceTypeImpl = promptDeviceType,
 	configureBraveManagedPoliciesImpl = configureBraveManagedPolicies,
-	configureOmarchyMonitorsImpl = configureOmarchyMonitors,
+	configureHyprmoncfgImpl = configureHyprmoncfg,
 	configureOmarchyWorkspacesImpl = configureOmarchyWorkspaces,
+	configureOmarchyPluginsImpl = configureOmarchyPlugins,
 	configureOmazedImpl = configureOmazed,
 } = {}) {
 	const configureBraveManagedPolicies = configureBraveManagedPoliciesImpl;
-	const configureOmarchyMonitors = configureOmarchyMonitorsImpl;
+	const configureHyprmoncfg = configureHyprmoncfgImpl;
 	const configureOmarchyWorkspaces = configureOmarchyWorkspacesImpl;
+	const configureOmarchyPlugins = configureOmarchyPluginsImpl;
 	const configureOmazed = configureOmazedImpl;
 
 	await promptDeviceTypeImpl();
@@ -690,17 +693,28 @@ export async function runCachyOSSetup({
 	}
 	if (isOmarchy) {
 		try {
-			await configureOmarchyMonitors();
+			await configureHyprmoncfg();
 		} catch (err) {
 			log.warning(
-				`Omarchy monitor configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
+				`Hyprmoncfg configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
 			);
 		}
+	}
+	if (isOmarchy) {
 		try {
 			await configureOmarchyWorkspaces();
 		} catch (err) {
 			log.warning(
 				`Omarchy workspace configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
+			);
+		}
+	}
+	if (isOmarchy) {
+		try {
+			await configureOmarchyPlugins();
+		} catch (err) {
+			log.warning(
+				`Omarchy plugin configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
 			);
 		}
 	}

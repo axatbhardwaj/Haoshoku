@@ -38,6 +38,9 @@ export const MODE_FLAGS = [
 	"scripts",
 	"workspaces",
 	"monitors",
+	"hyprmoncfgBackup",
+	"omarchyPlugins",
+	"34Migrate",
 	"braveManagedPolicies",
 ];
 

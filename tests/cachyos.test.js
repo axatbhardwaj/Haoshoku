@@ -622,8 +622,9 @@ describe("Arch package-manager preflight", () => {
 				promptDeviceTypeImpl: record("device-type"),
 				configureUserAppsImpl: record("user-apps"),
 				configureBraveManagedPoliciesImpl: record("brave-policies", true),
-				configureOmarchyMonitorsImpl: record("monitors"),
+				configureHyprmoncfgImpl: record("hyprmoncfg"),
 				configureOmarchyWorkspacesImpl: record("workspaces"),
+				configureOmarchyPluginsImpl: record("plugins"),
 				configureOmazedImpl: record("omazed"),
 			});
 			return { events, result };
@@ -641,8 +642,9 @@ describe("Arch package-manager preflight", () => {
 				"flatpaks",
 				"user-apps",
 				"brave-policies",
-				"monitors",
+				"hyprmoncfg",
 				"workspaces",
+				"plugins",
 				"omazed",
 			],
 		});
@@ -685,8 +687,9 @@ describe("Arch package-manager preflight", () => {
 						events.push("brave-policies");
 						throw new Error("policy write failed");
 					},
-					configureOmarchyMonitorsImpl: async () => events.push("monitors"),
+					configureHyprmoncfgImpl: async () => events.push("hyprmoncfg"),
 					configureOmarchyWorkspacesImpl: async () => events.push("workspaces"),
+					configureOmarchyPluginsImpl: async () => events.push("plugins"),
 					configureOmazedImpl: async () => events.push("omazed"),
 				});
 			} catch (error) {
@@ -695,8 +698,9 @@ describe("Arch package-manager preflight", () => {
 
 			expect(events).toEqual([
 				"brave-policies",
-				"monitors",
+				"hyprmoncfg",
 				"workspaces",
+				"plugins",
 				"omazed",
 			]);
 			expect(thrown).toBeUndefined();
@@ -709,7 +713,7 @@ describe("Arch package-manager preflight", () => {
 		}
 	});
 
-	for (const failingStep of ["monitors", "workspaces"]) {
+	for (const failingStep of ["hyprmoncfg", "workspaces", "plugins"]) {
 		it(`warns and continues Omarchy setup when the ${failingStep} device variant is missing`, async () => {
 			const events = [];
 			const warnings = [];
@@ -734,13 +738,14 @@ describe("Arch package-manager preflight", () => {
 					promptDeviceTypeImpl: async () => {},
 					configureUserAppsImpl: async () => {},
 					configureBraveManagedPoliciesImpl: async () => true,
-					configureOmarchyMonitorsImpl: step("monitors"),
+					configureHyprmoncfgImpl: step("hyprmoncfg"),
 					configureOmarchyWorkspacesImpl: step("workspaces"),
+					configureOmarchyPluginsImpl: step("plugins"),
 					configureOmazedImpl: step("omazed"),
 				});
 
 				expect(result).toBe(true);
-				expect(events).toEqual(["monitors", "workspaces", "omazed"]);
+				expect(events).toEqual(["hyprmoncfg", "workspaces", "plugins", "omazed"]);
 				expect(warnings).toHaveLength(1);
 				expect(warnings[0]).toContain(`missing ${failingStep}-laptop.conf`);
 				expect(warnings[0]).toContain("continuing");

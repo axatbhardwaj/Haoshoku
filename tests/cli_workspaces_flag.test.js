@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { configureOmarchyWorkspaces } from "../src/helpers/configure_omarchy_workspaces.js";
 
 const CLI = path.resolve(import.meta.dir, "..", "haoshoku.js");
 const PROJECT_ROOT = path.resolve(import.meta.dir, "..");
@@ -11,7 +10,6 @@ let tmpHome;
 let tmpProjectRoot;
 
 const hyprDir = () => path.join(tmpHome, ".config", "hypr");
-const hyprlandConfig = () => path.join(hyprDir(), "hyprland.conf");
 
 beforeEach(() => {
 	tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-workspaces-home-"));
@@ -19,7 +17,6 @@ beforeEach(() => {
 		path.join(os.tmpdir(), "haoshoku-workspaces-root-"),
 	);
 	fs.mkdirSync(hyprDir(), { recursive: true });
-	fs.writeFileSync(hyprlandConfig(), "source = ~/.config/hypr/monitors.conf\n");
 });
 
 afterEach(() => {
@@ -32,28 +29,13 @@ describe("--workspaces CLI mode", () => {
 		const result = Bun.spawnSync([CLI, "--help"], { stdout: "pipe" });
 
 		expect(result.exitCode).toBe(0);
-		expect(result.stdout.toString().replace(/\s+/g, " ")).toContain(
-			"--workspaces Deploy workspace config to ~/.config/hypr/, install helper script to ~/.local/bin/, add source line to ~/.config/hypr/hyprland.conf, and reload Hyprland",
+		const help = result.stdout.toString().replace(/\s+/g, " ");
+		expect(help).toContain(
+			"--workspaces Deploy the two Lua overlay modules under ~/.config/hypr/haoshoku/, install the helper script, and register the two requires in ~/.config/hypr/hyprland.lua",
 		);
-	});
-
-	it("uses an injected command runner for Hyprland reload validation", async () => {
-		const commands = [];
-
-		await configureOmarchyWorkspaces({
-			home: tmpHome,
-			env: { HYPRLAND_INSTANCE_SIGNATURE: "test" },
-			runCommandImpl: async (command) => {
-				commands.push(command);
-				return true;
-			},
-		});
-
-		expect(commands).toEqual([
-			"hyprctl reload",
-			"hyprctl configerrors",
-			`'${path.join(tmpHome, ".local", "bin", "haoshoku-special-workspace")}' numbered-login 7 kitty`,
-		]);
+		expect(help).not.toContain("monitors.conf");
+		expect(help).not.toContain("hyprland.conf");
+		expect(help).not.toContain("source =");
 	});
 
 	it("deploys workspace configuration through the real CLI wiring", () => {
@@ -102,16 +84,22 @@ describe("--workspaces CLI mode", () => {
 			},
 		);
 
-		const destination = path.join(hyprDir(), "haoshoku-workspaces.conf");
+		const destination = path.join(hyprDir(), "haoshoku", "workspaces.lua");
 		expect(result.exitCode).toBe(0);
 		expect(fs.readFileSync(destination, "utf8")).toBe(
 			fs.readFileSync(
-				path.join(PROJECT_ROOT, "configs", "omarchy", "workspaces-pc.conf"),
+				path.join(
+					PROJECT_ROOT,
+					"configs",
+					"omarchy",
+					"haoshoku",
+					"workspaces-pc.lua",
+				),
 				"utf8",
 			),
 		);
-		expect(fs.readFileSync(hyprlandConfig(), "utf8")).toContain(
-			"source = ~/.config/hypr/haoshoku-workspaces.conf",
+		expect(fs.readFileSync(path.join(hyprDir(), "hyprland.lua"), "utf8")).toContain(
+			'require("hypr.haoshoku.workspaces")',
 		);
 	});
 
@@ -163,39 +151,4 @@ describe("--workspaces CLI mode", () => {
 		expect(fs.existsSync(path.join(tmpHome, ".haoshoku.json"))).toBe(false);
 	});
 
-	it("keeps an empty deviceType mutually exclusive with --monitors", () => {
-		const result = Bun.spawnSync([CLI, "--device-type", "", "--monitors"], {
-			env: { ...process.env, HOME: tmpHome },
-			stderr: "pipe",
-			stdout: "pipe",
-		});
-
-		expect(result.exitCode).toBe(2);
-		expect(
-			`${result.stdout.toString()}\n${result.stderr.toString()}`,
-		).toContain("mutually exclusive");
-		expect(fs.existsSync(path.join(hyprDir(), "monitors.conf"))).toBe(false);
-	});
-
-	it("deploys the selected laptop monitor config through --monitors", () => {
-		fs.writeFileSync(
-			path.join(tmpHome, ".haoshoku.json"),
-			`${JSON.stringify({ deviceType: "laptop" })}\n`,
-		);
-		const { HYPRLAND_INSTANCE_SIGNATURE: _session, ...isolatedEnv } =
-			process.env;
-		const result = Bun.spawnSync([CLI, "--monitors"], {
-			env: { ...isolatedEnv, HOME: tmpHome },
-			stderr: "pipe",
-			stdout: "pipe",
-		});
-
-		expect(result.exitCode).toBe(0);
-		expect(fs.readFileSync(path.join(hyprDir(), "monitors.conf"), "utf8")).toBe(
-			fs.readFileSync(
-				path.join(PROJECT_ROOT, "configs", "omarchy", "monitors-laptop.conf"),
-				"utf8",
-			),
-		);
-	});
 });

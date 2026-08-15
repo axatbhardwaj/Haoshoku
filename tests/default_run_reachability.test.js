@@ -73,10 +73,14 @@ function deployModeFeaturesFromCli() {
 	const optionUsages = [
 		...source.matchAll(/\.option\(\s*"(--[a-z0-9-]+(?:\s+[^" ]+)?)"\s*,/g),
 	].map(([, usage]) => usage);
-	// Update modes are not independent deploy capabilities on a default setup
-	// path. This guard does not execute their update-specific branches, so exclude
-	// them instead of aliasing them to --claude/--skills and claiming coverage.
-	const excludedUpdateModes = new Set(["--claude-update", "--skills-update"]);
+	// Update and migration modes are not independent deploy capabilities on a
+	// default setup path. This guard does not execute those state-specific
+	// branches, so exclude them instead of claiming default-path coverage.
+	const excludedNonDefaultModes = new Set([
+		"--claude-update",
+		"--skills-update",
+		"--3-4-migrate",
+	]);
 
 	return optionUsages
 		.map((usage) => usage.split(/\s+/)[0])
@@ -84,7 +88,7 @@ function deployModeFeaturesFromCli() {
 			(flag) =>
 				flag !== "--os" &&
 				flag !== "--device-type" &&
-				!excludedUpdateModes.has(flag) &&
+				!excludedNonDefaultModes.has(flag) &&
 				!flag.endsWith("-backup") &&
 				!flag.endsWith("-list"),
 		)
@@ -113,6 +117,10 @@ const DELIBERATE_OMISSIONS = {
 		["--scripts", "The managed user scripts are desktop app launchers."],
 		["--workspaces", "Hyprland workspaces do not exist on a headless server."],
 		["--monitors", "Hyprland monitor routing requires a desktop display."],
+		[
+			"--omarchy-plugins",
+			"Omarchy plugins require the Omarchy desktop environment.",
+		],
 		[
 			"--brave-managed-policies",
 			"Brave/Omarchy theming is not installed on the server path.",
@@ -194,8 +202,9 @@ function runArchDefaultPath() {
 					configureAgentOsImpl: record("agentOs"),
 				}),
 				configureBraveManagedPoliciesImpl: record("braveManagedPolicies", true),
-				configureOmarchyMonitorsImpl: record("monitors"),
+				configureHyprmoncfgImpl: record("monitors"),
 				configureOmarchyWorkspacesImpl: record("workspaces"),
+				configureOmarchyPluginsImpl: record("omarchyPlugins"),
 				configureOmazedImpl: record("omazed"),
 			});
 			console.log("DEFAULT_CALLS=" + JSON.stringify(calls));
@@ -376,8 +385,9 @@ function defaultSetupOverrides({
 		promptDeviceTypeImpl,
 		configureUserAppsImpl,
 		configureBraveManagedPoliciesImpl: async () => true,
-		configureOmarchyMonitorsImpl: async () => {},
+		configureHyprmoncfgImpl: async () => {},
 		configureOmarchyWorkspacesImpl: async () => {},
+		configureOmarchyPluginsImpl: async () => {},
 		configureOmazedImpl: async () => {},
 	};
 }

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { Command } from "commander";
 import {
 	detectOS,
 	findActiveModeFlags,
@@ -17,7 +18,9 @@ function registeredModeFlags(source) {
 		.map((match) => match[2].match(/--[a-z0-9-]+/)[0])
 		.filter((flag) => flag !== "--os")
 		.map((flag) =>
-			flag.slice(2).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase()),
+			flag
+				.slice(2)
+				.replace(/-([a-z0-9])/g, (_, character) => character.toUpperCase()),
 		);
 }
 
@@ -119,6 +122,27 @@ describe("findActiveModeFlags", () => {
 			findActiveModeFlags({ deviceType: "laptop", monitors: true }),
 		).toEqual(["deviceType", "monitors"]);
 		expect(findActiveModeFlags({ deviceType: "" })).toEqual(["deviceType"]);
+	});
+
+	it("maps the numeric migration option and keeps Omarchy modes exclusive", () => {
+		const command = new Command().option("--3-4-migrate");
+		command.parse(["node", "haoshoku", "--3-4-migrate"]);
+
+		expect(command.opts()["34Migrate"]).toBe(true);
+		expect(MODE_FLAGS).toEqual(
+			expect.arrayContaining([
+				"34Migrate",
+				"omarchyPlugins",
+				"hyprmoncfgBackup",
+			]),
+		);
+		expect(
+			findActiveModeFlags({
+				"34Migrate": true,
+				omarchyPlugins: true,
+				hyprmoncfgBackup: true,
+			}),
+		).toEqual(["hyprmoncfgBackup", "omarchyPlugins", "34Migrate"]);
 	});
 
 	it("covers every Commander one-shot option and excludes only --os", () => {

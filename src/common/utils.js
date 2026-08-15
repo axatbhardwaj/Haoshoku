@@ -55,6 +55,47 @@ export async function runCommand(command, options = { check: true }) {
 	}
 }
 
+/** Run a command with piped output while preserving its exact stdout bytes. */
+export async function runCommandCapture(command, options = {}) {
+	log.dim(`Executing: ${command}`);
+	const useShell =
+		options.shell ||
+		["|", "&&", ";", ">", "<", "*", "?", "$", '"', "'"].some((char) =>
+			command.includes(char),
+		);
+
+	try {
+		const proc = spawn(
+			useShell
+				? ["bash", "-c", `set -o pipefail; ${command}`]
+				: command.split(" "),
+			{
+				cwd: options.cwd,
+				env: options.env,
+				stdin: "inherit",
+				stdout: "pipe",
+				stderr: "pipe",
+			},
+		);
+		const [exitCode, stdoutBytes, stderrBytes] = await Promise.all([
+			proc.exited,
+			new Response(proc.stdout).arrayBuffer(),
+			new Response(proc.stderr).arrayBuffer(),
+		]);
+		const decoder = new TextDecoder("utf-8", { ignoreBOM: true });
+		const stdout = decoder.decode(stdoutBytes);
+		const stderr = decoder.decode(stderrBytes);
+		return { exitCode, stdout, stderr, failed: exitCode !== 0 };
+	} catch (error) {
+		return {
+			exitCode: 127,
+			stdout: "",
+			stderr: error?.message ?? String(error),
+			failed: true,
+		};
+	}
+}
+
 export async function commandExists(command) {
 	// Bun.which resolves PATH in-process — no external `which` binary (absent
 	// from Arch's base set) and no spawn that could throw. Kept async because

@@ -157,8 +157,7 @@ if [[ "$recipe" == assistants || "$recipe" == t3code ]]; then
     app="${class_and_app#*:}"
     if assistant_class_present "$clients" "$class"; then
       while IFS= read -r address; do
-        # A window can close after the client snapshot, so a stale address must not stop later windows from being gathered.
-        dispatch movetoworkspacesilent "special:$workspace,address:$address" || true
+        dispatch movetoworkspacesilent "special:$workspace,address:$address"
       done < <(assistant_addresses_outside_workspace "$clients" "$class" "special:$workspace")
     else
       launch "special:$workspace" "$app"
@@ -236,8 +235,7 @@ focus_or_toggle_special_workspace() {
     dispatch focusmonitor "$monitor"
     dispatch togglespecialworkspace "$workspace"
   elif [[ "$visible_monitor" != "$focused_monitor" ]]; then
-    # A visible-monitor snapshot can go stale; a failed focus must not skip the caller's follow-up work such as ensure_kitty.
-    dispatch focusmonitor "$visible_monitor" || true
+    dispatch focusmonitor "$visible_monitor"
   else
     dispatch togglespecialworkspace "$workspace"
   fi

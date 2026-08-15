@@ -31,6 +31,14 @@ function readExistingOverlays() {
 	);
 }
 
+function filesBelow(directory) {
+	return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+		const entryPath = path.join(directory, entry.name);
+		if (entry.isDirectory()) return filesBelow(entryPath);
+		return entry.isFile() ? [entryPath] : [];
+	});
+}
+
 function unbindCalls(source) {
 	return [...source.matchAll(/hl\.unbind\("([^"]+)"\)/g)].map(([call]) => call);
 }
@@ -341,8 +349,14 @@ describe("Omarchy v4 Lua overlay", () => {
 		const swaps = JSON.parse(fs.readFileSync(swapsPath, "utf8")).swaps;
 		const registryCounts = new Map();
 		const missingRegistryFields = [];
+		const missingConfigFiles = [];
 
 		for (const [index, swap] of swaps.entries()) {
+			if (
+				typeof swap.config_file !== "string" ||
+				!fs.existsSync(path.join(repoRoot, swap.config_file))
+			)
+				missingConfigFiles.push({ index, configFile: swap.config_file });
 			if (typeof swap.hl_unbind !== "string") {
 				missingRegistryFields.push(index);
 				continue;
@@ -354,6 +368,7 @@ describe("Omarchy v4 Lua overlay", () => {
 		}
 
 		expect({
+			missingConfigFiles,
 			missingLuaFiles,
 			missingRegistryFields,
 			luaWithoutExactlyOneRegistryEntry: luaUnbinds.filter(
@@ -366,6 +381,7 @@ describe("Omarchy v4 Lua overlay", () => {
 						: [],
 			),
 		}).toEqual({
+			missingConfigFiles: [],
 			missingLuaFiles: [],
 			missingRegistryFields: [],
 			luaWithoutExactlyOneRegistryEntry: [],
@@ -401,6 +417,15 @@ describe("Omarchy v4 Lua overlay", () => {
 				output: "",
 			})),
 		);
+	});
+
+	it("contains no legacy Omarchy theme-state path under configs", () => {
+		const stalePath = Buffer.from("~/.config/omarchy/current");
+		const staleFiles = filesBelow(path.join(repoRoot, "configs"))
+			.filter((file) => fs.readFileSync(file).includes(stalePath))
+			.map((file) => path.relative(repoRoot, file));
+
+		expect(staleFiles).toEqual([]);
 	});
 
 	it("accounts for the translated directive inventory without adding PC monitor workspace rules", () => {
@@ -446,7 +471,7 @@ describe("Omarchy v4 Lua overlay", () => {
 		});
 	});
 
-	it("propagates a failed hyprctl dispatch", () => {
+	it("does not treat hyprctl dispatch exit status as a failure signal", () => {
 		const directory = fs.mkdtempSync(
 			path.join(os.tmpdir(), "haoshoku-dispatch-failure-"),
 		);
@@ -456,7 +481,8 @@ describe("Omarchy v4 Lua overlay", () => {
 			hyprctl,
 			`#!/usr/bin/env bash
 if [[ "$1" == "dispatch" ]]; then
-  exit 42
+  printf 'invalid dispatcher\n' >&2
+  exit 0
 fi
 if [[ "$1 $2" == "clients -j" ]]; then
   printf '[]\\n'
@@ -474,7 +500,8 @@ fi
 			},
 		);
 
-		expect(result.exitCode).toBe(42);
+		expect(result.exitCode).toBe(0);
+		expect(result.stderr.toString()).toContain("invalid dispatcher");
 	});
 });
 

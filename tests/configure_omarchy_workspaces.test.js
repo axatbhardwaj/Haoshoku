@@ -9,58 +9,42 @@ describe("configureOmarchyWorkspaces", () => {
 	beforeEach(() => {
 		home = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-workspaces-"));
 		fs.mkdirSync(path.join(home, ".config", "hypr"), { recursive: true });
-		fs.writeFileSync(
-			path.join(home, ".config", "hypr", "hyprland.conf"),
-			"source = ~/.config/hypr/monitors.conf\nsource = ~/.config/hypr/bindings.conf\n",
-		);
-		fs.writeFileSync(
-			path.join(home, ".config", "hypr", "bindings.conf"),
-			"stock Omarchy bindings\n",
-		);
-		fs.mkdirSync(
-			path.join(home, ".local", "share", "omarchy", "config", "hypr"),
-			{ recursive: true },
-		);
-		fs.writeFileSync(
-			path.join(
-				home,
-				".local",
-				"share",
-				"omarchy",
-				"config",
-				"hypr",
-				"bindings.conf",
-			),
-			"stock Omarchy bindings\n",
-		);
 	});
 	afterEach(() => fs.rmSync(home, { recursive: true, force: true }));
 
-	it("deploys once, preserves the main config, and installs an executable helper", async () => {
-		const first = await configureOmarchyWorkspaces({ home, env: {} });
-		const second = await configureOmarchyWorkspaces({ home, env: {} });
-		const main = fs.readFileSync(
-			path.join(home, ".config", "hypr", "hyprland.conf"),
-			"utf8",
+	it("deploys Lua overlays to the v4 module paths and requires both", async () => {
+		fs.writeFileSync(
+			path.join(home, ".config", "hypr", "hyprland.lua"),
+			"require(\"hypr.defaults\")\n",
 		);
-		expect(first).toEqual({
-			bindingsFileRestored: false,
-			overlayChanged: true,
-			scriptChanged: true,
-			sourceChanged: true,
-			validated: false,
-		});
-		expect(second).toEqual({
-			bindingsFileRestored: false,
-			overlayChanged: false,
-			scriptChanged: false,
-			sourceChanged: false,
-			validated: false,
-		});
-		expect(main).toContain("source = ~/.config/hypr/monitors.conf");
+
+		await configureOmarchyWorkspaces({ home, env: {} });
+
+		const hyprDirectory = path.join(home, ".config", "hypr");
 		expect(
-			main.match(/source = ~\/\.config\/hypr\/haoshoku-workspaces\.conf/g),
-		).toHaveLength(1);
+			fs.readFileSync(path.join(hyprDirectory, "haoshoku", "bindings.lua")),
+		).toEqual(
+			fs.readFileSync(
+				path.join(import.meta.dir, "..", "configs", "omarchy", "haoshoku", "bindings.lua"),
+			),
+		);
+		expect(
+			fs.readFileSync(path.join(hyprDirectory, "haoshoku", "workspaces.lua")),
+		).toEqual(
+			fs.readFileSync(
+				path.join(
+					import.meta.dir,
+					"..",
+					"configs",
+					"omarchy",
+					"haoshoku",
+					"workspaces-pc.lua",
+				),
+			),
+		);
+		const main = fs.readFileSync(path.join(hyprDirectory, "hyprland.lua"), "utf8");
+		expect(main).toContain('require("hypr.haoshoku.bindings")');
+		expect(main).toContain('require("hypr.haoshoku.workspaces")');
 		expect(
 			fs.statSync(
 				path.join(home, ".local", "bin", "haoshoku-special-workspace"),
@@ -68,243 +52,146 @@ describe("configureOmarchyWorkspaces", () => {
 		).toBe(0o111);
 	});
 
-	it("backs up a differing managed overlay", async () => {
-		const overlay = path.join(
-			home,
-			".config",
-			"hypr",
-			"haoshoku-workspaces.conf",
+	it("does not depend on the retired hyprland.conf", async () => {
+		await expect(configureOmarchyWorkspaces({ home })).resolves.toEqual(
+			expect.objectContaining({ sourceChanged: true }),
 		);
-		fs.writeFileSync(overlay, "old\n");
-		await configureOmarchyWorkspaces({ home, env: {}, now: () => 42 });
-		expect(fs.readFileSync(`${overlay}.bak.42`, "utf8")).toBe("old\n");
+		expect(
+			fs.existsSync(path.join(home, ".config", "hypr", "hyprland.lua")),
+		).toBe(true);
 	});
 
-	it("deploys app bindings to a separate managed file without replacing Omarchy bindings", async () => {
-		const stock = path.join(home, ".config", "hypr", "bindings.conf");
-		const managed = path.join(
-			home,
-			".config",
-			"hypr",
-			"haoshoku-bindings.conf",
+	it("uses atomic overlay writes and leaves hyprland.lua untouched when workspace deployment fails", async () => {
+		const hyprDirectory = path.join(home, ".config", "hypr");
+		const workspaceDestination = path.join(
+			hyprDirectory,
+			"haoshoku",
+			"workspaces.lua",
 		);
+		const liveDestinations = new Set([
+			path.join(hyprDirectory, "haoshoku", "bindings.lua"),
+			workspaceDestination,
+			path.join(hyprDirectory, "hyprland.lua"),
+			path.join(home, ".local", "bin", "haoshoku-special-workspace"),
+		]);
+		const writes = [];
+		const atomicFs = {
+			...fs,
+			writeFileSync(file, ...args) {
+				writes.push(file);
+				if (liveDestinations.has(file))
+					throw new Error(`non-atomic write to ${file}`);
+				return fs.writeFileSync(file, ...args);
+			},
+		};
 
-		await configureOmarchyWorkspaces({ home, env: {} });
+		await configureOmarchyWorkspaces({ home, fsImpl: atomicFs });
+		expect(writes).not.toEqual(expect.arrayContaining([...liveDestinations]));
 
-		expect(fs.existsSync(managed)).toBe(true);
-		if (!fs.existsSync(managed)) return;
-		expect(fs.readFileSync(stock, "utf8")).toBe("stock Omarchy bindings\n");
-		expect(fs.readFileSync(managed)).toEqual(
-			fs.readFileSync(
-				path.join(import.meta.dir, "..", "configs", "omarchy", "bindings.conf"),
-			),
-		);
+		const main = path.join(hyprDirectory, "hyprland.lua");
+		fs.writeFileSync(main, "return { untouched = true }\n");
+		fs.writeFileSync(workspaceDestination, "stale workspace module\n");
+		const failingFs = {
+			...fs,
+			renameSync(from, to) {
+				if (to === workspaceDestination)
+					throw new Error("workspace rename failed");
+				return fs.renameSync(from, to);
+			},
+		};
+
+		await expect(
+			configureOmarchyWorkspaces({ home, fsImpl: failingFs }),
+		).rejects.toThrow("workspace rename failed");
+		expect(fs.readFileSync(main, "utf8")).toBe("return { untouched = true }\n");
 	});
 
-	it("backs up differing managed app bindings before replacement", async () => {
-		const managed = path.join(
-			home,
-			".config",
-			"hypr",
-			"haoshoku-bindings.conf",
+	it("deduplicates requires without rewriting a converged Lua deployment and uses collision-safe atomic backups", async () => {
+		const hyprDirectory = path.join(home, ".config", "hypr");
+		const overlayDirectory = path.join(hyprDirectory, "haoshoku");
+		const destinations = [
+			path.join(overlayDirectory, "bindings.lua"),
+			path.join(overlayDirectory, "workspaces.lua"),
+			path.join(home, ".local", "bin", "haoshoku-special-workspace"),
+			path.join(hyprDirectory, "hyprland.lua"),
+		];
+		for (const destination of destinations.slice(0, -1)) {
+			fs.mkdirSync(path.dirname(destination), { recursive: true });
+			fs.writeFileSync(destination, `old ${path.basename(destination)}\n`);
+			fs.writeFileSync(`${destination}.bak.42`, "previous collision\n");
+		}
+		fs.writeFileSync(
+			destinations.at(-1),
+			'return { foreign = true }\nrequire("hypr.haoshoku.bindings")\nrequire("hypr.haoshoku.bindings")\nrequire("hypr.haoshoku.workspaces")',
 		);
-		fs.writeFileSync(managed, "old app bindings\n");
+		fs.writeFileSync(`${destinations.at(-1)}.bak.42`, "previous collision\n");
 
-		await configureOmarchyWorkspaces({ home, env: {}, now: () => 42 });
+		const writes = [];
+		const renames = [];
+		const recordingFs = {
+			...fs,
+			writeFileSync(file, ...args) {
+				writes.push(file);
+				return fs.writeFileSync(file, ...args);
+			},
+			renameSync(from, to) {
+				renames.push({ from, to });
+				return fs.renameSync(from, to);
+			},
+		};
 
-		expect(fs.existsSync(`${managed}.bak.42`)).toBe(true);
-		if (!fs.existsSync(`${managed}.bak.42`)) return;
-		expect(fs.readFileSync(`${managed}.bak.42`, "utf8")).toBe(
-			"old app bindings\n",
-		);
-	});
-
-	it("restores diverged Omarchy bindings with a backup and is idempotent", async () => {
-		const bindings = path.join(home, ".config", "hypr", "bindings.conf");
-		const stockBindings = path.join(
+		await configureOmarchyWorkspaces({
 			home,
-			".local",
-			"share",
-			"omarchy",
-			"config",
-			"hypr",
-			"bindings.conf",
-		);
-		fs.writeFileSync(bindings, "diverged bindings\n");
-
-		const first = await configureOmarchyWorkspaces({
-			home,
-			env: {},
+			fsImpl: recordingFs,
 			now: () => 42,
 		});
-		const second = await configureOmarchyWorkspaces({ home, env: {} });
 
-		expect(fs.readFileSync(`${bindings}.bak.42`, "utf8")).toBe(
-			"diverged bindings\n",
-		);
-		expect(fs.readFileSync(bindings)).toEqual(fs.readFileSync(stockBindings));
-		expect(first.bindingsFileRestored).toBe(true);
-		expect(second.bindingsFileRestored).toBe(false);
-		console.info(
-			"Bindings restore proof: bindings.conf.bak.42 created; first restored=true; second restored=false.",
-		);
-	});
-
-	it("sources managed app bindings after Omarchy bindings and before workspace toggles", async () => {
-		fs.writeFileSync(
-			path.join(home, ".config", "hypr", "hyprland.conf"),
-			"source = ~/.config/hypr/monitors.conf\nsource = ~/.config/hypr/bindings.conf\nsource = ~/.config/hypr/haoshoku-workspaces.conf\n",
-		);
-		await configureOmarchyWorkspaces({ home, env: {} });
-		const main = fs.readFileSync(
-			path.join(home, ".config", "hypr", "hyprland.conf"),
-			"utf8",
-		);
-		const stockIndex = main.indexOf("source = ~/.config/hypr/bindings.conf");
-		const managedIndex = main.indexOf(
-			"source = ~/.config/hypr/haoshoku-bindings.conf",
-		);
-		const workspaceIndex = main.indexOf(
-			"source = ~/.config/hypr/haoshoku-workspaces.conf",
-		);
-
-		expect(managedIndex).toBeGreaterThan(stockIndex);
-		expect(managedIndex).toBeLessThan(workspaceIndex);
-		expect(
-			main.match(/source = ~\/\.config\/hypr\/haoshoku-bindings\.conf/g),
-		).toHaveLength(1);
-	});
-
-	it("refuses to invent a non-Omarchy main config", async () => {
-		fs.rmSync(path.join(home, ".config", "hypr", "hyprland.conf"));
-		expect(configureOmarchyWorkspaces({ home, env: {} })).rejects.toThrow(
-			"config not found",
-		);
-	});
-
-	it("reloads and checks errors only in a live Hyprland session", async () => {
-		const commands = [];
-		const result = await configureOmarchyWorkspaces({
-			home,
-			env: { HYPRLAND_INSTANCE_SIGNATURE: "test" },
-			runCommandImpl: async (command) => {
-				commands.push(command);
-				return true;
-			},
-		});
-		expect(commands).toEqual([
-			"hyprctl reload",
-			"hyprctl configerrors",
-			`'${path.join(home, ".local", "bin", "haoshoku-special-workspace")}' numbered-login 7 kitty`,
+		for (const destination of destinations) {
+			expect(fs.existsSync(`${destination}.bak.42`)).toBe(true);
+			expect(fs.existsSync(`${destination}.bak.42.1`)).toBe(true);
+		}
+		const main = fs.readFileSync(destinations.at(-1), "utf8");
+		expect(main).toContain("return { foreign = true }");
+		expect(main.match(/require\("hypr\.haoshoku\.bindings"\)/g)).toHaveLength(1);
+		expect(main.match(/require\("hypr\.haoshoku\.workspaces"\)/g)).toHaveLength(1);
+		const requireLines = main
+			.split(/\r?\n/)
+			.filter((line) => line.startsWith('require("hypr.haoshoku.'));
+		expect(requireLines).toHaveLength(2);
+		expect(requireLines).toEqual([
+			'require("hypr.haoshoku.bindings")',
+			'require("hypr.haoshoku.workspaces")',
 		]);
-		expect(result.validated).toBe(true);
+		expect(writes).not.toEqual(expect.arrayContaining(renames.map(({ to }) => to)));
+
+		writes.length = 0;
+		renames.length = 0;
+		await configureOmarchyWorkspaces({
+			home,
+			fsImpl: recordingFs,
+			now: () => 42,
+		});
+		expect(writes).toEqual([]);
+		expect(renames).toEqual([]);
 	});
 
-	it("shell-quotes the live workspace helper path", async () => {
-		const originalHome = home;
-		home = `${originalHome} space;$literal`;
-		fs.renameSync(originalHome, home);
-		const commandDirectory = path.join(home, "test-commands");
-		const dispatchLog = path.join(home, "dispatches.log");
-		fs.mkdirSync(commandDirectory);
+	it("rewrites reversed unique requires so bindings load before workspaces", async () => {
+		const main = path.join(home, ".config", "hypr", "hyprland.lua");
 		fs.writeFileSync(
-			path.join(commandDirectory, "hyprctl"),
-			`#!/usr/bin/env bash
-if [[ "$1 $2" == "clients -j" ]]; then
-  printf '%s\\n' '[]'
-elif [[ "$1" == "dispatch" ]]; then
-  printf '%s\\n' "$*" >> "$DISPATCH_LOG"
-fi
-`,
+			main,
+			'require("hypr.defaults")\nrequire("hypr.haoshoku.workspaces")\nrequire("hypr.haoshoku.bindings")\n',
 		);
-		fs.chmodSync(path.join(commandDirectory, "hyprctl"), 0o755);
-		const runCommandImpl = async (command) => {
-			const proc = Bun.spawn(["bash", "-c", command], {
-				env: {
-					...process.env,
-					DISPATCH_LOG: dispatchLog,
-					PATH: `${commandDirectory}:${process.env.PATH}`,
-				},
-				stdout: "pipe",
-				stderr: "pipe",
-			});
-			return (await proc.exited) === 0;
-		};
 
-		await configureOmarchyWorkspaces({
-			home,
-			env: { HYPRLAND_INSTANCE_SIGNATURE: "test" },
-			runCommandImpl,
-		});
+		await configureOmarchyWorkspaces({ home });
 
-		expect(fs.readFileSync(dispatchLog, "utf8")).toContain(
-			"dispatch exec [workspace 7 silent] uwsm-app -- kitty --class haoshoku-ws7",
-		);
+		const requireLines = fs
+			.readFileSync(main, "utf8")
+			.split(/\r?\n/)
+			.filter((line) => line.startsWith('require("hypr.haoshoku.'));
+		expect(requireLines).toEqual([
+			'require("hypr.haoshoku.bindings")',
+			'require("hypr.haoshoku.workspaces")',
+		]);
 	});
 
-	it("ensures exactly one workspace-7 terminal across repeated live installs", async () => {
-		const commandDirectory = path.join(home, "test-commands");
-		const clientsState = path.join(home, "clients.json");
-		const dispatchLog = path.join(home, "dispatches.log");
-		fs.mkdirSync(commandDirectory);
-		fs.writeFileSync(clientsState, "[]\n");
-		fs.writeFileSync(
-			path.join(commandDirectory, "hyprctl"),
-			`#!/usr/bin/env bash
-if [[ "$1 $2" == "clients -j" ]]; then
-  cat "$CLIENTS_STATE"
-elif [[ "$1" == "dispatch" ]]; then
-  printf '%s\\n' "$*" >> "$DISPATCH_LOG"
-  if [[ "$2" == "exec" ]]; then
-    printf '%s\\n' '[{"address":"0xinstall","class":"haoshoku-ws7","workspace":{"name":"7"}}]' > "$CLIENTS_STATE"
-  fi
-fi
-`,
-		);
-		fs.chmodSync(path.join(commandDirectory, "hyprctl"), 0o755);
-		let ensureRuns = 0;
-		const runCommandImpl = async (command) => {
-			if (command === "hyprctl reload" || command === "hyprctl configerrors")
-				return true;
-			if (!command.endsWith(" numbered-login 7 kitty")) return false;
-			ensureRuns += 1;
-			const proc = Bun.spawn(
-				[
-					path.join(home, ".local", "bin", "haoshoku-special-workspace"),
-					"numbered-login",
-					"7",
-					"kitty",
-				],
-				{
-					env: {
-						...process.env,
-						HOME: home,
-						CLIENTS_STATE: clientsState,
-						DISPATCH_LOG: dispatchLog,
-						PATH: `${commandDirectory}:${process.env.PATH}`,
-					},
-					stdout: "pipe",
-					stderr: "pipe",
-				},
-			);
-			return (await proc.exited) === 0;
-		};
-
-		await configureOmarchyWorkspaces({
-			home,
-			env: { HYPRLAND_INSTANCE_SIGNATURE: "test" },
-			runCommandImpl,
-		});
-		await configureOmarchyWorkspaces({
-			home,
-			env: { HYPRLAND_INSTANCE_SIGNATURE: "test" },
-			runCommandImpl,
-		});
-
-		expect(ensureRuns).toBe(2);
-		const dispatches = fs.readFileSync(dispatchLog, "utf8").trim().split("\n");
-		expect(
-			dispatches.filter((dispatch) => dispatch.startsWith("dispatch exec ")),
-		).toHaveLength(1);
-	});
 });

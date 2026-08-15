@@ -43,9 +43,9 @@ The Arch setup:
   relocated or explicitly superseded and documented in
   [`configs/omarchy/keybinding-swaps.json`](configs/omarchy/keybinding-swaps.json),
   the canonical swap record;
-- ships refresh-safe app bindings from
-  [`configs/omarchy/bindings.conf`](configs/omarchy/bindings.conf) instead of
-  replacing Omarchy's `~/.config/hypr/bindings.conf`;
+- deploys refresh-safe Lua overlay modules from
+  [`configs/omarchy/haoshoku/`](configs/omarchy/haoshoku/) and requires them
+  from `~/.config/hypr/hyprland.lua`;
 - asks for a `pc` or `laptop` `deviceType` on every full Arch-family setup,
   preselecting any stored valid value, then saves an accepted selection in
   `~/.haoshoku.json` before device-routed audio and Hyprland configuration.
@@ -64,14 +64,9 @@ The Arch setup:
   `cleanup-worktrees.sh --apply`, which deletes eligible worktrees. Without
   interactive confirmation—including piped stdin—Haoshoku declines these real
   user decisions immediately and does not treat input as answers;
-- restores a device-routed `~/.config/hypr/monitors.conf`, backing up different
-  existing content first. The PC variant restores the three-monitor layout;
-  the laptop variant uses the internal panel's preferred mode and automatic
-  scale instead of forcing the PC's 2x GTK scale;
-- adds a device-routed behavior-only workspace overlay. The PC variant puts
-  workspaces 1–3 and 8 on DP-1, 4–5 and 9 on HDMI-A-1, and 6, 7, and 10 on
-  DP-2. The laptop variant removes monitor pins for a single-monitor layout
-  while keeping the same workspace behavior, window rules, and bindings;
+- adds a device-routed behavior-only Lua workspace overlay. Omarchy owns
+  monitor configuration; the laptop profile carries its persistent workspace
+  rules while both profiles retain the same window rules and bindings;
 - adds two-key special-workspace toggles under `Super`: A Haki (the tagged Warp
   `haki` tab), I AI assistants (Claude Desktop and Codex Desktop) on ordinary
   workspace 1,

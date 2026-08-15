@@ -72,11 +72,10 @@ elif [[ "$1" == "dispatch" ]]; then
 		printf '%s\n' "$matching_dispatch_call" > "$DISPATCH_CALL_COUNT"
 	fi
 	if [[ "$2" == "$FAILED_DISPATCH" && ( -z "$FAILED_DISPATCH_CALL" || "$matching_dispatch_call" == "$FAILED_DISPATCH_CALL" ) ]]; then
-		exit 42
-	fi
-  if [[ -n "\${DISPATCH_DIAGNOSTIC:-}" ]]; then
-    printf '%s\n' "$DISPATCH_DIAGNOSTIC" >&2
-    exit 42
+		if [[ -n "\${DISPATCH_DIAGNOSTIC:-}" ]]; then
+			printf '%s\n' "$DISPATCH_DIAGNOSTIC" >&2
+		fi
+		exit 0
   fi
   printf '%s\n' "$*" >> "$DISPATCH_LOG"
 fi
@@ -188,18 +187,28 @@ esac
 		};
 	}
 
-	it("preserves dispatch diagnostics and propagates the failure", async () => {
+	it("preserves dispatch diagnostics while exit-zero carries no failure signal", async () => {
 		const diagnostic = "hyprctl dispatch rejected test request";
-		const result = await run(["stash"], "", "non-zero-exit", "", diagnostic);
+		const result = await run(
+			["stash"],
+			"",
+			"non-zero-exit",
+			"",
+			diagnostic,
+			"[]",
+			"",
+			"",
+			"togglespecialworkspace",
+		);
 
 		expect(result).toEqual({
-			dispatches: [],
-			exitCode: 42,
+			dispatches: ["dispatch focusmonitor DP-1"],
+			exitCode: 0,
 			stderr: `${diagnostic}\n`,
 		});
 	});
 
-	it("continues gathering assistants after a stale address dispatch fails", async () => {
+	it("continues assistant moves after a stale address dispatch reports no exit failure", async () => {
 		const clients = JSON.stringify([
 			{ address: "0x1", class: "chatgpt", workspace: { name: "1" } },
 			{ address: "0x2", class: "chatgpt", workspace: { name: "2" } },
@@ -227,7 +236,7 @@ esac
 		});
 	});
 
-	it("still ensures Haki Kitty after focusing its visible monitor fails", async () => {
+	it("still ensures Haki after focusmonitor dispatch reports no exit failure", async () => {
 		const result = await run(
 			["haki"],
 			"",
@@ -419,10 +428,10 @@ esac
 		});
 	}
 
-	it("propagates Hyprland unavailability for every accepted recipe that dispatches", async () => {
+	it("cannot use dispatch exit status to detect Hyprland unavailability", async () => {
 		fs.writeFileSync(
 			path.join(commandDirectory, "hyprctl"),
-			"#!/usr/bin/env bash\nexit 1\n",
+			'#!/usr/bin/env bash\n[[ "$1" == "dispatch" ]] && exit 0\nexit 1\n',
 		);
 		fs.chmodSync(path.join(commandDirectory, "hyprctl"), 0o755);
 
@@ -452,7 +461,7 @@ esac
 			{ name: "reanime", args: ["reanime"] },
 		]) {
 			const result = await run(args, "", "non-zero-exit");
-			expect(result.exitCode, name).toBe(1);
+			expect(result.exitCode, name).toBe(0);
 			expect(result.stderr, name).toBe("");
 		}
 	});

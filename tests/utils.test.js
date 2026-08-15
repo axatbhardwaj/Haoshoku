@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import * as utils from "../src/common/utils.js";
 import {
 	commandExists,
 	copyDirRecursive,
@@ -53,6 +54,35 @@ describe("Utils", () => {
 	it("runCommand succeeds when every pipeline stage succeeds", async () => {
 		const result = await runCommand("echo ok | cat", { check: false });
 		expect(result).toBe(true);
+	});
+
+	it("runCommandCapture returns the command's actual stdout", async () => {
+		const result = await utils.runCommandCapture?.("printf captured-output");
+
+		expect(result).toEqual({
+			exitCode: 0,
+			stdout: "captured-output",
+			stderr: "",
+			failed: false,
+		});
+	});
+
+	it("runCommandCapture distinguishes a missing command from empty success", async () => {
+		const result = await utils.runCommandCapture?.(
+			"haoshoku-command-that-does-not-exist-12345",
+		);
+
+		expect(result?.exitCode).not.toBe(0);
+		expect(result?.stdout).toBe("");
+		expect(result?.failed).toBe(true);
+	});
+
+	it("runCommandCapture preserves a leading UTF-8 BOM in stdout", async () => {
+		const result = await utils.runCommandCapture?.("printf '\\xEF\\xBB\\xBF'");
+
+		expect(result?.exitCode).toBe(0);
+		expect(result?.stdout).toBe("\uFEFF");
+		expect(result?.failed).toBe(false);
 	});
 });
 

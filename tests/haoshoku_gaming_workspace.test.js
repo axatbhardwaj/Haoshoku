@@ -17,66 +17,62 @@ const specialWorkspaceScript = path.join(
 	"haoshoku-special-workspace",
 );
 const workspacesConfig = fs.readFileSync(
-	path.join(root, "configs", "omarchy", "workspaces-pc.conf"),
+	path.join(root, "configs", "omarchy", "haoshoku", "workspaces-pc.lua"),
 	"utf8",
 );
 
-function configuredWorkspaceArgs(pattern) {
-	const args = workspacesConfig.match(pattern)?.groups?.args;
-	if (!args)
-		throw new Error(`missing configured workspace command: ${pattern}`);
-	return args.trim().split(/\s+/);
-}
-
 describe("gaming workspace configuration", () => {
-	it("pins ephemeral workspace 11 to DP-1 without making it persistent", () => {
-		expect(workspacesConfig).toMatch(
-			/^workspace = 11, monitor:DP-1, persistent:false$/m,
+	it("leaves PC monitor ownership to Omarchy while keeping the laptop gaming workspace ephemeral", () => {
+		const laptopConfig = fs.readFileSync(
+			path.join(
+				root,
+				"configs",
+				"omarchy",
+				"haoshoku",
+				"workspaces-laptop.lua",
+			),
+			"utf8",
 		);
-		expect(workspacesConfig).not.toMatch(
-			/^workspace = 11,.*persistent:true$/m,
+		expect(workspacesConfig).not.toContain("hl.workspace_rule");
+		expect(laptopConfig).toContain(
+			'hl.workspace_rule({ workspace = "11", persistent = false })',
 		);
 	});
 
 	it("routes Steam windows silently to workspace 11", () => {
-		expect(
-			configuredWorkspaceArgs(
-				/^windowrule = (?<args>workspace 11 silent), match:class \^\[Ss\]team\$$/m,
-			),
-		).toEqual(["workspace", "11", "silent"]);
+		expect(workspacesConfig).toContain(
+			'o.window("^[Ss]team$", { workspace = "11 silent" })',
+		);
 	});
 
 	it("binds SUPER SHIFT G to the gaming workspace script", () => {
-		expect(
-			configuredWorkspaceArgs(
-				/^bindd = SUPER SHIFT, G, [^,]+, exec, (?<args>.+)$/m,
-			),
-		).toEqual(["haoshoku-gaming-workspace", "toggle"]);
+		expect(workspacesConfig).toContain(
+			'o.bind("SUPER + SHIFT + G", "Toggle gaming workspace", "haoshoku-gaming-workspace toggle")',
+		);
 	});
 
 	it("ports the gaming block to laptop with topology-only differences", () => {
 		const laptopConfig = fs.readFileSync(
-			path.join(root, "configs", "omarchy", "workspaces-laptop.conf"),
+			path.join(
+				root,
+				"configs",
+				"omarchy",
+				"haoshoku",
+				"workspaces-laptop.lua",
+			),
 			"utf8",
 		);
-		const normalizeTopology = (config) =>
-			config
-				.replace(/, monitor:[^,\n]+/g, "")
-				.replace(/^workspace = 5, default:true,/m, "workspace = 5,");
 
-		expect(laptopConfig).toMatch(/^workspace = 11, persistent:false$/m);
-		expect(laptopConfig).toMatch(
-			/^windowrule = workspace 11 silent, match:class \^\[Ss\]team\$$/m,
+		expect(laptopConfig).toContain(
+			'o.window("^[Ss]team$", { workspace = "11 silent" })',
 		);
-		expect(laptopConfig).toMatch(
-			/^bindd = SUPER SHIFT, G, [^,]+, exec, haoshoku-gaming-workspace toggle$/m,
+		expect(laptopConfig).toContain(
+			'o.bind("SUPER + SHIFT + G", "Toggle gaming workspace", "haoshoku-gaming-workspace toggle")',
 		);
 		expect(laptopConfig).not.toContain(
 			"haoshoku-special-workspace numbered 2 steam",
 		);
-		expect(normalizeTopology(laptopConfig)).toBe(
-			normalizeTopology(workspacesConfig),
-		);
+		expect(laptopConfig).not.toContain("monitor:");
 	});
 });
 
