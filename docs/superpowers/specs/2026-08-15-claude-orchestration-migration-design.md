@@ -83,9 +83,9 @@ All live in `configs/claude/skills/<name>/SKILL.md`, deployed to
   Opus (native, medium effort), Sol (seat, review mode xhigh),
   2× Luna (seat, max), 2× Sonnet (native).
 - Orchestrator verifies findings against code, discards speculation, dedupes.
-- With explicit user authorization: submit one review — APPROVE if no
-  material finding remains, else REQUEST_CHANGES; never COMMENT; never
-  auto-submit.
+- GitHub PR targets: submit the review autonomously — APPROVE if no
+  material finding remains, else REQUEST_CHANGES; never COMMENT. Non-PR
+  targets get a local verdict report.
 
 ### create-pr
 - Gates: confirmed scope/base/repo, explicit GitHub write authorization,
@@ -99,11 +99,17 @@ All live in `configs/claude/skills/<name>/SKILL.md`, deployed to
   GitHub state. Merging out of scope.
 
 ### brainstorm
+- Grill first: frontier-round design-tree interview (adapted from
+  mattpocock/skills `grilling`, MIT) — numbered questions with recommended
+  answers; facts fetched by sub-agents, decisions put to the user; done
+  when the frontier is empty.
 - Research fan-out (inline workflow when ≥3 agents): Luna (seat, research
   mode, max) for primary-source facts + native Explore/Sonnet agents for
   codebase and breadth. No Grok.
 - Separate verified facts / inference / signals / contradictions / unknowns.
-- Fable (native) challenges and formalizes the smallest workable plan.
+- Cross-model validation: Fable (native) formalizes the smallest workable
+  plan → Sol (seat, review mode) checks it cold → Fable adjudicates
+  material dissent.
 
 ### babysit-pr
 - Long-lived orchestrator loop via `/loop` (self-paced wakeups); push

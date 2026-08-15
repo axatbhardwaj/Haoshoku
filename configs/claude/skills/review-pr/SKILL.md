@@ -36,9 +36,10 @@ seat lenses run through the wrappers, never the launcher directly.
 
 - Verify every finding against the code yourself; discard speculation;
   deduplicate across lenses.
-- With explicit user authorization, submit one review under 200 lines:
-  APPROVE if no material finding remains, else REQUEST_CHANGES; never
-  COMMENT. Never auto-submit.
+- When the target is a GitHub PR, submit the review autonomously: one
+  review under 200 lines, APPROVE if no material finding remains, else
+  REQUEST_CHANGES; never COMMENT. For non-PR targets (branch diff, patch),
+  report the verdict locally instead.
 
 ## Workflow rule
 

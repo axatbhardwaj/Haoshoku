@@ -66,11 +66,11 @@ const PINNED_DIGESTS = {
 	"skills/implement-work/SKILL.md":
 		"92c6f685f6e49462bf610bd232983f6cd6d144be051486d5954eba0caadcbe30",
 	"skills/review-pr/SKILL.md":
-		"e5c22c1ac575e694bd32e49cdb5f18b9b05709df5fc3325c1b71155bf695a481",
+		"a7fd35f6c36848e06481c525c1a5f7821e63e350e3ddbc291268a5b3b5203d1e",
 	"skills/create-pr/SKILL.md":
 		"fea160a5202c685a8d2bcc9d40bf4f00cfb84741da7800bcf863622587ea3041",
 	"skills/brainstorm/SKILL.md":
-		"245439c989e18de7d91041afc21cf5fd9ca09ea22b003fbd8a96ec499ed96bf5",
+		"f8dde48847f10ad56bb16f9a407af3ac61b4a4c76cfda7594ca1c0163549f1f4",
 	"skills/babysit-pr/SKILL.md":
 		"bb8a8d528d10456da7d34c26b6962093b6c6ecd44f1e5401dff98c8a81f1e21b",
 	"skills/linear-ticketing/SKILL.md":
