@@ -7,7 +7,8 @@
 Haoshoku is a personal, modular setup toolkit for Arch-family desktops and
 Debian servers. Its desktop path is designed around Omarchy: Haoshoku installs
 applications and portable developer configuration while Omarchy remains the
-owner of the desktop experience.
+owner of the desktop experience. The desktop path requires Omarchy 4
+(Quattro) or newer; Omarchy 3 is no longer supported.
 
 ## Install
 
@@ -39,13 +40,15 @@ The Arch setup:
 - keeps Bash as the account shell and adds portable aliases and tool
   initialization through `~/.config/haoshoku/bashrc`;
 - preserves Omarchy's `.bashrc`, themes, terminals, wallpapers, lock screen,
-  Waybar, Walker, and Hyprland appearance; displaced Omarchy keybindings are
+  and Quickshell/Hyprland appearance — Omarchy 4 replaced Waybar, Walker,
+  Mako, and SwayOSD with a single Quickshell process. Displaced Omarchy
+  keybindings are
   relocated or explicitly superseded and documented in
   [`configs/omarchy/keybinding-swaps.json`](configs/omarchy/keybinding-swaps.json),
   the canonical swap record;
-- deploys refresh-safe Lua overlay modules from
-  [`configs/omarchy/haoshoku/`](configs/omarchy/haoshoku/) and requires them
-  from `~/.config/hypr/hyprland.lua`;
+- deploys `~/.config/hypr/haoshoku/{bindings,workspaces}.lua` and appends
+  exactly two `require` lines to `~/.config/hypr/hyprland.lua`; Omarchy 4
+  loads user config via `require()` and no longer sources `.conf` files;
 - asks for a `pc` or `laptop` `deviceType` on every full Arch-family setup,
   preselecting any stored valid value, then saves an accepted selection in
   `~/.haoshoku.json` before device-routed audio and Hyprland configuration.
@@ -64,9 +67,14 @@ The Arch setup:
   `cleanup-worktrees.sh --apply`, which deletes eligible worktrees. Without
   interactive confirmation—including piped stdin—Haoshoku declines these real
   user decisions immediately and does not treat input as answers;
-- adds a device-routed behavior-only Lua workspace overlay. Omarchy owns
-  monitor configuration; the laptop profile carries its persistent workspace
-  rules while both profiles retain the same window rules and bindings;
+- adds a device-routed behavior-only Lua workspace overlay. The hyprmoncfg
+  plugin owns the generated `~/.config/hypr/monitors.lua`; Haoshoku owns only
+  `~/.config/hyprmoncfg/profiles/*.json`, the source profile JSON that
+  hyprmoncfg reads to generate that Lua file, and never writes
+  `monitors.lua` directly. Monitor-bound workspace rules live in the
+  hyprmoncfg PC profile, matched by hardware identity instead of connector
+  name so they survive DP connector swaps; laptop workspace rules are
+  monitor-independent and remain in the Lua overlay;
 - adds two-key special-workspace toggles under `Super`: A Haki (the tagged Warp
   `haki` tab), I AI assistants (Claude Desktop and Codex Desktop) on ordinary
   workspace 1,
@@ -219,10 +227,21 @@ haoshoku --pr-watch
 haoshoku --worktree-cleanup
 haoshoku --workspaces
 haoshoku --monitors
+haoshoku --hyprmoncfg-backup
+haoshoku --omarchy-plugins
+haoshoku --3-4-migrate
 ```
 
 Use `haoshoku --device-type pc` to switch back. Every full Arch-family setup
 asks for device type and preselects either valid stored value.
+
+`haoshoku --3-4-migrate` is a re-runnable, idempotent migration from an
+Omarchy 3 layout to Omarchy 4: it strips dead `source =` lines, removes
+orphaned overlay `.conf` files, repoints theme paths, backs up and clears
+Omarchy's stock `monitors.lua`, deploys the Lua overlay and hyprmoncfg
+profiles, installs plugins, and validates — and if Omarchy's legacy config
+shim is still present it reports validation deferred and asks for a reboot
+and re-run instead of claiming success.
 
 Run `haoshoku --help` for the complete current list.
 

@@ -1,5 +1,44 @@
 # Changelog
 
+## 9.0.0 - 2026-08-15
+
+- Breaking: Omarchy 4 or newer required; Omarchy 3 no longer supported.
+  Helpers gate on the installed Omarchy major version.
+- The Hyprland overlay moved from `.conf` to Lua. Omarchy 4 loads user
+  config via `require()` and no longer sources `.conf` files. Haoshoku
+  deploys `~/.config/hypr/haoshoku/{bindings,workspaces}.lua` and appends
+  exactly two `require` lines to `hyprland.lua`. Removes
+  `configs/omarchy/{bindings,workspaces-pc,workspaces-laptop,monitors-pc,monitors-laptop}.conf`.
+- Monitor configuration is now owned by the hyprmoncfg plugin. Haoshoku
+  authors `~/.config/hyprmoncfg/profiles/*.json` instead of writing
+  `monitors.conf`, and never writes `monitors.lua`. Removes
+  `src/helpers/configure_omarchy_monitors.js`; `--monitors` now deploys
+  hyprmoncfg profiles.
+- Monitor-bound workspace rules moved into the hyprmoncfg PC profile,
+  matched by hardware identity instead of connector name so they survive
+  DP connector swaps. Laptop workspace rules are monitor-independent and
+  remain in the Lua overlay.
+- New `--3-4-migrate`: re-runnable, idempotent migration from an Omarchy 3
+  layout. Strips dead `source =` lines, removes orphaned overlay `.conf`
+  files, repoints theme paths, backs up and clears Omarchy's stock
+  unmarked `monitors.lua` so hyprmoncfg can take ownership, deploys the
+  Lua overlay and profiles, installs plugins, and validates. If Omarchy's
+  legacy config shim is still present it reports validation deferred and
+  asks for a reboot and re-run rather than claiming success.
+- New `--omarchy-plugins`: installs and enables ten Omarchy shell plugins,
+  idempotent on both plugin id and enabled state, per-plugin failure
+  non-fatal. Included in the default run.
+- New `--hyprmoncfg-backup`: pulls saved hyprmoncfg profiles back into the
+  repo.
+- Theme state paths follow Omarchy 4's move from
+  `~/.config/omarchy/current` to `~/.local/state/omarchy/current` across
+  the Kitty config, Kitty session files, and the Fish config.
+- Hyprland config validation now parses `hyprctl configerrors` output; its
+  exit status is always 0, so the exit code alone could never detect a
+  broken config.
+- Dispatch failures in `haoshoku-special-workspace` propagate instead of
+  being masked.
+
 ## 8.6.1 - 2026-08-15
 
 - Make the OpenCode seat, run-codex-task lifecycle, and Kitty theme tests
