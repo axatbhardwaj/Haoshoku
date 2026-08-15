@@ -121,7 +121,9 @@ function makeLog() {
 }
 
 function commandType(calls, subcommand) {
-	return calls.filter((argv) => argv[0] === "omarchy" && argv[2] === subcommand);
+	return calls.filter(
+		(argv) => argv[0] === "omarchy" && argv[2] === subcommand,
+	);
 }
 
 describe("Omarchy plugin installer", () => {
@@ -261,14 +263,109 @@ describe("Omarchy plugin installer", () => {
 		expect(lines.warning.join("\n")).toContain("plugin list");
 	});
 
-	it("ships a manifest on disk with exactly the 10 expected plugins", () => {
-		const onDisk = JSON.parse(fs.readFileSync(MANIFEST_PATH, "utf-8"));
-		expect(onDisk.map((plugin) => plugin.id)).toEqual(
-			MANIFEST.map((plugin) => plugin.id),
+	it.each([
+		"null",
+		"{}",
+	])("treats a non-array plugin list (%s) as empty and still attempts installs", async (stdoutBody) => {
+		const calls = [];
+		const runner = async (argv) => {
+			calls.push(argv);
+			if (argv.join(" ") === "omarchy plugin list --json") {
+				return { exitCode: 0, stdout: stdoutBody, stderr: "" };
+			}
+			return { exitCode: 0, stdout: "", stderr: "" };
+		};
+		const { lines, logImpl } = makeLog();
+
+		const result = await configureOmarchyPlugins({
+			manifest: MANIFEST,
+			runCommandImpl: runner,
+			logImpl,
+		});
+
+		expect(commandType(calls, "add")).toHaveLength(10);
+		expect(result.installed).toHaveLength(10);
+		expect(result.failed).toEqual([]);
+		expect(lines.warning.join("\n")).toContain(
+			"treating all manifest plugins as missing",
 		);
+	});
+
+	it("treats malformed plugin list JSON as empty and still attempts installs", async () => {
+		const calls = [];
+		const runner = async (argv) => {
+			calls.push(argv);
+			if (argv.join(" ") === "omarchy plugin list --json") {
+				return { exitCode: 0, stdout: "not json", stderr: "" };
+			}
+			return { exitCode: 0, stdout: "", stderr: "" };
+		};
+		const { lines, logImpl } = makeLog();
+
+		const result = await configureOmarchyPlugins({
+			manifest: MANIFEST,
+			runCommandImpl: runner,
+			logImpl,
+		});
+
+		expect(commandType(calls, "add")).toHaveLength(10);
+		expect(result.installed).toHaveLength(10);
+		expect(result.failed).toEqual([]);
+		expect(lines.warning.join("\n")).toContain(
+			"treating all manifest plugins as missing",
+		);
+	});
+
+	it("ships a manifest on disk with exactly the 10 expected plugins", () => {
+		const EXPECTED_PLUGINS = [
+			{
+				id: "crmne.hyprmoncfg",
+				url: "https://github.com/crmne/omarchy-hyprmoncfg.git",
+			},
+			{ id: "crmne.mpris", url: "https://github.com/crmne/omarchy-mpris.git" },
+			{
+				id: "dorneles.lock-keys",
+				url: "https://github.com/jvlianodorneles/lock-keys.git",
+			},
+			{
+				id: "white.nights",
+				url: "https://github.com/nightdevil00/white.nights.git",
+			},
+			{
+				id: "robzolkos.agent-usage",
+				url: "https://github.com/robzolkos/omarchy-agent-usage.git",
+			},
+			{
+				id: "robzolkos.github",
+				url: "https://github.com/robzolkos/omarchy-github.git",
+			},
+			{
+				id: "tmn73.calendar",
+				url: "https://github.com/tmn73/omarchy-calendar.git",
+			},
+			{
+				id: "io.github.treramey.raindrop-bookmarks",
+				url: "https://github.com/treramey/omarchy-raindrop-bookmarks.git",
+			},
+			{ id: "hass", url: "https://github.com/konradk/hass.git" },
+			{
+				id: "omaconnect",
+				url: "https://github.com/jitendradara12/omaconnect.git",
+			},
+		];
+
+		const onDisk = JSON.parse(fs.readFileSync(MANIFEST_PATH, "utf-8"));
+		expect(onDisk.length).toBe(10);
+		expect(
+			onDisk.map((plugin) => ({ id: plugin.id, url: plugin.url })),
+		).toEqual(EXPECTED_PLUGINS);
+
+		const urlPattern = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\.git$/;
 		for (const plugin of onDisk) {
-			expect(typeof plugin.url).toBe("string");
-			expect(plugin.url.length).toBeGreaterThan(0);
+			expect(plugin.url).toMatch(urlPattern);
 		}
+
+		const ids = onDisk.map((plugin) => plugin.id);
+		expect(new Set(ids).size).toBe(ids.length);
 	});
 });

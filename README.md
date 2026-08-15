@@ -94,6 +94,24 @@ The Arch setup:
 Haoshoku deliberately does not configure Fish, KDE Plasma, KWin, SDDM,
 Caelestia, terminal themes, Zed themes, or wallpapers.
 
+## Omarchy plugins
+
+On Arch-family desktops, Haoshoku installs a fixed set of ten third-party
+Omarchy plugins listed in
+[`common/omarchy-plugins.json`](common/omarchy-plugins.json) by running
+`omarchy plugin add <url> --enable --yes` for each one. Each repository is
+cloned and enabled at its current default branch HEAD — there is no commit
+or tag pinning.
+
+These plugins run as arbitrary, unsandboxed code inside the long-lived
+omarchy-shell process — the same risk Omarchy's own CLI warns about when
+adding plugins manually. The `--yes` flag is passed deliberately so setup
+stays unattended and non-interactive; this also suppresses Omarchy's
+per-plugin confirmation/warning prompt, so only add this manifest to
+machines where you trust and have reviewed those repositories. Plugins
+that need manual setup afterwards (API tokens, OAuth, device pairing) are
+printed as a manual-auth checklist after installation.
+
 ## Claude policy bootstrap
 
 During full setup, Haoshoku deploys its public Claude fallback and integration
