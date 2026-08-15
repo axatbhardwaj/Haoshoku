@@ -62,7 +62,7 @@ const program = new Command();
 program
 	.name("haoshoku")
 	.description("Haoshoku: portable setup for Arch / Omarchy and Debian Server.")
-	.version("8.6.0")
+	.version("8.6.1")
 	.addHelpText("before", getBanner());
 
 program

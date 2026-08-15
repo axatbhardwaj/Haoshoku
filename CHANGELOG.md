@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 8.6.1 - 2026-08-15
 
 - Make the OpenCode seat, run-codex-task lifecycle, and Kitty theme tests
   hermetic so they provision their own state instead of depending on the
