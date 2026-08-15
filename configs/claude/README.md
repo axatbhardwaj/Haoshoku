@@ -7,9 +7,8 @@ Public Claude Code personal-file bundle deployed to `~/.claude/`.
 | Bundle source | Live destination | Direction |
 | --- | --- | --- |
 | `CLAUDE.md`, `statusline-command.sh`, `gitignore.template` | `~/.claude/` (`gitignore.template` maps to `.gitignore`) | Both |
-| Three wrapper agents, two role definitions, launcher, validation hook, result schema, and render-workspace preparer | `~/.claude/agents/` | Deploy |
-| `pr-review.js`, `review-station.js` | `~/.claude/workflows/` | Deploy |
-| Required `discovering-work` and `samvada-html-deliverables` skill files | `~/.claude/skills/` | Deploy |
+| Three wrapper agents, two role definitions, two native planner/reviewer agents, launcher, validation hook, result schema, and render-workspace preparer | `~/.claude/agents/` | Deploy |
+| Orchestration skills (`implement-work`, `review-pr`, `create-pr`, `brainstorm`, `babysit-pr`, `linear-ticketing`, `html-explainer`, `discovering-work`) | `~/.claude/skills/` | Deploy |
 
 `haoshoku --claude` uses this explicit public fallback manifest; it never walks
 directories. The template name keeps the deny-first ignore file visible to git
