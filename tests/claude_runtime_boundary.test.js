@@ -23,19 +23,16 @@ const RUNTIME_FILES = [
 	"agents/validate-codex-wrapper.sh",
 	"agents/codex-result.schema.json",
 	"agents/prepare-pr-review-render-workspace.sh",
-	"workflows/pr-review.js",
-	"workflows/review-station.js",
 	"skills/discovering-work/SKILL.md",
 	"skills/discovering-work/agents/openai.yaml",
-	"skills/samvada-html-deliverables/SKILL.md",
-	"skills/samvada-html-deliverables/agents/openai.yaml",
-	"skills/samvada-html-deliverables/template.html",
+	"skills/html-explainer/SKILL.md",
+	"skills/html-explainer/template.html",
 ];
 const PINNED_DIGESTS = {
 	"agents/sol-wrapper.md":
-		"d4e004cda372090c1aade211187f15421cee7c3faa2c6e9ab69b52ed5e4d47c0",
+		"0bb91f67917c3740a8fc01c293a9230e537e12e33910b9a88d81048237a0fddd",
 	"agents/luna-wrapper.md":
-		"a99fb52255e9300977c2768b9cc912177173d96418cbeebfa5362677108f83b0",
+		"14e29dc607942ec1bc6b397a6c7bd37c8417b13757bcb3a4825421d5c444a8b1",
 	"agents/grok-wrapper.md":
 		"69f0876934f8aeea6ec62d90d694ea481b1bc1906b2ea16a9a40cbb14e1b4130",
 	"agents/madhyastha.md":
@@ -50,19 +47,13 @@ const PINNED_DIGESTS = {
 		"cccad847ac6a90694bbad15daddc42f4a55f7219a5ed9f717db4dcdfc7e4bfa0",
 	"agents/prepare-pr-review-render-workspace.sh":
 		"01b03b63b1fa35318964b13c8a6dc86395201f0e42ebfb04c6134fb8996a15c4",
-	"workflows/pr-review.js":
-		"1ae550831bdcb9199c4974de89d40232a6ccdd049e7aaedf22eb20f098018bf1",
-	"workflows/review-station.js":
-		"913be6d7cbf52593ad32ee9f22f781bf166787445ef9f16e20eb03c81ef77b7a",
 	"skills/discovering-work/SKILL.md":
 		"9d618579ceabafdf4f336122b6f58648fd3c001e3ecc69f5b7502b95db494471",
 	"skills/discovering-work/agents/openai.yaml":
 		"61d4bfdd85a518acacc2ec655f483049173290946faca7536b436857ca5d7583",
-	"skills/samvada-html-deliverables/SKILL.md":
-		"5f2c924887f2ddf85e7952d6c8d6680b75bf7c4460897ca1ce46e025390111fe",
-	"skills/samvada-html-deliverables/agents/openai.yaml":
-		"526bcf76d2cd248eeb79102063f1dc75faabf2006d1807c137039dba20302dd3",
-	"skills/samvada-html-deliverables/template.html":
+	"skills/html-explainer/SKILL.md":
+		"b8472ce89304e5cbf78ace52fdc69995ea91c449b0befb7aec0bfac1d5147b5a",
+	"skills/html-explainer/template.html":
 		"9aef7a092acbb59199a289e19545da2436deb8a36cf5a35057ee46e5c03197a7",
 };
 

@@ -2,7 +2,7 @@
 name: luna-wrapper
 description: Dispatch fixed-max Luna for read-only review or pure human-facing HTML/document editing and supervise it. Prepares the prompt, runs the fixed launcher, verifies the receipt and workspace, and reports; never repairs worker work itself.
 model: sonnet
-effort: low
+effort: medium
 maxTurns: 30
 tools: Bash, Read, Write, Grep, Glob
 hooks:

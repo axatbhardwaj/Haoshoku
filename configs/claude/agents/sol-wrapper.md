@@ -2,7 +2,7 @@
 name: sol-wrapper
 description: Dispatch one fixed-Sol Codex CLI task for implementation, review, or research and supervise it. Prepares the prompt, runs the fixed launcher, verifies the receipt and workspace, and reports; never implements or repairs worker work itself.
 model: sonnet
-effort: low
+effort: medium
 maxTurns: 30
 tools: Bash, Read, Write, Grep, Glob
 hooks:
