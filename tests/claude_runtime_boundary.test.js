@@ -11,6 +11,12 @@ import {
 
 const PROJECT_ROOT = path.resolve(import.meta.dir, "..");
 const CLAUDE_CONFIG_DIR = path.join(PROJECT_ROOT, "configs", "claude");
+const OPENCODE_LAUNCHER_PATH = path.join(
+	CLAUDE_CONFIG_DIR,
+	"agents",
+	"run-opencode-seat.sh",
+);
+const FIXTURES_DIR = path.join(import.meta.dir, "fixtures");
 const PRIVATE_SOURCE_ROOT = process.env.HAOSHOKU_CLAUDE_RUNTIME_SOURCE_ROOT;
 const PRIVATE_SOURCE_SHA = "413cf10231e8c5fa339666e6ccfea6a5a4ec3735";
 const RUNTIME_FILES = [
@@ -44,7 +50,7 @@ const PINNED_DIGESTS = {
 	"agents/luna-wrapper.md":
 		"92a65d590128fe1c8608a36d016264d7fa5482c0ce4c637ad42203e9d30dabad",
 	"agents/opencode-wrapper.md":
-		"35b39ea71699f3ccfd2a7ba5857002e97cd13bc962ddb9765391fac6f24e64ed",
+		"8c154a5f5f6e1cb021b0a768eff35b5e876adaf462782ce12fb9387ee815144a",
 	"agents/grok-wrapper.md":
 		"69f0876934f8aeea6ec62d90d694ea481b1bc1906b2ea16a9a40cbb14e1b4130",
 	"agents/madhyastha.md":
@@ -58,7 +64,7 @@ const PINNED_DIGESTS = {
 	"agents/run-codex-task.sh":
 		"faef3eddc4dddafc2a1bf2d2edf45a13e710519266dd88507da259f97e5fd4d6",
 	"agents/run-opencode-seat.sh":
-		"0f7bb1e9ad4bbef90b602113dffd9ad7d9f9ffa533d837bd699959113db73f3c",
+		"136408268a79467043c0f10bcf3d7660ba5649271cfe9d6a8a5bc4e99570c184",
 	"agents/validate-codex-wrapper.sh":
 		"250dcf53eddc87a3af3a40bf4be1e7d2b651557b71da5a93b9d413d5ca06be66",
 	"agents/codex-result.schema.json":
@@ -106,6 +112,178 @@ function privateSource(relativePath) {
 	expect(result.exitCode, relativePath).toBe(0);
 	return result.stdout.toString();
 }
+
+function runOpencodeReceiptFixture(fixtureName, version) {
+	const root = fs.mkdtempSync(
+		path.join(os.tmpdir(), "opencode-receipt-boundary-"),
+	);
+	const workspace = path.join(root, "workspace");
+	const fakeBin = path.join(root, "bin");
+	const fakeHome = path.join(root, "home");
+	const realOpencode = path.join(root, "real-opencode");
+	fs.mkdirSync(workspace);
+	fs.mkdirSync(fakeBin);
+	fs.mkdirSync(path.join(fakeHome, ".local", "share", "opencode"), {
+		recursive: true,
+	});
+	fs.mkdirSync(path.join(fakeHome, ".config", "opencode"), {
+		recursive: true,
+	});
+	fs.copyFileSync("/bin/true", realOpencode);
+	fs.chmodSync(realOpencode, 0o755);
+	fs.writeFileSync(path.join(workspace, "prompt.md"), "Return result JSON.\n");
+	fs.writeFileSync(path.join(workspace, "scope.txt"), "hello.txt\n");
+	const init = Bun.spawnSync(["git", "init", "--quiet"], { cwd: workspace });
+	expect(init.exitCode).toBe(0);
+
+	fs.writeFileSync(
+		path.join(fakeBin, "bwrap"),
+		`#!/bin/bash
+for ((i = 1; i <= $#; i++)); do
+  if [ "\${!i}" = --version ]; then
+    printf '%s\\n' "$FAKE_OPENCODE_VERSION"
+    exit 0
+  fi
+  if [ "\${!i}" = export ]; then
+    printf '%s' "$FAKE_EXPORT_STDOUT"
+    exit 0
+  fi
+done
+printf '%s\\n' '{"type":"text","sessionID":"ses_test","part":{"text":"{\\"status\\":\\"completed\\",\\"summary\\":\\"done\\",\\"changed_paths\\":[],\\"verification\\":[{\\"command\\":\\"true\\",\\"exit_code\\":0,\\"evidence\\":\\"ok\\"}]}"}}'
+`,
+		{ mode: 0o755 },
+	);
+
+	const fixturePath = path.join(FIXTURES_DIR, fixtureName);
+	const exportStdout = fs.readFileSync(fixturePath, "utf8");
+	const result = Bun.spawnSync(
+		[
+			"bash",
+			OPENCODE_LAUNCHER_PATH,
+			"--mode",
+			"implementation",
+			"--workspace",
+			workspace,
+			"--prompt-file",
+			path.join(workspace, "prompt.md"),
+			"--scope-file",
+			path.join(workspace, "scope.txt"),
+		],
+		{
+			cwd: PROJECT_ROOT,
+			env: {
+				...process.env,
+				CODEX_WRAPPER_GATEWAY: "opencode-wrapper",
+				FAKE_EXPORT_STDOUT: exportStdout,
+				FAKE_OPENCODE_VERSION: version,
+				HOME: fakeHome,
+				OPENCODE_SEAT_BIN: realOpencode,
+				PATH: `${fakeBin}:${process.env.PATH}`,
+			},
+			stderr: "pipe",
+			stdout: "pipe",
+		},
+	);
+	fs.rmSync(root, { force: true, recursive: true });
+	return {
+		exportJson: JSON.parse(exportStdout),
+		result,
+	};
+}
+
+it("opencode receipt compatibility extracts the 1.18.x export shape", () => {
+	const { result } = runOpencodeReceiptFixture(
+		"opencode-export-1.18.json",
+		"1.18.18",
+	);
+	expect(result.exitCode, result.stderr.toString()).toBe(0);
+	const report = JSON.parse(result.stdout.toString());
+	expect(report.launcher_status).toBe("ok");
+	expect(report.receipt).toEqual({
+		modelID: "glm-5.3",
+		providerID: "opencode-go",
+		variant: "high",
+	});
+});
+
+it("opencode receipt compatibility extracts the 1.1.x messages shape", () => {
+	const { exportJson, result } = runOpencodeReceiptFixture(
+		"opencode-export-1.1.json",
+		"1.1.51",
+	);
+	expect(exportJson.info.model).toBeUndefined();
+	expect(result.exitCode, result.stderr.toString()).toBe(0);
+	const report = JSON.parse(result.stdout.toString());
+	expect(report.launcher_status).toBe("ok");
+	expect(report.receipt).toEqual({
+		modelID: "glm-5.3",
+		providerID: "opencode-go",
+		variant: "high",
+	});
+});
+
+it("opencode receipt compatibility fails closed when neither shape is complete", () => {
+	const { result } = runOpencodeReceiptFixture(
+		"opencode-export-invalid.json",
+		"1.1.51",
+	);
+	expect(result.exitCode, result.stderr.toString()).toBe(70);
+	const report = JSON.parse(result.stdout.toString());
+	expect(report.launcher_status).toBe("blocked_invalid_receipt");
+	expect(report.receipt).toEqual({
+		modelID: "",
+		providerID: "",
+		variant: "",
+	});
+});
+
+it("opencode receipt compatibility rejects a mismatched 1.1.x receipt", () => {
+	const { result } = runOpencodeReceiptFixture(
+		"opencode-export-mismatch-1.1.json",
+		"1.1.51",
+	);
+	expect(result.exitCode, result.stderr.toString()).toBe(70);
+	expect(JSON.parse(result.stdout.toString()).launcher_status).toBe(
+		"blocked_receipt_mismatch",
+	);
+});
+
+it("opencode receipt compatibility records version drift without gating", () => {
+	const { result } = runOpencodeReceiptFixture(
+		"opencode-export-1.18.json",
+		"9.9.9",
+	);
+	expect(result.exitCode, result.stderr.toString()).toBe(0);
+	const report = JSON.parse(result.stdout.toString());
+	expect(report.launcher_status).toBe("ok");
+	expect(report.opencode_version).toBe("9.9.9");
+});
+
+it("opencode receipt compatibility falls back when the first shape has an empty model id", () => {
+	const { result } = runOpencodeReceiptFixture(
+		"opencode-export-fallback-1.1.json",
+		"1.1.51",
+	);
+	expect(result.exitCode, result.stderr.toString()).toBe(0);
+	expect(JSON.parse(result.stdout.toString()).receipt).toEqual({
+		modelID: "glm-5.3",
+		providerID: "opencode-go",
+		variant: "high",
+	});
+});
+
+it("opencode receipt compatibility records an omitted variant as empty", () => {
+	const { result } = runOpencodeReceiptFixture(
+		"opencode-export-no-variant-1.1.json",
+		"1.1.51",
+	);
+	expect(result.exitCode, result.stderr.toString()).toBe(0);
+	expect(JSON.parse(result.stdout.toString()).receipt).toEqual({
+		modelID: "glm-5.3",
+		providerID: "opencode-go",
+		variant: "",
+	});
+});
 
 it("matches the pinned private source for every bundled runtime file", () => {
 	if (!PRIVATE_SOURCE_ROOT) return;

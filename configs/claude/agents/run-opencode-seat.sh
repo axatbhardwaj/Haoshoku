@@ -1,10 +1,11 @@
 #!/bin/bash
 # Fixed OpenCode launcher. The opencode-wrapper agent may only invoke this script.
-# Requires a real OpenCode ELF binary, not a network-resolving shim. Set
-# OPENCODE_SEAT_BIN to an explicit binary when the opencode found on PATH is a shim.
+# Requires a real OpenCode ELF binary, not a network-resolving shim. The observed
+# version is recorded, not pinned. Receipts support the 1.18.x .info.model shape
+# and the 1.1.x .messages[0].info shape, and fail closed when neither is complete.
+# Set OPENCODE_SEAT_BIN to an explicit binary when the opencode found on PATH is a shim.
 set -uo pipefail
 
-PINNED_OPENCODE_VERSION="1.18.18"
 MODEL="opencode-go/glm-5.3"
 VARIANT="high"
 RUN_ROOT="/tmp/opencode-seat"
@@ -14,7 +15,10 @@ INVOCATION_TIMEOUT_S=480
 EXPORT_TIMEOUT_S=30
 
 usage() {
-  echo "usage: [OPENCODE_SEAT_BIN=<real-opencode-binary>] run-opencode-seat.sh --mode implementation|review --workspace <dir> --prompt-file <path> [--scope-file <path>] (implementation requires --scope-file; review forbids it)" >&2
+  cat >&2 <<'EOF'
+usage: [OPENCODE_SEAT_BIN=<real-opencode-binary>] run-opencode-seat.sh --mode implementation|review --workspace <dir> --prompt-file <path> [--scope-file <path>] (implementation requires --scope-file; review forbids it)
+The observed OpenCode version is recorded, not pinned. Receipt extraction supports 1.18.x .info.model and 1.1.x .messages[0].info shapes and fails closed when neither supplies a non-empty provider and model id.
+EOF
   exit 64
 }
 
@@ -356,21 +360,17 @@ run_managed_process "$RUN_DIR/version.out" "$STDERR_PATH" 15 \
 VERSION_STATUS=$MANAGED_EXIT
 VERSION_OUTPUT=$(cat "$RUN_DIR/version.out" 2>/dev/null)
 if [ "$VERSION_STATUS" -eq 124 ] || [ "$VERSION_STATUS" -eq 137 ]; then
-  echo "OpenCode version check timed out; revalidate the new version live, then repin PINNED_OPENCODE_VERSION deliberately" >&2
+  echo "OpenCode version check timed out; the observed version could not be recorded" >&2
   finish "blocked_opencode_version_timeout" 65 65 0
 fi
 if [ "$VERSION_STATUS" -ne 0 ]; then
   if [ "$VERSION_STATUS" -eq 127 ] && [ "$OPENCODE_FROM_OVERRIDE" -eq 0 ]; then
     reject_opencode_shim "$OPENCODE_BIN" "version check exited 127"
   fi
-  echo "OpenCode version check failed (exit $VERSION_STATUS); revalidate the new version live, then repin PINNED_OPENCODE_VERSION deliberately" >&2
+  echo "OpenCode version check failed (exit $VERSION_STATUS); the observed version could not be recorded" >&2
   finish "blocked_opencode_version_check_failed" 65 65 0
 fi
 OPENCODE_VERSION=$(printf '%s' "$VERSION_OUTPUT" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
-if [ "$OPENCODE_VERSION" != "$PINNED_OPENCODE_VERSION" ]; then
-  echo "OpenCode version mismatch: expected $PINNED_OPENCODE_VERSION, got ${OPENCODE_VERSION:-<empty>}; revalidate the new version live, then repin PINNED_OPENCODE_VERSION deliberately" >&2
-  finish "blocked_opencode_version_mismatch" 65 65 0
-fi
 
 for state_dir in "$HOME/.local/share/opencode" "$HOME/.config/opencode"; do
   [ -d "$state_dir" ] && [ ! -L "$state_dir" ] || {
@@ -574,14 +574,25 @@ if ! jq -e . "$EXPORT_RAW_PATH" > "$EXPORT_JSON_PATH" 2>/dev/null; then
 fi
 jq -e 'type == "object" and (.info | type == "object")' "$EXPORT_JSON_PATH" >/dev/null 2>&1 ||
   finish "blocked_invalid_receipt" "$OPENCODE_EXIT" 70 0
-RECEIPT_PROVIDER=$(jq -r '.info.model.providerID // empty' "$EXPORT_JSON_PATH")
-RECEIPT_MODEL=$(jq -r '.info.model.id // empty' "$EXPORT_JSON_PATH")
-RECEIPT_VARIANT=$(jq -r '.info.model.variant // empty' "$EXPORT_JSON_PATH")
-RECEIPT_VERSION=$(jq -r '.info.version // empty' "$EXPORT_JSON_PATH")
+if ! RECEIPT_JSON=$(jq -c '
+  def nonempty_string: type == "string" and length > 0;
+  def complete: (.providerID | nonempty_string) and (.modelID | nonempty_string);
+  [
+    {providerID: .info.model.providerID, modelID: .info.model.id, variant: (.info.model.variant // "")},
+    {providerID: .messages[0].info.model.providerID, modelID: .messages[0].info.modelID, variant: (.messages[0].info.variant // "")}
+  ]
+  | map(select(complete))
+  | .[0] // empty
+' "$EXPORT_JSON_PATH"); then
+  finish "blocked_invalid_receipt" "$OPENCODE_EXIT" 70 0
+fi
+[ -n "$RECEIPT_JSON" ] || finish "blocked_invalid_receipt" "$OPENCODE_EXIT" 70 0
+RECEIPT_PROVIDER=$(jq -r '.providerID' <<< "$RECEIPT_JSON")
+RECEIPT_MODEL=$(jq -r '.modelID' <<< "$RECEIPT_JSON")
+RECEIPT_VARIANT=$(jq -r '.variant' <<< "$RECEIPT_JSON")
 EXPORT_SUMMARY=$(jq -c 'if (.info.summary | type) == "object" then .info.summary else {} end' "$EXPORT_JSON_PATH")
-OPENCODE_VERSION=$RECEIPT_VERSION
 if [ "$RECEIPT_PROVIDER" != opencode-go ] || [ "$RECEIPT_MODEL" != glm-5.3 ] ||
-  [ "$RECEIPT_VARIANT" != high ] || [ "$RECEIPT_VERSION" != "$PINNED_OPENCODE_VERSION" ]; then
+  { [ -n "$RECEIPT_VARIANT" ] && [ "$RECEIPT_VARIANT" != "$VARIANT" ]; }; then
   finish "blocked_receipt_mismatch" "$OPENCODE_EXIT" 70 0
 fi
 

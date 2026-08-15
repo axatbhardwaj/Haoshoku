@@ -1,0 +1,16 @@
+{
+	"info": {
+		"id": "ses_test",
+		"model": {
+			"id": "glm-5.3",
+			"providerID": "opencode-go",
+			"variant": "high"
+		},
+		"version": "1.18.18",
+		"summary": {
+			"additions": 0,
+			"deletions": 0,
+			"files": 0
+		}
+	}
+}

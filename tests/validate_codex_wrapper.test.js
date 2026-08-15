@@ -269,7 +269,7 @@ describe("opencode seat launcher fail-closed gates", () => {
 		}
 	});
 
-	it("fails a drifted OpenCode version with repin guidance", () => {
+	it("records a drifted OpenCode version instead of gating on it", () => {
 		const fixture = makeLauncherFixture("9.9.9");
 		installSuccessfulBwrap(fixture);
 		try {
@@ -278,12 +278,15 @@ describe("opencode seat launcher fail-closed gates", () => {
 				implementationArgs(fixture.workspace),
 				"opencode-wrapper",
 			);
-			expect(result.exitCode).toBe(65);
-			expect(result.stderr.toString()).toContain(
-				"revalidate the new version live, then repin PINNED_OPENCODE_VERSION deliberately",
-			);
-			expect(JSON.parse(result.stdout.toString()).launcher_status).toBe(
+			expect(result.exitCode, result.stderr.toString()).toBe(0);
+			const report = JSON.parse(result.stdout.toString());
+			expect(report.launcher_status).not.toBe(
 				"blocked_opencode_version_mismatch",
+			);
+			expect(report.launcher_status).toBe("ok");
+			expect(report.opencode_version).toBe("9.9.9");
+			expect(result.stderr.toString()).not.toContain(
+				"repin PINNED_OPENCODE_VERSION",
 			);
 		} finally {
 			fs.rmSync(fixture.root, { force: true, recursive: true });
