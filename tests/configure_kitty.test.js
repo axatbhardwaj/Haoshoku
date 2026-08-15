@@ -61,6 +61,13 @@ describe("configureKitty", () => {
 			path.join(themeDir, "kitty.conf"),
 			"background_opacity 0.77\nforeground #fdfffd\nbackground #010401\n",
 		);
+		const deployedConfigPath = path.join(
+			home,
+			".config",
+			"kitty",
+			"kitty.conf",
+		);
+		expect(fs.existsSync(deployedConfigPath)).toBe(false);
 
 		await configureKitty({
 			home,
@@ -68,26 +75,21 @@ describe("configureKitty", () => {
 			projectRoot: path.join(import.meta.dir, ".."),
 		});
 
-		const kitty = Bun.which("kitty");
-		expect(kitty).not.toBeNull();
-		const parsed = Bun.spawnSync(
-			[
-				kitty,
-				"+runpy",
-				"import json,sys; from kitty.config import load_config; o=load_config(sys.argv[1]); print(json.dumps({'background_opacity': o.background_opacity}))",
-				path.join(home, ".config", "kitty", "kitty.conf"),
-			],
-			{
-				env: { ...process.env, HOME: home },
-				stdout: "pipe",
-				stderr: "pipe",
-			},
+		const themeConfig = fs.readFileSync(
+			path.join(themeDir, "kitty.conf"),
+			"utf8",
 		);
+		const themeOpacity = themeConfig.match(
+			/^background_opacity[ \t]+(\S+)[ \t]*$/m,
+		);
+		expect(themeOpacity).not.toBeNull();
+		expect(themeOpacity[1]).toBe("0.77");
 
-		expect(parsed.exitCode).toBe(0);
-		expect(JSON.parse(parsed.stdout.toString())).toEqual({
-			background_opacity: 0.77,
-		});
+		const deployedConfig = fs.readFileSync(deployedConfigPath, "utf8");
+		expect(deployedConfig).toMatch(
+			/^include[ \t]+~\/\.config\/omarchy\/current\/theme\/kitty\.conf[ \t]*$/m,
+		);
+		expect(deployedConfig.match(/^background_opacity(?:[ \t]|$)/m)).toBeNull();
 	});
 
 	it("guards the fish OSC fallback behind the active Omarchy theme", () => {

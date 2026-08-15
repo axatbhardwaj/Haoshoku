@@ -19,6 +19,14 @@ const OPENCODE_LAUNCHER_PATH = path.join(
 	"agents",
 	"run-opencode-seat.sh",
 );
+const CURRENT_UID = String(process.getuid());
+const CURRENT_USER_ENTRY = fs
+	.readFileSync("/etc/passwd", "utf8")
+	.split("\n")
+	.find((entry) => entry.split(":")[2] === CURRENT_UID);
+if (!CURRENT_USER_ENTRY)
+	throw new Error(`current UID ${CURRENT_UID} is absent from /etc/passwd`);
+const CURRENT_USER_HOME = CURRENT_USER_ENTRY.split(":")[5];
 const IMPLEMENTATION_COMMAND = `${OPENCODE_LAUNCHER} --mode implementation --workspace /tmp/workspace --prompt-file /tmp/codex-wrapper/prompt.md --scope-file /tmp/codex-wrapper/scope.txt`;
 const REVIEW_COMMAND = `${OPENCODE_LAUNCHER} --mode review --workspace /tmp/workspace --prompt-file /tmp/codex-wrapper/prompt.md`;
 
@@ -29,6 +37,7 @@ function runHook(identity, command) {
 	});
 	return Bun.spawnSync(["bash", HOOK, identity], {
 		cwd: PROJECT_ROOT,
+		env: { ...process.env, HOME: CURRENT_USER_HOME },
 		stdin: Buffer.from(input),
 		stderr: "pipe",
 		stdout: "pipe",
@@ -118,9 +127,14 @@ function makeLauncherFixture(
 	const root = fs.mkdtempSync(path.join(os.tmpdir(), "opencode-seat-test-"));
 	const workspace = path.join(root, "workspace");
 	const fakeBin = path.join(root, "bin");
+	const home = path.join(root, "home");
 	const realOpencode = path.join(root, "real-opencode");
 	fs.mkdirSync(workspace);
 	fs.mkdirSync(fakeBin);
+	fs.mkdirSync(path.join(home, ".local", "share", "opencode"), {
+		recursive: true,
+	});
+	fs.mkdirSync(path.join(home, ".config", "opencode"), { recursive: true });
 	fs.copyFileSync("/bin/true", realOpencode);
 	fs.chmodSync(realOpencode, 0o755);
 	fs.writeFileSync(path.join(workspace, "prompt.md"), "Return the result JSON.\n");
@@ -136,6 +150,7 @@ function makeLauncherFixture(
 	return {
 		exportStdout: `${exportPrefix}${receipt}\n`,
 		fakeBin,
+		home,
 		realOpencode,
 		root,
 		version,
@@ -186,6 +201,7 @@ function runLauncher(fixture, args, gateway, extraEnv = {}) {
 			BWRAP_ARGS_LOG: fixture.bwrapArgsLog ?? path.join(fixture.root, "bwrap-args.log"),
 			FAKE_EXPORT_STDOUT: fixture.exportStdout,
 			FAKE_OPENCODE_VERSION: fixture.version,
+			HOME: fixture.home,
 			OPENCODE_SEAT_BIN: fixture.realOpencode,
 			...extraEnv,
 		};

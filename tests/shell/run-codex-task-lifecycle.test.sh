@@ -2,6 +2,17 @@
 # Tests detached Codex launcher identity, abort, and wait liveness behavior.
 
 set -uo pipefail
+umask 077
+unset CODEX_WRAPPER_GATEWAY
+
+[ ! -L /tmp/codex-wrapper ] || {
+  echo "test run root must not be a symlink: /tmp/codex-wrapper" >&2
+  exit 1
+}
+mkdir -m 700 -p /tmp/codex-wrapper || {
+  echo "cannot create test run root: /tmp/codex-wrapper" >&2
+  exit 1
+}
 
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 LAUNCHER="$ROOT/configs/claude/agents/run-codex-task.sh"
