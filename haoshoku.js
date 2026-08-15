@@ -11,6 +11,7 @@ import {
 	backupAudioConfig,
 	syncAudioConfig,
 } from "./src/helpers/configure_audio.js";
+import { configureBraveManagedPolicies } from "./src/helpers/configure_brave_managed_policies.js";
 import {
 	backupClaudeConfig,
 	bootstrapClaudePolicy,
@@ -30,7 +31,6 @@ import {
 	backupCodexConfig,
 	syncCodexConfig,
 } from "./src/helpers/configure_codex.js";
-import { configureBraveManagedPolicies } from "./src/helpers/configure_brave_managed_policies.js";
 import { installGhStack } from "./src/helpers/configure_gh_stack.js";
 import { promptDeviceType } from "./src/helpers/configure_hyprland.js";
 import {
@@ -43,6 +43,7 @@ import {
 	backupPrWatch,
 	syncPrWatch,
 } from "./src/helpers/configure_pr_watch.js";
+import { configureT3CodeServer } from "./src/helpers/configure_t3_code_server.js";
 import {
 	backupWorktreeCleanup,
 	syncWorktreeCleanup,
@@ -92,6 +93,10 @@ program
 	.option(
 		"--agent-os",
 		"Provision Agent OS (~/agent-os) at the pinned SHA + customization",
+	)
+	.option(
+		"--server-t3-code",
+		"Configure the T3 Code headless server service on Debian",
 	)
 	.option("--skills", "Sync skills from configured sources")
 	.option("--skills-update", "Update cached skill sources")
@@ -216,6 +221,16 @@ async function runAction(options) {
 
 	if (options.agentOs) {
 		await configureAgentOs();
+		return;
+	}
+
+	if (options.serverT3Code) {
+		if (detectOS() !== "debian-server") {
+			log.error("--server-t3-code requires a Debian-family host.");
+			process.exitCode = 2;
+			return;
+		}
+		if (!(await configureT3CodeServer())) process.exitCode = 1;
 		return;
 	}
 
@@ -412,7 +427,10 @@ async function runAction(options) {
 			}
 			break;
 		case "debian-server":
-			await runDebianServerSetup();
+			if (!(await runDebianServerSetup())) {
+				process.exitCode = 1;
+				return;
+			}
 			break;
 		default:
 			log.error(`Unsupported OS: ${osType}`);

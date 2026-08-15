@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Rewrite Caelestia's OSC palette file from the Zed Caelestia theme.
 
-fish's config.fish cats ~/.local/state/caelestia/sequences.txt at every shell
-start, so whatever it holds wins over any terminal's own config. Deriving it
-from the Zed theme is what keeps terminal emulators and Zed on one palette.
+When no active Omarchy Kitty theme exists, fish's config.fish cats
+~/.local/state/caelestia/sequences.txt at shell start. Deriving that fallback
+from the Zed theme keeps terminal emulators and Zed on one palette.
 
 Caelestia builds two palettes from the same wallpaper scheme: `term0`-`term15`
 for terminals, and Catppuccin-named roles for the Zed theme. All sixteen ANSI

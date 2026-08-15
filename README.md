@@ -72,14 +72,15 @@ The Arch setup:
   workspaces 1–3 and 8 on DP-1, 4–5 and 9 on HDMI-A-1, and 6, 7, and 10 on
   DP-2. The laptop variant removes monitor pins for a single-monitor layout
   while keeping the same workspace behavior, window rules, and bindings;
-- adds two-key special-workspace toggles under `Super`: A Haki (the tagged Warp
-  `haki` tab), I AI assistants (Claude Desktop and Codex Desktop) on ordinary
-  workspace 1,
+- adds two-key special-workspace toggles under `Super`: A Haki (a Kitty
+  Claude-over-Codex split),
   M music, O 1Password, G communication, B Flux Brave Origin,
   D DeFi Brave Origin,
   S stash, and `Super+Shift+X` X (`Super+Shift+S` stashes the focused window);
   see the canonical swaps JSON above for every Omarchy default relocated or
   superseded to make room;
+- leaves `Super+I` unbound and preserves Omarchy's stock `Super+1` switch to
+  workspace 1; Claude and ChatGPT still auto-launch onto workspaces 1 and 2;
 - adds a `Super+Shift+G` toggle for ephemeral gaming workspace 11. Use
   `haoshoku-gaming-workspace place -- %command%` as a Steam launch option to
   move the launched game's process-tree windows there;
@@ -116,8 +117,8 @@ does not run `git clean`, so Omarchy's managed
 The optional Claude Remote Control setup runs persistent Claude sessions from
 three fixed roots: `haki` at `$HOME`, `dev` at `$HOME/dev`, and `work` at
 `$HOME/Work`. Instances whose roots do not exist are skipped with a warning.
-On Omarchy, `Super+A` opens the tagged Warp `haki` tab on the special workspace,
-with Claude above a fresh Codex pane below; Caelestia and KDE use their own Warp
+On Omarchy, `Super+A` opens a dedicated Kitty Haki session on the special workspace,
+with Claude above a fresh Codex pane below; Caelestia and KDE use Kitty
 `agents` routes. Set `claudeSessionName` in
 `~/.haoshoku.json` only to resume a named Haki Claude session. A missing or null
 value starts plain Claude; a
@@ -190,6 +191,7 @@ haoshoku --claude-update
 haoshoku --claude-bootstrap
 haoshoku --codex
 haoshoku --codex-backup
+haoshoku --server-t3-code
 haoshoku --device-type laptop
 haoshoku --audio
 haoshoku --audio-backup
@@ -220,10 +222,17 @@ haoshoku --os debian-server
 
 The Debian path remains deliberately headless. In addition to its server
 hardening, it installs the portable Claude, Codex, Agent OS, and PR-watch
-configuration; asks about Git, the private Claude policy, Superpowers, Claude
-stay-awake, Claude Remote Control, and automatic worktree cleanup; then reaches
-the common skills-sync offer. Superpowers is applied after any accepted policy
-checkout so the checkout cannot erase its registration.
+configuration and configures T3 Code's upstream-managed background service. It
+ensures Node.js satisfies T3 Code's current runtime range before running
+`npx --yes t3@latest service install`, then verifies the service without
+exposing it or creating a pairing token. Run `haoshoku --server-t3-code` to
+install or repair only this server component, and pair later with
+`npx t3@latest pair`.
+
+The full Debian path asks about Git, the private Claude policy, Superpowers,
+Claude stay-awake, Claude Remote Control, and automatic worktree cleanup; then
+reaches the common skills-sync offer. Superpowers is applied after any accepted
+policy checkout so the checkout cannot erase its registration.
 
 Debian Server does not ask for `deviceType`: that value only selects desktop
 audio and Hyprland/Omarchy variants. For the same reason the Debian path does
