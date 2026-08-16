@@ -4,6 +4,10 @@
 
 o.exec_on_start("haoshoku-special-workspace numbered-login 7 kitty")
 o.exec_on_start("haoshoku-special-workspace assistants")
+-- Hyprland does not process XDG autostart, so
+-- /etc/xdg/autostart/org.kde.kdeconnect.daemon.desktop never fires. Start explicitly
+-- instead of relying on incidental D-Bus activation for phone sync after login.
+o.exec_on_start("/usr/bin/kdeconnectd")
 
 -- Steam joins the games on 2 so alt-tabbing between a game and the Steam window keeps
 -- working -- cyclenext is workspace-local, so they have to share a workspace to cycle.

@@ -5,6 +5,7 @@ zip
 kitty
 tmux
 signal-desktop
+kdeconnect
 thunderbird
 noisetorch-bin
 github-cli

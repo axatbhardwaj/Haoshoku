@@ -66,8 +66,9 @@ describe("Omarchy Lua workspace behavior", () => {
 			for (const command of commands) expect(overlay).toContain(command);
 	});
 
-	it("starts and routes the owned Kitty workspace exactly", () => {
+	it("starts login services and routes the owned Kitty workspace exactly", () => {
 		for (const overlay of [pc, laptop]) {
+			expect(overlay).toContain('o.exec_on_start("/usr/bin/kdeconnectd")');
 			expect(overlay).toContain(
 				'o.exec_on_start("haoshoku-special-workspace numbered-login 7 kitty")',
 			);

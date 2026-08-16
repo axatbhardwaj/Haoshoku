@@ -37,4 +37,19 @@ describe("Common Files", () => {
 		);
 		expect(content).not.toContain("io.github.brunofin.Cohesion");
 	});
+
+	it("includes the KDE Connect backend required by the default omaconnect plugin", () => {
+		const plugins = JSON.parse(
+			fs.readFileSync(path.join(COMMON_DIR, "omarchy-plugins.json"), "utf-8"),
+		);
+		expect(plugins.some((plugin) => plugin.id === "omaconnect")).toBe(true);
+
+		const packages = fs
+			.readFileSync(path.join(COMMON_DIR, "paru_applist.txt"), "utf-8")
+			.trim()
+			.split("\n");
+		expect(packages.filter((entry) => entry === "kdeconnect")).toEqual([
+			"kdeconnect",
+		]);
+	});
 });
