@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 9.0.0 - 2026-08-16
 
 - Breaking: Omarchy 4 or newer required; Omarchy 3 no longer supported.
   Migration, workspaces, hyprmoncfg, and plugin helpers gate on the installed
