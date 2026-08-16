@@ -461,6 +461,19 @@ describe("Omarchy v4 Lua overlay", () => {
 		expect(staleFiles).toEqual([]);
 	});
 
+	it("leaves GDK scaling to the monitor profile in both workspace overlays", () => {
+		const offenders = overlayPaths.slice(1).flatMap((file) =>
+			fs.readFileSync(file, "utf8").includes("GDK_SCALE")
+				? [path.relative(repoRoot, file)]
+				: [],
+		);
+
+		expect(
+			offenders,
+			"GDK_SCALE is owned by the monitor profile / hyprmoncfg and must not be reintroduced by a future overlay port",
+		).toEqual([]);
+	});
+
 	it("accounts for the translated directive inventory without adding PC monitor workspace rules", () => {
 		const inventory = Object.fromEntries(
 			readExistingOverlays().map(({ file, source }) => [
@@ -491,7 +504,7 @@ describe("Omarchy v4 Lua overlay", () => {
 				window: 24,
 				workspace: 0,
 				execOnStart: 2,
-				env: 1,
+				env: 0,
 			},
 			"workspaces-laptop.lua": {
 				unbind: 4,

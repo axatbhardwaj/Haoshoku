@@ -88,7 +88,8 @@ toggle_dispatch="$(
     cmd_toggle
   ) 2>/dev/null
 )"
-is "mktemp failure still defaults the toggle to workspace 11" "workspace 11" "$toggle_dispatch"
+is "mktemp failure still defaults the toggle to workspace 11" \
+   'hl.dsp.focus({ workspace = "11" })' "$toggle_dispatch"
 
 echo "collect_descendants"
 
@@ -161,11 +162,11 @@ PID_FILE="$TD/place.pid" POLL_MARKER="$TD/polled" DISPATCH_LOG="$TD/dispatches" 
   HAOSHOKU_GW_HYPRCTL="$TD/placing-hyprctl" \
   "$SCRIPT" place -- bash -c "echo \$\$ > '$TD/place.pid'; sleep 1" >/dev/null 2>&1
 is "moves the wrapped process window silently to workspace 11" "1" \
-   "$(grep -cFx 'dispatch movetoworkspacesilent 11,address:0xCAFE' "$TD/dispatches")"
+   "$(grep -cFx 'dispatch hl.dsp.window.move({ workspace = "11", window = "address:0xCAFE", follow = false })' "$TD/dispatches")"
 is "moves every later window silently" "1" \
-   "$(grep -cFx 'dispatch movetoworkspacesilent 11,address:0xDIALOG' "$TD/dispatches")"
+   "$(grep -cFx 'dispatch hl.dsp.window.move({ workspace = "11", window = "address:0xDIALOG", follow = false })' "$TD/dispatches")"
 is "focuses workspace 11 only on the first placement" "1" \
-   "$(grep -cFx 'dispatch workspace 11' "$TD/dispatches")"
+   "$(grep -cFx 'dispatch hl.dsp.focus({ workspace = "11" })' "$TD/dispatches")"
 
 echo "place (shutdown path)"
 

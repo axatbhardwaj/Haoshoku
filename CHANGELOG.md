@@ -19,6 +19,8 @@
   matched by hardware identity instead of connector name so they survive
   DP connector swaps. Laptop workspace rules are monitor-independent and
   remain in the Lua overlay.
+- The PC Lua overlay no longer sets `GDK_SCALE`; display scaling belongs to
+  the monitor profile, fixing Steam and Spotify rendering at 2x on scale-1 monitors.
 - New `--3-4-migrate`: re-runnable, idempotent migration from an Omarchy 3
   layout. Strips dead `source =` lines, removes orphaned overlay `.conf`
   files, repoints theme paths, backs up and clears Omarchy's stock
@@ -41,6 +43,9 @@
   `haoshoku-special-workspace` now emits `hl.dsp.*` Lua expressions instead of
   the legacy `dispatch <name> <args>` form, which is a parse error on v4;
   dispatch failures now propagate as script failures rather than being masked.
+- The gaming-workspace toggle now emits v4 Lua dispatch expressions. On
+  Omarchy 4, the legacy positional form is a parse error, which made
+  `SUPER + SHIFT + G` a silent no-op.
 - The default Omarchy plugin set is now eight plugins after dropping
   `robzolkos.agent-usage` and `tmn73.calendar`, which the user had uninstalled.
 

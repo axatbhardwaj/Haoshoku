@@ -2,9 +2,6 @@
 -- Monitor-bound numbered workspace rules are intentionally omitted from this module;
 -- hyprmoncfg owns monitor configuration and receives them through its PC profile.
 
--- GDK scaling is behavioral environment state from the PC profile, not a monitor rule.
-hl.env("GDK_SCALE", "2")
-
 o.exec_on_start("haoshoku-special-workspace numbered-login 7 kitty")
 o.exec_on_start("haoshoku-special-workspace assistants")
 

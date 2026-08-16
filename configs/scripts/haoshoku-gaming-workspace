@@ -30,8 +30,27 @@ WATCH_TIMEOUT_SECONDS=180
 # only then moved. At a one-second interval that lands as a visible flash.
 WATCH_POLL_SECONDS=0.25
 
+lua_string() {
+  jq -Rnr --arg value "$1" '$value | @json'
+}
+
 dispatch() {
-  "$HYPRCTL" dispatch "$@" >/dev/null 2>&1 || true
+  local expression="$1" output status=0
+  output=$("$HYPRCTL" dispatch "$expression" 2>&1) || status=$?
+  if (( status == 0 )) && [[ -z $output || $output == "ok" ]]; then
+    [[ -n $output ]] && printf '%s\n' "$output"
+    return 0
+  fi
+  [[ -z $output ]] || printf '%s\n' "$output" >&2
+  return 1
+}
+
+dispatch_focus_workspace() {
+  dispatch "hl.dsp.focus({ workspace = $(lua_string "$1") })"
+}
+
+dispatch_move_to_workspace_silent() {
+  dispatch "hl.dsp.window.move({ workspace = $(lua_string "$1"), window = $(lua_string "$2"), follow = false })"
 }
 
 # Every pid in the tree rooted at $1, including $1. Empty when the process is gone.
@@ -137,9 +156,9 @@ watch_and_place() {
         while IFS= read -r one; do
           [ -n "$one" ] || continue
           case "$placed" in *" $one "*) continue ;; esac
-          dispatch movetoworkspacesilent "$WORKSPACE_ID,address:$one"
+          dispatch_move_to_workspace_silent "$WORKSPACE_ID" "address:$one"
           if [ "$focused" -eq 0 ]; then
-            dispatch workspace "$WORKSPACE_ID"
+            dispatch_focus_workspace "$WORKSPACE_ID"
             focused=1
           fi
           placed="$placed$one "
@@ -163,7 +182,7 @@ cmd_toggle() {
     "$HYPRCTL" activeworkspace -j >"$state" 2>/dev/null || : >"$state"
   fi
   target="$(toggle_target "$state")"
-  dispatch workspace "$target"
+  dispatch_focus_workspace "$target"
   if [ "$target" = "$WORKSPACE_ID" ]; then
     haoshoku-special-workspace numbered-login "$WORKSPACE_ID" steam
   fi

@@ -47,8 +47,10 @@ such as `SUPER + F`, uses `displaced_by_workspace_toggle` instead.
 Haoshoku NEVER writes `monitors.lua`. Monitor discovery, layout generation, and
 monitor-bound workspace rules belong to hyprmoncfg. Haoshoku only feeds
 hyprmoncfg through profile JSON. The Lua overlays may contain monitor-independent
-behavior; in particular, `workspaces-pc.lua` owns `GDK_SCALE=2`, while
-`workspaces-laptop.lua` deliberately does not set it.
+behavior, but neither overlay sets `GDK_SCALE`; display scaling belongs to
+hyprmoncfg and the monitor profile. The overlays must not set scaling environment
+variables: a global `GDK_SCALE` forces every GTK and XWayland client to one fixed
+factor regardless of per-monitor scale.
 
 ## Window-class and workspace contracts
 

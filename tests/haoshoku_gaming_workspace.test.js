@@ -92,6 +92,10 @@ case "$1 $2" in
   "activeworkspace -j") printf '{"id":%s}\\n' "$ACTIVE_WORKSPACE" ;;
   "clients -j") printf '%s\\n' "$HYPR_CLIENTS" ;;
 esac
+if [[ "$1" == "dispatch" ]]; then
+  [[ -z "$DISPATCH_OUTPUT" ]] || printf '%s\\n' "$DISPATCH_OUTPUT"
+  exit "$DISPATCH_EXIT_CODE"
+fi
 `,
 		);
 		fs.chmodSync(hyprctl, 0o755);
@@ -103,12 +107,19 @@ esac
 
 	afterEach(() => fs.rmSync(directory, { recursive: true, force: true }));
 
-	async function runToggle({ activeWorkspace, clients = [] }) {
+	async function runToggle({
+		activeWorkspace,
+		clients = [],
+		dispatchExitCode = "0",
+		dispatchOutput = "",
+	}) {
 		const proc = Bun.spawn([script, "toggle"], {
 			env: {
 				...process.env,
 				ACTIVE_WORKSPACE: String(activeWorkspace),
 				CALL_LOG: log,
+				DISPATCH_EXIT_CODE: dispatchExitCode,
+				DISPATCH_OUTPUT: dispatchOutput,
 				HAOSHOKU_GW_HYPRCTL: path.join(directory, "hyprctl"),
 				HYPR_CLIENTS: JSON.stringify(clients),
 				PATH: `${directory}:${process.env.PATH}`,
@@ -132,7 +143,7 @@ esac
 		expect(result).toEqual({ exitCode: 0, stderr: "" });
 		expect(calls()).toEqual([
 			"activeworkspace -j",
-			"dispatch workspace 11",
+			'dispatch hl.dsp.focus({ workspace = "11" })',
 			"clients -j",
 			'dispatch hl.dsp.exec_cmd("[workspace 11 silent] uwsm-app -- steam ")',
 		]);
@@ -144,7 +155,7 @@ esac
 		expect(result).toEqual({ exitCode: 0, stderr: "" });
 		expect(calls()).toEqual([
 			"activeworkspace -j",
-			"dispatch workspace previous",
+			'dispatch hl.dsp.focus({ workspace = "previous" })',
 		]);
 	});
 
@@ -157,8 +168,33 @@ esac
 		expect(result).toEqual({ exitCode: 0, stderr: "" });
 		expect(calls()).toEqual([
 			"activeworkspace -j",
-			"dispatch workspace 11",
+			'dispatch hl.dsp.focus({ workspace = "11" })',
 			"clients -j",
 		]);
+	});
+
+	it("treats exit-zero dispatch diagnostics as failures", async () => {
+		const result = await runToggle({
+			activeWorkspace: 11,
+			dispatchOutput: "invalid dispatcher",
+		});
+
+		expect(result).toEqual({
+			exitCode: 1,
+			stderr: "invalid dispatcher\n",
+		});
+	});
+
+	it("surfaces non-zero dispatch failures", async () => {
+		const result = await runToggle({
+			activeWorkspace: 11,
+			dispatchExitCode: "23",
+			dispatchOutput: "dispatch unavailable",
+		});
+
+		expect(result).toEqual({
+			exitCode: 1,
+			stderr: "dispatch unavailable\n",
+		});
 	});
 });
