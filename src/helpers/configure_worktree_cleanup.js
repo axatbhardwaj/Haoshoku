@@ -154,7 +154,7 @@ export async function backupWorktreeCleanup(opts = {}) {
   log.success("worktree-cleanup backed up to configs/worktree-cleanup/");
 }
 
-/** Alias used by OS setup flows; mirrors configureLockfix(). */
+/** Alias used by OS setup flows; delegates to the sync operation. */
 export async function configureWorktreeCleanup(opts = {}) {
   await syncWorktreeCleanup(opts);
 }

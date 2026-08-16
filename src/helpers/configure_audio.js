@@ -328,7 +328,7 @@ export async function backupAudioConfig(opts = {}) {
   log.success("Audio config backed up to configs/audio/");
 }
 
-/** Alias used by OS setup flows; mirrors configureCaelestiaPrefs(). */
+/** Alias used by OS setup flows; delegates to the sync operation. */
 export async function configureAudio(opts = {}) {
   await syncAudioConfig(opts);
 }

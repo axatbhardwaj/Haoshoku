@@ -8,7 +8,7 @@ import {
 	bootstrapClaudePolicy,
 	installSuperpowers,
 } from "../src/helpers/configure_claude.js";
-import { promptDeviceType } from "../src/helpers/configure_hyprland.js";
+import { promptDeviceType } from "../src/common/device_type.js";
 import {
 	configureUserApps,
 	runCachyOSSetup,

@@ -18,11 +18,6 @@ function filesBelow(directory) {
 		});
 }
 
-function shouldScan(relativePath) {
-	// Caelestia targets a different compositor setup whose .conf files still require positional dispatches.
-	return !relativePath.startsWith("configs/caelestia/");
-}
-
 function firstShellArgument(source) {
 	const input = source.trimStart();
 	let quote = null;
@@ -181,9 +176,7 @@ function legacyDispatchViolations(relativePath, source) {
 it("rejects legacy Hyprland dispatches across configs, including passthrough wrappers", () => {
 	const violations = filesBelow(configsRoot).flatMap((file) => {
 		const relativePath = path.relative(repoRoot, file);
-		return shouldScan(relativePath)
-			? legacyDispatchViolations(relativePath, fs.readFileSync(file, "utf8"))
-			: [];
+		return legacyDispatchViolations(relativePath, fs.readFileSync(file, "utf8"));
 	});
 	const evidence = violations
 		.map(({ file, line, call }) => `${file}:${line}: ${call}`)
@@ -195,7 +188,7 @@ it("rejects legacy Hyprland dispatches across configs, including passthrough wra
 	).toEqual([]);
 });
 
-it("recognizes caelestia legacy syntax before excluding that path", () => {
+it("recognizes legacy Hyprland dispatch syntax", () => {
 	const legacyLine = "bind = SUPER, 5, exec, hyprctl dispatch workspace 5";
 
 	expect(directLegacyDispatch(legacyLine)).toBe(true);
@@ -203,8 +196,6 @@ it("recognizes caelestia legacy syntax before excluding that path", () => {
 		directLegacyDispatch('$SOME_VAR dispatch workspace "$workspace"'),
 	).toBe(true);
 	expect(directLegacyDispatch("# hyprctl dispatch workspace 5")).toBe(false);
-	expect(shouldScan("configs/caelestia/hypr-user-pc.conf")).toBe(false);
-	expect(shouldScan("configs/scripts/example")).toBe(true);
 	expect(
 		directLegacyDispatch(
 			'"$HYPRCTL" dispatch "hl.dsp.focus({ workspace = \\"11\\" })"',

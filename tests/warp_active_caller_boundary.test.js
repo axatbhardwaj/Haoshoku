@@ -4,13 +4,10 @@ import path from "node:path";
 
 const root = path.join(import.meta.dir, "..");
 const activeTextRouteFiles = [
-	"configs/caelestia/cli.json",
 	"configs/omarchy/haoshoku/workspaces-pc.lua",
 	"configs/omarchy/haoshoku/workspaces-laptop.lua",
 	"configs/omarchy/haoshoku/bindings.lua",
-	"configs/caelestia/hypr-user-pc.conf",
-	"configs/caelestia/hypr-user-laptop.conf",
-	"src/helpers/configure_hyprland.js",
+	"src/common/device_type.js",
 	"src/helpers/configure_omarchy_workspaces.js",
 	"src/helpers/configure_kde_plasma.js",
 	"src/helpers/configure_kde_activities.js",
@@ -47,37 +44,10 @@ function kdeServiceLaunches(kdeShortcuts) {
 
 describe("active terminal caller boundary", () => {
 	it("keeps all active terminal command routes on Kitty while retaining Warp dormant", () => {
-		for (const relativePath of activeTextRouteFiles.filter(
-			(path) => path !== "configs/caelestia/cli.json",
-		)) {
+		for (const relativePath of activeTextRouteFiles) {
 			const content = activeRuntimeText(relativePath);
 			expect(content, relativePath).not.toMatch(retiredTerminalLauncher);
 		}
-
-		const cliJson = JSON.parse(
-			fs.readFileSync(
-				path.join(root, "configs", "caelestia", "cli.json"),
-				"utf8",
-			),
-		);
-		for (const group of Object.values(cliJson.toggles)) {
-			for (const toggle of Object.values(group)) {
-				if (Array.isArray(toggle.command)) {
-					expect(toggle.command.join("\u0000")).not.toMatch(
-						retiredTerminalLauncher,
-					);
-				}
-			}
-		}
-		expect(cliJson.toggles.sysmon.btop.command).toEqual([
-			"xdg-terminal-exec",
-			"--",
-			"env",
-			"LC_ALL=C.UTF-8",
-			"fish",
-			"-C",
-			"exec btop",
-		]);
 
 		const packages = fs.readFileSync(
 			path.join(root, "common", "paru_applist.txt"),

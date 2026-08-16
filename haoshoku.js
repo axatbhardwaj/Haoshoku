@@ -32,7 +32,7 @@ import {
 	syncCodexConfig,
 } from "./src/helpers/configure_codex.js";
 import { installGhStack } from "./src/helpers/configure_gh_stack.js";
-import { promptDeviceType } from "./src/helpers/configure_hyprland.js";
+import { promptDeviceType } from "./src/common/device_type.js";
 import {
 	backupMimeappsConfig,
 	syncMimeappsConfig,

@@ -95,7 +95,7 @@ The Arch setup:
 - continues after individual optional application failures and reports them.
 
 Haoshoku deliberately does not configure Fish, KDE Plasma, KWin, SDDM,
-Caelestia, terminal themes, Zed themes, or wallpapers.
+terminal themes, Zed themes, or wallpapers.
 
 ## Omarchy plugins
 
@@ -153,8 +153,8 @@ The optional Claude Remote Control setup runs persistent Claude sessions from
 three fixed roots: `haki` at `$HOME`, `dev` at `$HOME/dev`, and `work` at
 `$HOME/Work`. Instances whose roots do not exist are skipped with a warning.
 On Omarchy, `Super+A` opens the tagged Warp `haki` tab on the special workspace,
-with Claude above a fresh Codex pane below; Caelestia and KDE use their own Warp
-`agents` routes. Set `claudeSessionName` in
+with Claude above a fresh Codex pane below; KDE uses its own Warp `agents` route.
+Set `claudeSessionName` in
 `~/.haoshoku.json` only to resume a named Haki Claude session. A missing or null
 value starts plain Claude; a
 syntactically invalid value is preserved, reported, and ignored. A valid name is
