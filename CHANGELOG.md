@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 9.1.0 - 2026-08-16
 
 - Install the KDE Connect backend for the default omaconnect plugin and start
   its daemon explicitly in Omarchy 4, where Hyprland does not process the XDG
