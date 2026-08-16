@@ -7,7 +7,8 @@
 Haoshoku is a personal, modular setup toolkit for Arch-family desktops and
 Debian servers. Its desktop path is designed around Omarchy: Haoshoku installs
 applications and portable developer configuration while Omarchy remains the
-owner of the desktop experience.
+owner of the desktop experience. The desktop path requires Omarchy 4
+(Quattro) or newer; Omarchy 3 is no longer supported.
 
 ## Install
 
@@ -39,13 +40,15 @@ The Arch setup:
 - keeps Bash as the account shell and adds portable aliases and tool
   initialization through `~/.config/haoshoku/bashrc`;
 - preserves Omarchy's `.bashrc`, themes, terminals, wallpapers, lock screen,
-  Waybar, Walker, and Hyprland appearance; displaced Omarchy keybindings are
+  and Quickshell/Hyprland appearance — Omarchy 4 replaced Waybar, Walker,
+  Mako, and SwayOSD with a single Quickshell process. Displaced Omarchy
+  keybindings are
   relocated or explicitly superseded and documented in
   [`configs/omarchy/keybinding-swaps.json`](configs/omarchy/keybinding-swaps.json),
   the canonical swap record;
-- ships refresh-safe app bindings from
-  [`configs/omarchy/bindings.conf`](configs/omarchy/bindings.conf) instead of
-  replacing Omarchy's `~/.config/hypr/bindings.conf`;
+- deploys `~/.config/hypr/haoshoku/{bindings,workspaces}.lua` and appends
+  exactly two `require` lines to `~/.config/hypr/hyprland.lua`; Omarchy 4
+  loads user config via `require()` and no longer sources `.conf` files;
 - asks for a `pc` or `laptop` `deviceType` on every full Arch-family setup,
   preselecting any stored valid value, then saves an accepted selection in
   `~/.haoshoku.json` before device-routed audio and Hyprland configuration.
@@ -64,14 +67,14 @@ The Arch setup:
   `cleanup-worktrees.sh --apply`, which deletes eligible worktrees. Without
   interactive confirmation—including piped stdin—Haoshoku declines these real
   user decisions immediately and does not treat input as answers;
-- restores a device-routed `~/.config/hypr/monitors.conf`, backing up different
-  existing content first. The PC variant restores the three-monitor layout;
-  the laptop variant uses the internal panel's preferred mode and automatic
-  scale instead of forcing the PC's 2x GTK scale;
-- adds a device-routed behavior-only workspace overlay. The PC variant puts
-  workspaces 1–3 and 8 on DP-1, 4–5 and 9 on HDMI-A-1, and 6, 7, and 10 on
-  DP-2. The laptop variant removes monitor pins for a single-monitor layout
-  while keeping the same workspace behavior, window rules, and bindings;
+- adds a device-routed behavior-only Lua workspace overlay. The hyprmoncfg
+  plugin owns the generated `~/.config/hypr/monitors.lua`; Haoshoku owns only
+  `~/.config/hyprmoncfg/profiles/*.json`, the source profile JSON that
+  hyprmoncfg reads to generate that Lua file, and never writes
+  `monitors.lua` directly. Monitor-bound workspace rules live in the
+  hyprmoncfg PC profile, matched by hardware identity instead of connector
+  name so they survive DP connector swaps; laptop workspace rules are
+  monitor-independent and remain in the Lua overlay;
 - adds two-key special-workspace toggles under `Super`: A Haki (the tagged Warp
   `haki` tab), I AI assistants (Claude Desktop and Codex Desktop) on ordinary
   workspace 1,
@@ -93,6 +96,39 @@ The Arch setup:
 
 Haoshoku deliberately does not configure Fish, KDE Plasma, KWin, SDDM,
 Caelestia, terminal themes, Zed themes, or wallpapers.
+
+## Omarchy plugins
+
+On Arch-family desktops, Haoshoku installs the plugins listed in
+[`common/omarchy-plugins.json`](common/omarchy-plugins.json) by running
+`omarchy plugin add <url> --enable --yes` for each one. Each repository is
+cloned and enabled at its current default branch HEAD — there is no commit
+or tag pinning. An entry may declare `disableOnInstall` to switch off a stock
+widget it replaces. That list is applied only when Haoshoku first creates the
+plugin and is never re-applied, so a user can re-enable a displaced widget
+without a later Haoshoku run overriding the choice. Every run otherwise
+reconciles manifest plugins back to installed and enabled. If
+`omarchy plugin list --json` cannot provide a trustworthy snapshot, the helper
+performs no plugin work and returns `snapshotUnavailable: true`; the
+side-effect-free manual-auth checklist is still printed.
+
+These plugins run as arbitrary, unsandboxed code inside the long-lived
+omarchy-shell process — the same risk Omarchy's own CLI warns about when
+adding plugins manually. The `--yes` flag is passed deliberately so setup
+stays unattended and non-interactive; this also suppresses Omarchy's
+per-plugin confirmation/warning prompt, so only add this manifest to
+machines where you trust and have reviewed those repositories. Plugins
+that need manual setup afterwards (API tokens, OAuth, device pairing) are
+printed as a manual-auth checklist after installation.
+
+## Omarchy bar
+
+Use `haoshoku --omarchy-bar` to deploy `configs/omarchy/bar.json`, and use
+`haoshoku --omarchy-bar-backup` to capture the live bar back into the repo.
+Haoshoku claims the `bar` key of `~/.config/omarchy/shell.json` wholesale,
+including bar-widget enablement. Disabling a bar widget through Omarchy's UI is
+therefore reverted on the next deploy. Every other top-level key — including
+`idle`, `plugins`, `disabledPlugins`, `version`, and unknown keys — is preserved.
 
 ## Claude policy bootstrap
 
@@ -206,10 +242,23 @@ haoshoku --pr-watch
 haoshoku --worktree-cleanup
 haoshoku --workspaces
 haoshoku --monitors
+haoshoku --hyprmoncfg-backup
+haoshoku --omarchy-plugins
+haoshoku --omarchy-bar
+haoshoku --omarchy-bar-backup
+haoshoku --3-4-migrate
 ```
 
 Use `haoshoku --device-type pc` to switch back. Every full Arch-family setup
 asks for device type and preselects either valid stored value.
+
+`haoshoku --3-4-migrate` is a re-runnable, idempotent migration from an
+Omarchy 3 layout to Omarchy 4: it strips dead `source =` lines, removes
+orphaned overlay `.conf` files, repoints theme paths, backs up and clears
+Omarchy's stock `monitors.lua`, deploys the Lua overlay and hyprmoncfg
+profiles, installs plugins, and validates — and if Omarchy's legacy config
+shim is still present it reports validation deferred and asks for a reboot
+and re-run instead of claiming success.
 
 Run `haoshoku --help` for the complete current list.
 

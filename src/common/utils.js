@@ -55,6 +55,47 @@ export async function runCommand(command, options = { check: true }) {
 	}
 }
 
+/** Run a command with piped output while preserving its exact stdout bytes. */
+export async function runCommandCapture(command, options = {}) {
+	log.dim(`Executing: ${command}`);
+	const useShell =
+		options.shell ||
+		["|", "&&", ";", ">", "<", "*", "?", "$", '"', "'"].some((char) =>
+			command.includes(char),
+		);
+
+	try {
+		const proc = spawn(
+			useShell
+				? ["bash", "-c", `set -o pipefail; ${command}`]
+				: command.split(" "),
+			{
+				cwd: options.cwd,
+				env: options.env,
+				stdin: "inherit",
+				stdout: "pipe",
+				stderr: "pipe",
+			},
+		);
+		const [exitCode, stdoutBytes, stderrBytes] = await Promise.all([
+			proc.exited,
+			new Response(proc.stdout).arrayBuffer(),
+			new Response(proc.stderr).arrayBuffer(),
+		]);
+		const decoder = new TextDecoder("utf-8", { ignoreBOM: true });
+		const stdout = decoder.decode(stdoutBytes);
+		const stderr = decoder.decode(stderrBytes);
+		return { exitCode, stdout, stderr, failed: exitCode !== 0 };
+	} catch (error) {
+		return {
+			exitCode: 127,
+			stdout: "",
+			stderr: error?.message ?? String(error),
+			failed: true,
+		};
+	}
+}
+
 export async function commandExists(command) {
 	// Bun.which resolves PATH in-process — no external `which` binary (absent
 	// from Arch's base set) and no spawn that could throw. Kept async because
@@ -138,34 +179,46 @@ export async function promptUser(message, initial = false, opts = {}) {
  * recover an earlier original already destroyed by old releases. Backups are
  * intentionally not pruned, so later hand-edits remain recoverable.
  *
+ * Set `atomic` to copy through a same-directory temporary path and replace
+ * `dest` with renameSync. Existing callers retain the original copy behavior.
+ * `beforeReplace`, when provided, runs before backup work and immediately
+ * before the atomic rename so callers can reject stale read/merge/write state.
+ *
  * @returns {boolean} true if `dest` was written, false if it was already in sync
  */
-export function safeCopyFile(src, dest, { now = Date.now } = {}) {
-	if (fs.existsSync(dest)) {
-		if (fs.readFileSync(dest).equals(fs.readFileSync(src))) {
+export function safeCopyFile(
+	src,
+	dest,
+	{ now = Date.now, atomic = false, fsImpl = fs, beforeReplace } = {},
+) {
+	if (beforeReplace) beforeReplace();
+	let destinationMode;
+	if (fsImpl.existsSync(dest)) {
+		if (fsImpl.readFileSync(dest).equals(fsImpl.readFileSync(src))) {
 			log.dim(`${path.basename(dest)} unchanged — skipping`);
 			return false;
 		}
-		const backupMode = fs.statSync(dest).mode & 0o666;
+		destinationMode = fsImpl.statSync(dest).mode & 0o777;
+		const backupMode = destinationMode & 0o666;
 		const firstCapture = `${dest}.haoshoku-first-capture`;
-		if (!fs.existsSync(firstCapture)) {
+		if (!fsImpl.existsSync(firstCapture)) {
 			const legacyFirstCapture = `${dest}.orig`;
 			try {
-				fs.copyFileSync(
-					fs.existsSync(legacyFirstCapture) ? legacyFirstCapture : dest,
+				fsImpl.copyFileSync(
+					fsImpl.existsSync(legacyFirstCapture) ? legacyFirstCapture : dest,
 					firstCapture,
-					fs.constants.COPYFILE_EXCL,
+					fsImpl.constants.COPYFILE_EXCL,
 				);
-				fs.chmodSync(firstCapture, backupMode);
+				fsImpl.chmodSync(firstCapture, backupMode);
 			} catch (error) {
 				if (error.code !== "EEXIST") throw error;
 			}
 		}
 		const legacyBackup = `${dest}.bak`;
-		if (!fs.existsSync(legacyBackup)) {
+		if (!fsImpl.existsSync(legacyBackup)) {
 			try {
-				fs.copyFileSync(dest, legacyBackup, fs.constants.COPYFILE_EXCL);
-				fs.chmodSync(legacyBackup, backupMode);
+				fsImpl.copyFileSync(dest, legacyBackup, fsImpl.constants.COPYFILE_EXCL);
+				fsImpl.chmodSync(legacyBackup, backupMode);
 			} catch (error) {
 				if (error.code !== "EEXIST") throw error;
 			}
@@ -175,8 +228,8 @@ export function safeCopyFile(src, dest, { now = Date.now } = {}) {
 		let collision = 0;
 		while (true) {
 			try {
-				fs.copyFileSync(dest, backup, fs.constants.COPYFILE_EXCL);
-				fs.chmodSync(backup, backupMode);
+				fsImpl.copyFileSync(dest, backup, fsImpl.constants.COPYFILE_EXCL);
+				fsImpl.chmodSync(backup, backupMode);
 				break;
 			} catch (error) {
 				if (error.code !== "EEXIST") throw error;
@@ -186,7 +239,30 @@ export function safeCopyFile(src, dest, { now = Date.now } = {}) {
 		}
 		log.info(`Backed up existing ${path.basename(dest)} to ${backup}`);
 	}
-	fs.copyFileSync(src, dest);
+	if (!atomic) {
+		fsImpl.copyFileSync(src, dest);
+		return true;
+	}
+
+	destinationMode ??= fsImpl.statSync(src).mode & 0o777;
+	const temporaryBase = path.join(
+		path.dirname(dest),
+		`.${path.basename(dest)}.haoshoku-atomic-${process.pid}-${now()}`,
+	);
+	let temporary = temporaryBase;
+	let collision = 0;
+	while (fsImpl.existsSync(temporary)) {
+		collision += 1;
+		temporary = `${temporaryBase}.${collision}`;
+	}
+	try {
+		fsImpl.copyFileSync(src, temporary, fsImpl.constants.COPYFILE_EXCL);
+		fsImpl.chmodSync(temporary, destinationMode);
+		if (beforeReplace) beforeReplace();
+		fsImpl.renameSync(temporary, dest);
+	} finally {
+		if (fsImpl.existsSync(temporary)) fsImpl.rmSync(temporary, { force: true });
+	}
 	return true;
 }
 

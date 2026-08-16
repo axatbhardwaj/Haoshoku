@@ -5,9 +5,9 @@ import path from "node:path";
 const root = path.join(import.meta.dir, "..");
 const activeTextRouteFiles = [
 	"configs/caelestia/cli.json",
-	"configs/omarchy/workspaces-pc.conf",
-	"configs/omarchy/workspaces-laptop.conf",
-	"configs/omarchy/bindings.conf",
+	"configs/omarchy/haoshoku/workspaces-pc.lua",
+	"configs/omarchy/haoshoku/workspaces-laptop.lua",
+	"configs/omarchy/haoshoku/bindings.lua",
 	"configs/caelestia/hypr-user-pc.conf",
 	"configs/caelestia/hypr-user-laptop.conf",
 	"src/helpers/configure_hyprland.js",
@@ -24,7 +24,7 @@ function activeRuntimeText(relativePath) {
 	return fs
 		.readFileSync(path.join(root, relativePath), "utf8")
 		.split(/\r?\n/)
-		.filter((line) => !/^\s*[#;]/.test(line))
+		.filter((line) => !/^\s*(?:#|;|--)/.test(line))
 		.join("\n");
 }
 

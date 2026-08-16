@@ -330,8 +330,17 @@ tasks/
 # Branch/session working notes (local-only)
 BRANCH-NOTES.md
 
+# Codex launcher result artifact (local-only)
+/report.json
+
 # Local Git worktrees
 /.worktrees/
 
 # Planning artifacts: specs and plans are never committed (CLAUDE.md §7)
 docs/superpowers/
+
+# Hyprmoncfg profile backups
+/configs/hyprmoncfg/profiles/*.bak.*
+
+# Worktree dependency symlink
+/node_modules

@@ -1,0 +1,44 @@
+[
+	{
+		"id": "crmne.hyprmoncfg",
+		"url": "https://github.com/crmne/omarchy-hyprmoncfg.git",
+		"manualAuth": "Needs the hyprmoncfg AUR package and daemon (installed separately; not handled by this installer)"
+	},
+	{
+		"id": "white.nights",
+		"url": "https://github.com/nightdevil00/white.nights.git",
+		"manualAuth": null
+	},
+	{
+		"id": "robzolkos.github",
+		"url": "https://github.com/robzolkos/omarchy-github.git",
+		"manualAuth": "GitHub token"
+	},
+	{
+		"id": "io.github.treramey.raindrop-bookmarks",
+		"url": "https://github.com/treramey/omarchy-raindrop-bookmarks.git",
+		"manualAuth": "Raindrop API token"
+	},
+	{
+		"id": "omaconnect",
+		"url": "https://github.com/jitendradara12/omaconnect.git",
+		"manualAuth": "KDE Connect pairing"
+	},
+	{
+		"id": "io.github.thetrueferret.decent-workspaces",
+		"url": "https://github.com/TheTrueFerret/omarchy-decent-workspaces.git",
+		"manualAuth": null,
+		"disableOnInstall": ["omarchy.workspaces"]
+	},
+	{
+		"id": "dizziee.system-stats",
+		"url": "https://github.com/JJDizz1L/dizziee.system-stats.git",
+		"manualAuth": null
+	},
+	{
+		"id": "robzolkos.agent-usage",
+		"url": "https://github.com/robzolkos/omarchy-agent-usage.git",
+		"manualAuth": null,
+		"disableOnInstall": ["omarchy.agents"]
+	}
+]

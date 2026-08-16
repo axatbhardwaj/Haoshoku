@@ -1,0 +1,73 @@
+{
+	"centerAnchor": "omarchy.clock",
+	"position": "top",
+	"transparent": false,
+	"layout": {
+		"left": [
+			{
+				"id": "omarchy.menu"
+			},
+			{
+				"id": "io.github.thetrueferret.decent-workspaces"
+			},
+			{
+				"id": "robzolkos.agent-usage"
+			}
+		],
+		"center": [
+			{
+				"id": "omarchy.indicators"
+			},
+			{
+				"id": "omarchy.clock",
+				"format": "dddd HH:mm",
+				"formatAlt": "d MMMM 'W'ww yyyy",
+				"verticalFormat": "HH\n—\nmm"
+			},
+			{
+				"id": "omarchy.keyboard-layout"
+			},
+			{
+				"id": "omarchy.weather"
+			},
+			{
+				"id": "dizziee.system-stats"
+			},
+			{
+				"id": "omarchy.system-update"
+			}
+		],
+		"right": [
+			{
+				"id": "omarchy.tray"
+			},
+			{
+				"id": "omaconnect"
+			},
+			{
+				"id": "robzolkos.github"
+			},
+			{
+				"id": "white.nights"
+			},
+			{
+				"id": "crmne.hyprmoncfg"
+			},
+			{
+				"id": "omarchy.bluetooth"
+			},
+			{
+				"id": "omarchy.network"
+			},
+			{
+				"id": "omarchy.audio"
+			},
+			{
+				"id": "omarchy.monitor"
+			},
+			{
+				"id": "omarchy.power"
+			}
+		]
+	}
+}

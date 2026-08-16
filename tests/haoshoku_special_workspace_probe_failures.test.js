@@ -51,15 +51,69 @@ if [[ "$probe" == "$FAILED_PROBE" && ( -z "$FAILED_PROBE_CALL" || "$matching_pro
     non-zero-exit) exit 23 ;;
   esac
 elif [[ "$probe" == "monitors -j" ]]; then
-  printf '[{"name":"DP-1","focused":true,"specialWorkspace":{"name":"%s"}},{"name":"DP-2","focused":false,"specialWorkspace":{"name":""}},{"name":"HDMI-A-1","focused":false,"specialWorkspace":{"name":""}}]\n' "$VISIBLE_WORKSPACE"
+  dp1_workspace=""
+  dp2_workspace=""
+  hdmi_workspace=""
+  case "$VISIBLE_MONITOR" in
+    DP-1) dp1_workspace="$VISIBLE_WORKSPACE" ;;
+    DP-2) dp2_workspace="$VISIBLE_WORKSPACE" ;;
+    HDMI-A-1) hdmi_workspace="$VISIBLE_WORKSPACE" ;;
+  esac
+  printf '[{"name":"DP-1","focused":true,"specialWorkspace":{"name":"%s"}},{"name":"DP-2","focused":false,"specialWorkspace":{"name":"%s"}},{"name":"HDMI-A-1","focused":false,"specialWorkspace":{"name":"%s"}}]\n' "$dp1_workspace" "$dp2_workspace" "$hdmi_workspace"
 elif [[ "$probe" == "clients -j" ]]; then
   printf '%s\n' "$CLIENTS_JSON"
 elif [[ "$1" == "dispatch" ]]; then
-  if [[ -n "\${DISPATCH_DIAGNOSTIC:-}" ]]; then
-    printf '%s\n' "$DISPATCH_DIAGNOSTIC" >&2
-    exit 42
-  fi
-  printf '%s\n' "$*" >> "$DISPATCH_LOG"
+	dispatch_name="$2"
+	semantic_dispatch="$*"
+	if [[ "$2" == hl.dsp.* ]]; then
+		expression="$2"
+		if [[ "$expression" == hl.dsp.exec_cmd\\(*\\) ]]; then
+			dispatch_name=exec
+			encoded="\${expression#hl.dsp.exec_cmd(}"
+			encoded="\${encoded%)}"
+			semantic_dispatch="dispatch exec $(jq -r . <<<"$encoded")"
+		elif [[ "$expression" == *"workspace.toggle_special("* ]]; then
+			dispatch_name=togglespecialworkspace
+			encoded="\${expression#hl.dsp.workspace.toggle_special(}"
+			encoded="\${encoded%)}"
+			semantic_dispatch="dispatch togglespecialworkspace $(jq -r . <<<"$encoded")"
+		elif [[ "$expression" == *"workspace = "* && "$expression" == hl.dsp.focus* ]]; then
+			dispatch_name=workspace
+			encoded="\${expression#*workspace = }"
+			suffix=' })'
+			encoded="\${encoded%"$suffix"}"
+			semantic_dispatch="dispatch workspace $(jq -r . <<<"$encoded")"
+		elif [[ "$expression" == *"monitor = "* && "$expression" == hl.dsp.focus* ]]; then
+			dispatch_name=focusmonitor
+			encoded="\${expression#*monitor = }"
+			suffix=' })'
+			encoded="\${encoded%"$suffix"}"
+			semantic_dispatch="dispatch focusmonitor $(jq -r . <<<"$encoded")"
+		elif [[ "$expression" == hl.dsp.window.move* ]]; then
+			dispatch_name=movetoworkspacesilent
+			payload="\${expression#*workspace = }"
+			workspace_encoded="\${payload%%, window = *}"
+			payload="\${payload#*, window = }"
+			suffix=', follow = false })'
+			window_encoded="\${payload%"$suffix"}"
+			semantic_dispatch="dispatch movetoworkspacesilent $(jq -r . <<<"$workspace_encoded"),$(jq -r . <<<"$window_encoded")"
+		fi
+	fi
+	matching_dispatch_call=0
+		if [[ "$dispatch_name" == "$FAILED_DISPATCH" ]]; then
+		if [[ -r "$DISPATCH_CALL_COUNT" ]]; then
+			read -r matching_dispatch_call < "$DISPATCH_CALL_COUNT"
+		fi
+		((matching_dispatch_call += 1))
+		printf '%s\n' "$matching_dispatch_call" > "$DISPATCH_CALL_COUNT"
+	fi
+		if [[ "$dispatch_name" == "$FAILED_DISPATCH" && ( -z "$FAILED_DISPATCH_CALL" || "$matching_dispatch_call" == "$FAILED_DISPATCH_CALL" ) ]]; then
+			if [[ -n "\${DISPATCH_DIAGNOSTIC:-}" ]]; then
+				printf '%s\n' "$DISPATCH_DIAGNOSTIC" >&2
+			fi
+			exit "$DISPATCH_EXIT_CODE"
+	  fi
+	  printf '%s\n' "$semantic_dispatch" >> "$DISPATCH_LOG"
 fi
 `,
 		);
@@ -130,15 +184,23 @@ esac
 		clientsJson = "[]",
 		chromiumLog = "",
 		failedProbeCall = "",
+		failedDispatch = "",
+			failedDispatchCall = "",
+			visibleMonitor = "DP-1",
+			dispatchExitCode = "0",
 	) {
 		const proc = Bun.spawn([script, ...args], {
 			env: {
 				...process.env,
 				HOME: directory,
 				CLIENTS_JSON: clientsJson,
-				DISPATCH_DIAGNOSTIC: dispatchDiagnostic,
+					DISPATCH_DIAGNOSTIC: dispatchDiagnostic,
+					DISPATCH_EXIT_CODE: dispatchExitCode,
+				DISPATCH_CALL_COUNT: path.join(directory, "dispatch-call-count"),
 				CHROMIUM_LOG: chromiumLog,
 				DISPATCH_LOG: log,
+				FAILED_DISPATCH: failedDispatch,
+				FAILED_DISPATCH_CALL: failedDispatchCall,
 				FAILED_PROBE: failedProbe,
 				FAILED_PROBE_CALL: failedProbeCall,
 				PATH: commandDirectory,
@@ -148,6 +210,7 @@ esac
 				VISIBLE_WORKSPACE: visibleWorkspace
 					? `special:${visibleWorkspace}`
 					: "",
+				VISIBLE_MONITOR: visibleMonitor,
 			},
 			stdout: "pipe",
 			stderr: "pipe",
@@ -162,14 +225,72 @@ esac
 		};
 	}
 
-	it("preserves dispatch diagnostics while allowing the recipe to continue", async () => {
+	it("treats exit-zero dispatch diagnostics as failures", async () => {
 		const diagnostic = "hyprctl dispatch rejected test request";
-		const result = await run(["stash"], "", "non-zero-exit", "", diagnostic);
+		const result = await run(
+			["stash"],
+			"",
+			"non-zero-exit",
+			"",
+			diagnostic,
+			"[]",
+			"",
+			"",
+			"togglespecialworkspace",
+		);
+
+		expect(result).toEqual({
+			dispatches: ["dispatch focusmonitor DP-1"],
+			exitCode: 1,
+			stderr: `${diagnostic}\n`,
+		});
+	});
+
+	it("stops assistant moves after an exit-zero dispatch diagnostic", async () => {
+		const clients = JSON.stringify([
+			{ address: "0x1", class: "chatgpt", workspace: { name: "1" } },
+			{ address: "0x2", class: "chatgpt", workspace: { name: "2" } },
+		]);
+		const result = await run(
+			["assistants"],
+			"",
+			"non-zero-exit",
+			"",
+			"stale address",
+			clients,
+			"",
+			"",
+			"movetoworkspacesilent",
+			"1",
+		);
+
+		expect(result).toEqual({
+			dispatches: ["dispatch togglespecialworkspace assistants"],
+			exitCode: 1,
+			stderr: "stale address\n",
+		});
+	});
+
+	it("stops Haki setup after a non-zero focus dispatch", async () => {
+		const result = await run(
+			["haki"],
+			"",
+			"non-zero-exit",
+			"haki",
+			"focus failed",
+			"[]",
+			"",
+			"",
+			"focusmonitor",
+			"",
+			"DP-2",
+			"23",
+		);
 
 		expect(result).toEqual({
 			dispatches: [],
-			exitCode: 0,
-			stderr: `${diagnostic}\n${diagnostic}\n`,
+			exitCode: 1,
+			stderr: "focus failed\n",
 		});
 	});
 
@@ -341,10 +462,21 @@ esac
 		});
 	}
 
-	it("exits successfully for every accepted recipe when Hyprland is unavailable", async () => {
-		fs.writeFileSync(
-			path.join(commandDirectory, "hyprctl"),
-			"#!/usr/bin/env bash\nexit 1\n",
+		it("aborts every recipe when Hyprland dispatch is unavailable", async () => {
+			fs.writeFileSync(
+				path.join(commandDirectory, "hyprctl"),
+				`#!/usr/bin/env bash
+if [[ "$1 $2" == "clients -j" ]]; then
+  printf '[]\\n'
+elif [[ "$1 $2" == "monitors -j" ]]; then
+  printf '[]\\n'
+elif [[ "$1" == "dispatch" ]]; then
+  printf 'dispatch unavailable\\n' >&2
+  exit 23
+else
+  exit 1
+fi
+`,
 		);
 		fs.chmodSync(path.join(commandDirectory, "hyprctl"), 0o755);
 
@@ -374,8 +506,8 @@ esac
 			{ name: "reanime", args: ["reanime"] },
 		]) {
 			const result = await run(args, "", "non-zero-exit");
-			expect(result.exitCode, name).toBe(0);
-			expect(result.stderr, name).toBe("");
-		}
-	});
+				expect(result.exitCode, name).not.toBe(0);
+				expect(result.stderr, name).toContain("dispatch unavailable");
+			}
+		});
 });

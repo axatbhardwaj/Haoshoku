@@ -96,6 +96,7 @@ describe("haoshoku-special-workspace", () => {
 
 	let directory;
 	let log;
+	let rawDispatchLog;
 	let browserCall;
 	let clientState;
 	let chromium;
@@ -109,6 +110,7 @@ describe("haoshoku-special-workspace", () => {
 	beforeEach(() => {
 		directory = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-special-"));
 		log = path.join(directory, "calls");
+		rawDispatchLog = path.join(directory, "raw-dispatches");
 		browserCall = path.join(directory, "chromium-call");
 		clientState = path.join(directory, "hypr-clients.json");
 		chromium = path.join(directory, "brave-origin");
@@ -174,6 +176,59 @@ elif [[ "$1 $2" == "monitors -j" ]]; then
   printf ']\\n'
 elif [[ "$1 $2" == "activeworkspace -j" ]]; then
   printf '{"name":"special:%s"}\\n' "$state"
+elif [[ "$1" == "dispatch" && "$2" == hl.dsp.* ]]; then
+  expression="$2"
+  printf '%s\\n' "$expression" >> "$RAW_DISPATCH_LOG"
+  if [[ "$expression" == hl.dsp.exec_cmd\\(*\\) ]]; then
+    encoded="\${expression#hl.dsp.exec_cmd(}"
+    encoded="\${encoded%)}"
+    command="$(jq -r . <<<"$encoded")"
+    printf 'dispatch exec %s\\n' "$command" >> "$CALL_LOG"
+    bash -c "\${command#*] }"
+  elif [[ "$expression" == *"workspace.toggle_special("* ]]; then
+    encoded="\${expression#hl.dsp.workspace.toggle_special(}"
+    encoded="\${encoded%)}"
+    workspace="$(jq -r . <<<"$encoded")"
+    if [[ "$state" == "$workspace" ]]; then
+      if [[ "$special_monitor" == "$focused_monitor" ]]; then
+        : > "$SPECIAL_STATE"
+      else
+        printf '%s' "$focused_monitor" > "$SPECIAL_MONITOR_STATE"
+      fi
+    else
+      printf '%s' "$workspace" > "$SPECIAL_STATE"
+      printf '%s' "$focused_monitor" > "$SPECIAL_MONITOR_STATE"
+    fi
+    printf 'dispatch togglespecialworkspace %s\\n' "$workspace" >> "$CALL_LOG"
+  elif [[ "$expression" == *"workspace = "* && "$expression" == hl.dsp.focus* ]]; then
+    encoded="\${expression#*workspace = }"
+    suffix=' })'
+    encoded="\${encoded%"$suffix"}"
+    workspace="$(jq -r . <<<"$encoded")"
+    printf 'dispatch workspace %s\\n' "$workspace" >> "$CALL_LOG"
+  elif [[ "$expression" == *"monitor = "* && "$expression" == hl.dsp.focus* ]]; then
+    encoded="\${expression#*monitor = }"
+    suffix=' })'
+    encoded="\${encoded%"$suffix"}"
+    monitor="$(jq -r . <<<"$encoded")"
+    printf '%s' "$monitor" > "$FOCUSED_MONITOR_STATE"
+    printf 'dispatch focusmonitor %s\\n' "$monitor" >> "$CALL_LOG"
+  elif [[ "$expression" == hl.dsp.window.move* ]]; then
+    payload="\${expression#*workspace = }"
+    workspace_encoded="\${payload%%, window = *}"
+    payload="\${payload#*, window = }"
+    suffix=', follow = false })'
+    window_encoded="\${payload%"$suffix"}"
+    workspace="$(jq -r . <<<"$workspace_encoded")"
+    window="$(jq -r . <<<"$window_encoded")"
+    printf 'dispatch movetoworkspacesilent %s,%s\\n' "$workspace" "$window" >> "$CALL_LOG"
+  else
+    printf 'unsupported Lua dispatch: %s\\n' "$expression" >&2
+    exit 7
+  fi
+elif [[ "$1" == "dispatch" && "\${STRICT_V4_DISPATCH:-false}" == true ]]; then
+  printf 'legacy dispatch rejected: %s\\n' "$*" >&2
+  exit 7
 elif [[ "$1" == "dispatch" && "$2" == "workspace" && "$3" == special:* ]]; then
   printf '%s' "\${3#special:}" > "$SPECIAL_STATE"
   printf '%s\\n' "$*" >> "$CALL_LOG"
@@ -302,6 +357,7 @@ esac
 				FOCUSED_MONITOR_STATE: focusedMonitorState,
 				KITTY_CALL: kittyCall,
 				LIVE_MONITORS: liveMonitors.join(" "),
+				RAW_DISPATCH_LOG: rawDispatchLog,
 				SPECIAL_STATE: specialState,
 				SPECIAL_MONITOR_STATE: specialMonitorState,
 				PATH: `${directory}:${process.env.PATH}`,
@@ -318,6 +374,12 @@ esac
 
 	function dispatchCalls() {
 		return fs.readFileSync(log, "utf8").trim().split("\n");
+	}
+
+	function rawDispatchExpressions() {
+		return fs.existsSync(rawDispatchLog)
+			? fs.readFileSync(rawDispatchLog, "utf8").trim().split("\n")
+			: [];
 	}
 
 	function kittyArguments() {
@@ -401,6 +463,56 @@ fi
 	const forwardedUrl = "https://example.test/forwarded";
 	const claudeClass = "com.anthropic.Claude";
 	const codexClass = "chatgpt";
+
+	it("uses Omarchy v4 Lua expressions for every dispatch family", async () => {
+		const strictDispatch = { env: { STRICT_V4_DISPATCH: "true" } };
+		const numbered = await run(["numbered", "7", "kitty"], strictDispatch);
+		const assistants = await run(["assistants"], {
+			...strictDispatch,
+			clients: JSON.stringify([
+				kittyClient("0xcodex", "1", "chatgpt"),
+			]),
+		});
+		const stash = await run(["stash"], strictDispatch);
+
+		expect(
+			[numbered.exitCode, assistants.exitCode, stash.exitCode],
+			[numbered.stderr, assistants.stderr, stash.stderr].join("\n"),
+		).toEqual([0, 0, 0]);
+		expect(rawDispatchExpressions()).toEqual([
+			'hl.dsp.focus({ workspace = "7" })',
+			`hl.dsp.exec_cmd(${JSON.stringify(
+				`[workspace 7 silent] uwsm-app -- kitty --class haoshoku-ws7 -d ${directory} `,
+			)})`,
+			'hl.dsp.workspace.toggle_special("assistants")',
+			'hl.dsp.window.move({ workspace = "special:assistants", window = "address:0xcodex", follow = false })',
+			'hl.dsp.focus({ monitor = "DP-1" })',
+			'hl.dsp.workspace.toggle_special("stash")',
+		]);
+	});
+
+	it("JSON-quotes every interpolated Lua dispatch value", async () => {
+		const workspace = '7"\\edge';
+		const unusualHome = path.join(directory, 'home"\\edge');
+		fs.mkdirSync(unusualHome);
+
+		const result = await run(["numbered", workspace, "kitty"], {
+			env: { HOME: unusualHome, STRICT_V4_DISPATCH: "true" },
+		});
+		const [focusExpression, execExpression] = rawDispatchExpressions();
+		const focusValue = focusExpression
+			.slice('hl.dsp.focus({ workspace = '.length, -' })'.length);
+		const execValue = execExpression.slice("hl.dsp.exec_cmd(".length, -1);
+
+		expect(result.exitCode).toBe(0);
+		expect(JSON.parse(focusValue)).toBe(workspace);
+		expect(JSON.parse(execValue)).toContain(
+			`[workspace ${workspace} silent] uwsm-app -- kitty --class`,
+		);
+		expect(JSON.parse(execValue)).toContain(
+			unusualHome.replace(/(["\\])/g, "\\$1"),
+		);
+	});
 
 	it("forwards a generic browser URL without hiding it on the focused monitor", async () => {
 		const result = await run(["browser", "flux", forwardedUrl], {
@@ -994,29 +1106,44 @@ exit 17
 		]);
 	});
 
-	it("toggles T3 Code and launches it into its own special workspace", async () => {
-		const result = await run(["t3code"]);
-
-		expect(result.exitCode).toBe(0);
-		expect(dispatchCalls()).toEqual([
-			"dispatch togglespecialworkspace t3code",
-			"dispatch exec [workspace special:t3code silent] uwsm-app -- t3code ",
-			"t3code",
-		]);
-	});
-
-	it("reclaims an existing T3 Code window without relaunching it", async () => {
-		const result = await run(["t3code"], {
-			clients: JSON.stringify([
-				assistantClient("0xt3", "t3code", "special:assistants"),
-			]),
+	it("does not let a T3 Code client suppress the ChatGPT launch", async () => {
+		const result = await run(["assistants"], {
+			clients: JSON.stringify([{ class: "t3code" }]),
 		});
 
 		expect(result.exitCode).toBe(0);
 		expect(dispatchCalls()).toEqual([
-			"dispatch togglespecialworkspace t3code",
-			"dispatch movetoworkspacesilent special:t3code,address:0xt3",
+			"dispatch togglespecialworkspace assistants",
+			"dispatch exec [workspace special:assistants silent] uwsm-app -- codex-desktop ",
+			"codex-desktop",
 		]);
+	});
+
+	it("focuses workspace 1 and launches T3 Code when it is missing", async () => {
+		const result = await run(["numbered", "1", "t3code"]);
+
+		expect(result.exitCode).toBe(0);
+		expect(dispatchCalls()).toEqual([
+			"dispatch workspace 1",
+			"dispatch exec [workspace 1 silent] uwsm-app -- t3code ",
+			"t3code",
+		]);
+	});
+
+	it("does not relaunch T3 Code when its client already exists", async () => {
+		const result = await run(["numbered", "1", "t3code"], {
+			clients: JSON.stringify([{ class: "t3code" }]),
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(dispatchCalls()).toEqual(["dispatch workspace 1"]);
+	});
+
+	it("rejects the retired bare T3 Code recipe", async () => {
+		const result = await run(["t3code"]);
+
+		expect(result.exitCode).toBe(2);
+		expect(result.stderr).toContain("unknown workspace recipe");
 	});
 
 	it("does not launch assistants when the client probe is malformed", async () => {

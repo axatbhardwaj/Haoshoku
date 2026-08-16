@@ -14,3 +14,10 @@
 ```bash
 bun test
 ```
+
+## Intentionally malformed fixtures
+
+`tests/shell/fixtures/activeworkspace-empty.json` and
+`tests/shell/fixtures/clients-malformed.json` are deliberately malformed
+parser fixtures. They are excluded from `biome.json` linting because valid
+JSON would defeat the failure-handling scenarios they cover.

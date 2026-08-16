@@ -1,187 +1,211 @@
 import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
-import { log, readDeviceType, runCommand } from "../common/utils.js";
+import { checkOmarchyV4 } from "../common/omarchy_version.js";
+import {
+	log,
+	readDeviceType,
+	runCommand,
+	runCommandCapture,
+} from "../common/utils.js";
 
 const ROOT = path.resolve(import.meta.dir, "..", "..");
-const SOURCE_LINE = "source = ~/.config/hypr/haoshoku-workspaces.conf";
-const OMARCHY_BINDINGS_SOURCE = "source = ~/.config/hypr/bindings.conf";
-const BINDINGS_SOURCE_LINE = "source = ~/.config/hypr/haoshoku-bindings.conf";
+const BINDINGS_REQUIRE = 'require("hypr.haoshoku.bindings")';
+const WORKSPACES_REQUIRE = 'require("hypr.haoshoku.workspaces")';
 
-function shellEscape(value) {
-	return `'${String(value).replace(/'/g, `'\\''`)}'`;
+function writeAtomically(fsImpl, destination, contents) {
+	const temporary = path.join(
+		path.dirname(destination),
+		`.${path.basename(destination)}.tmp.${process.pid}`,
+	);
+	fsImpl.writeFileSync(temporary, contents);
+	fsImpl.renameSync(temporary, destination);
 }
 
-function ensureSourceAfter(mainText, sourceLine, precedingSourceLine) {
-	let lines =
-		mainText
-			.match(/[^\r\n]*(?:\r\n|\n|\r|$)/g)
-			?.filter((line) => line.length > 0) ?? [];
-	const lineContent = (line) => line.replace(/(?:\r\n|\n|\r)$/, "");
-	const sourceIndexes = lines.flatMap((line, index) =>
-		lineContent(line) === sourceLine ? [index] : [],
-	);
-	const precedingIndex = lines.findIndex(
-		(line) => lineContent(line) === precedingSourceLine,
-	);
+function backupDestination(fsImpl, destination, now) {
+	const base = `${destination}.bak.${now()}`;
+	let candidate = base;
+	let collision = 1;
+	while (fsImpl.existsSync(candidate)) {
+		candidate = `${base}.${collision}`;
+		collision += 1;
+	}
+	return candidate;
+}
+
+function deployFile(fsImpl, source, destination, now) {
+	const desired = fsImpl.readFileSync(source);
 	if (
-		sourceIndexes.length === 1 &&
-		precedingIndex >= 0 &&
-		sourceIndexes[0] === precedingIndex + 1
+		fsImpl.existsSync(destination) &&
+		fsImpl.readFileSync(destination).equals(desired)
 	)
-		return { text: mainText, changed: false };
+		return false;
 
-	lines = lines.filter((line) => lineContent(line) !== sourceLine);
-	const insertionIndex = lines.findIndex(
-		(line) => lineContent(line) === precedingSourceLine,
+	fsImpl.mkdirSync(path.dirname(destination), { recursive: true });
+	if (fsImpl.existsSync(destination)) {
+		writeAtomically(
+			fsImpl,
+			backupDestination(fsImpl, destination, now),
+			fsImpl.readFileSync(destination),
+		);
+	}
+	writeAtomically(fsImpl, destination, desired);
+	return true;
+}
+
+function reconcileRequires(mainText) {
+	const lines = mainText.split(/\r\n|\n|\r/);
+	const bindingOccurrences = lines.filter(
+		(line) => line === BINDINGS_REQUIRE,
+	).length;
+	const workspaceOccurrences = lines.filter(
+		(line) => line === WORKSPACES_REQUIRE,
+	).length;
+	if (
+		bindingOccurrences === 1 &&
+		workspaceOccurrences === 1 &&
+		lines.indexOf(BINDINGS_REQUIRE) < lines.indexOf(WORKSPACES_REQUIRE)
+	)
+		return { changed: false, text: mainText };
+
+	const newline = mainText.includes("\r\n") ? "\r\n" : "\n";
+	const unrelated = lines.filter(
+		(line) => line !== BINDINGS_REQUIRE && line !== WORKSPACES_REQUIRE,
 	);
-	if (insertionIndex < 0) {
-		let text = lines.join("");
-		if (text && !/[\r\n]$/.test(text)) text += "\n";
-		return { text: `${text}${sourceLine}\n`, changed: true };
-	}
+	let text = unrelated.join(newline);
+	if (text && !text.endsWith(newline)) text += newline;
+	return {
+		changed: true,
+		text: `${text}${BINDINGS_REQUIRE}${newline}${WORKSPACES_REQUIRE}${newline}`,
+	};
+}
 
-	let newline = lines[insertionIndex].match(/(?:\r\n|\n|\r)$/)?.[0];
-	if (!newline) {
-		newline = mainText.includes("\r\n") ? "\r\n" : "\n";
-		lines[insertionIndex] += newline;
-	}
-	lines.splice(insertionIndex + 1, 0, `${sourceLine}${newline}`);
-	return { text: lines.join(""), changed: true };
+function shellEscape(value) {
+	return `'${String(value).replaceAll("'", `'\\''`)}'`;
 }
 
 /**
- * Deploy the device-specific workspace overlay to the generic live filename.
- * `pc` and `laptop` select workspaces-pc.conf and workspaces-laptop.conf;
- * unknown, unset, or malformed deviceType falls back to `pc` (safer default).
+ * Deploy the device-specific Omarchy v4 workspace overlay to its stable Lua
+ * module name. Unknown device types fall back to `pc` through readDeviceType.
  */
 export async function configureOmarchyWorkspaces({
 	home = homedir(),
 	projectRoot = ROOT,
 	fsImpl = fs,
 	now = Date.now,
-	runCommandImpl = runCommand,
 	env = process.env,
+	captureCommandImpl = runCommandCapture,
+	runCommandImpl = runCommand,
+	logImpl = log,
+	versionResult,
 } = {}) {
+	const gate = await checkOmarchyV4({
+		captureCommandImpl,
+		env,
+		logImpl,
+		versionResult,
+	});
+	if (!gate.ok) {
+		return {
+			status: "refused",
+			message: gate.message,
+			bindingsChanged: false,
+			overlayChanged: false,
+			scriptChanged: false,
+			sourceChanged: false,
+			reloaded: false,
+			replayed: false,
+		};
+	}
+
+	const hyprDirectory = path.join(home, ".config", "hypr");
+	const main = path.join(hyprDirectory, "hyprland.lua");
+	if (!fsImpl.existsSync(main)) {
+		const message = `Workspace deployment refused: Omarchy v4 Hyprland config not found at ${main}.`;
+		logImpl.warning(message);
+		return {
+			status: "refused",
+			message,
+			bindingsChanged: false,
+			overlayChanged: false,
+			scriptChanged: false,
+			sourceChanged: false,
+			reloaded: false,
+			replayed: false,
+		};
+	}
+
 	const deviceType = readDeviceType(home);
-	const overlay = path.join(
+	const sourceDirectory = path.join(
 		projectRoot,
 		"configs",
 		"omarchy",
-		`workspaces-${deviceType}.conf`,
+		"haoshoku",
 	);
-	const bindings = path.join(
-		projectRoot,
-		"configs",
-		"omarchy",
-		"bindings.conf",
-	);
-	const script = path.join(
-		projectRoot,
-		"configs",
-		"scripts",
-		"haoshoku-special-workspace",
-	);
-	const hyprDir = path.join(home, ".config", "hypr");
-	const main = path.join(hyprDir, "hyprland.conf");
-	if (!fsImpl.existsSync(main))
-		throw new Error(`Omarchy Hyprland config not found: ${main}`);
-
-	const bindingsDestination = path.join(hyprDir, "haoshoku-bindings.conf");
-	const bindingsDesired = fsImpl.readFileSync(bindings);
-	if (
-		!fsImpl.existsSync(bindingsDestination) ||
-		!fsImpl.readFileSync(bindingsDestination).equals(bindingsDesired)
-	) {
-		if (fsImpl.existsSync(bindingsDestination))
-			fsImpl.copyFileSync(
-				bindingsDestination,
-				`${bindingsDestination}.bak.${now()}`,
-			);
-		fsImpl.writeFileSync(bindingsDestination, bindingsDesired);
-	}
-
-	const destination = path.join(hyprDir, "haoshoku-workspaces.conf");
-	const desired = fsImpl.readFileSync(overlay);
-	let overlayChanged = false;
-	if (
-		!fsImpl.existsSync(destination) ||
-		!fsImpl.readFileSync(destination).equals(desired)
-	) {
-		if (fsImpl.existsSync(destination))
-			fsImpl.copyFileSync(destination, `${destination}.bak.${now()}`);
-		fsImpl.writeFileSync(destination, desired);
-		overlayChanged = true;
-	}
-
-	const omarchyBindings = path.join(
+	const overlayDirectory = path.join(hyprDirectory, "haoshoku");
+	const bindingsDestination = path.join(overlayDirectory, "bindings.lua");
+	const workspacesDestination = path.join(overlayDirectory, "workspaces.lua");
+	const scriptDestination = path.join(
 		home,
 		".local",
-		"share",
-		"omarchy",
-		"config",
-		"hypr",
-		"bindings.conf",
+		"bin",
+		"haoshoku-special-workspace",
 	);
-	const userBindings = path.join(hyprDir, "bindings.conf");
-	let bindingsFileRestored = false;
-	if (fsImpl.existsSync(omarchyBindings)) {
-		const stockBindings = fsImpl.readFileSync(omarchyBindings);
-		if (
-			!fsImpl.existsSync(userBindings) ||
-			!fsImpl.readFileSync(userBindings).equals(stockBindings)
-		) {
-			if (fsImpl.existsSync(userBindings))
-				fsImpl.copyFileSync(userBindings, `${userBindings}.bak.${now()}`);
-			fsImpl.copyFileSync(omarchyBindings, userBindings);
-			bindingsFileRestored = true;
-		}
+
+	const bindingsChanged = deployFile(
+		fsImpl,
+		path.join(sourceDirectory, "bindings.lua"),
+		bindingsDestination,
+		now,
+	);
+	const overlayChanged = deployFile(
+		fsImpl,
+		path.join(sourceDirectory, `workspaces-${deviceType}.lua`),
+		workspacesDestination,
+		now,
+	);
+
+	const scriptChanged = deployFile(
+		fsImpl,
+		path.join(projectRoot, "configs", "scripts", "haoshoku-special-workspace"),
+		scriptDestination,
+		now,
+	);
+	if (scriptChanged || (fsImpl.statSync(scriptDestination).mode & 0o111) !== 0o111)
+		fsImpl.chmodSync(scriptDestination, 0o755);
+
+	const mainText = fsImpl.readFileSync(main, "utf8");
+	const requires = reconcileRequires(mainText);
+	if (requires.changed) {
+		writeAtomically(
+			fsImpl,
+			backupDestination(fsImpl, main, now),
+			fsImpl.readFileSync(main),
+		);
+		writeAtomically(fsImpl, main, requires.text);
 	}
 
-	const binDir = path.join(home, ".local", "bin");
-	const scriptDestination = path.join(binDir, "haoshoku-special-workspace");
-	fsImpl.mkdirSync(binDir, { recursive: true });
-	const scriptDesired = fsImpl.readFileSync(script);
-	const scriptChanged =
-		!fsImpl.existsSync(scriptDestination) ||
-		!fsImpl.readFileSync(scriptDestination).equals(scriptDesired);
-	if (scriptChanged) fsImpl.writeFileSync(scriptDestination, scriptDesired);
-	fsImpl.chmodSync(scriptDestination, 0o755);
-
-	let mainText = fsImpl.readFileSync(main, "utf8");
-	const bindingsSource = ensureSourceAfter(
-		mainText,
-		BINDINGS_SOURCE_LINE,
-		OMARCHY_BINDINGS_SOURCE,
-	);
-	mainText = bindingsSource.text;
-	const workspaceSourceChanged = !mainText.split(/\r?\n/).includes(SOURCE_LINE);
-	if (workspaceSourceChanged) {
-		if (mainText && !mainText.endsWith("\n")) mainText += "\n";
-		mainText = `${mainText}\n# Haoshoku workspace behavior (Omarchy visuals remain unchanged)\n${SOURCE_LINE}\n`;
-	}
-	const sourceChanged = bindingsSource.changed || workspaceSourceChanged;
-	if (sourceChanged) fsImpl.writeFileSync(main, mainText);
-
-	let validated = false;
+	let reloaded = false;
+	let replayed = false;
 	if (env.HYPRLAND_INSTANCE_SIGNATURE) {
-		validated =
-			Boolean(await runCommandImpl("hyprctl reload")) &&
-			Boolean(await runCommandImpl("hyprctl configerrors"));
-		// exec-once is not replayed by reload, so ensure the managed workspace is
-		// populated during this install as well as on the next full login.
-		await runCommandImpl(
-			`${shellEscape(scriptDestination)} numbered-login 7 kitty`,
+		reloaded = Boolean(await runCommandImpl("hyprctl reload"));
+		replayed = Boolean(
+			await runCommandImpl(
+				`${shellEscape(scriptDestination)} numbered-login 7 kitty`,
+			),
 		);
-	} else
-		log.info(
-			"Hyprland is not active; workspace validation is deferred to login.",
+	} else {
+		logImpl.info(
+			"Hyprland is not active; workspace reload and exec-once replay are deferred to login.",
 		);
+	}
+
 	return {
-		bindingsFileRestored,
+		bindingsChanged,
 		overlayChanged,
 		scriptChanged,
-		sourceChanged,
-		validated,
+		sourceChanged: requires.changed,
+		reloaded,
+		replayed,
 	};
 }

@@ -27,7 +27,7 @@ made different, equally defensible choices about an inert knob.
 
 ## Theme precedence
 
-`kitty.conf` includes `~/.config/omarchy/current/theme/kitty.conf`, so Kitty
+`kitty.conf` includes `~/.local/state/omarchy/current/theme/kitty.conf`, so Kitty
 follows every Omarchy theme switch. The theme file owns colours and opacity;
 the base config owns font, padding, blur, decorations, and keybinds.
 

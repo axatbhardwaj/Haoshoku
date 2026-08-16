@@ -1,0 +1,138 @@
+{
+	"name": "pc",
+	"created_at": "2026-08-15T00:00:00Z",
+	"updated_at": "2026-08-15T00:00:00Z",
+	"outputs": [
+		{
+			"key": "lg electronics|lg fhd|0x01010101",
+			"match_key": "lg electronics|lg fhd|0x01010101",
+			"name": "HDMI-A-1",
+			"description": "LG Electronics LG FHD 0x01010101",
+			"make": "LG Electronics",
+			"model": "LG FHD",
+			"serial": "0x01010101",
+			"enabled": true,
+			"mode": "1920x1080@74.97Hz",
+			"width": 1920,
+			"height": 1080,
+			"refresh": 74.973,
+			"x": 3640,
+			"y": 420,
+			"scale": 1,
+			"transform": 0
+		},
+		{
+			"key": "lg electronics|lg ultragear|303ntzn9k909",
+			"match_key": "lg electronics|lg ultragear|303ntzn9k909",
+			"name": "DP-1",
+			"description": "LG Electronics LG ULTRAGEAR 303NTZN9K909",
+			"make": "LG Electronics",
+			"model": "LG ULTRAGEAR",
+			"serial": "303NTZN9K909",
+			"enabled": true,
+			"mode": "2560x1440@143.97Hz",
+			"width": 2560,
+			"height": 1440,
+			"refresh": 143.97301,
+			"x": 1080,
+			"y": 240,
+			"scale": 1,
+			"transform": 0
+		},
+		{
+			"key": "lg electronics|lg ultragear|512ntpcer888",
+			"match_key": "lg electronics|lg ultragear|512ntpcer888",
+			"name": "DP-2",
+			"description": "LG Electronics LG ULTRAGEAR 512NTPCER888",
+			"make": "LG Electronics",
+			"model": "LG ULTRAGEAR",
+			"serial": "512NTPCER888",
+			"enabled": true,
+			"mode": "1920x1080@179.96Hz",
+			"width": 1920,
+			"height": 1080,
+			"refresh": 179.961,
+			"x": 0,
+			"y": 0,
+			"scale": 1,
+			"transform": 1
+		}
+	],
+	"workspaces": {
+		"enabled": true,
+		"strategy": "manual",
+		"rules": [
+			{
+				"workspace": "1",
+				"output_key": "lg electronics|lg ultragear|303ntzn9k909",
+				"output_name": "DP-1",
+				"default": true,
+				"persistent": true
+			},
+			{
+				"workspace": "2",
+				"output_key": "lg electronics|lg ultragear|303ntzn9k909",
+				"output_name": "DP-1",
+				"default": false,
+				"persistent": true
+			},
+			{
+				"workspace": "3",
+				"output_key": "lg electronics|lg ultragear|303ntzn9k909",
+				"output_name": "DP-1",
+				"default": false,
+				"persistent": true
+			},
+			{
+				"workspace": "4",
+				"output_key": "lg electronics|lg fhd|0x01010101",
+				"output_name": "HDMI-A-1",
+				"default": false,
+				"persistent": true
+			},
+			{
+				"workspace": "5",
+				"output_key": "lg electronics|lg fhd|0x01010101",
+				"output_name": "HDMI-A-1",
+				"default": true,
+				"persistent": true
+			},
+			{
+				"workspace": "6",
+				"output_key": "lg electronics|lg ultragear|512ntpcer888",
+				"output_name": "DP-2",
+				"default": false,
+				"persistent": true
+			},
+			{
+				"workspace": "7",
+				"output_key": "lg electronics|lg ultragear|512ntpcer888",
+				"output_name": "DP-2",
+				"default": false,
+				"persistent": true
+			},
+			{
+				"workspace": "8",
+				"output_key": "lg electronics|lg ultragear|303ntzn9k909",
+				"output_name": "DP-1",
+				"default": false,
+				"persistent": true
+			},
+			{
+				"workspace": "9",
+				"output_key": "lg electronics|lg fhd|0x01010101",
+				"output_name": "HDMI-A-1",
+				"default": false,
+				"persistent": true
+			},
+			{
+				"workspace": "10",
+				"output_key": "lg electronics|lg ultragear|512ntpcer888",
+				"output_name": "DP-2",
+				"default": false,
+				"persistent": true
+			}
+		]
+	},
+	"exec": ""
+}

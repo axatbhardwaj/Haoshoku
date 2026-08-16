@@ -17,66 +17,65 @@ const specialWorkspaceScript = path.join(
 	"haoshoku-special-workspace",
 );
 const workspacesConfig = fs.readFileSync(
-	path.join(root, "configs", "omarchy", "workspaces-pc.conf"),
+	path.join(root, "configs", "omarchy", "haoshoku", "workspaces-pc.lua"),
 	"utf8",
 );
 
-function configuredWorkspaceArgs(pattern) {
-	const args = workspacesConfig.match(pattern)?.groups?.args;
-	if (!args)
-		throw new Error(`missing configured workspace command: ${pattern}`);
-	return args.trim().split(/\s+/);
-}
-
 describe("gaming workspace configuration", () => {
-	it("pins ephemeral workspace 11 to DP-1 without making it persistent", () => {
-		expect(workspacesConfig).toMatch(
-			/^workspace = 11, monitor:DP-1, persistent:false$/m,
+	it("keeps gaming workspace 2 persistent without overlay-specific rules", () => {
+		const laptopConfig = fs.readFileSync(
+			path.join(
+				root,
+				"configs",
+				"omarchy",
+				"haoshoku",
+				"workspaces-laptop.lua",
+			),
+			"utf8",
 		);
-		expect(workspacesConfig).not.toMatch(
-			/^workspace = 11,.*persistent:true$/m,
+		const gamingSpecificWorkspaceRule =
+			/hl\.workspace_rule\(\{\s*workspace = "(?:2|11)"(?=[^}]*\bpersistent = false\b)[^}]*\}\)/;
+		expect(workspacesConfig).not.toMatch(gamingSpecificWorkspaceRule);
+		expect(laptopConfig).toContain(
+			'hl.workspace_rule({ workspace = "2", persistent = true })',
 		);
+		expect(laptopConfig).not.toMatch(gamingSpecificWorkspaceRule);
 	});
 
-	it("routes Steam windows silently to workspace 11", () => {
-		expect(
-			configuredWorkspaceArgs(
-				/^windowrule = (?<args>workspace 11 silent), match:class \^\[Ss\]team\$$/m,
-			),
-		).toEqual(["workspace", "11", "silent"]);
+	it("routes Steam windows silently to workspace 2", () => {
+		expect(workspacesConfig).toContain(
+			'o.window("^[Ss]team$", { workspace = "2 silent" })',
+		);
 	});
 
 	it("binds SUPER SHIFT G to the gaming workspace script", () => {
-		expect(
-			configuredWorkspaceArgs(
-				/^bindd = SUPER SHIFT, G, [^,]+, exec, (?<args>.+)$/m,
-			),
-		).toEqual(["haoshoku-gaming-workspace", "toggle"]);
+		expect(workspacesConfig).toContain(
+			'o.bind("SUPER + SHIFT + G", "Toggle gaming workspace", "haoshoku-gaming-workspace toggle")',
+		);
 	});
 
 	it("ports the gaming block to laptop with topology-only differences", () => {
 		const laptopConfig = fs.readFileSync(
-			path.join(root, "configs", "omarchy", "workspaces-laptop.conf"),
+			path.join(
+				root,
+				"configs",
+				"omarchy",
+				"haoshoku",
+				"workspaces-laptop.lua",
+			),
 			"utf8",
 		);
-		const normalizeTopology = (config) =>
-			config
-				.replace(/, monitor:[^,\n]+/g, "")
-				.replace(/^workspace = 5, default:true,/m, "workspace = 5,");
 
-		expect(laptopConfig).toMatch(/^workspace = 11, persistent:false$/m);
-		expect(laptopConfig).toMatch(
-			/^windowrule = workspace 11 silent, match:class \^\[Ss\]team\$$/m,
+		expect(laptopConfig).toContain(
+			'o.window("^[Ss]team$", { workspace = "2 silent" })',
 		);
-		expect(laptopConfig).toMatch(
-			/^bindd = SUPER SHIFT, G, [^,]+, exec, haoshoku-gaming-workspace toggle$/m,
+		expect(laptopConfig).toContain(
+			'o.bind("SUPER + SHIFT + G", "Toggle gaming workspace", "haoshoku-gaming-workspace toggle")',
 		);
 		expect(laptopConfig).not.toContain(
 			"haoshoku-special-workspace numbered 2 steam",
 		);
-		expect(normalizeTopology(laptopConfig)).toBe(
-			normalizeTopology(workspacesConfig),
-		);
+		expect(laptopConfig).not.toContain("monitor:");
 	});
 });
 
@@ -96,6 +95,10 @@ case "$1 $2" in
   "activeworkspace -j") printf '{"id":%s}\\n' "$ACTIVE_WORKSPACE" ;;
   "clients -j") printf '%s\\n' "$HYPR_CLIENTS" ;;
 esac
+if [[ "$1" == "dispatch" ]]; then
+  [[ -z "$DISPATCH_OUTPUT" ]] || printf '%s\\n' "$DISPATCH_OUTPUT"
+  exit "$DISPATCH_EXIT_CODE"
+fi
 `,
 		);
 		fs.chmodSync(hyprctl, 0o755);
@@ -107,12 +110,19 @@ esac
 
 	afterEach(() => fs.rmSync(directory, { recursive: true, force: true }));
 
-	async function runToggle({ activeWorkspace, clients = [] }) {
+	async function runToggle({
+		activeWorkspace,
+		clients = [],
+		dispatchExitCode = "0",
+		dispatchOutput = "",
+	}) {
 		const proc = Bun.spawn([script, "toggle"], {
 			env: {
 				...process.env,
 				ACTIVE_WORKSPACE: String(activeWorkspace),
 				CALL_LOG: log,
+				DISPATCH_EXIT_CODE: dispatchExitCode,
+				DISPATCH_OUTPUT: dispatchOutput,
 				HAOSHOKU_GW_HYPRCTL: path.join(directory, "hyprctl"),
 				HYPR_CLIENTS: JSON.stringify(clients),
 				PATH: `${directory}:${process.env.PATH}`,
@@ -130,25 +140,27 @@ esac
 		return fs.readFileSync(log, "utf8").trim().split("\n");
 	}
 
-	it("launches missing Steam when toggling into workspace 11", async () => {
+	it("launches missing Steam when toggling into workspace 2", async () => {
 		const result = await runToggle({ activeWorkspace: 3 });
 
 		expect(result).toEqual({ exitCode: 0, stderr: "" });
 		expect(calls()).toEqual([
 			"activeworkspace -j",
-			"dispatch workspace 11",
+			'dispatch hl.dsp.focus({ workspace = "2" })',
 			"clients -j",
-			"dispatch exec [workspace 11 silent] uwsm-app -- steam",
+			'dispatch hl.dsp.exec_cmd("[workspace 2 silent] uwsm-app -- steam ")',
 		]);
 	});
 
-	it("does not launch Steam when toggling out to the previous workspace", async () => {
-		const result = await runToggle({ activeWorkspace: 11 });
+	it("ensures Steam when toggling out to the previous workspace", async () => {
+		const result = await runToggle({ activeWorkspace: 2 });
 
 		expect(result).toEqual({ exitCode: 0, stderr: "" });
 		expect(calls()).toEqual([
 			"activeworkspace -j",
-			"dispatch workspace previous",
+			'dispatch hl.dsp.focus({ workspace = "previous" })',
+			"clients -j",
+			'dispatch hl.dsp.exec_cmd("[workspace 2 silent] uwsm-app -- steam ")',
 		]);
 	});
 
@@ -161,8 +173,33 @@ esac
 		expect(result).toEqual({ exitCode: 0, stderr: "" });
 		expect(calls()).toEqual([
 			"activeworkspace -j",
-			"dispatch workspace 11",
+			'dispatch hl.dsp.focus({ workspace = "2" })',
 			"clients -j",
 		]);
+	});
+
+	it("treats exit-zero dispatch diagnostics as failures", async () => {
+		const result = await runToggle({
+			activeWorkspace: 2,
+			dispatchOutput: "invalid dispatcher",
+		});
+
+		expect(result).toEqual({
+			exitCode: 1,
+			stderr: "invalid dispatcher\n",
+		});
+	});
+
+	it("surfaces non-zero dispatch failures", async () => {
+		const result = await runToggle({
+			activeWorkspace: 2,
+			dispatchExitCode: "23",
+			dispatchOutput: "dispatch unavailable",
+		});
+
+		expect(result).toEqual({
+			exitCode: 1,
+			stderr: "dispatch unavailable\n",
+		});
 	});
 });

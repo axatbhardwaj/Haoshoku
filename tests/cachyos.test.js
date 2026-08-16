@@ -23,6 +23,7 @@ describe("user app configuration", () => {
 
 		await configureUserApps({
 			promptUserImpl: async () => false,
+			configureGitImpl: record("git"),
 			configureBrowserIntegrationImpl: record("browser"),
 			configureAudioImpl: record("audio"),
 			configureBashImpl: record("bash"),
@@ -35,8 +36,12 @@ describe("user app configuration", () => {
 			enableServicesImpl: record("services"),
 			configureClaudeImpl: record("claude"),
 			installGhStackImpl: record("gh-stack"),
+			installSuperpowersImpl: record("superpowers"),
+			bootstrapClaudePolicyImpl: record("bootstrap"),
 			configureClaudeStayAwakeImpl: record("stay-awake"),
+			configureClaudeRemoteControlImpl: record("remote-control"),
 			configurePrWatchImpl: record("pr-watch"),
+			syncWorktreeCleanupImpl: record("worktree-cleanup"),
 			configureCodexImpl: record("codex"),
 			configureAgentOsImpl: record("agent-os"),
 		});
@@ -589,12 +594,28 @@ describe("Arch package-manager preflight", () => {
 
 	it("stops the full setup when package-manager preparation fails", async () => {
 		const events = [];
+		const unreachable = async () => {
+			throw new Error("setup continued after package-manager preparation failed");
+		};
 		const result = await runCachyOSSetup({
 			promptDeviceTypeImpl: async () => events.push("device-type"),
 			prepareArchPackageManagerImpl: async () => {
 				events.push("prepare");
 				return false;
 			},
+			ensureRustToolchainImpl: unreachable,
+			ensureAurHelperImpl: unreachable,
+			installDevToolsImpl: unreachable,
+			commandExistsImpl: unreachable,
+			installSystemPackagesImpl: unreachable,
+			installFlatpakAppsImpl: unreachable,
+			configureUserAppsImpl: unreachable,
+			configureBraveManagedPoliciesImpl: unreachable,
+			configureHyprmoncfgImpl: unreachable,
+			configureOmarchyWorkspacesImpl: unreachable,
+			configureOmarchyPluginsImpl: unreachable,
+			configureOmarchyBarImpl: unreachable,
+			configureOmazedImpl: unreachable,
 		});
 
 		expect(result).toBe(false);
@@ -622,8 +643,10 @@ describe("Arch package-manager preflight", () => {
 				promptDeviceTypeImpl: record("device-type"),
 				configureUserAppsImpl: record("user-apps"),
 				configureBraveManagedPoliciesImpl: record("brave-policies", true),
-				configureOmarchyMonitorsImpl: record("monitors"),
+				configureHyprmoncfgImpl: record("hyprmoncfg"),
 				configureOmarchyWorkspacesImpl: record("workspaces"),
+				configureOmarchyPluginsImpl: record("plugins"),
+				configureOmarchyBarImpl: record("bar"),
 				configureOmazedImpl: record("omazed"),
 			});
 			return { events, result };
@@ -641,8 +664,10 @@ describe("Arch package-manager preflight", () => {
 				"flatpaks",
 				"user-apps",
 				"brave-policies",
-				"monitors",
+				"hyprmoncfg",
 				"workspaces",
+				"plugins",
+				"bar",
 				"omazed",
 			],
 		});
@@ -659,6 +684,35 @@ describe("Arch package-manager preflight", () => {
 				"user-apps",
 			],
 		});
+	});
+
+	it("configures the Omarchy bar strictly after its plugins", async () => {
+		const events = [];
+		const record = (name, result) => async () => {
+			events.push(name);
+			return result;
+		};
+
+		await runCachyOSSetup({
+			promptDeviceTypeImpl: async () => {},
+			prepareArchPackageManagerImpl: async () => true,
+			ensureRustToolchainImpl: async () => {},
+			ensureAurHelperImpl: async () => "paru",
+			installDevToolsImpl: async () => {},
+			commandExistsImpl: async () => true,
+			installSystemPackagesImpl: async () => {},
+			installFlatpakAppsImpl: async () => {},
+			configureUserAppsImpl: async () => {},
+			configureBraveManagedPoliciesImpl: async () => {},
+			configureHyprmoncfgImpl: async () => {},
+			configureOmarchyWorkspacesImpl: async () => {},
+			configureOmarchyPluginsImpl: record("plugins"),
+			configureOmarchyBarImpl: record("bar"),
+			configureOmazedImpl: record("omazed"),
+		});
+
+		expect(events.indexOf("bar")).toBeGreaterThan(events.indexOf("plugins"));
+		expect(events).toEqual(["plugins", "bar", "omazed"]);
 	});
 
 	it("continues Omarchy setup when Brave policy provisioning throws", async () => {
@@ -685,8 +739,10 @@ describe("Arch package-manager preflight", () => {
 						events.push("brave-policies");
 						throw new Error("policy write failed");
 					},
-					configureOmarchyMonitorsImpl: async () => events.push("monitors"),
+					configureHyprmoncfgImpl: async () => events.push("hyprmoncfg"),
 					configureOmarchyWorkspacesImpl: async () => events.push("workspaces"),
+					configureOmarchyPluginsImpl: async () => events.push("plugins"),
+					configureOmarchyBarImpl: async () => events.push("bar"),
 					configureOmazedImpl: async () => events.push("omazed"),
 				});
 			} catch (error) {
@@ -695,8 +751,10 @@ describe("Arch package-manager preflight", () => {
 
 			expect(events).toEqual([
 				"brave-policies",
-				"monitors",
+				"hyprmoncfg",
 				"workspaces",
+				"plugins",
+				"bar",
 				"omazed",
 			]);
 			expect(thrown).toBeUndefined();
@@ -709,7 +767,7 @@ describe("Arch package-manager preflight", () => {
 		}
 	});
 
-	for (const failingStep of ["monitors", "workspaces"]) {
+	for (const failingStep of ["hyprmoncfg", "workspaces", "plugins", "bar"]) {
 		it(`warns and continues Omarchy setup when the ${failingStep} device variant is missing`, async () => {
 			const events = [];
 			const warnings = [];
@@ -734,13 +792,21 @@ describe("Arch package-manager preflight", () => {
 					promptDeviceTypeImpl: async () => {},
 					configureUserAppsImpl: async () => {},
 					configureBraveManagedPoliciesImpl: async () => true,
-					configureOmarchyMonitorsImpl: step("monitors"),
+					configureHyprmoncfgImpl: step("hyprmoncfg"),
 					configureOmarchyWorkspacesImpl: step("workspaces"),
+					configureOmarchyPluginsImpl: step("plugins"),
+					configureOmarchyBarImpl: step("bar"),
 					configureOmazedImpl: step("omazed"),
 				});
 
 				expect(result).toBe(true);
-				expect(events).toEqual(["monitors", "workspaces", "omazed"]);
+				expect(events).toEqual([
+					"hyprmoncfg",
+					"workspaces",
+					"plugins",
+					"bar",
+					"omazed",
+				]);
 				expect(warnings).toHaveLength(1);
 				expect(warnings[0]).toContain(`missing ${failingStep}-laptop.conf`);
 				expect(warnings[0]).toContain("continuing");

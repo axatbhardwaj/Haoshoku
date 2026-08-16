@@ -1,5 +1,75 @@
 # Changelog
 
+## 9.0.0 - 2026-08-16
+
+- Breaking: Omarchy 4 or newer required; Omarchy 3 no longer supported.
+  Migration, workspaces, hyprmoncfg, and plugin helpers gate on the installed
+  Omarchy major version.
+- The Hyprland overlay moved from `.conf` to Lua. Omarchy 4 loads user
+  config via `require()` and no longer sources `.conf` files. Haoshoku
+  deploys `~/.config/hypr/haoshoku/{bindings,workspaces}.lua` and appends
+  exactly two `require` lines to `hyprland.lua`. Removes
+  `configs/omarchy/{bindings,workspaces-pc,workspaces-laptop,monitors-pc,monitors-laptop}.conf`.
+- Monitor configuration is now owned by the hyprmoncfg plugin. Haoshoku
+  authors `~/.config/hyprmoncfg/profiles/*.json` instead of writing
+  `monitors.conf`, and never writes `monitors.lua`. Removes
+  `src/helpers/configure_omarchy_monitors.js`; `--monitors` now deploys
+  hyprmoncfg profiles.
+- Monitor-bound workspace rules moved into the hyprmoncfg PC profile,
+  matched by hardware identity instead of connector name so they survive
+  DP connector swaps. Laptop workspace rules are monitor-independent and
+  remain in the Lua overlay.
+- The PC Lua overlay no longer sets `GDK_SCALE`; display scaling belongs to
+  the monitor profile, fixing Steam and Spotify rendering at 2x on scale-1 monitors.
+- New `--3-4-migrate`: re-runnable, idempotent migration from an Omarchy 3
+  layout. Strips dead `source =` lines, removes orphaned overlay `.conf`
+  files, repoints theme paths, backs up and clears Omarchy's stock
+  unmarked `monitors.lua` so hyprmoncfg can take ownership, deploys the
+  Lua overlay and profiles, installs plugins, and validates. If Omarchy's
+  legacy config shim is still present it reports validation deferred and
+  asks for a reboot and re-run rather than claiming success.
+- New `--omarchy-plugins`: installs and enables the plugins listed in
+  `common/omarchy-plugins.json`,
+  idempotent on both plugin id and enabled state, per-plugin failure
+  non-fatal. Included in the default run. Entries may declare
+  `disableOnInstall` to switch off a stock widget they replace, applied only
+  when Haoshoku first creates the plugin and never re-applied. Bar placement,
+  settings arrangement, and rollback removal are no longer managed.
+- New `--omarchy-bar` deploys the owned `bar` key in Omarchy's `shell.json`,
+  while `--omarchy-bar-backup` captures it back into the repo. Haoshoku claims
+  `bar` wholesale, including bar-widget enablement, so Omarchy UI changes to
+  bar-widget enablement are reverted on the next deploy. Every other top-level
+  key — `idle`, `plugins`, `disabledPlugins`, `version`, and unknown keys — is
+  preserved.
+- New `--hyprmoncfg-backup`: pulls saved hyprmoncfg profiles back into the
+  repo.
+- Theme state paths follow Omarchy 4's move from
+  `~/.config/omarchy/current` to `~/.local/state/omarchy/current` across
+  the Kitty config, Kitty session files, and the Fish config.
+- Hyprland config validation now parses `hyprctl configerrors` output; its
+  exit status is always 0, so the exit code alone could never detect a
+  broken config.
+- On Omarchy 4, `hyprctl dispatch` evaluates its argument as Lua, so
+  `haoshoku-special-workspace` now emits `hl.dsp.*` Lua expressions instead of
+  the legacy `dispatch <name> <args>` form, which is a parse error on v4;
+  dispatch failures now propagate as script failures rather than being masked.
+- T3 Code moved from `special:t3code` to workspace 1. `SUPER+T` now focuses
+  workspace 1 and launches T3 Code if missing via the `numbered` recipe; the
+  bare `t3code` recipe is retired.
+- The gaming-workspace toggle now emits v4 Lua dispatch expressions. On
+  Omarchy 4, the legacy positional form is a parse error, which made
+  `SUPER + SHIFT + G` a silent no-op.
+- The gaming workspace moved from workspace 11 to workspace 2, so stock
+  `SUPER+2` reaches it. `SUPER+SHIFT+G` still toggles it and now ensures Steam
+  on both branches. Workspace 2 is a normal persistent workspace, so the old
+  disappear-when-empty behavior is gone, and the hyprmoncfg PC profile now
+  defines workspaces 1-10.
+- The default Omarchy plugin set is now eight plugins: `tmn73.calendar`,
+  `crmne.mpris`, `dorneles.lock-keys`, and `hass` were dropped, while
+  `io.github.thetrueferret.decent-workspaces`, `dizziee.system-stats`, and
+  `robzolkos.agent-usage` were added, the first and last displacing the stock
+  `omarchy.workspaces` and `omarchy.agents` widgets.
+
 ## 8.6.1 - 2026-08-15
 
 - Make the OpenCode seat, run-codex-task lifecycle, and Kitty theme tests
