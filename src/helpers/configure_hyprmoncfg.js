@@ -123,7 +123,20 @@ function replaceWithBackup({ fsImpl, source, destination, now }) {
 	return { changed: true, backup };
 }
 
-function warnAboutUserOwnedMonitorsLua(fsImpl, monitorsLua) {
+function pcWorkspaceRuleCount(fsImpl, repoProfilesDir) {
+	const profilePath = path.join(repoProfilesDir, "pc.json");
+	if (!fsImpl.existsSync(profilePath)) return 0;
+	try {
+		const profile = JSON.parse(fsImpl.readFileSync(profilePath, "utf8"));
+		return Array.isArray(profile.workspaces?.rules)
+			? profile.workspaces.rules.length
+			: 0;
+	} catch {
+		return 0;
+	}
+}
+
+function warnAboutUserOwnedMonitorsLua(fsImpl, monitorsLua, repoProfilesDir) {
 	if (!fsImpl.existsSync(monitorsLua)) return;
 	const content = fsImpl
 		.readFileSync(monitorsLua, "utf8")
@@ -134,8 +147,9 @@ function warnAboutUserOwnedMonitorsLua(fsImpl, monitorsLua) {
 		"",
 	);
 	if (firstLine === GENERATED_MARKER) return;
+	const workspaceRuleCount = pcWorkspaceRuleCount(fsImpl, repoProfilesDir);
 	log.warning(
-		`Existing user-owned monitor file at ${monitorsLua} is not marked "${GENERATED_MARKER}". Hyprmoncfg will not replace it, so the monitor layout and 11 PC workspace-monitor rules from the hyprmoncfg profile will not apply. Manually back up and remove ${monitorsLua}, then re-run Haoshoku or run hyprmoncfg apply so hyprmoncfg can regenerate a managed file. Haoshoku left it untouched.`,
+		`Existing user-owned monitor file at ${monitorsLua} is not marked "${GENERATED_MARKER}". Hyprmoncfg will not replace it, so the monitor layout and ${workspaceRuleCount} PC workspace-monitor rules from the hyprmoncfg profile will not apply. Manually back up and remove ${monitorsLua}, then re-run Haoshoku or run hyprmoncfg apply so hyprmoncfg can regenerate a managed file. Haoshoku left it untouched.`,
 	);
 }
 
@@ -276,7 +290,7 @@ export async function syncHyprmoncfg({
 		home,
 		projectRoot,
 	});
-	warnAboutUserOwnedMonitorsLua(fsImpl, monitorsLua);
+	warnAboutUserOwnedMonitorsLua(fsImpl, monitorsLua, repoProfilesDir);
 
 	let deployed = 0;
 	if (!fsImpl.existsSync(repoProfilesDir)) {

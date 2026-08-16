@@ -114,7 +114,7 @@ assistant_clients() {
       type == "object"
       and (.class | type == "string" and length > 0)
       and (
-        if .class == "com.anthropic.Claude" or .class == "chatgpt" or .class == "t3code" then
+        if .class == "com.anthropic.Claude" or .class == "chatgpt" then
           (.address | type == "string" and length > 0)
           and (.workspace | if type == "object" then (.name | type == "string" and length > 0) else false end)
         else
@@ -152,6 +152,7 @@ if [[ "$recipe" == numbered || "$recipe" == numbered-login ]]; then
   case "$app" in
     steam) launch_if_missing "$workspace" '^[Ss]team$' steam ;;
     discord) launch_if_missing "$workspace" '^(discord|vesktop)$' discord ;;
+    t3code) launch_if_missing "$workspace" '^t3code$' t3code ;;
     communication-numbered)
       launch_if_missing "$workspace" '^teams-for-linux$' teams-for-linux
       launch_if_missing "$workspace" '^(TelegramDesktop|org\.telegram\.desktop)$' Telegram
@@ -166,7 +167,7 @@ if [[ "$recipe" == numbered || "$recipe" == numbered-login ]]; then
   exit 0
 fi
 
-if [[ "$recipe" == assistants || "$recipe" == t3code ]]; then
+if [[ "$recipe" == assistants ]]; then
   [[ $# -eq 1 ]] || { echo "usage: haoshoku-special-workspace $recipe" >&2; exit 2; }
   workspace="$recipe"
   dispatch_toggle_special_workspace "$workspace"
@@ -175,13 +176,7 @@ if [[ "$recipe" == assistants || "$recipe" == t3code ]]; then
     exit 0
   fi
 
-  if [[ "$recipe" == assistants ]]; then
-    class_apps=(
-      'chatgpt:codex-desktop'
-    )
-  else
-    class_apps=('t3code:t3code')
-  fi
+  class_apps=('chatgpt:codex-desktop')
 
   for class_and_app in "${class_apps[@]}"; do
     class="${class_and_app%%:*}"

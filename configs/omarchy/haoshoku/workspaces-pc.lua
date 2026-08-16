@@ -5,11 +5,11 @@
 o.exec_on_start("haoshoku-special-workspace numbered-login 7 kitty")
 o.exec_on_start("haoshoku-special-workspace assistants")
 
--- Steam joins the games on 11 so alt-tabbing between a game and the Steam window keeps
+-- Steam joins the games on 2 so alt-tabbing between a game and the Steam window keeps
 -- working -- cyclenext is workspace-local, so they have to share a workspace to cycle.
--- Consequence, accepted: Steam usually runs, so 11 usually exists. It still disappears
--- when Steam closes, which is what the non-persistent hyprmoncfg rule buys here.
-o.window("^[Ss]team$", { workspace = "11 silent" })
+-- Workspace 2 is a normal persistent workspace pinned to DP-1 by the hyprmoncfg PC
+-- profile. Disappear-on-close ephemerality was deliberately traded away.
+o.window("^[Ss]team$", { workspace = "2 silent" })
 o.window("^(discord|vesktop)$", { workspace = "4 silent" })
 o.window("^(teams-for-linux|TelegramDesktop|org\\.telegram\\.desktop)$", { workspace = "5 silent" })
 o.window("^haoshoku-ws7$", { workspace = "7 silent" })
@@ -21,7 +21,7 @@ o.window("^brave-www\\.crunchyroll\\.com__-Default$", { workspace = "special:cru
 o.window("^brave-reanime\\.to__home-Default$", { workspace = "special:reanime" })
 o.window("^brave-www\\.twitch\\.tv__-Default$", { workspace = "special:twitch" })
 o.window("^chatgpt$", { workspace = "special:assistants silent" })
-o.window("^t3code$", { workspace = "special:t3code silent" })
+o.window("^t3code$", { workspace = "1 silent" })
 o.window("^haoshoku-haki$", { workspace = "special:haki" })
 o.window("^haoshoku-agents$", { workspace = "special:agents" })
 o.window("^[Ss]potify$", { workspace = "special:music" })
@@ -52,10 +52,10 @@ o.window("^xdg-desktop-portal-gtk$", { pin = true })
 o.window("^xdg-desktop-portal-gtk$", { center = true })
 
 -- These are additive supersets of Omarchy's stock Super+number workspace binds.
--- SUPER+2 deliberately no longer ensures Steam. Steam's window rule sends it to 11,
--- so "switch to 2 and launch Steam" would strand you on an empty workspace 2 while
--- the window opened elsewhere. Stock SUPER+2 still switches to workspace 2, and
--- Steam is reached with SUPER+SHIFT+G.
+-- Workspace 2 is the gaming workspace, and Steam's window rule targets it. Stock
+-- SUPER+2 switches straight to it. There is deliberately no `numbered 2 steam` bind:
+-- 2 is always present, and a plain workspace switch must not launch Steam.
+-- SUPER+SHIFT+G remains the toggle that ensures Steam.
 o.bind(
   "SUPER + code:13",
   "Workspace 4 and Discord",
@@ -94,7 +94,7 @@ o.bind(
 
 o.bind("SUPER + A", "Show/focus/hide Haki session", "haoshoku-special-workspace haki")
 o.bind("SUPER + I", "Show/focus/hide ChatGPT workspace", "haoshoku-special-workspace assistants")
-o.bind("SUPER + T", "Show/focus/hide T3 Code workspace", "haoshoku-special-workspace t3code")
+o.bind("SUPER + T", "Workspace 1 and T3 Code", "haoshoku-special-workspace numbered 1 t3code")
 o.bind("SUPER + SHIFT + T", "Show/focus/hide Twitch workspace", "haoshoku-special-workspace twitch")
 o.bind("SUPER + M", "Show/focus/hide music workspace", "haoshoku-special-workspace music")
 o.bind("SUPER + O", "Show/focus/hide 1Password workspace", "haoshoku-special-workspace 1password")

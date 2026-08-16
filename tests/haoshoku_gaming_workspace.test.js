@@ -22,7 +22,7 @@ const workspacesConfig = fs.readFileSync(
 );
 
 describe("gaming workspace configuration", () => {
-	it("leaves PC monitor ownership to Omarchy while keeping the laptop gaming workspace ephemeral", () => {
+	it("keeps gaming workspace 2 persistent without overlay-specific rules", () => {
 		const laptopConfig = fs.readFileSync(
 			path.join(
 				root,
@@ -33,15 +33,18 @@ describe("gaming workspace configuration", () => {
 			),
 			"utf8",
 		);
-		expect(workspacesConfig).not.toContain("hl.workspace_rule");
+		const gamingSpecificWorkspaceRule =
+			/hl\.workspace_rule\(\{\s*workspace = "(?:2|11)"(?=[^}]*\bpersistent = false\b)[^}]*\}\)/;
+		expect(workspacesConfig).not.toMatch(gamingSpecificWorkspaceRule);
 		expect(laptopConfig).toContain(
-			'hl.workspace_rule({ workspace = "11", persistent = false })',
+			'hl.workspace_rule({ workspace = "2", persistent = true })',
 		);
+		expect(laptopConfig).not.toMatch(gamingSpecificWorkspaceRule);
 	});
 
-	it("routes Steam windows silently to workspace 11", () => {
+	it("routes Steam windows silently to workspace 2", () => {
 		expect(workspacesConfig).toContain(
-			'o.window("^[Ss]team$", { workspace = "11 silent" })',
+			'o.window("^[Ss]team$", { workspace = "2 silent" })',
 		);
 	});
 
@@ -64,7 +67,7 @@ describe("gaming workspace configuration", () => {
 		);
 
 		expect(laptopConfig).toContain(
-			'o.window("^[Ss]team$", { workspace = "11 silent" })',
+			'o.window("^[Ss]team$", { workspace = "2 silent" })',
 		);
 		expect(laptopConfig).toContain(
 			'o.bind("SUPER + SHIFT + G", "Toggle gaming workspace", "haoshoku-gaming-workspace toggle")',
@@ -137,25 +140,27 @@ fi
 		return fs.readFileSync(log, "utf8").trim().split("\n");
 	}
 
-	it("launches missing Steam when toggling into workspace 11", async () => {
+	it("launches missing Steam when toggling into workspace 2", async () => {
 		const result = await runToggle({ activeWorkspace: 3 });
 
 		expect(result).toEqual({ exitCode: 0, stderr: "" });
 		expect(calls()).toEqual([
 			"activeworkspace -j",
-			'dispatch hl.dsp.focus({ workspace = "11" })',
+			'dispatch hl.dsp.focus({ workspace = "2" })',
 			"clients -j",
-			'dispatch hl.dsp.exec_cmd("[workspace 11 silent] uwsm-app -- steam ")',
+			'dispatch hl.dsp.exec_cmd("[workspace 2 silent] uwsm-app -- steam ")',
 		]);
 	});
 
-	it("does not launch Steam when toggling out to the previous workspace", async () => {
-		const result = await runToggle({ activeWorkspace: 11 });
+	it("ensures Steam when toggling out to the previous workspace", async () => {
+		const result = await runToggle({ activeWorkspace: 2 });
 
 		expect(result).toEqual({ exitCode: 0, stderr: "" });
 		expect(calls()).toEqual([
 			"activeworkspace -j",
 			'dispatch hl.dsp.focus({ workspace = "previous" })',
+			"clients -j",
+			'dispatch hl.dsp.exec_cmd("[workspace 2 silent] uwsm-app -- steam ")',
 		]);
 	});
 
@@ -168,14 +173,14 @@ fi
 		expect(result).toEqual({ exitCode: 0, stderr: "" });
 		expect(calls()).toEqual([
 			"activeworkspace -j",
-			'dispatch hl.dsp.focus({ workspace = "11" })',
+			'dispatch hl.dsp.focus({ workspace = "2" })',
 			"clients -j",
 		]);
 	});
 
 	it("treats exit-zero dispatch diagnostics as failures", async () => {
 		const result = await runToggle({
-			activeWorkspace: 11,
+			activeWorkspace: 2,
 			dispatchOutput: "invalid dispatcher",
 		});
 
@@ -187,7 +192,7 @@ fi
 
 	it("surfaces non-zero dispatch failures", async () => {
 		const result = await runToggle({
-			activeWorkspace: 11,
+			activeWorkspace: 2,
 			dispatchExitCode: "23",
 			dispatchOutput: "dispatch unavailable",
 		});

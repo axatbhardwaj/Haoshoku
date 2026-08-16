@@ -61,19 +61,19 @@ is "returns every window owned by the tree, not just the first" \
 echo "toggle_target"
 
 is "on the gaming workspace, go back" \
-   "previous" "$(toggle_target "$FIXTURES/activeworkspace-11.json")"
+   "previous" "$(toggle_target "$FIXTURES/activeworkspace-2.json")"
 
 is "elsewhere, go to the gaming workspace" \
-   "11" "$(toggle_target "$FIXTURES/activeworkspace-3.json")"
+   "2" "$(toggle_target "$FIXTURES/activeworkspace-3.json")"
 
 # A compositor query that returns nothing must not strand the user: defaulting to the
 # gaming workspace is recoverable by pressing the key again, defaulting to `previous`
 # from an unknown state is not.
 is "unreadable state defaults to the gaming workspace" \
-   "11" "$(toggle_target "$FIXTURES/activeworkspace-empty.json")"
+   "2" "$(toggle_target "$FIXTURES/activeworkspace-empty.json")"
 
 is "missing file defaults to the gaming workspace" \
-   "11" "$(toggle_target "$FIXTURES/nope.json")"
+   "2" "$(toggle_target "$FIXTURES/nope.json")"
 
 TD="$(mktemp -d)"
 trap 'rm -rf "$TD"' EXIT
@@ -88,8 +88,24 @@ toggle_dispatch="$(
     cmd_toggle
   ) 2>/dev/null
 )"
-is "mktemp failure still defaults the toggle to workspace 11" \
-   'hl.dsp.focus({ workspace = "11" })' "$toggle_dispatch"
+is "mktemp failure still defaults the toggle to workspace 2" \
+   'hl.dsp.focus({ workspace = "2" })' "$toggle_dispatch"
+
+echo "toggle (already on gaming workspace)"
+
+toggle_out_calls="$(
+  (
+    mktemp() { printf '%s\n' "$TD/toggle-state"; }
+    toggle_target() { printf '%s\n' "previous"; }
+    dispatch() { printf 'focus %s\n' "$*"; }
+    haoshoku-special-workspace() { printf 'login %s\n' "$*"; }
+    HYPRCTL=true
+    cmd_toggle
+  )
+)"
+is "toggling out still ensures Steam on workspace 2" \
+   $'focus hl.dsp.focus({ workspace = "previous" })\nlogin numbered-login 2 steam' \
+   "$toggle_out_calls"
 
 echo "collect_descendants"
 
@@ -161,12 +177,12 @@ chmod +x "$TD/placing-hyprctl"
 PID_FILE="$TD/place.pid" POLL_MARKER="$TD/polled" DISPATCH_LOG="$TD/dispatches" \
   HAOSHOKU_GW_HYPRCTL="$TD/placing-hyprctl" \
   "$SCRIPT" place -- bash -c "echo \$\$ > '$TD/place.pid'; sleep 1" >/dev/null 2>&1
-is "moves the wrapped process window silently to workspace 11" "1" \
-   "$(grep -cFx 'dispatch hl.dsp.window.move({ workspace = "11", window = "address:0xCAFE", follow = false })' "$TD/dispatches")"
+is "moves the wrapped process window silently to workspace 2" "1" \
+   "$(grep -cFx 'dispatch hl.dsp.window.move({ workspace = "2", window = "address:0xCAFE", follow = false })' "$TD/dispatches")"
 is "moves every later window silently" "1" \
-   "$(grep -cFx 'dispatch hl.dsp.window.move({ workspace = "11", window = "address:0xDIALOG", follow = false })' "$TD/dispatches")"
-is "focuses workspace 11 only on the first placement" "1" \
-   "$(grep -cFx 'dispatch hl.dsp.focus({ workspace = "11" })' "$TD/dispatches")"
+   "$(grep -cFx 'dispatch hl.dsp.window.move({ workspace = "2", window = "address:0xDIALOG", follow = false })' "$TD/dispatches")"
+is "focuses workspace 2 only on the first placement" "1" \
+   "$(grep -cFx 'dispatch hl.dsp.focus({ workspace = "2" })' "$TD/dispatches")"
 
 echo "place (shutdown path)"
 

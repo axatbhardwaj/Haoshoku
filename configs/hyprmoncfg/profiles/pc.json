@@ -131,13 +131,6 @@
 				"output_name": "DP-2",
 				"default": false,
 				"persistent": true
-			},
-			{
-				"workspace": "11",
-				"output_key": "lg electronics|lg ultragear|303ntzn9k909",
-				"output_name": "DP-1",
-				"default": false,
-				"persistent": false
 			}
 		]
 	},

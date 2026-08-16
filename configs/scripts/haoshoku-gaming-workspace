@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Gaming workspace: an ephemeral workspace 11 that games and Steam gather on.
+# Gaming workspace: persistent workspace 2, where games and Steam gather.
 #
 #   haoshoku-gaming-workspace toggle
 #   haoshoku-gaming-workspace place -- <command...>
@@ -16,7 +16,7 @@
 # Cycling between games on the workspace needs nothing from this script: Omarchy
 # already binds ALT+TAB to cyclenext, which is workspace-local.
 
-WORKSPACE_ID=11
+WORKSPACE_ID=2
 
 # Overridable so the test suite can point at a hyprctl that does not exist and prove
 # the watcher's failure is survivable.
@@ -110,7 +110,7 @@ match_client_for_pids() {
 # Which workspace `toggle` should dispatch to, given hyprctl's activeworkspace JSON.
 # An unreadable or malformed state deliberately resolves to the gaming workspace:
 # guessing `previous` from an unknown position can strand you somewhere you did not
-# ask for, whereas a wrong jump to 11 is undone by pressing the key again.
+# ask for, whereas a wrong jump to 2 is undone by pressing the key again.
 toggle_target() {
   local file="$1" id
   id="$(jq -er '.id? // empty' "$file" 2>/dev/null)" || id=""
@@ -183,9 +183,7 @@ cmd_toggle() {
   fi
   target="$(toggle_target "$state")"
   dispatch_focus_workspace "$target"
-  if [ "$target" = "$WORKSPACE_ID" ]; then
-    haoshoku-special-workspace numbered-login "$WORKSPACE_ID" steam
-  fi
+  haoshoku-special-workspace numbered-login "$WORKSPACE_ID" steam
 }
 
 # Forward a signal to the launched process and everything under it, preserving the

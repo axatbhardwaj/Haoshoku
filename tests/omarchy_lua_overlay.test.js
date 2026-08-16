@@ -510,7 +510,7 @@ describe("Omarchy v4 Lua overlay", () => {
 				unbind: 4,
 				bind: 24,
 				window: 24,
-				workspace: 11,
+				workspace: 10,
 				execOnStart: 2,
 				env: 0,
 			},

@@ -47,7 +47,6 @@ const EXPECTED_WORKSPACES = [
 	["8", "DP-1", false, true],
 	["9", "HDMI-A-1", false, true],
 	["10", "DP-2", false, true],
-	["11", "DP-1", false, false],
 ];
 
 let tmpHome;
@@ -139,7 +138,7 @@ describe("pc hyprmoncfg profile", () => {
 		}
 	});
 
-	it("carries all 11 manual workspace rules with stable monitor targets", () => {
+	it("carries workspaces 1-10 with stable monitor targets", () => {
 		const profile = readProfile();
 		const keyByName = new Map(
 			profile.outputs.map((output) => [output.name, output.key]),
@@ -147,7 +146,7 @@ describe("pc hyprmoncfg profile", () => {
 
 		expect(profile.workspaces.enabled).toBe(true);
 		expect(profile.workspaces.strategy).toBe("manual");
-		expect(profile.workspaces.rules).toHaveLength(11);
+		expect(profile.workspaces.rules).toHaveLength(10);
 		expect(profile.workspaces.rules.map((rule) => [
 			rule.workspace,
 			rule.output_name,
@@ -166,7 +165,7 @@ describe("pc hyprmoncfg profile", () => {
 			(rule) => !(rule.output_key === "" && rule.output_name === ""),
 		);
 
-		expect(normalized).toHaveLength(11);
+		expect(normalized).toHaveLength(10);
 		expect(normalized).toEqual(rules);
 		for (const rule of rules) {
 			expect(Boolean(rule.output_key || rule.output_name)).toBe(true);
@@ -340,7 +339,13 @@ describe("syncHyprmoncfg — repo to live", () => {
 	});
 
 	it("leaves an unmarked monitors.lua byte-for-byte untouched and warns with its path", async () => {
-		seedRepoProfile();
+		const profile = {
+			name: "pc",
+			workspaces: {
+				rules: [{ workspace: "1" }, { workspace: "2" }],
+			},
+		};
+		seedRepoProfile(`${JSON.stringify(profile)}\n`);
 		fs.mkdirSync(path.dirname(monitorsLuaPath()), { recursive: true });
 		const original = "-- user-owned\nreturn {}\n";
 		fs.writeFileSync(monitorsLuaPath(), original);
@@ -357,7 +362,9 @@ describe("syncHyprmoncfg — repo to live", () => {
 			message.includes(monitorsLuaPath()),
 		);
 		expect(warning).toContain("monitor layout");
-		expect(warning).toContain("11 PC workspace-monitor rules");
+		expect(warning).toContain(
+			`${profile.workspaces.rules.length} PC workspace-monitor rules`,
+		);
 		expect(warning).toMatch(/back up.*remove/i);
 		expect(warning).toMatch(/re-run Haoshoku|hyprmoncfg apply/i);
 	});

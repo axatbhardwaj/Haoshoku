@@ -1106,29 +1106,44 @@ exit 17
 		]);
 	});
 
-	it("toggles T3 Code and launches it into its own special workspace", async () => {
-		const result = await run(["t3code"]);
-
-		expect(result.exitCode).toBe(0);
-		expect(dispatchCalls()).toEqual([
-			"dispatch togglespecialworkspace t3code",
-			"dispatch exec [workspace special:t3code silent] uwsm-app -- t3code ",
-			"t3code",
-		]);
-	});
-
-	it("reclaims an existing T3 Code window without relaunching it", async () => {
-		const result = await run(["t3code"], {
-			clients: JSON.stringify([
-				assistantClient("0xt3", "t3code", "special:assistants"),
-			]),
+	it("does not let a T3 Code client suppress the ChatGPT launch", async () => {
+		const result = await run(["assistants"], {
+			clients: JSON.stringify([{ class: "t3code" }]),
 		});
 
 		expect(result.exitCode).toBe(0);
 		expect(dispatchCalls()).toEqual([
-			"dispatch togglespecialworkspace t3code",
-			"dispatch movetoworkspacesilent special:t3code,address:0xt3",
+			"dispatch togglespecialworkspace assistants",
+			"dispatch exec [workspace special:assistants silent] uwsm-app -- codex-desktop ",
+			"codex-desktop",
 		]);
+	});
+
+	it("focuses workspace 1 and launches T3 Code when it is missing", async () => {
+		const result = await run(["numbered", "1", "t3code"]);
+
+		expect(result.exitCode).toBe(0);
+		expect(dispatchCalls()).toEqual([
+			"dispatch workspace 1",
+			"dispatch exec [workspace 1 silent] uwsm-app -- t3code ",
+			"t3code",
+		]);
+	});
+
+	it("does not relaunch T3 Code when its client already exists", async () => {
+		const result = await run(["numbered", "1", "t3code"], {
+			clients: JSON.stringify([{ class: "t3code" }]),
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(dispatchCalls()).toEqual(["dispatch workspace 1"]);
+	});
+
+	it("rejects the retired bare T3 Code recipe", async () => {
+		const result = await run(["t3code"]);
+
+		expect(result.exitCode).toBe(2);
+		expect(result.stderr).toContain("unknown workspace recipe");
 	});
 
 	it("does not launch assistants when the client probe is malformed", async () => {
