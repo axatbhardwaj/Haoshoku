@@ -6,6 +6,15 @@ import { configureOmarchyWorkspaces } from "../src/helpers/configure_omarchy_wor
 
 describe("configureOmarchyWorkspaces", () => {
 	let home;
+	const v4 = {
+		env: {},
+		captureCommandImpl: async () => ({
+			exitCode: 0,
+			stdout: "Omarchy 4.0.0\n",
+		}),
+	};
+	const configureV4 = (options = {}) =>
+		configureOmarchyWorkspaces({ home, ...v4, ...options });
 	beforeEach(() => {
 		home = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-workspaces-"));
 		fs.mkdirSync(path.join(home, ".config", "hypr"), { recursive: true });
@@ -18,7 +27,7 @@ describe("configureOmarchyWorkspaces", () => {
 			"require(\"hypr.defaults\")\n",
 		);
 
-		await configureOmarchyWorkspaces({ home, env: {} });
+		await configureV4({ env: {} });
 
 		const hyprDirectory = path.join(home, ".config", "hypr");
 		expect(
@@ -52,13 +61,42 @@ describe("configureOmarchyWorkspaces", () => {
 		).toBe(0o111);
 	});
 
-	it("does not depend on the retired hyprland.conf", async () => {
-		await expect(configureOmarchyWorkspaces({ home })).resolves.toEqual(
-			expect.objectContaining({ sourceChanged: true }),
+	it("refuses without writing when the v4 hyprland.lua entrypoint is absent", async () => {
+		const result = await configureV4();
+
+		expect(result).toEqual(
+			expect.objectContaining({
+				status: "refused",
+				message: expect.stringContaining("hyprland.lua"),
+			}),
 		);
 		expect(
 			fs.existsSync(path.join(home, ".config", "hypr", "hyprland.lua")),
-		).toBe(true);
+		).toBe(false);
+		expect(fs.existsSync(path.join(home, ".config", "hypr", "haoshoku"))).toBe(
+			false,
+		);
+		expect(fs.existsSync(path.join(home, ".local", "bin"))).toBe(false);
+	});
+
+	it("refuses Omarchy 3 before writing any workspace artifact", async () => {
+		const main = path.join(home, ".config", "hypr", "hyprland.lua");
+		fs.writeFileSync(main, "return {}\n");
+		const result = await configureOmarchyWorkspaces({
+			home,
+			captureCommandImpl: async () => ({
+				exitCode: 0,
+				stdout: "Omarchy 3.8.5\n",
+			}),
+		});
+
+		expect(result).toEqual(
+			expect.objectContaining({ status: "refused", sourceChanged: false }),
+		);
+		expect(fs.readFileSync(main, "utf8")).toBe("return {}\n");
+		expect(fs.existsSync(path.join(home, ".config", "hypr", "haoshoku"))).toBe(
+			false,
+		);
 	});
 
 	it("uses atomic overlay writes and leaves hyprland.lua untouched when workspace deployment fails", async () => {
@@ -85,7 +123,8 @@ describe("configureOmarchyWorkspaces", () => {
 			},
 		};
 
-		await configureOmarchyWorkspaces({ home, fsImpl: atomicFs });
+		fs.writeFileSync(path.join(hyprDirectory, "hyprland.lua"), "return {}\n");
+		await configureV4({ fsImpl: atomicFs });
 		expect(writes).not.toEqual(expect.arrayContaining([...liveDestinations]));
 
 		const main = path.join(hyprDirectory, "hyprland.lua");
@@ -101,7 +140,7 @@ describe("configureOmarchyWorkspaces", () => {
 		};
 
 		await expect(
-			configureOmarchyWorkspaces({ home, fsImpl: failingFs }),
+			configureV4({ fsImpl: failingFs }),
 		).rejects.toThrow("workspace rename failed");
 		expect(fs.readFileSync(main, "utf8")).toBe("return { untouched = true }\n");
 	});
@@ -140,8 +179,7 @@ describe("configureOmarchyWorkspaces", () => {
 			},
 		};
 
-		await configureOmarchyWorkspaces({
-			home,
+		await configureV4({
 			fsImpl: recordingFs,
 			now: () => 42,
 		});
@@ -166,8 +204,7 @@ describe("configureOmarchyWorkspaces", () => {
 
 		writes.length = 0;
 		renames.length = 0;
-		await configureOmarchyWorkspaces({
-			home,
+		await configureV4({
 			fsImpl: recordingFs,
 			now: () => 42,
 		});
@@ -182,7 +219,7 @@ describe("configureOmarchyWorkspaces", () => {
 			'require("hypr.defaults")\nrequire("hypr.haoshoku.workspaces")\nrequire("hypr.haoshoku.bindings")\n',
 		);
 
-		await configureOmarchyWorkspaces({ home });
+		await configureV4();
 
 		const requireLines = fs
 			.readFileSync(main, "utf8")
@@ -192,6 +229,37 @@ describe("configureOmarchyWorkspaces", () => {
 			'require("hypr.haoshoku.bindings")',
 			'require("hypr.haoshoku.workspaces")',
 		]);
+	});
+
+	it("reloads and replays the exec-once workspace launcher in an active session with shell escaping", async () => {
+		const quotedHome = `${home}'active`;
+		fs.renameSync(home, quotedHome);
+		home = quotedHome;
+		const main = path.join(home, ".config", "hypr", "hyprland.lua");
+		fs.writeFileSync(main, "return {}\n");
+		const calls = [];
+
+		const result = await configureV4({
+			env: { HYPRLAND_INSTANCE_SIGNATURE: "active" },
+			runCommandImpl: async (command) => {
+				calls.push(command);
+				return true;
+			},
+		});
+
+		const script = path.join(
+			home,
+			".local",
+			"bin",
+			"haoshoku-special-workspace",
+		);
+		expect(calls).toEqual([
+			"hyprctl reload",
+			`'${script.replaceAll("'", "'\\''")}' numbered-login 7 kitty`,
+		]);
+		expect(result).toEqual(
+			expect.objectContaining({ reloaded: true, replayed: true }),
+		);
 	});
 
 });

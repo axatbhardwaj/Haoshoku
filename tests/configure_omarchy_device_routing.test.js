@@ -14,6 +14,10 @@ function makeHome(configState) {
 	const home = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-device-routing-"));
 	temporaryHomes.push(home);
 	fs.mkdirSync(path.join(home, ".config", "hypr"), { recursive: true });
+	fs.writeFileSync(
+		path.join(home, ".config", "hypr", "hyprland.lua"),
+		'dofile("/usr/share/omarchy/default/hypr/bootstrap.lua")\n',
+	);
 	if (configState !== undefined)
 		fs.writeFileSync(path.join(home, ".haoshoku.json"), configState);
 	return home;
@@ -22,6 +26,14 @@ function makeHome(configState) {
 function workspaceDestination(home) {
 	return path.join(home, ".config", "hypr", "haoshoku", "workspaces.lua");
 }
+
+const v4Dependencies = {
+	env: {},
+	captureCommandImpl: async () => ({
+		exitCode: 0,
+		stdout: "Omarchy 4.0.0\n",
+	}),
+};
 
 afterEach(() => {
 	for (const home of temporaryHomes.splice(0))
@@ -48,7 +60,8 @@ describe("Omarchy deviceType routing", () => {
 				}),
 			configureBraveManagedPoliciesImpl: async () => true,
 			configureHyprmoncfgImpl: async () => {},
-			configureOmarchyWorkspacesImpl: () => configureOmarchyWorkspaces({ home }),
+			configureOmarchyWorkspacesImpl: () =>
+				configureOmarchyWorkspaces({ home, ...v4Dependencies }),
 			configureOmarchyPluginsImpl: async () => {},
 			configureOmazedImpl: async () => {},
 		});
@@ -80,7 +93,7 @@ describe("Omarchy deviceType routing", () => {
 	]) {
 		it(`deploys the ${scenario.variant} Lua profile for ${scenario.name} deviceType`, async () => {
 			const home = makeHome(scenario.config);
-			await configureOmarchyWorkspaces({ home });
+			await configureOmarchyWorkspaces({ home, ...v4Dependencies });
 
 			expect(fs.readFileSync(workspaceDestination(home))).toEqual(
 				fs.readFileSync(

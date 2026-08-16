@@ -2,7 +2,8 @@ import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 
-import { commandExists, log } from "../common/utils.js";
+import { checkOmarchyV4 } from "../common/omarchy_version.js";
+import { commandExists, log, runCommandCapture } from "../common/utils.js";
 
 const PROJECT_ROOT = path.resolve(import.meta.dir, "..", "..");
 const MINIMUM_VERSION = [1, 12, 0];
@@ -251,7 +252,26 @@ export async function syncHyprmoncfg({
 	commandExistsImpl = commandExists,
 	env = process.env,
 	enable = true,
+	captureCommandImpl = runCommandCapture,
+	logImpl = log,
+	versionResult,
 } = {}) {
+	const gate = await checkOmarchyV4({
+		captureCommandImpl,
+		env,
+		logImpl,
+		versionResult,
+	});
+	if (!gate.ok) {
+		return {
+			status: "refused",
+			message: gate.message,
+			deployed: 0,
+			packageReady: false,
+			serviceEnabled: false,
+		};
+	}
+
 	const { repoProfilesDir, liveProfilesDir, monitorsLua } = resolvePaths({
 		home,
 		projectRoot,

@@ -39,6 +39,15 @@ describe("--workspaces CLI mode", () => {
 	});
 
 	it("deploys workspace configuration through the real CLI wiring", () => {
+		fs.writeFileSync(
+			path.join(hyprDir(), "hyprland.lua"),
+			'dofile("/usr/share/omarchy/default/hypr/bootstrap.lua")\n',
+		);
+		const fakeBin = path.join(tmpHome, "bin");
+		fs.mkdirSync(fakeBin, { recursive: true });
+		const fakeOmarchy = path.join(fakeBin, "omarchy");
+		fs.writeFileSync(fakeOmarchy, "#!/bin/sh\necho 'Omarchy 4.0.0'\n");
+		fs.chmodSync(fakeOmarchy, 0o755);
 		fs.cpSync(
 			path.join(PROJECT_ROOT, "src"),
 			path.join(tmpProjectRoot, "src"),
@@ -78,7 +87,11 @@ describe("--workspaces CLI mode", () => {
 		const result = Bun.spawnSync(
 			[path.join(tmpProjectRoot, "haoshoku.js"), "--workspaces"],
 			{
-				env: { ...isolatedEnv, HOME: tmpHome },
+				env: {
+					...isolatedEnv,
+					HOME: tmpHome,
+					PATH: `${fakeBin}:${isolatedEnv.PATH}`,
+				},
 				stderr: "pipe",
 				stdout: "pipe",
 			},

@@ -1,9 +1,10 @@
 # Changelog
 
-## 9.0.0 - 2026-08-15
+## Unreleased
 
 - Breaking: Omarchy 4 or newer required; Omarchy 3 no longer supported.
-  Helpers gate on the installed Omarchy major version.
+  Migration, workspaces, hyprmoncfg, and plugin helpers gate on the installed
+  Omarchy major version.
 - The Hyprland overlay moved from `.conf` to Lua. Omarchy 4 loads user
   config via `require()` and no longer sources `.conf` files. Haoshoku
   deploys `~/.config/hypr/haoshoku/{bindings,workspaces}.lua` and appends
@@ -36,8 +37,8 @@
 - Hyprland config validation now parses `hyprctl configerrors` output; its
   exit status is always 0, so the exit code alone could never detect a
   broken config.
-- Dispatch failures in `haoshoku-special-workspace` propagate instead of
-  being masked.
+- Dispatch exit status is not treated as a failure signal; only an unrunnable
+  `hyprctl` fails the launcher.
 
 ## 8.6.1 - 2026-08-15
 

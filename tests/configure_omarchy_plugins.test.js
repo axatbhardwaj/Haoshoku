@@ -91,6 +91,9 @@ function makeRunner({ installedJsonBody, failAddFor = [] } = {}) {
 	const calls = [];
 	const runner = async (argv) => {
 		calls.push(argv);
+		if (argv.join(" ") === "omarchy version") {
+			return { exitCode: 0, stdout: "Omarchy 4.0.0\n", stderr: "" };
+		}
 		if (argv.join(" ") === "omarchy plugin list --json") {
 			return { exitCode: 0, stdout: installedJsonBody, stderr: "" };
 		}
@@ -127,6 +130,58 @@ function commandType(calls, subcommand) {
 }
 
 describe("Omarchy plugin installer", () => {
+	it("probes the system Omarchy path while preserving the injected environment", async () => {
+		const calls = [];
+		const { logImpl } = makeLog();
+		const result = await configureOmarchyPlugins({
+			manifest: [],
+			env: { SENTINEL: "kept", OMARCHY_PATH: "/live/shim" },
+			runCommandImpl: async (argv, options = {}) => {
+				calls.push([argv, options]);
+				if (argv.join(" ") === "omarchy version") {
+					return {
+						exitCode: 0,
+						stdout:
+							options.env?.OMARCHY_PATH === "/usr/share/omarchy"
+								? "Omarchy 4.0.0\n"
+								: "Omarchy 3.8.5\n",
+					};
+				}
+				return { exitCode: 0, stdout: "[]" };
+			},
+			logImpl,
+		});
+
+		expect(result.status).not.toBe("refused");
+		expect(calls[0]).toEqual([
+			["omarchy", "version"],
+			{ env: { SENTINEL: "kept", OMARCHY_PATH: "/usr/share/omarchy" } },
+		]);
+	});
+
+	it("refuses Omarchy 3 before reading or mutating plugin state", async () => {
+		const calls = [];
+		const { lines, logImpl } = makeLog();
+		const result = await configureOmarchyPlugins({
+			manifest: MANIFEST,
+			runCommandImpl: async (argv) => {
+				calls.push(argv);
+				return { exitCode: 0, stdout: "Omarchy 3.8.5\n", stderr: "" };
+			},
+			logImpl,
+		});
+
+		expect(result).toEqual(
+			expect.objectContaining({
+				status: "refused",
+				installed: [],
+				enabled: [],
+				failed: [],
+			}),
+		);
+		expect(calls).toEqual([["omarchy", "version"]]);
+		expect(lines.warning.join("\n")).toContain("Omarchy 4 or newer");
+	});
 	it("installs only the 3 missing plugins when 7 of 10 are already enabled", async () => {
 		const enabledIds = MANIFEST.slice(0, 7).map((plugin) => plugin.id);
 		const { calls, runner } = makeRunner({
@@ -244,6 +299,9 @@ describe("Omarchy plugin installer", () => {
 		const calls = [];
 		const runner = async (argv) => {
 			calls.push(argv);
+			if (argv.join(" ") === "omarchy version") {
+				return { exitCode: 0, stdout: "Omarchy 4.0.0\n", stderr: "" };
+			}
 			if (argv.join(" ") === "omarchy plugin list --json") {
 				return { exitCode: 1, stdout: "", stderr: "no omarchy" };
 			}
@@ -268,9 +326,12 @@ describe("Omarchy plugin installer", () => {
 		"{}",
 	])("treats a non-array plugin list (%s) as empty and still attempts installs", async (stdoutBody) => {
 		const calls = [];
-		const runner = async (argv) => {
-			calls.push(argv);
-			if (argv.join(" ") === "omarchy plugin list --json") {
+			const runner = async (argv) => {
+				calls.push(argv);
+				if (argv.join(" ") === "omarchy version") {
+					return { exitCode: 0, stdout: "Omarchy 4.0.0\n", stderr: "" };
+				}
+				if (argv.join(" ") === "omarchy plugin list --json") {
 				return { exitCode: 0, stdout: stdoutBody, stderr: "" };
 			}
 			return { exitCode: 0, stdout: "", stderr: "" };
@@ -295,6 +356,9 @@ describe("Omarchy plugin installer", () => {
 		const calls = [];
 		const runner = async (argv) => {
 			calls.push(argv);
+			if (argv.join(" ") === "omarchy version") {
+				return { exitCode: 0, stdout: "Omarchy 4.0.0\n", stderr: "" };
+			}
 			if (argv.join(" ") === "omarchy plugin list --json") {
 				return { exitCode: 0, stdout: "not json", stderr: "" };
 			}

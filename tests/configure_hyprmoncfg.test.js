@@ -83,8 +83,13 @@ function seedRepoProfile(contents = '{"name":"pc","source":"repo"}\n') {
 	fs.writeFileSync(path.join(repoProfilesDir(), "pc.json"), contents);
 }
 
+
 function successfulDependencies(calls = []) {
 	return {
+		captureCommandImpl: async () => ({
+			exitCode: 0,
+			stdout: "Omarchy 4.0.0\n",
+		}),
 		commandExistsImpl: async (command) =>
 			command === "hyprmoncfg" || command === "paru",
 		runCommandImpl: async (args) => {
@@ -170,6 +175,31 @@ describe("pc hyprmoncfg profile", () => {
 });
 
 describe("syncHyprmoncfg — repo to live", () => {
+	it("refuses Omarchy 3 before deploying profiles or probing packages", async () => {
+		seedRepoProfile();
+		const calls = [];
+		const result = await hyprmoncfg.syncHyprmoncfg({
+			home: tmpHome,
+			projectRoot: tmpProjectRoot,
+			captureCommandImpl: async () => ({
+				exitCode: 0,
+				stdout: "Omarchy 3.8.5\n",
+			}),
+			commandExistsImpl: async (command) => calls.push(command),
+			runCommandImpl: async (args) => calls.push(args),
+		});
+
+		expect(result).toEqual(
+			expect.objectContaining({
+				status: "refused",
+				deployed: 0,
+				packageReady: false,
+				serviceEnabled: false,
+			}),
+		);
+		expect(calls).toEqual([]);
+		expect(fs.existsSync(liveProfilesDir())).toBe(false);
+	});
 	it("deploys only repository JSON profiles", async () => {
 		seedRepoProfile();
 		fs.writeFileSync(path.join(repoProfilesDir(), "pc.conf"), "sidecar");
@@ -245,6 +275,10 @@ describe("syncHyprmoncfg — repo to live", () => {
 		await hyprmoncfg.syncHyprmoncfg({
 			home: tmpHome,
 			projectRoot: tmpProjectRoot,
+			captureCommandImpl: async () => ({
+				exitCode: 0,
+				stdout: "Omarchy 4.0.0\n",
+			}),
 			commandExistsImpl: async (command) =>
 				command === "hyprmoncfg" || command === "paru",
 			runCommandImpl,
@@ -285,6 +319,10 @@ describe("syncHyprmoncfg — repo to live", () => {
 			hyprmoncfg.syncHyprmoncfg({
 				home: tmpHome,
 				projectRoot: tmpProjectRoot,
+				captureCommandImpl: async () => ({
+					exitCode: 0,
+					stdout: "Omarchy 4.0.0\n",
+				}),
 				commandExistsImpl: async () => false,
 				runCommandImpl,
 			}),

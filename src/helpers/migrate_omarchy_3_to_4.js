@@ -2,6 +2,7 @@ import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 
+import { checkOmarchyV4 } from "../common/omarchy_version.js";
 import { log, runCommand, runCommandCapture } from "../common/utils.js";
 import { configureHyprmoncfg } from "./configure_hyprmoncfg.js";
 import { configureOmarchyPlugins } from "./configure_omarchy_plugins.js";
@@ -46,19 +47,31 @@ function backupFile(fsImpl, source, now) {
 	return { backup, timestamp, mode };
 }
 
-function isHaoshokuSource(line) {
+function sourcePath(line) {
 	const match = line.match(
 		/^[ \t]*source[ \t]*=[ \t]*([^#\r\n]+?)[ \t]*(?:#.*)?$/,
 	);
-	if (!match) return false;
+	if (!match) return null;
 	const value = match[1].trim().replace(/^(?:"(.*)"|'(.*)')$/, "$1$2");
-	return /^haoshoku-[^/\\\s]+\.conf$/.test(path.basename(value));
+	return value;
 }
 
-function withoutHaoshokuSources(content) {
+function isRetiredSource(line, { stripMonitorsConf }) {
+	const value = sourcePath(line);
+	if (!value) return false;
+	const basename = path.basename(value);
+	return (
+		/^haoshoku-[^/\\\s]+\.conf$/.test(basename) ||
+		(stripMonitorsConf && basename === "monitors.conf")
+	);
+}
+
+function withoutRetiredSources(content, options) {
 	return (content.match(/[^\r\n]*(?:\r\n|\r|\n|$)/g) ?? [])
 		.filter(
-			(line) => line && !isHaoshokuSource(line.replace(/\r\n|\r|\n$/, "")),
+			(line) =>
+				line &&
+				!isRetiredSource(line.replace(/\r\n|\r|\n$/, ""), options),
 		)
 		.join("");
 }
@@ -68,8 +81,12 @@ function cleanLegacySources({ home, fsImpl, now }) {
 	if (!fsImpl.existsSync(legacy)) {
 		return { name: "legacy source cleanup", status: "already done" };
 	}
+	const monitorsConf = path.join(home, ".config", "hypr", "monitors.conf");
+	const stripMonitorsConf =
+		!fsImpl.existsSync(monitorsConf) ||
+		!isHyprmoncfgOwned(fsImpl, monitorsConf);
 	const original = fsImpl.readFileSync(legacy, "utf8");
-	const cleaned = withoutHaoshokuSources(original);
+	const cleaned = withoutRetiredSources(original, { stripMonitorsConf });
 	if (cleaned === original) {
 		return { name: "legacy source cleanup", status: "already done" };
 	}
@@ -173,18 +190,98 @@ function identicalBackup(fsImpl, file, contents) {
 	return null;
 }
 
-function handoffMonitorsLua({ home, fsImpl, now, logImpl }) {
+function handoffMonitorsLua({ home, fsImpl, now, logImpl, hyprmoncfg }) {
 	const monitors = path.join(home, ".config", "hypr", "monitors.lua");
-	if (!fsImpl.existsSync(monitors) || isHyprmoncfgOwned(fsImpl, monitors)) {
+	const exists = fsImpl.existsSync(monitors);
+	if (exists && isHyprmoncfgOwned(fsImpl, monitors)) {
 		return {
 			name: "monitors.lua ownership handoff",
 			status: "already done",
 		};
 	}
+
+	const ready =
+		hyprmoncfg?.packageReady === true &&
+		hyprmoncfg?.serviceEnabled === true;
+	if (!ready) {
+		if (!exists) {
+			const backup = identicalBackup(
+				fsImpl,
+				monitors,
+				Buffer.from(STOCK_MONITORS_LUA),
+			);
+			if (backup) {
+				const timestamp = now();
+				const mode = fsImpl.statSync(backup).mode & 0o777;
+				writeAtomically(
+					fsImpl,
+					monitors,
+					fsImpl.readFileSync(backup),
+					timestamp,
+					mode,
+				);
+				const message = `manual attention: hyprmoncfg is not ready; restored missing ${monitors} from ${backup}.`;
+				logImpl.warning(message);
+				return {
+					name: "monitors.lua ownership handoff",
+					status: "manual attention",
+					restoredFrom: backup,
+					message,
+				};
+			}
+		}
+		const message = exists
+			? `manual attention: hyprmoncfg is not ready; left ${monitors} untouched.`
+			: `manual attention: hyprmoncfg is not ready and ${monitors} is missing; no migration stock backup was found to restore.`;
+		logImpl.warning(message);
+		return {
+			name: "monitors.lua ownership handoff",
+			status: "manual attention",
+			message,
+		};
+	}
+
+	if (!exists) {
+		const backup = identicalBackup(
+			fsImpl,
+			monitors,
+			Buffer.from(STOCK_MONITORS_LUA),
+		);
+		if (backup) {
+			const timestamp = now();
+			const mode = fsImpl.statSync(backup).mode & 0o777;
+			writeAtomically(
+				fsImpl,
+				monitors,
+				fsImpl.readFileSync(backup),
+				timestamp,
+				mode,
+			);
+			const message = `manual attention: restored missing ${monitors} from ${backup}; verify hyprmoncfg ownership before removing it again.`;
+			logImpl.warning(message);
+			return {
+				name: "monitors.lua ownership handoff",
+				status: "manual attention",
+				restoredFrom: backup,
+				message,
+			};
+		}
+		const message = `manual attention: ${monitors} is missing and no migration stock backup was found; restore a valid file before reloading Hyprland.`;
+		logImpl.warning(message);
+		return {
+			name: "monitors.lua ownership handoff",
+			status: "manual attention",
+			message,
+		};
+	}
+
 	const contents = fsImpl.readFileSync(monitors);
 	if (contents.equals(Buffer.from(STOCK_MONITORS_LUA))) {
 		const { backup } = backupFile(fsImpl, monitors, now);
 		fsImpl.unlinkSync(monitors);
+		logImpl.success(
+			`Handed ${monitors} to hyprmoncfg; stock configuration backed up at ${backup}.`,
+		);
 		return {
 			name: "monitors.lua ownership handoff",
 			status: "applied",
@@ -202,6 +299,27 @@ function handoffMonitorsLua({ home, fsImpl, now, logImpl }) {
 		backup,
 		message,
 	};
+}
+
+async function waitForMonitorsLua({
+	monitors,
+	fsImpl,
+	sleepImpl,
+	pollIntervalMs,
+	pollTimeoutMs,
+}) {
+	if (fsImpl.existsSync(monitors) && isHyprmoncfgOwned(fsImpl, monitors))
+		return true;
+	for (
+		let elapsed = 0;
+		elapsed < pollTimeoutMs;
+		elapsed += pollIntervalMs
+	) {
+		await sleepImpl(pollIntervalMs);
+		if (fsImpl.existsSync(monitors) && isHyprmoncfgOwned(fsImpl, monitors))
+			return true;
+	}
+	return false;
 }
 
 function quattroShimIsActive(home, fsImpl) {
@@ -230,12 +348,6 @@ function quattroShimIsActive(home, fsImpl) {
 	);
 }
 
-function omarchyMajor(result) {
-	if (result?.exitCode !== 0) return null;
-	const match = result.stdout?.match(/\bv?(\d+)(?:\.\d+){1,2}\b/);
-	return match ? Number(match[1]) : null;
-}
-
 export async function migrateOmarchy3To4({
 	home = homedir(),
 	fsImpl = fs,
@@ -247,40 +359,73 @@ export async function migrateOmarchy3To4({
 	configureOmarchyWorkspacesImpl = configureOmarchyWorkspaces,
 	configureHyprmoncfgImpl = configureHyprmoncfg,
 	configureOmarchyPluginsImpl = configureOmarchyPlugins,
+	sleepImpl = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)),
+	pollIntervalMs = 100,
+	pollTimeoutMs = 3000,
 } = {}) {
-	const version = await captureCommandImpl("omarchy version", {
-		env: { ...env, OMARCHY_PATH: "/usr/share/omarchy" },
-	});
-	const major = omarchyMajor(version);
-	if (major === null || major < 4) {
-		const message =
-			"Migration refused: Omarchy 4 or newer must be installed and its version must be detectable.";
-		logImpl.warning(message);
+	let version;
+	try {
+		version = await captureCommandImpl("omarchy version", {
+			env: { ...env, OMARCHY_PATH: "/usr/share/omarchy" },
+		});
+	} catch {
+		version = null;
+	}
+	const gate = await checkOmarchyV4({ versionResult: version, logImpl });
+	if (!gate.ok) {
 		return {
 			status: "refused",
-			steps: [{ name: "version gate", status: "refused", message }],
+			steps: [
+				{ name: "version gate", status: "refused", message: gate.message },
+			],
+		};
+	}
+	const major = gate.major;
+	const laptopFollowUp =
+		"On a laptop, save a laptop hyprmoncfg profile and run --hyprmoncfg-backup.";
+	const baseRecoveryInstruction =
+		"remove the appended require lines from hyprland.lua, then reboot";
+	const versionStep = { name: "version gate", status: "clean", major };
+	if (quattroShimIsActive(home, fsImpl)) {
+		const deferred = {
+			name: "Quattro live shim",
+			status: "deferred",
+			message:
+				"The Quattro live compatibility shim is still active; reboot, then re-run this migration.",
+		};
+		logImpl.warning(deferred.message);
+		return {
+			status: "deferred",
+			steps: [versionStep, deferred],
+			manualAuthChecklist: [],
+			laptopFollowUp,
+			recoveryInstruction: baseRecoveryInstruction,
 		};
 	}
 
 	const steps = [
-		{ name: "version gate", status: "clean", major },
+		versionStep,
 		cleanLegacySources({ home, fsImpl, now }),
 		removeOrphans({ home, fsImpl, now }),
 		rewriteLiveThemePaths({ home, fsImpl, now }),
-		handoffMonitorsLua({ home, fsImpl, now, logImpl }),
 	];
-	const laptopFollowUp =
-		"On a laptop, save a laptop hyprmoncfg profile and run --hyprmoncfg-backup.";
-	const recoveryInstruction =
-		"remove the appended require lines from hyprland.lua, then reboot";
-	logImpl.info(recoveryInstruction);
+	let recoveryInstruction = baseRecoveryInstruction;
 
 	let workspaces;
 	let hyprmoncfg;
 	let deployFailure = null;
 	try {
 		workspaces =
-			(await configureOmarchyWorkspacesImpl({ home, fsImpl, now })) ?? {};
+			(await configureOmarchyWorkspacesImpl({
+				home,
+				fsImpl,
+				now,
+				env,
+				captureCommandImpl,
+				runCommandImpl,
+				logImpl,
+				versionResult: version,
+			})) ?? {};
 	} catch (error) {
 		const message = `Workspace deployment failed: ${error instanceof Error ? error.message : String(error)}`;
 		workspaces = { status: "failed", message };
@@ -292,7 +437,16 @@ export async function migrateOmarchy3To4({
 	}
 	if (!deployFailure) {
 		try {
-			hyprmoncfg = (await configureHyprmoncfgImpl({ home, fsImpl, now })) ?? {};
+			hyprmoncfg =
+				(await configureHyprmoncfgImpl({
+					home,
+					fsImpl,
+					now,
+					env,
+					captureCommandImpl,
+					logImpl,
+					versionResult: version,
+				})) ?? {};
 		} catch (error) {
 			const message = `hyprmoncfg deployment failed: ${error instanceof Error ? error.message : String(error)}`;
 			hyprmoncfg = { status: "failed", message };
@@ -301,6 +455,7 @@ export async function migrateOmarchy3To4({
 	}
 	if (deployFailure) {
 		logImpl.error(deployFailure);
+		logImpl.info(recoveryInstruction);
 		steps.push({
 			name: "deploy reusable config",
 			status: "failed",
@@ -334,7 +489,7 @@ export async function migrateOmarchy3To4({
 	const deployStep = {
 		name: "deploy reusable config",
 		status:
-			unreadyHyprmoncfgParts.length > 0
+			unreadyHyprmoncfgParts.length > 0 || workspaces.status === "refused"
 				? "manual attention"
 				: Object.values(workspaces).some((value) => value === true) ||
 						Number(hyprmoncfg.deployed) > 0
@@ -346,12 +501,69 @@ export async function migrateOmarchy3To4({
 	if (unreadyHyprmoncfgParts.length > 0) {
 		deployStep.message = `hyprmoncfg ${unreadyHyprmoncfgParts.join(" and ")} ${unreadyHyprmoncfgParts.length === 1 ? "is" : "are"} not ready; complete installation/service setup and re-run.`;
 		logImpl.warning(deployStep.message);
+	} else if (workspaces.status === "refused") {
+		deployStep.message = workspaces.message;
+		logImpl.warning(deployStep.message);
 	}
 	steps.push(deployStep);
 
+	const handoff = handoffMonitorsLua({
+		home,
+		fsImpl,
+		now,
+		logImpl,
+		hyprmoncfg,
+	});
+	steps.push(handoff);
+	if (handoff.status === "applied") {
+		recoveryInstruction = `${baseRecoveryInstruction}; if monitors.lua is missing or Hyprland cannot load, restore ${path.join(home, ".config", "hypr", "monitors.lua")} from ${handoff.backup}`;
+	}
+	logImpl.info(recoveryInstruction);
+
+	const monitors = path.join(home, ".config", "hypr", "monitors.lua");
+	let regeneration;
+	if (handoff.status === "applied") {
+		const regenerated = await waitForMonitorsLua({
+			monitors,
+			fsImpl,
+			sleepImpl,
+			pollIntervalMs,
+			pollTimeoutMs,
+		});
+		if (regenerated) {
+			regeneration = {
+				name: "monitors.lua regeneration",
+				status: "clean",
+			};
+		} else {
+			const timestamp = now();
+			const mode = fsImpl.statSync(handoff.backup).mode & 0o777;
+			writeAtomically(
+				fsImpl,
+				monitors,
+				fsImpl.readFileSync(handoff.backup),
+				timestamp,
+				mode,
+			);
+			regeneration = {
+				name: "monitors.lua regeneration",
+				status: "manual attention",
+				restoredFrom: handoff.backup,
+				message: `hyprmoncfg did not regenerate ${monitors} within ${pollTimeoutMs}ms; restored the stock file from ${handoff.backup}.`,
+			};
+			logImpl.warning(regeneration.message);
+		}
+		steps.push(regeneration);
+	}
+
 	let plugins;
 	try {
-		plugins = (await configureOmarchyPluginsImpl({ logImpl })) ?? {};
+		plugins =
+			(await configureOmarchyPluginsImpl({
+				logImpl,
+				env,
+				versionResult: version,
+			})) ?? {};
 	} catch (error) {
 		const message = `Plugin deployment failed: ${error instanceof Error ? error.message : String(error)}`;
 		logImpl.error(message);
@@ -382,14 +594,22 @@ export async function migrateOmarchy3To4({
 	});
 
 	let validation;
-	if (quattroShimIsActive(home, fsImpl)) {
+	const validationBlockers = [];
+	if (workspaces.status === "refused") {
+		validationBlockers.push("workspace deployment was refused");
+	}
+	if (!fsImpl.existsSync(monitors)) {
+		validationBlockers.push(`${monitors} is missing`);
+	}
+	if (regeneration?.status === "manual attention") {
+		validationBlockers.push(regeneration.message);
+	}
+	if (validationBlockers.length > 0) {
 		validation = {
 			name: "validate and hand off",
-			status: "deferred",
-			message:
-				"The Quattro live compatibility shim is still active; reboot, then re-run this migration.",
+			status: "skipped",
+			message: `${validationBlockers.join("; ")}. Hyprland validation was skipped to avoid reloading an unsafe configuration.`,
 		};
-		logImpl.warning(validation.message);
 	} else {
 		const reloaded = await runCommandImpl("hyprctl reload", { check: false });
 		const configErrors = await captureCommandImpl("hyprctl configerrors");
@@ -397,7 +617,7 @@ export async function migrateOmarchy3To4({
 			reloaded === true &&
 			configErrors?.exitCode === 0 &&
 			configErrors.failed === false &&
-			configErrors.stdout === "";
+			String(configErrors.stdout).trim() === "";
 		validation = {
 			name: "validate and hand off",
 			status: clean ? "clean" : "failed",
@@ -422,9 +642,7 @@ export async function migrateOmarchy3To4({
 	logImpl.info(laptopFollowUp);
 
 	const status =
-		validation.status === "deferred"
-			? "deferred"
-			: validation.status === "failed"
+		validation.status === "failed"
 				? "failed"
 				: steps.some((step) => step.status === "manual attention")
 					? "manual attention"

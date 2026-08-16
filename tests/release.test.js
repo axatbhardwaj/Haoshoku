@@ -1,4 +1,6 @@
 import { describe, expect, it } from "bun:test";
+import fs from "node:fs";
+import path from "node:path";
 import {
 	applyChangelogRelease,
 	applyVersionBump,
@@ -61,6 +63,16 @@ describe("applyVersionBump", () => {
 });
 
 describe("applyChangelogRelease", () => {
+	it("can release the real Unreleased changelog section", () => {
+		const changelog = fs.readFileSync(
+			path.join(import.meta.dir, "..", "CHANGELOG.md"),
+			"utf8",
+		);
+		expect(changelog).toMatch(/^# Changelog\r?\n\r?\n## Unreleased\r?\n/);
+		expect(() =>
+			applyChangelogRelease(changelog, "9.0.1", "2099-01-01"),
+		).not.toThrow();
+	});
 	it("renames the Unreleased heading and leaves all other text untouched", () => {
 		const content =
 			"# Changelog\n\n## Unreleased\n\n- New behavior.\n\n## 7.2.2 - 2026-08-05\n\n- Previous behavior.\n";

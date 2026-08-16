@@ -387,6 +387,37 @@ async function runAction(options) {
 		const result = await migrateOmarchy3To4();
 		const status = result?.status ?? "failed";
 		const summary = `Omarchy 3→4 migration status: ${status}`;
+		for (const step of result?.steps ?? []) {
+			log.info(`${step.name}: ${step.status}`);
+		}
+		const backupPaths = new Set();
+		const collectBackups = (value) => {
+			if (Array.isArray(value)) {
+				for (const item of value) collectBackups(item);
+				return;
+			}
+			if (!value || typeof value !== "object") return;
+			for (const [key, child] of Object.entries(value)) {
+				if (
+					(key === "backup" || key === "restoredFrom") &&
+					typeof child === "string"
+				) {
+					backupPaths.add(child);
+				} else collectBackups(child);
+			}
+		};
+		collectBackups(result?.steps ?? []);
+		for (const backup of backupPaths) log.info(`Backup: ${backup}`);
+		if (result?.manualAuthChecklist?.length > 0) {
+			log.info("Manual-auth checklist:");
+			for (const item of result.manualAuthChecklist) {
+				log.info(`  - ${item.id}: ${item.requirement}`);
+			}
+		}
+		if (result?.laptopFollowUp) log.info(result.laptopFollowUp);
+		if (result?.recoveryInstruction) {
+			log.info(`Recovery: ${result.recoveryInstruction}`);
+		}
 		if (status === "completed") {
 			log.success(summary);
 		} else {

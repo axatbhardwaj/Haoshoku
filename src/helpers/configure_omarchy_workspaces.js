@@ -1,7 +1,13 @@
 import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
-import { readDeviceType } from "../common/utils.js";
+import { checkOmarchyV4 } from "../common/omarchy_version.js";
+import {
+	log,
+	readDeviceType,
+	runCommand,
+	runCommandCapture,
+} from "../common/utils.js";
 
 const ROOT = path.resolve(import.meta.dir, "..", "..");
 const BINDINGS_REQUIRE = 'require("hypr.haoshoku.bindings")';
@@ -74,6 +80,10 @@ function reconcileRequires(mainText) {
 	};
 }
 
+function shellEscape(value) {
+	return `'${String(value).replaceAll("'", `'\\''`)}'`;
+}
+
 /**
  * Deploy the device-specific Omarchy v4 workspace overlay to its stable Lua
  * module name. Unknown device types fall back to `pc` through readDeviceType.
@@ -83,7 +93,48 @@ export async function configureOmarchyWorkspaces({
 	projectRoot = ROOT,
 	fsImpl = fs,
 	now = Date.now,
+	env = process.env,
+	captureCommandImpl = runCommandCapture,
+	runCommandImpl = runCommand,
+	logImpl = log,
+	versionResult,
 } = {}) {
+	const gate = await checkOmarchyV4({
+		captureCommandImpl,
+		env,
+		logImpl,
+		versionResult,
+	});
+	if (!gate.ok) {
+		return {
+			status: "refused",
+			message: gate.message,
+			bindingsChanged: false,
+			overlayChanged: false,
+			scriptChanged: false,
+			sourceChanged: false,
+			reloaded: false,
+			replayed: false,
+		};
+	}
+
+	const hyprDirectory = path.join(home, ".config", "hypr");
+	const main = path.join(hyprDirectory, "hyprland.lua");
+	if (!fsImpl.existsSync(main)) {
+		const message = `Workspace deployment refused: Omarchy v4 Hyprland config not found at ${main}.`;
+		logImpl.warning(message);
+		return {
+			status: "refused",
+			message,
+			bindingsChanged: false,
+			overlayChanged: false,
+			scriptChanged: false,
+			sourceChanged: false,
+			reloaded: false,
+			replayed: false,
+		};
+	}
+
 	const deviceType = readDeviceType(home);
 	const sourceDirectory = path.join(
 		projectRoot,
@@ -91,7 +142,6 @@ export async function configureOmarchyWorkspaces({
 		"omarchy",
 		"haoshoku",
 	);
-	const hyprDirectory = path.join(home, ".config", "hypr");
 	const overlayDirectory = path.join(hyprDirectory, "haoshoku");
 	const bindingsDestination = path.join(overlayDirectory, "bindings.lua");
 	const workspacesDestination = path.join(overlayDirectory, "workspaces.lua");
@@ -124,20 +174,38 @@ export async function configureOmarchyWorkspaces({
 	if (scriptChanged || (fsImpl.statSync(scriptDestination).mode & 0o111) !== 0o111)
 		fsImpl.chmodSync(scriptDestination, 0o755);
 
-	const main = path.join(hyprDirectory, "hyprland.lua");
-	const mainText = fsImpl.existsSync(main)
-		? fsImpl.readFileSync(main, "utf8")
-		: "";
+	const mainText = fsImpl.readFileSync(main, "utf8");
 	const requires = reconcileRequires(mainText);
 	if (requires.changed) {
-		if (fsImpl.existsSync(main))
-			writeAtomically(
-				fsImpl,
-				backupDestination(fsImpl, main, now),
-				fsImpl.readFileSync(main),
-			);
+		writeAtomically(
+			fsImpl,
+			backupDestination(fsImpl, main, now),
+			fsImpl.readFileSync(main),
+		);
 		writeAtomically(fsImpl, main, requires.text);
 	}
 
-	return { bindingsChanged, overlayChanged, scriptChanged, sourceChanged: requires.changed };
+	let reloaded = false;
+	let replayed = false;
+	if (env.HYPRLAND_INSTANCE_SIGNATURE) {
+		reloaded = Boolean(await runCommandImpl("hyprctl reload"));
+		replayed = Boolean(
+			await runCommandImpl(
+				`${shellEscape(scriptDestination)} numbered-login 7 kitty`,
+			),
+		);
+	} else {
+		logImpl.info(
+			"Hyprland is not active; workspace reload and exec-once replay are deferred to login.",
+		);
+	}
+
+	return {
+		bindingsChanged,
+		overlayChanged,
+		scriptChanged,
+		sourceChanged: requires.changed,
+		reloaded,
+		replayed,
+	};
 }

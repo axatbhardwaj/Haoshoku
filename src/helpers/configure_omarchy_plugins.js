@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { checkOmarchyV4 } from "../common/omarchy_version.js";
 import { log } from "../common/utils.js";
 
 const PROJECT_ROOT = path.resolve(import.meta.dir, "..", "..");
@@ -9,12 +10,12 @@ const DEFAULT_MANIFEST_PATH = path.join(
 	"omarchy-plugins.json",
 );
 
-async function runOmarchyCommand(argv) {
-	const process = Bun.spawn(argv, { stdout: "pipe", stderr: "pipe" });
+async function runOmarchyCommand(argv, { env = process.env } = {}) {
+	const child = Bun.spawn(argv, { stdout: "pipe", stderr: "pipe", env });
 	const [stdout, stderr, exitCode] = await Promise.all([
-		new Response(process.stdout).text(),
-		new Response(process.stderr).text(),
-		process.exited,
+		new Response(child.stdout).text(),
+		new Response(child.stderr).text(),
+		child.exited,
 	]);
 	return { exitCode, stdout, stderr };
 }
@@ -41,7 +42,28 @@ export async function configureOmarchyPlugins({
 	manifestPath = DEFAULT_MANIFEST_PATH,
 	runCommandImpl = runOmarchyCommand,
 	logImpl = log,
+	env = process.env,
+	versionResult,
 } = {}) {
+	const gate = await checkOmarchyV4({
+		captureCommandImpl: async (_command, options) =>
+			await runCommandImpl(["omarchy", "version"], options),
+		env,
+		logImpl,
+		versionResult,
+	});
+	if (!gate.ok) {
+		return {
+			status: "refused",
+			message: gate.message,
+			installed: [],
+			enabled: [],
+			alreadyReady: [],
+			failed: [],
+			manualAuthChecklist: [],
+		};
+	}
+
 	const plugins =
 		manifest ?? JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
 

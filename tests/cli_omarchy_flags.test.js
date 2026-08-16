@@ -24,6 +24,7 @@ function runCliMode({
 	helperExport,
 	marker,
 	migrationStatus = "completed",
+	migrationResult,
 }) {
 	const helperExports =
 		helperPath === hyprmoncfgHelper
@@ -37,7 +38,7 @@ function runCliMode({
 			${helperExports
 				.map(
 					(exportName) =>
-						`${exportName}: async () => { ${exportName === helperExport ? `console.log(${JSON.stringify(marker)}); ${exportName === "migrateOmarchy3To4" ? `return ${JSON.stringify({ status: migrationStatus })};` : ""}` : ""} }`,
+							`${exportName}: async () => { ${exportName === helperExport ? `console.log(${JSON.stringify(marker)}); ${exportName === "migrateOmarchy3To4" ? `return ${JSON.stringify(migrationResult ?? { status: migrationStatus })};` : ""}` : ""} }`,
 				)
 				.join(",\n\t\t\t")}
 		}));
@@ -117,6 +118,50 @@ describe("Omarchy one-shot CLI modes", () => {
 			expect(result.exitCode).toBe(status === "completed" ? 0 : 1);
 		});
 	}
+
+	it("prints migration steps, backup paths, and follow-up checklists", () => {
+		const result = runCliMode({
+			flag: "--3-4-migrate",
+			helperPath: migrationHelper,
+			helperExport: "migrateOmarchy3To4",
+			marker: "MIGRATION_DETAILS",
+			migrationResult: {
+				status: "manual attention",
+				steps: [
+					{ name: "version gate", status: "clean" },
+					{
+						name: "orphan cleanup",
+						status: "applied",
+						files: [
+							{
+								path: "/tmp/monitors.conf",
+								status: "applied",
+								backup: "/tmp/monitors.conf.bak.42",
+							},
+						],
+					},
+					{
+						name: "monitors.lua regeneration",
+						status: "manual attention",
+						restoredFrom: "/tmp/monitors.lua.bak.42",
+					},
+				],
+				manualAuthChecklist: [
+					{ id: "weather", requirement: "sign in" },
+				],
+				laptopFollowUp: "save the laptop profile",
+				recoveryInstruction: "restore monitors.lua from backup",
+			},
+		});
+
+		expect(result.output).toContain("version gate: clean");
+		expect(result.output).toContain("orphan cleanup: applied");
+		expect(result.output).toContain("/tmp/monitors.conf.bak.42");
+		expect(result.output).toContain("/tmp/monitors.lua.bak.42");
+		expect(result.output).toContain("weather: sign in");
+		expect(result.output).toContain("save the laptop profile");
+		expect(result.output).toContain("restore monitors.lua from backup");
+	});
 
 	it("describes the Omarchy 4 destinations without legacy v3 artifacts", () => {
 		const result = Bun.spawnSync([cli, "--help"], { stdout: "pipe" });
