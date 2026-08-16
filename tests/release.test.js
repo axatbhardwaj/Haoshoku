@@ -63,15 +63,37 @@ describe("applyVersionBump", () => {
 });
 
 describe("applyChangelogRelease", () => {
-	it("can release the real Unreleased changelog section", () => {
+	it("accepts a real changelog headed by Unreleased or a released version", () => {
 		const changelog = fs.readFileSync(
 			path.join(import.meta.dir, "..", "CHANGELOG.md"),
 			"utf8",
 		);
-		expect(changelog).toMatch(/^# Changelog\r?\n\r?\n## Unreleased\r?\n/);
+		const unreleased = /^# Changelog\r?\n\r?\n## Unreleased\r?\n/;
+		const released =
+			/^# Changelog\r?\n\r?\n## \d+\.\d+\.\d+ - \d{4}-\d{2}-\d{2}\r?\n/;
+		expect(unreleased.test(changelog) || released.test(changelog)).toBe(
+			true,
+		);
+		if (unreleased.test(changelog)) {
+			expect(() =>
+				applyChangelogRelease(changelog, "9.0.1", "2099-01-01"),
+			).not.toThrow();
+		} else {
+			expect(() =>
+				applyChangelogRelease(changelog, "9.0.1", "2099-01-01"),
+			).toThrow(/Unreleased heading not found/);
+		}
+	});
+
+	it("accepts a synthetic released changelog and refuses to re-release it", () => {
+		const fixture =
+			"# Changelog\n\n## 8.6.1 - 2026-08-15\n\n- Released behavior.\n";
+		expect(fixture).toMatch(
+			/^# Changelog\r?\n\r?\n## \d+\.\d+\.\d+ - \d{4}-\d{2}-\d{2}\r?\n/,
+		);
 		expect(() =>
-			applyChangelogRelease(changelog, "9.0.1", "2099-01-01"),
-		).not.toThrow();
+			applyChangelogRelease(fixture, "9.0.1", "2099-01-01"),
+		).toThrow(/Unreleased heading not found/);
 	});
 	it("renames the Unreleased heading and leaves all other text untouched", () => {
 		const content =
