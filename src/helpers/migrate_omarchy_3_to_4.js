@@ -5,6 +5,7 @@ import path from "node:path";
 import { checkOmarchyV4 } from "../common/omarchy_version.js";
 import { log, runCommand, runCommandCapture } from "../common/utils.js";
 import { configureHyprmoncfg } from "./configure_hyprmoncfg.js";
+import { configureOmarchyBar } from "./configure_omarchy_bar.js";
 import { configureOmarchyPlugins } from "./configure_omarchy_plugins.js";
 import { configureOmarchyWorkspaces } from "./configure_omarchy_workspaces.js";
 
@@ -359,6 +360,7 @@ export async function migrateOmarchy3To4({
 	configureOmarchyWorkspacesImpl = configureOmarchyWorkspaces,
 	configureHyprmoncfgImpl = configureHyprmoncfg,
 	configureOmarchyPluginsImpl = configureOmarchyPlugins,
+	configureOmarchyBarImpl = configureOmarchyBar,
 	sleepImpl = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)),
 	pollIntervalMs = 100,
 	pollTimeoutMs = 3000,
@@ -469,6 +471,11 @@ export async function migrateOmarchy3To4({
 			message: "Skipped because reusable configuration deployment failed.",
 		});
 		steps.push({
+			name: "bar",
+			status: "skipped",
+			message: "Skipped because reusable configuration deployment failed.",
+		});
+		steps.push({
 			name: "validate and hand off",
 			status: "skipped",
 			message:
@@ -569,6 +576,11 @@ export async function migrateOmarchy3To4({
 		logImpl.error(message);
 		steps.push({ name: "plugins", status: "failed", message });
 		steps.push({
+			name: "bar",
+			status: "skipped",
+			message: "Skipped because plugin deployment failed.",
+		});
+		steps.push({
 			name: "validate and hand off",
 			status: "skipped",
 			message:
@@ -585,13 +597,42 @@ export async function migrateOmarchy3To4({
 	steps.push({
 		name: "plugins",
 		status:
-			plugins.failed?.length > 0
+			plugins.snapshotUnavailable ||
+			plugins.failed?.length > 0 ||
+			plugins.configureFailed?.length > 0
 				? "manual attention"
 				: plugins.installed?.length > 0 || plugins.enabled?.length > 0
 					? "applied"
 					: "already done",
 		result: plugins,
 	});
+
+	try {
+		const bar =
+			(await configureOmarchyBarImpl({
+				home,
+				fsImpl,
+				now,
+				env,
+				captureCommandImpl,
+				logImpl,
+				versionResult: version,
+			})) ?? {};
+		steps.push({
+			name: "bar",
+			status:
+				bar.status === "configured"
+					? bar.changed
+						? "applied"
+						: "already done"
+					: "manual attention",
+			result: bar,
+		});
+	} catch (error) {
+		const message = `Bar deployment failed: ${error instanceof Error ? error.message : String(error)}`;
+		logImpl.error(message);
+		steps.push({ name: "bar", status: "failed", message });
+	}
 
 	let validation;
 	const validationBlockers = [];
@@ -642,11 +683,12 @@ export async function migrateOmarchy3To4({
 	logImpl.info(laptopFollowUp);
 
 	const status =
-		validation.status === "failed"
-				? "failed"
-				: steps.some((step) => step.status === "manual attention")
-					? "manual attention"
-					: "completed";
+		validation.status === "failed" ||
+		steps.some((step) => step.status === "failed")
+			? "failed"
+			: steps.some((step) => step.status === "manual attention")
+				? "manual attention"
+				: "completed";
 	return {
 		status,
 		steps,

@@ -42,6 +42,10 @@ import {
 	configureHyprmoncfg,
 } from "./src/helpers/configure_hyprmoncfg.js";
 import { configureOmarchyPlugins } from "./src/helpers/configure_omarchy_plugins.js";
+import {
+	backupOmarchyBar,
+	configureOmarchyBar,
+} from "./src/helpers/configure_omarchy_bar.js";
 import { configureOmarchyWorkspaces } from "./src/helpers/configure_omarchy_workspaces.js";
 import {
 	backupPrWatch,
@@ -167,6 +171,14 @@ program
 	.option(
 		"--omarchy-plugins",
 		"Configure the Omarchy plugins declared in common/omarchy-plugins.json",
+	)
+	.option(
+		"--omarchy-bar",
+		"Deploy configs/omarchy/bar.json into the bar key of Omarchy shell.json",
+	)
+	.option(
+		"--omarchy-bar-backup",
+		"Backup the bar key from Omarchy shell.json to configs/omarchy/bar.json",
 	)
 	.option("--3-4-migrate", "Migrate an Omarchy 3 configuration to Omarchy 4")
 	.option(
@@ -377,6 +389,16 @@ async function runAction(options) {
 
 	if (options.omarchyPlugins) {
 		await configureOmarchyPlugins();
+		return;
+	}
+
+	if (options.omarchyBar) {
+		await configureOmarchyBar();
+		return;
+	}
+
+	if (options.omarchyBarBackup) {
+		await backupOmarchyBar();
 		return;
 	}
 

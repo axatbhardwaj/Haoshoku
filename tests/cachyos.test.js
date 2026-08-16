@@ -614,6 +614,7 @@ describe("Arch package-manager preflight", () => {
 			configureHyprmoncfgImpl: unreachable,
 			configureOmarchyWorkspacesImpl: unreachable,
 			configureOmarchyPluginsImpl: unreachable,
+			configureOmarchyBarImpl: unreachable,
 			configureOmazedImpl: unreachable,
 		});
 
@@ -645,6 +646,7 @@ describe("Arch package-manager preflight", () => {
 				configureHyprmoncfgImpl: record("hyprmoncfg"),
 				configureOmarchyWorkspacesImpl: record("workspaces"),
 				configureOmarchyPluginsImpl: record("plugins"),
+				configureOmarchyBarImpl: record("bar"),
 				configureOmazedImpl: record("omazed"),
 			});
 			return { events, result };
@@ -665,6 +667,7 @@ describe("Arch package-manager preflight", () => {
 				"hyprmoncfg",
 				"workspaces",
 				"plugins",
+				"bar",
 				"omazed",
 			],
 		});
@@ -681,6 +684,35 @@ describe("Arch package-manager preflight", () => {
 				"user-apps",
 			],
 		});
+	});
+
+	it("configures the Omarchy bar strictly after its plugins", async () => {
+		const events = [];
+		const record = (name, result) => async () => {
+			events.push(name);
+			return result;
+		};
+
+		await runCachyOSSetup({
+			promptDeviceTypeImpl: async () => {},
+			prepareArchPackageManagerImpl: async () => true,
+			ensureRustToolchainImpl: async () => {},
+			ensureAurHelperImpl: async () => "paru",
+			installDevToolsImpl: async () => {},
+			commandExistsImpl: async () => true,
+			installSystemPackagesImpl: async () => {},
+			installFlatpakAppsImpl: async () => {},
+			configureUserAppsImpl: async () => {},
+			configureBraveManagedPoliciesImpl: async () => {},
+			configureHyprmoncfgImpl: async () => {},
+			configureOmarchyWorkspacesImpl: async () => {},
+			configureOmarchyPluginsImpl: record("plugins"),
+			configureOmarchyBarImpl: record("bar"),
+			configureOmazedImpl: record("omazed"),
+		});
+
+		expect(events.indexOf("bar")).toBeGreaterThan(events.indexOf("plugins"));
+		expect(events).toEqual(["plugins", "bar", "omazed"]);
 	});
 
 	it("continues Omarchy setup when Brave policy provisioning throws", async () => {
@@ -710,6 +742,7 @@ describe("Arch package-manager preflight", () => {
 					configureHyprmoncfgImpl: async () => events.push("hyprmoncfg"),
 					configureOmarchyWorkspacesImpl: async () => events.push("workspaces"),
 					configureOmarchyPluginsImpl: async () => events.push("plugins"),
+					configureOmarchyBarImpl: async () => events.push("bar"),
 					configureOmazedImpl: async () => events.push("omazed"),
 				});
 			} catch (error) {
@@ -721,6 +754,7 @@ describe("Arch package-manager preflight", () => {
 				"hyprmoncfg",
 				"workspaces",
 				"plugins",
+				"bar",
 				"omazed",
 			]);
 			expect(thrown).toBeUndefined();
@@ -733,7 +767,7 @@ describe("Arch package-manager preflight", () => {
 		}
 	});
 
-	for (const failingStep of ["hyprmoncfg", "workspaces", "plugins"]) {
+	for (const failingStep of ["hyprmoncfg", "workspaces", "plugins", "bar"]) {
 		it(`warns and continues Omarchy setup when the ${failingStep} device variant is missing`, async () => {
 			const events = [];
 			const warnings = [];
@@ -761,11 +795,18 @@ describe("Arch package-manager preflight", () => {
 					configureHyprmoncfgImpl: step("hyprmoncfg"),
 					configureOmarchyWorkspacesImpl: step("workspaces"),
 					configureOmarchyPluginsImpl: step("plugins"),
+					configureOmarchyBarImpl: step("bar"),
 					configureOmazedImpl: step("omazed"),
 				});
 
 				expect(result).toBe(true);
-				expect(events).toEqual(["hyprmoncfg", "workspaces", "plugins", "omazed"]);
+				expect(events).toEqual([
+					"hyprmoncfg",
+					"workspaces",
+					"plugins",
+					"bar",
+					"omazed",
+				]);
 				expect(warnings).toHaveLength(1);
 				expect(warnings[0]).toContain(`missing ${failingStep}-laptop.conf`);
 				expect(warnings[0]).toContain("continuing");

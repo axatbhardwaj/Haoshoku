@@ -14,7 +14,7 @@ describe("Omarchy migration documentation", () => {
 			"On Omarchy 4, `hyprctl dispatch` evaluates its argument as Lua, so `haoshoku-special-workspace` now emits `hl.dsp.*` Lua expressions instead of the legacy `dispatch <name> <args>` form, which is a parse error on v4; dispatch failures now propagate as script failures rather than being masked.",
 		);
 		expect(changelog.replace(/\s+/g, " ")).toContain(
-			"The default Omarchy plugin set is now six plugins after dropping `robzolkos.agent-usage`, `tmn73.calendar`, `crmne.mpris`, and `dorneles.lock-keys`, which the user had uninstalled.",
+			"The default Omarchy plugin set is now eight plugins: `tmn73.calendar`, `crmne.mpris`, `dorneles.lock-keys`, and `hass` were dropped, while `io.github.thetrueferret.decent-workspaces`, `dizziee.system-stats`, and `robzolkos.agent-usage` were added, the first and last displacing the stock `omarchy.workspaces` and `omarchy.agents` widgets.",
 		);
 	});
 

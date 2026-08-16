@@ -27,6 +27,7 @@ import { installGhStack } from "../helpers/configure_gh_stack.js";
 import { configureHyprmoncfg } from "../helpers/configure_hyprmoncfg.js";
 import { promptDeviceType } from "../helpers/configure_hyprland.js";
 import { configureMimeapps } from "../helpers/configure_mimeapps.js";
+import { configureOmarchyBar } from "../helpers/configure_omarchy_bar.js";
 import { configureOmarchyPlugins } from "../helpers/configure_omarchy_plugins.js";
 import { configureOmarchyWorkspaces } from "../helpers/configure_omarchy_workspaces.js";
 import { configureOmazed } from "../helpers/configure_omazed.js";
@@ -664,12 +665,14 @@ export async function runCachyOSSetup({
 	configureHyprmoncfgImpl = configureHyprmoncfg,
 	configureOmarchyWorkspacesImpl = configureOmarchyWorkspaces,
 	configureOmarchyPluginsImpl = configureOmarchyPlugins,
+	configureOmarchyBarImpl = configureOmarchyBar,
 	configureOmazedImpl = configureOmazed,
 } = {}) {
 	const configureBraveManagedPolicies = configureBraveManagedPoliciesImpl;
 	const configureHyprmoncfg = configureHyprmoncfgImpl;
 	const configureOmarchyWorkspaces = configureOmarchyWorkspacesImpl;
 	const configureOmarchyPlugins = configureOmarchyPluginsImpl;
+	const configureOmarchyBar = configureOmarchyBarImpl;
 	const configureOmazed = configureOmazedImpl;
 
 	await promptDeviceTypeImpl();
@@ -715,6 +718,15 @@ export async function runCachyOSSetup({
 		} catch (err) {
 			log.warning(
 				`Omarchy plugin configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
+			);
+		}
+	}
+	if (isOmarchy) {
+		try {
+			await configureOmarchyBar();
+		} catch (err) {
+			log.warning(
+				`Omarchy bar configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
 			);
 		}
 	}

@@ -99,12 +99,18 @@ Caelestia, terminal themes, Zed themes, or wallpapers.
 
 ## Omarchy plugins
 
-On Arch-family desktops, Haoshoku installs a fixed set of ten third-party
-Omarchy plugins listed in
+On Arch-family desktops, Haoshoku installs the plugins listed in
 [`common/omarchy-plugins.json`](common/omarchy-plugins.json) by running
 `omarchy plugin add <url> --enable --yes` for each one. Each repository is
 cloned and enabled at its current default branch HEAD — there is no commit
-or tag pinning.
+or tag pinning. An entry may declare `disableOnInstall` to switch off a stock
+widget it replaces. That list is applied only when Haoshoku first creates the
+plugin and is never re-applied, so a user can re-enable a displaced widget
+without a later Haoshoku run overriding the choice. Every run otherwise
+reconciles manifest plugins back to installed and enabled. If
+`omarchy plugin list --json` cannot provide a trustworthy snapshot, the helper
+performs no plugin work and returns `snapshotUnavailable: true`; the
+side-effect-free manual-auth checklist is still printed.
 
 These plugins run as arbitrary, unsandboxed code inside the long-lived
 omarchy-shell process — the same risk Omarchy's own CLI warns about when
@@ -114,6 +120,15 @@ per-plugin confirmation/warning prompt, so only add this manifest to
 machines where you trust and have reviewed those repositories. Plugins
 that need manual setup afterwards (API tokens, OAuth, device pairing) are
 printed as a manual-auth checklist after installation.
+
+## Omarchy bar
+
+Use `haoshoku --omarchy-bar` to deploy `configs/omarchy/bar.json`, and use
+`haoshoku --omarchy-bar-backup` to capture the live bar back into the repo.
+Haoshoku claims the `bar` key of `~/.config/omarchy/shell.json` wholesale,
+including bar-widget enablement. Disabling a bar widget through Omarchy's UI is
+therefore reverted on the next deploy. Every other top-level key — including
+`idle`, `plugins`, `disabledPlugins`, `version`, and unknown keys — is preserved.
 
 ## Claude policy bootstrap
 
@@ -229,6 +244,8 @@ haoshoku --workspaces
 haoshoku --monitors
 haoshoku --hyprmoncfg-backup
 haoshoku --omarchy-plugins
+haoshoku --omarchy-bar
+haoshoku --omarchy-bar-backup
 haoshoku --3-4-migrate
 ```
 

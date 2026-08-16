@@ -22,6 +22,7 @@ const EXPECTED_OPTIONS = [
 	"configureHyprmoncfgImpl",
 	"configureOmarchyWorkspacesImpl",
 	"configureOmarchyPluginsImpl",
+	"configureOmarchyBarImpl",
 	"configureOmazedImpl",
 ];
 
@@ -39,6 +40,7 @@ const EXPECTED_AWAITED_STEPS = [
 	"configureHyprmoncfg",
 	"configureOmarchyWorkspaces",
 	"configureOmarchyPlugins",
+	"configureOmarchyBar",
 	"configureOmazed",
 ];
 
@@ -227,6 +229,7 @@ it("keeps the default Omarchy run behind explicit injectable side-effect seams",
 		configureHyprmoncfgImpl: record("hyprmoncfg"),
 		configureOmarchyWorkspacesImpl: record("workspaces"),
 		configureOmarchyPluginsImpl: record("plugins"),
+		configureOmarchyBarImpl: record("bar"),
 		configureOmazedImpl: record("omazed"),
 	});
 
@@ -246,6 +249,7 @@ it("keeps the default Omarchy run behind explicit injectable side-effect seams",
 		"hyprmoncfg",
 		"workspaces",
 		"plugins",
+		"bar",
 		"omazed",
 	]);
 });

@@ -122,6 +122,10 @@ const DELIBERATE_OMISSIONS = {
 			"Omarchy plugins require the Omarchy desktop environment.",
 		],
 		[
+			"--omarchy-bar",
+			"The Omarchy bar requires the Omarchy desktop environment.",
+		],
+		[
 			"--brave-managed-policies",
 			"Brave/Omarchy theming is not installed on the server path.",
 		],
@@ -206,6 +210,7 @@ function runArchDefaultPath() {
 				configureHyprmoncfgImpl: record("monitors"),
 				configureOmarchyWorkspacesImpl: record("workspaces"),
 				configureOmarchyPluginsImpl: record("omarchyPlugins"),
+				configureOmarchyBarImpl: record("omarchyBar"),
 				configureOmazedImpl: record("omazed"),
 			});
 			console.log("DEFAULT_CALLS=" + JSON.stringify(calls));
@@ -389,6 +394,7 @@ function defaultSetupOverrides({
 		configureHyprmoncfgImpl: async () => {},
 		configureOmarchyWorkspacesImpl: async () => {},
 		configureOmarchyPluginsImpl: async () => {},
+		configureOmarchyBarImpl: async () => {},
 		configureOmazedImpl: async () => {},
 	};
 }

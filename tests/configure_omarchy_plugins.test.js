@@ -30,35 +30,55 @@ const MANIFEST = [
 		manualAuth: "Raindrop API token",
 	},
 	{
-		id: "hass",
-		url: "https://github.com/konradk/hass.git",
-		manualAuth: "Home Assistant URL + long-lived token",
-	},
-	{
 		id: "omaconnect",
 		url: "https://github.com/jitendradara12/omaconnect.git",
 		manualAuth: "KDE Connect pairing",
 	},
+	{
+		id: "io.github.thetrueferret.decent-workspaces",
+		url: "https://github.com/TheTrueFerret/omarchy-decent-workspaces.git",
+		manualAuth: null,
+		disableOnInstall: ["omarchy.workspaces"],
+	},
+	{
+		id: "dizziee.system-stats",
+		url: "https://github.com/JJDizz1L/dizziee.system-stats.git",
+		manualAuth: null,
+	},
+	{
+		id: "robzolkos.agent-usage",
+		url: "https://github.com/robzolkos/omarchy-agent-usage.git",
+		manualAuth: null,
+		disableOnInstall: ["omarchy.agents"],
+	},
 ];
 
-const MISSING_WHEN_FIRST_5_PRESENT = [
-	"omaconnect",
-];
+const DECENT_WORKSPACES = MANIFEST.find(
+	(plugin) => plugin.id === "io.github.thetrueferret.decent-workspaces",
+);
+
+const MISSING_WHEN_FIRST_7_PRESENT = ["robzolkos.agent-usage"];
 
 const MANUAL_AUTH_IDS = [
 	"crmne.hyprmoncfg",
 	"robzolkos.github",
 	"io.github.treramey.raindrop-bookmarks",
-	"hass",
 	"omaconnect",
 ];
 
-function installedJson(enabledIds, { disabled = [] } = {}) {
+function installedJson(
+	enabledIds,
+	{ disabled = [], includeFirstParty = true } = {},
+) {
+	const ids = [...enabledIds, ...disabled];
+	if (includeFirstParty && !ids.some((id) => id.startsWith("omarchy."))) {
+		ids.unshift("omarchy.shell");
+	}
 	return JSON.stringify(
-		[...enabledIds, ...disabled].map((id) => ({
+		ids.map((id) => ({
 			id,
 			enabled: !disabled.includes(id),
-			firstParty: false,
+			firstParty: id.startsWith("omarchy."),
 			kinds: ["bar"],
 		})),
 	);
@@ -124,7 +144,7 @@ describe("Omarchy plugin installer", () => {
 								: "Omarchy 3.8.5\n",
 					};
 				}
-				return { exitCode: 0, stdout: "[]" };
+				return { exitCode: 0, stdout: installedJson([]) };
 			},
 			logImpl,
 		});
@@ -159,8 +179,8 @@ describe("Omarchy plugin installer", () => {
 		expect(calls).toEqual([["omarchy", "version"]]);
 		expect(lines.warning.join("\n")).toContain("Omarchy 4 or newer");
 	});
-	it("installs only the 1 missing plugin when 5 of 6 are already enabled", async () => {
-		const enabledIds = MANIFEST.slice(0, 5).map((plugin) => plugin.id);
+	it("installs only the 1 missing plugin when 7 of 8 are already enabled", async () => {
+		const enabledIds = MANIFEST.slice(0, 7).map((plugin) => plugin.id);
 		const { calls, runner } = makeRunner({
 			installedJsonBody: installedJson(enabledIds),
 		});
@@ -174,7 +194,7 @@ describe("Omarchy plugin installer", () => {
 
 		const addCalls = commandType(calls, "add");
 		expect(addCalls).toHaveLength(1);
-		for (const id of MISSING_WHEN_FIRST_5_PRESENT) {
+		for (const id of MISSING_WHEN_FIRST_7_PRESENT) {
 			const url = MANIFEST.find((plugin) => plugin.id === id).url;
 			expect(addCalls).toContainEqual([
 				"omarchy",
@@ -187,7 +207,7 @@ describe("Omarchy plugin installer", () => {
 		}
 		expect(commandType(calls, "enable")).toHaveLength(0);
 		expect(result.installed.sort()).toEqual(
-			[...MISSING_WHEN_FIRST_5_PRESENT].sort(),
+			[...MISSING_WHEN_FIRST_7_PRESENT].sort(),
 		);
 		expect(result.enabled).toEqual([]);
 		expect(result.failed).toEqual([]);
@@ -218,15 +238,18 @@ describe("Omarchy plugin installer", () => {
 		]);
 		expect(result.installed).toEqual([]);
 		expect(result.enabled).toEqual(["robzolkos.github"]);
-		expect(result.alreadyReady).toHaveLength(5);
+		expect(result.alreadyReady).toHaveLength(7);
 		expect(result.failed).toEqual([]);
 	});
 
 	it("records a failed install as non-fatal and keeps processing the rest", async () => {
-		const enabledIds = MANIFEST.slice(0, 4).map((plugin) => plugin.id);
+		const enabledIds = [
+			...MANIFEST.slice(0, 4).map((plugin) => plugin.id),
+			"omarchy.workspaces",
+		];
 		const { calls, runner } = makeRunner({
 			installedJsonBody: installedJson(enabledIds),
-			failAddFor: ["hass"],
+			failAddFor: ["dizziee.system-stats"],
 		});
 		const { lines, logImpl } = makeLog();
 
@@ -236,15 +259,21 @@ describe("Omarchy plugin installer", () => {
 			logImpl,
 		});
 
-		expect(commandType(calls, "add")).toHaveLength(2);
-		expect(result.failed).toEqual(["hass"]);
-		expect(result.installed).toEqual(["omaconnect"]);
+		expect(commandType(calls, "add")).toHaveLength(4);
+		expect(commandType(calls, "remove")).toEqual([]);
+		expect(result.failed).toEqual(["dizziee.system-stats"]);
+		expect(result.configureFailed).toEqual([]);
+		expect(result.installed).toEqual([
+			"omaconnect",
+			"io.github.thetrueferret.decent-workspaces",
+			"robzolkos.agent-usage",
+		]);
 		expect(result.alreadyReady).toHaveLength(4);
-		expect(lines.warning.join("\n")).toContain("hass");
+		expect(lines.warning.join("\n")).toContain("dizziee.system-stats");
 	});
 
 	it("lists exactly the manual-auth plugins regardless of install state", async () => {
-		const enabledIds = MANIFEST.slice(0, 5).map((plugin) => plugin.id);
+		const enabledIds = MANIFEST.slice(0, 7).map((plugin) => plugin.id);
 		const { runner } = makeRunner({
 			installedJsonBody: installedJson(enabledIds),
 		});
@@ -270,7 +299,7 @@ describe("Omarchy plugin installer", () => {
 		}
 	});
 
-	it("treats a failing plugin list as empty and still attempts installs", async () => {
+	it("skips all plugin work while returning the manual-auth checklist", async () => {
 		const calls = [];
 		const runner = async (argv) => {
 			calls.push(argv);
@@ -290,16 +319,77 @@ describe("Omarchy plugin installer", () => {
 			logImpl,
 		});
 
-		expect(commandType(calls, "add")).toHaveLength(6);
-		expect(result.installed).toHaveLength(6);
-		expect(result.failed).toEqual([]);
-		expect(lines.warning.join("\n")).toContain("plugin list");
+		expect(calls).toEqual([
+			["omarchy", "version"],
+			["omarchy", "plugin", "list", "--json"],
+		]);
+		expect(result).toEqual({
+			snapshotUnavailable: true,
+			installed: [],
+			enabled: [],
+			alreadyReady: [],
+			failed: [],
+			configured: [],
+			configureFailed: [],
+			manualAuthChecklist: [
+				{
+					id: "crmne.hyprmoncfg",
+					requirement:
+						"Needs the hyprmoncfg AUR package and daemon (installed separately; not handled by this installer)",
+				},
+				{ id: "robzolkos.github", requirement: "GitHub token" },
+				{
+					id: "io.github.treramey.raindrop-bookmarks",
+					requirement: "Raindrop API token",
+				},
+					{ id: "omaconnect", requirement: "KDE Connect pairing" },
+			],
+		});
+		expect(lines.warning.join("\n")).toContain("exit code 1");
+		for (const id of MANUAL_AUTH_IDS) {
+			expect(lines.info.join("\n")).toContain(id);
+		}
+	});
+
+	it("treats a successful list with no first-party plugin as untrustworthy", async () => {
+		const calls = [];
+		const { lines, logImpl } = makeLog();
+		const result = await configureOmarchyPlugins({
+			manifest: [DECENT_WORKSPACES],
+			runCommandImpl: async (argv) => {
+				calls.push(argv);
+				if (argv.join(" ") === "omarchy version") {
+					return { exitCode: 0, stdout: "Omarchy 4.0.0\n", stderr: "" };
+				}
+				if (argv.join(" ") === "omarchy plugin list --json") {
+					return {
+						exitCode: 0,
+						stdout: installedJson(["third.party"], {
+							includeFirstParty: false,
+						}),
+						stderr: "",
+					};
+				}
+				return { exitCode: 0, stdout: "", stderr: "" };
+			},
+			logImpl,
+		});
+
+		expect(calls).toEqual([
+			["omarchy", "version"],
+			["omarchy", "plugin", "list", "--json"],
+		]);
+		expect(commandType(calls, "add")).toEqual([]);
+		expect(commandType(calls, "disable")).toEqual([]);
+		expect(commandType(calls, "remove")).toEqual([]);
+		expect(result.snapshotUnavailable).toBe(true);
+		expect(lines.warning.join("\n")).toContain("no first-party plugin");
 	});
 
 	it.each([
 		"null",
 		"{}",
-	])("treats a non-array plugin list (%s) as empty and still attempts installs", async (stdoutBody) => {
+	])("skips all plugin work for a non-array plugin list (%s)", async (stdoutBody) => {
 		const calls = [];
 			const runner = async (argv) => {
 				calls.push(argv);
@@ -319,15 +409,21 @@ describe("Omarchy plugin installer", () => {
 			logImpl,
 		});
 
-		expect(commandType(calls, "add")).toHaveLength(6);
-		expect(result.installed).toHaveLength(6);
+		expect(calls).toEqual([
+			["omarchy", "version"],
+			["omarchy", "plugin", "list", "--json"],
+		]);
+		expect(result.snapshotUnavailable).toBe(true);
+		expect(result.installed).toEqual([]);
+		expect(result.enabled).toEqual([]);
+		expect(result.alreadyReady).toEqual([]);
 		expect(result.failed).toEqual([]);
-		expect(lines.warning.join("\n")).toContain(
-			"treating all manifest plugins as missing",
-		);
+		expect(result.configured).toEqual([]);
+		expect(result.configureFailed).toEqual([]);
+		expect(lines.warning.join("\n")).toContain("expected a JSON array");
 	});
 
-	it("treats malformed plugin list JSON as empty and still attempts installs", async () => {
+	it("skips all plugin work for malformed plugin list JSON", async () => {
 		const calls = [];
 		const runner = async (argv) => {
 			calls.push(argv);
@@ -347,44 +443,71 @@ describe("Omarchy plugin installer", () => {
 			logImpl,
 		});
 
-		expect(commandType(calls, "add")).toHaveLength(6);
-		expect(result.installed).toHaveLength(6);
+		expect(calls).toEqual([
+			["omarchy", "version"],
+			["omarchy", "plugin", "list", "--json"],
+		]);
+		expect(result.snapshotUnavailable).toBe(true);
+		expect(result.installed).toEqual([]);
+		expect(result.enabled).toEqual([]);
+		expect(result.alreadyReady).toEqual([]);
 		expect(result.failed).toEqual([]);
+		expect(result.configured).toEqual([]);
+		expect(result.configureFailed).toEqual([]);
 		expect(lines.warning.join("\n")).toContain(
-			"treating all manifest plugins as missing",
+			"plugin list returned untrustworthy data",
 		);
 	});
 
-	it("ships a manifest on disk with exactly the 6 expected plugins", () => {
+	it("ships a manifest on disk with exactly the 8 expected plugins", () => {
 		const EXPECTED_PLUGINS = [
 			{
 				id: "crmne.hyprmoncfg",
 				url: "https://github.com/crmne/omarchy-hyprmoncfg.git",
+				manualAuth:
+					"Needs the hyprmoncfg AUR package and daemon (installed separately; not handled by this installer)",
 			},
 			{
 				id: "white.nights",
 				url: "https://github.com/nightdevil00/white.nights.git",
+				manualAuth: null,
 			},
 			{
 				id: "robzolkos.github",
 				url: "https://github.com/robzolkos/omarchy-github.git",
+				manualAuth: "GitHub token",
 			},
 			{
 				id: "io.github.treramey.raindrop-bookmarks",
 				url: "https://github.com/treramey/omarchy-raindrop-bookmarks.git",
+				manualAuth: "Raindrop API token",
 			},
-			{ id: "hass", url: "https://github.com/konradk/hass.git" },
 			{
 				id: "omaconnect",
 				url: "https://github.com/jitendradara12/omaconnect.git",
+				manualAuth: "KDE Connect pairing",
+			},
+			{
+				id: "io.github.thetrueferret.decent-workspaces",
+				url: "https://github.com/TheTrueFerret/omarchy-decent-workspaces.git",
+				manualAuth: null,
+				disableOnInstall: ["omarchy.workspaces"],
+			},
+			{
+				id: "dizziee.system-stats",
+				url: "https://github.com/JJDizz1L/dizziee.system-stats.git",
+				manualAuth: null,
+			},
+			{
+				id: "robzolkos.agent-usage",
+				url: "https://github.com/robzolkos/omarchy-agent-usage.git",
+				manualAuth: null,
+				disableOnInstall: ["omarchy.agents"],
 			},
 		];
 
 		const onDisk = JSON.parse(fs.readFileSync(MANIFEST_PATH, "utf-8"));
-		expect(onDisk.length).toBe(6);
-		expect(
-			onDisk.map((plugin) => ({ id: plugin.id, url: plugin.url })),
-		).toEqual(EXPECTED_PLUGINS);
+		expect(onDisk).toEqual(EXPECTED_PLUGINS);
 
 		const urlPattern = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\.git$/;
 		for (const plugin of onDisk) {
@@ -394,4 +517,328 @@ describe("Omarchy plugin installer", () => {
 		const ids = onDisk.map((plugin) => plugin.id);
 		expect(new Set(ids).size).toBe(ids.length);
 	});
+
+	it("NEVER issues omarchy plugin remove under failures, stale snapshots, or legacy arrangement-shaped input", async () => {
+		// Permanent data-loss guard: three cold-review findings shared one forbidden
+		// side effect. No installer failure is ever allowed to remove user plugin data.
+		const legacyBarPlugin = {
+			...DECENT_WORKSPACES,
+			bar: { section: "left", index: 1 },
+		};
+		const legacySettingsPlugin = {
+			...DECENT_WORKSPACES,
+			settings: { maxWorkspaceId: 11 },
+		};
+		const scenarios = [
+			{
+				name: "failed add",
+				plugin: DECENT_WORKSPACES,
+				list: installedJson(["omarchy.workspaces"]),
+				fail: (argv) => argv[1] === "plugin" && argv[2] === "add",
+			},
+			{
+				name: "failed disableOnInstall",
+				plugin: DECENT_WORKSPACES,
+				list: installedJson(["omarchy.workspaces"]),
+				fail: (argv) => argv[1] === "plugin" && argv[2] === "disable",
+			},
+			{
+				name: "untrustworthy snapshot",
+				plugin: DECENT_WORKSPACES,
+				list: JSON.stringify([{ id: "third.party", enabled: true }]),
+				fail: () => false,
+			},
+			{
+				name: "obsolete bar input failure",
+				plugin: legacyBarPlugin,
+				list: installedJson(["omarchy.workspaces"]),
+				fail: (argv) => argv[1] === "bar" && argv[2] === "move",
+			},
+			{
+				name: "obsolete settings input failure",
+				plugin: legacySettingsPlugin,
+				list: installedJson(["omarchy.workspaces"]),
+				fail: (argv) => argv[1] === "bar" && argv[2] === "set",
+			},
+		];
+
+		for (const scenario of scenarios) {
+			const calls = [];
+			await configureOmarchyPlugins({
+				manifest: [scenario.plugin],
+				runCommandImpl: async (argv) => {
+					calls.push(argv);
+					if (argv.join(" ") === "omarchy version") {
+						return { exitCode: 0, stdout: "Omarchy 4.0.0\n", stderr: "" };
+					}
+					if (argv.join(" ") === "omarchy plugin list --json") {
+						return { exitCode: 0, stdout: scenario.list, stderr: "" };
+					}
+					if (scenario.fail(argv)) {
+						return { exitCode: 1, stdout: "", stderr: "injected failure" };
+					}
+					return { exitCode: 0, stdout: "", stderr: "" };
+				},
+				logImpl: makeLog().logImpl,
+			});
+
+			expect({
+				scenario: scenario.name,
+				removeCalls: commandType(calls, "remove"),
+			}).toEqual({ scenario: scenario.name, removeCalls: [] });
+		}
+	});
+
+	it("does not attempt add when the list snapshot is untrustworthy", async () => {
+		const calls = [];
+		const result = await configureOmarchyPlugins({
+			manifest: [DECENT_WORKSPACES],
+			runCommandImpl: async (argv) => {
+				calls.push(argv);
+				if (argv.join(" ") === "omarchy version") {
+					return { exitCode: 0, stdout: "Omarchy 4.0.0\n", stderr: "" };
+				}
+				if (argv.join(" ") === "omarchy plugin list --json") {
+					return { exitCode: 1, stdout: "", stderr: "shell unavailable" };
+				}
+				if (argv[1] === "plugin" && argv[2] === "add") {
+					return { exitCode: 1, stdout: "", stderr: "already installed" };
+				}
+				return { exitCode: 0, stdout: "", stderr: "" };
+			},
+			logImpl: makeLog().logImpl,
+		});
+
+		expect(calls).toEqual([
+			["omarchy", "version"],
+			["omarchy", "plugin", "list", "--json"],
+		]);
+		expect(result.snapshotUnavailable).toBe(true);
+		expect(result.failed).toEqual([]);
+		expect(result.configureFailed).toEqual([]);
+	});
+
+	it("skips disableOnInstall when the list snapshot is untrustworthy", async () => {
+		const calls = [];
+		const result = await configureOmarchyPlugins({
+			manifest: [DECENT_WORKSPACES],
+			runCommandImpl: async (argv) => {
+				calls.push(argv);
+				if (argv.join(" ") === "omarchy version") {
+					return { exitCode: 0, stdout: "Omarchy 4.0.0\n", stderr: "" };
+				}
+				if (argv.join(" ") === "omarchy plugin list --json") {
+					return { exitCode: 1, stdout: "", stderr: "shell unavailable" };
+				}
+				if (argv.join(" ") === "omarchy plugin disable omarchy.workspaces") {
+					return { exitCode: 1, stdout: "", stderr: "plugin is not known" };
+				}
+				return { exitCode: 0, stdout: "", stderr: "" };
+			},
+			logImpl: makeLog().logImpl,
+		});
+
+		expect(calls).toEqual([
+			["omarchy", "version"],
+			["omarchy", "plugin", "list", "--json"],
+		]);
+		expect(result.snapshotUnavailable).toBe(true);
+		expect(result.installed).toEqual([]);
+		expect(result.configured).toEqual([]);
+		expect(result.configureFailed).toEqual([]);
+	});
+
+	it("does not report a fresh plugin without disableOnInstall as configured", async () => {
+		const plainPlugin = MANIFEST[1];
+		const result = await configureOmarchyPlugins({
+			manifest: [plainPlugin],
+			runCommandImpl: makeRunner({ installedJsonBody: installedJson([]) }).runner,
+			logImpl: makeLog().logImpl,
+		});
+
+		expect(result.installed).toEqual([plainPlugin.id]);
+		expect(result.configured).toEqual([]);
+	});
+
+	it("runs fresh-install disableOnInstall after add and reports it configured", async () => {
+		const calls = [];
+		const result = await configureOmarchyPlugins({
+			manifest: [DECENT_WORKSPACES],
+			runCommandImpl: async (argv) => {
+				calls.push(argv);
+				if (argv.join(" ") === "omarchy version") {
+					return { exitCode: 0, stdout: "Omarchy 4.0.0\n", stderr: "" };
+				}
+				if (argv.join(" ") === "omarchy plugin list --json") {
+					return {
+						exitCode: 0,
+						stdout: installedJson(["omarchy.workspaces"]),
+						stderr: "",
+					};
+				}
+				return { exitCode: 0, stdout: "", stderr: "" };
+			},
+			logImpl: makeLog().logImpl,
+		});
+
+		expect(calls.slice(2)).toEqual([
+			["omarchy", "plugin", "add", DECENT_WORKSPACES.url, "--enable", "--yes"],
+			["omarchy", "plugin", "disable", "omarchy.workspaces"],
+		]);
+		expect(result.configured).toEqual([DECENT_WORKSPACES.id]);
+	});
+
+	it("does not reapply disableOnInstall for a present-and-enabled plugin", async () => {
+		const { calls, runner } = makeRunner({
+			installedJsonBody: installedJson([DECENT_WORKSPACES.id, "omarchy.workspaces"]),
+		});
+		const result = await configureOmarchyPlugins({
+			manifest: [DECENT_WORKSPACES],
+			runCommandImpl: runner,
+			logImpl: makeLog().logImpl,
+		});
+
+		expect(calls.slice(2)).toEqual([]);
+		expect(result.alreadyReady).toEqual([DECENT_WORKSPACES.id]);
+	});
+
+	it("enables a present-but-disabled plugin without reapplying disableOnInstall", async () => {
+		const { calls, runner } = makeRunner({
+			installedJsonBody: installedJson(["omarchy.workspaces"], {
+				disabled: [DECENT_WORKSPACES.id],
+			}),
+		});
+		const result = await configureOmarchyPlugins({
+			manifest: [DECENT_WORKSPACES],
+			runCommandImpl: runner,
+			logImpl: makeLog().logImpl,
+		});
+
+		expect(calls.slice(2)).toEqual([
+			["omarchy", "plugin", "enable", DECENT_WORKSPACES.id],
+		]);
+		expect(result.enabled).toEqual([DECENT_WORKSPACES.id]);
+	});
+
+	it.each([
+		{ label: "disabled", list: installedJson([], { disabled: ["omarchy.workspaces"] }) },
+		{ label: "absent", list: installedJson([]) },
+	])("skips a disableOnInstall target that is $label", async ({ list }) => {
+		const { calls, runner } = makeRunner({ installedJsonBody: list });
+		await configureOmarchyPlugins({
+			manifest: [DECENT_WORKSPACES],
+			runCommandImpl: runner,
+			logImpl: makeLog().logImpl,
+		});
+
+		expect(commandType(calls, "disable")).toEqual([]);
+	});
+
+	it("reports each failing disableOnInstall target while keeping the plugin", async () => {
+		const calls = [];
+		const plugin = {
+			...DECENT_WORKSPACES,
+			disableOnInstall: ["omarchy.workspaces", "omarchy.workspaces-secondary"],
+		};
+		const result = await configureOmarchyPlugins({
+			manifest: [plugin],
+			runCommandImpl: async (argv) => {
+				calls.push(argv);
+				if (argv.join(" ") === "omarchy version") {
+					return { exitCode: 0, stdout: "Omarchy 4.0.0\n", stderr: "" };
+				}
+				if (argv.join(" ") === "omarchy plugin list --json") {
+					return {
+						exitCode: 0,
+						stdout: installedJson([
+							"omarchy.workspaces",
+							"omarchy.workspaces-secondary",
+						]),
+						stderr: "",
+					};
+				}
+				if (argv[1] === "plugin" && argv[2] === "disable") {
+					return { exitCode: 1, stdout: "", stderr: "disable failed" };
+				}
+				return { exitCode: 0, stdout: "", stderr: "" };
+			},
+			logImpl: makeLog().logImpl,
+		});
+
+		expect(commandType(calls, "remove")).toEqual([]);
+		expect(result.installed).toEqual([plugin.id]);
+		expect(result.configured).toEqual([]);
+		expect(result.configureFailed).toEqual([
+			{
+				id: plugin.id,
+				action: "disable",
+				targetId: "omarchy.workspaces",
+			},
+			{
+				id: plugin.id,
+				action: "disable",
+				targetId: "omarchy.workspaces-secondary",
+			},
+		]);
+	});
+
+	it("does not retry disableOnInstall on the run after a disable failure", async () => {
+		const first = await configureOmarchyPlugins({
+			manifest: [DECENT_WORKSPACES],
+			runCommandImpl: async (argv) => {
+				if (argv.join(" ") === "omarchy version") {
+					return { exitCode: 0, stdout: "Omarchy 4.0.0\n", stderr: "" };
+				}
+				if (argv.join(" ") === "omarchy plugin list --json") {
+					return {
+						exitCode: 0,
+						stdout: installedJson(["omarchy.workspaces"]),
+						stderr: "",
+					};
+				}
+				if (argv.join(" ") === "omarchy plugin disable omarchy.workspaces") {
+					return { exitCode: 1, stdout: "", stderr: "disable failed" };
+				}
+				return { exitCode: 0, stdout: "", stderr: "" };
+			},
+			logImpl: makeLog().logImpl,
+		});
+
+		expect(first.configureFailed).toEqual([
+			{
+				id: DECENT_WORKSPACES.id,
+				action: "disable",
+				targetId: "omarchy.workspaces",
+			},
+		]);
+
+		const secondCalls = [];
+		const second = await configureOmarchyPlugins({
+			manifest: [DECENT_WORKSPACES],
+			runCommandImpl: async (argv) => {
+				secondCalls.push(argv);
+				if (argv.join(" ") === "omarchy version") {
+					return { exitCode: 0, stdout: "Omarchy 4.0.0\n", stderr: "" };
+				}
+				return {
+					exitCode: 0,
+					stdout: installedJson([
+						DECENT_WORKSPACES.id,
+						"omarchy.workspaces",
+					]),
+					stderr: "",
+				};
+			},
+			logImpl: makeLog().logImpl,
+		});
+
+		expect(secondCalls).toEqual([
+			["omarchy", "version"],
+			["omarchy", "plugin", "list", "--json"],
+		]);
+		expect(second.alreadyReady).toEqual([DECENT_WORKSPACES.id]);
+		expect(second.configured).toEqual([]);
+		expect(second.configureFailed).toEqual([]);
+	});
+
 });

@@ -52,6 +52,18 @@ hyprmoncfg and the monitor profile. The overlays must not set scaling environmen
 variables: a global `GDK_SCALE` forces every GTK and XWayland client to one fixed
 factor regardless of per-monitor scale.
 
+## Shell ownership boundary
+
+Unlike `monitors.lua`, which has an exclusive external owner and Haoshoku never
+writes, `shell.json` has NO exclusive owner. Omarchy's own shell process co-writes
+it whenever a plugin is enabled or disabled through Omarchy's UI. For bar
+widgets, that enablement state lives in `bar.layout`; only non-bar plugins use
+the top-level plugin lists. Haoshoku intentionally claims the `bar` key within
+`~/.config/omarchy/shell.json` wholesale, including bar-widget enablement, so
+disabling a bar widget through Omarchy's UI is reverted on the next deploy. It
+preserves every other top-level key, including `idle`, `plugins`,
+`disabledPlugins`, `version`, and unknown keys.
+
 ## Window-class and workspace contracts
 
 The window classes matched by `workspaces-*.lua`—`chromium-flux` and
@@ -84,9 +96,10 @@ Workspace 7 uses the `haoshoku-special-workspace numbered 7 kitty` recipe. The
 exact `haoshoku-ws7` class identifies its owned window; the startup call and the
 post-reload helper use `numbered-login 7 kitty`. Haki and agents use their own
 exact Kitty classes and split sessions. `SUPER+Return` remains Omarchy's
-`xdg-terminal-exec` route, whose XDG default is Kitty; `SUPER+T` opens T3 Code.
-The assistants recipe runs at login and on `SUPER+I`, managing only ChatGPT in
-`special:assistants`; T3 Code and Twitch use their own special workspaces.
+`xdg-terminal-exec` route, whose XDG default is Kitty; `SUPER+T` focuses workspace
+1 and ensures T3 Code via the numbered recipe. The assistants recipe runs at login
+and on `SUPER+I`, managing only ChatGPT in `special:assistants`; Twitch retains its
+own special workspace.
 
 ## Narrow appearance carve-outs
 

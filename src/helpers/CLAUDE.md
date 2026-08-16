@@ -28,7 +28,8 @@ Standalone setup scripts for specific tools.
 | `configure_caelestia_prefs.js` | Caelestia user prefs sync/backup (`hypr-user.conf`, `cli.json`) | Adding Caelestia override features, debugging sync |
 | `configure_audio.js` | PipeWire/WirePlumber config sync/backup (portable pipewire drop-ins + device-routed wireplumber variant) | Adding audio config features, debugging sync |
 | `configure_mimeapps.js` | XDG mimeapps.list sync/backup — single portable file, no device routing | Adding mimeapps config features, debugging sync |
-| `configure_omarchy_plugins.js` | Manifest-driven Omarchy plugin install/enable reconciliation; per-plugin failures are non-fatal | Modifying the default plugin set, idempotency, or manual-auth reporting |
+| `configure_omarchy_bar.js` | Key-scoped Omarchy bar deploy/backup within `shell.json` | Modifying bar layout sync or the shared `shell.json` ownership boundary |
+| `configure_omarchy_plugins.js` | Manifest-driven Omarchy plugin install/enable reconciliation plus one-shot `disableOnInstall`; per-plugin failures are non-fatal | Modifying the default plugin set, idempotency, stock-widget displacement, or manual-auth reporting |
 | `configure_omarchy_workspaces.js` | Omarchy 4 device-specific Lua overlay deploy plus two `hyprland.lua` require lines | Modifying workspace/binding overlays, require wiring, or reload behavior |
 | `configure_omazed.js` | Omazed setup, Zed theme selection/hook deploy, and legacy theme retirement | Modifying Omarchy-managed Zed theming |
 | `configure_lockfix.js` | Caelestia lock-screen portrait-fix kit sync/backup (`apply.sh` + `*.patch` files, `chmod 755` on `apply.sh`) | Adding lockfix features, debugging kit deploy |

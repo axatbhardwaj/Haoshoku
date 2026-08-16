@@ -68,6 +68,10 @@ describe("migrateOmarchy3To4", () => {
 				manualAuthChecklist: [],
 				failed: [],
 			}),
+			configureOmarchyBarImpl: async () => ({
+				status: "configured",
+				changed: false,
+			}),
 			sleepImpl: async () => {
 				const monitors = path.join(
 					home,
@@ -470,9 +474,14 @@ describe("migrateOmarchy3To4", () => {
 				calls.push("plugins");
 				return pluginResult;
 			},
+			configureOmarchyBarImpl: async ({ home: configuredHome }) => {
+				if (configuredHome !== home) throw new Error("wrong bar home");
+				calls.push("bar");
+				return { status: "configured", changed: true };
+			},
 		});
 
-		expect(calls).toEqual(["workspaces", "hyprmoncfg", "plugins"]);
+		expect(calls).toEqual(["workspaces", "hyprmoncfg", "plugins", "bar"]);
 		expect(
 			result?.steps?.find((step) => step.name === "deploy reusable config"),
 		).toEqual({
@@ -490,9 +499,110 @@ describe("migrateOmarchy3To4", () => {
 			status: "manual attention",
 			result: pluginResult,
 		});
+		expect(result?.steps?.find((step) => step.name === "bar")).toEqual({
+			name: "bar",
+			status: "applied",
+			result: { status: "configured", changed: true },
+		});
 		expect(result?.manualAuthChecklist).toEqual(
 			pluginResult.manualAuthChecklist,
 		);
+	});
+
+	it("records a bar deployment exception as failed but still validates", async () => {
+		const calls = [];
+		const result = await runAccepted({
+			configureOmarchyPluginsImpl: async () => {
+				calls.push("plugins");
+				return { manualAuthChecklist: [], failed: [] };
+			},
+			configureOmarchyBarImpl: async () => {
+				calls.push("bar");
+				throw new Error("bar deployment exploded");
+			},
+			runCommandImpl: async (command) => {
+				calls.push(command);
+				return true;
+			},
+		});
+
+		expect(calls).toEqual(["plugins", "bar", "hyprctl reload"]);
+		expect(result?.steps?.find((step) => step.name === "bar")).toEqual(
+			expect.objectContaining({
+				name: "bar",
+				status: "failed",
+				message: expect.stringContaining("bar deployment exploded"),
+			}),
+		);
+		expect(
+			result?.steps?.find((step) => step.name === "validate and hand off")?.status,
+		).toBe("clean");
+		expect(result?.status).toBe("failed");
+	});
+
+	it("promotes disableOnInstall failures to manual attention", async () => {
+		const result = await runAccepted({
+			configureOmarchyPluginsImpl: async () => ({
+				installed: [],
+				enabled: [],
+				alreadyReady: [],
+				configured: [],
+				failed: [],
+				configureFailed: [
+					{
+						id: "replacement",
+						action: "disable",
+						targetId: "omarchy.stock-widget",
+					},
+				],
+				manualAuthChecklist: [],
+			}),
+		});
+
+		expect(result?.steps?.find((step) => step.name === "plugins")?.status).toBe(
+			"manual attention",
+		);
+		expect(result?.status).toBe("manual attention");
+	});
+
+	it("promotes skipped plugin reconciliation to manual attention", async () => {
+		const result = await runAccepted({
+			configureOmarchyPluginsImpl: async () => ({
+				snapshotUnavailable: true,
+				installed: [],
+				enabled: [],
+				alreadyReady: [],
+				configured: [],
+				failed: [],
+				configureFailed: [],
+				manualAuthChecklist: [],
+			}),
+		});
+
+		expect(result?.steps?.find((step) => step.name === "plugins")?.status).toBe(
+			"manual attention",
+		);
+		expect(result?.status).toBe("manual attention");
+	});
+
+	it("keeps all-empty plugin failure summaries already done", async () => {
+		const result = await runAccepted({
+			configureOmarchyPluginsImpl: async () => ({
+				snapshotUnavailable: false,
+				installed: [],
+				enabled: [],
+				alreadyReady: [],
+				configured: [],
+				failed: [],
+				configureFailed: [],
+				manualAuthChecklist: [],
+			}),
+		});
+
+		expect(result?.steps?.find((step) => step.name === "plugins")?.status).toBe(
+			"already done",
+		);
+		expect(result?.status).toBe("completed");
 	});
 
 	it("returns structured recovery when hyprmoncfg throws after workspace requires are appended", async () => {
@@ -545,6 +655,7 @@ describe("migrateOmarchy3To4", () => {
 			"live theme paths",
 			"deploy reusable config",
 			"plugins",
+			"bar",
 			"validate and hand off",
 		]);
 		expect(
@@ -613,7 +724,7 @@ describe("migrateOmarchy3To4", () => {
 		});
 
 		expect(result?.status).toBe("failed");
-		expect(result?.steps).toHaveLength(7);
+		expect(result?.steps).toHaveLength(8);
 		expect(
 			result?.steps?.find((step) => step.name === "deploy reusable config"),
 		).toEqual(
@@ -676,7 +787,7 @@ describe("migrateOmarchy3To4", () => {
 		});
 
 		expect(result?.status).toBe("failed");
-		expect(result?.steps).toHaveLength(8);
+		expect(result?.steps).toHaveLength(9);
 		expect(result?.steps?.[6]).toEqual(
 			expect.objectContaining({
 				name: "plugins",
@@ -684,7 +795,10 @@ describe("migrateOmarchy3To4", () => {
 				message: expect.stringContaining("plugin installation exploded"),
 			}),
 		);
-		expect(result?.steps?.[7]?.status).toBe("skipped");
+		expect(result?.steps?.[7]).toEqual(
+			expect.objectContaining({ name: "bar", status: "skipped" }),
+		);
+		expect(result?.steps?.[8]?.status).toBe("skipped");
 		expect(externalCalls).toEqual(["omarchy version"]);
 		expect(
 			messages.filter((message) => message === result.recoveryInstruction),

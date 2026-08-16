@@ -25,13 +25,18 @@ async function runOmarchyCommand(argv, { env = process.env } = {}) {
  * plugins already known to `omarchy plugin list --json`.
  *
  * - Missing plugin → `omarchy plugin add <url> --enable --yes` (fully
- *   non-interactive: --enable enables it, --yes accepts the manifest's
- *   default bar placement).
+ *   non-interactive: --enable enables it, --yes accepts the install prompt).
  * - Installed but disabled → enable-only action. Upstream docs don't pin a
  *   subcommand for this, so we use the symmetric
  *   `omarchy plugin enable <id>`; re-running `plugin add` for an
  *   already-installed plugin would be wrong.
  * - Installed and enabled → no action.
+ *
+ * Haoshoku owns liveness (existence and enablement) and reconciles it every run.
+ * `disableOnInstall` fires only when Haoshoku first creates a plugin and is never
+ * re-applied, so a user who later re-enables a displaced widget is not overridden.
+ * Haoshoku never removes a plugin; to stop installing one, remove it from the
+ * manifest.
  *
  * Per-plugin failures are non-fatal: each is logged and collected in the
  * returned summary. A manual-auth checklist is printed for every manifest
@@ -56,18 +61,34 @@ export async function configureOmarchyPlugins({
 		return {
 			status: "refused",
 			message: gate.message,
+			snapshotUnavailable: false,
 			installed: [],
 			enabled: [],
 			alreadyReady: [],
 			failed: [],
+			configured: [],
+			configureFailed: [],
 			manualAuthChecklist: [],
 		};
 	}
 
 	const plugins =
 		manifest ?? JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
+	const manualAuthChecklist = plugins
+		.filter((plugin) => plugin.manualAuth)
+		.map((plugin) => ({ id: plugin.id, requirement: plugin.manualAuth }));
+	const printManualAuthChecklist = () => {
+		if (manualAuthChecklist.length > 0) {
+			logImpl.info("Omarchy plugins needing manual auth:");
+			for (const item of manualAuthChecklist) {
+				logImpl.info(`  - ${item.id}: ${item.requirement}`);
+			}
+		}
+	};
 
 	let installed = [];
+	let listOk = false;
+	let snapshotFailureReason = "plugin list did not produce a trustworthy snapshot";
 	try {
 		const listed = await runCommandImpl([
 			"omarchy",
@@ -83,15 +104,39 @@ export async function configureOmarchyPlugins({
 				);
 			}
 			installed = parsed;
+			if (
+				parsed.some(
+					(plugin) =>
+						typeof plugin?.id === "string" && plugin.id.startsWith("omarchy."),
+				)
+			) {
+				listOk = true;
+			} else {
+				snapshotFailureReason =
+					"plugin list contained no first-party plugin id; the Omarchy shell scan may not be ready";
+			}
 		} else {
-			logImpl.warning(
-				`omarchy plugin list failed (exit code ${listed.exitCode}) — treating all manifest plugins as missing.`,
-			);
+			snapshotFailureReason = `plugin list failed with exit code ${listed.exitCode}`;
 		}
 	} catch (err) {
+		snapshotFailureReason = `plugin list returned untrustworthy data: ${err?.message ?? err}`;
+	}
+
+	if (!listOk) {
 		logImpl.warning(
-			`Could not list Omarchy plugins (${err?.message ?? err}) — treating all manifest plugins as missing.`,
+			`SKIPPING ALL OMARCHY PLUGIN WORK: ${snapshotFailureReason}. No plugin add, enable, or disable actions were attempted.`,
 		);
+		printManualAuthChecklist();
+		return {
+			snapshotUnavailable: true,
+			installed: [],
+			enabled: [],
+			alreadyReady: [],
+			failed: [],
+			configured: [],
+			configureFailed: [],
+			manualAuthChecklist,
+		};
 	}
 
 	const stateById = new Map(installed.map((plugin) => [plugin.id, plugin]));
@@ -99,22 +144,70 @@ export async function configureOmarchyPlugins({
 	const enabledIds = [];
 	const alreadyReady = [];
 	const failed = [];
+	const configured = [];
+	const configureFailed = [];
 
 	for (const plugin of plugins) {
 		const state = stateById.get(plugin.id);
 		try {
 			if (!state) {
-				const added = await runCommandImpl([
-					"omarchy",
-					"plugin",
-					"add",
-					plugin.url,
-					"--enable",
-					"--yes",
-				]);
+				let added;
+				try {
+					added = await runCommandImpl([
+						"omarchy",
+						"plugin",
+						"add",
+						plugin.url,
+						"--enable",
+						"--yes",
+					]);
+				} catch (err) {
+					logImpl.warning(
+						`Omarchy plugin ${plugin.id} install failed (${err?.message ?? err}) — continuing.`,
+					);
+					failed.push(plugin.id);
+					continue;
+				}
 				if (added.exitCode === 0) {
 					logImpl.success(`Installed Omarchy plugin ${plugin.id}.`);
 					installedIds.push(plugin.id);
+					let disableFailed = false;
+					for (const targetId of plugin.disableOnInstall ?? []) {
+						const targetState = stateById.get(targetId);
+						if (!targetState?.enabled) continue;
+						try {
+							const disabled = await runCommandImpl([
+								"omarchy",
+								"plugin",
+								"disable",
+								targetId,
+							]);
+							if (disabled.exitCode !== 0) {
+								disableFailed = true;
+								configureFailed.push({
+									id: plugin.id,
+									action: "disable",
+									targetId,
+								});
+								logImpl.warning(
+									`Omarchy plugin ${plugin.id} disableOnInstall action failed for ${targetId} — keeping the installed plugin.`,
+								);
+							}
+						} catch {
+							disableFailed = true;
+							configureFailed.push({
+								id: plugin.id,
+								action: "disable",
+								targetId,
+							});
+							logImpl.warning(
+								`Omarchy plugin ${plugin.id} disableOnInstall action failed for ${targetId} — keeping the installed plugin.`,
+							);
+						}
+					}
+					if (plugin.disableOnInstall !== undefined && !disableFailed) {
+						configured.push(plugin.id);
+					}
 				} else {
 					logImpl.warning(
 						`Omarchy plugin ${plugin.id} install failed (exit code ${added.exitCode}) — continuing.`,
@@ -148,21 +241,16 @@ export async function configureOmarchyPlugins({
 		}
 	}
 
-	const manualAuthChecklist = plugins
-		.filter((plugin) => plugin.manualAuth)
-		.map((plugin) => ({ id: plugin.id, requirement: plugin.manualAuth }));
-	if (manualAuthChecklist.length > 0) {
-		logImpl.info("Omarchy plugins needing manual auth:");
-		for (const item of manualAuthChecklist) {
-			logImpl.info(`  - ${item.id}: ${item.requirement}`);
-		}
-	}
+	printManualAuthChecklist();
 
 	return {
+		snapshotUnavailable: false,
 		installed: installedIds,
 		enabled: enabledIds,
 		alreadyReady,
 		failed,
+		configured,
+		configureFailed,
 		manualAuthChecklist,
 	};
 }

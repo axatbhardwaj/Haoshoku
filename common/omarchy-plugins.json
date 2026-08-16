@@ -20,13 +20,25 @@
 		"manualAuth": "Raindrop API token"
 	},
 	{
-		"id": "hass",
-		"url": "https://github.com/konradk/hass.git",
-		"manualAuth": "Home Assistant URL + long-lived token"
-	},
-	{
 		"id": "omaconnect",
 		"url": "https://github.com/jitendradara12/omaconnect.git",
 		"manualAuth": "KDE Connect pairing"
+	},
+	{
+		"id": "io.github.thetrueferret.decent-workspaces",
+		"url": "https://github.com/TheTrueFerret/omarchy-decent-workspaces.git",
+		"manualAuth": null,
+		"disableOnInstall": ["omarchy.workspaces"]
+	},
+	{
+		"id": "dizziee.system-stats",
+		"url": "https://github.com/JJDizz1L/dizziee.system-stats.git",
+		"manualAuth": null
+	},
+	{
+		"id": "robzolkos.agent-usage",
+		"url": "https://github.com/robzolkos/omarchy-agent-usage.git",
+		"manualAuth": null,
+		"disableOnInstall": ["omarchy.agents"]
 	}
 ]

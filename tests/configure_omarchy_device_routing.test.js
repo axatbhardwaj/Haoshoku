@@ -62,6 +62,7 @@ describe("Omarchy deviceType routing", () => {
 			configureHyprmoncfgImpl: async () => {},
 			configureOmarchyWorkspacesImpl: () =>
 				configureOmarchyWorkspaces({ home, ...v4Dependencies }),
+			configureOmarchyBarImpl: async () => {},
 			configureOmarchyPluginsImpl: async () => {},
 			configureOmazedImpl: async () => {},
 		});

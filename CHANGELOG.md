@@ -28,9 +28,19 @@
   Lua overlay and profiles, installs plugins, and validates. If Omarchy's
   legacy config shim is still present it reports validation deferred and
   asks for a reboot and re-run rather than claiming success.
-- New `--omarchy-plugins`: installs and enables ten Omarchy shell plugins,
+- New `--omarchy-plugins`: installs and enables the plugins listed in
+  `common/omarchy-plugins.json`,
   idempotent on both plugin id and enabled state, per-plugin failure
-  non-fatal. Included in the default run.
+  non-fatal. Included in the default run. Entries may declare
+  `disableOnInstall` to switch off a stock widget they replace, applied only
+  when Haoshoku first creates the plugin and never re-applied. Bar placement,
+  settings arrangement, and rollback removal are no longer managed.
+- New `--omarchy-bar` deploys the owned `bar` key in Omarchy's `shell.json`,
+  while `--omarchy-bar-backup` captures it back into the repo. Haoshoku claims
+  `bar` wholesale, including bar-widget enablement, so Omarchy UI changes to
+  bar-widget enablement are reverted on the next deploy. Every other top-level
+  key — `idle`, `plugins`, `disabledPlugins`, `version`, and unknown keys — is
+  preserved.
 - New `--hyprmoncfg-backup`: pulls saved hyprmoncfg profiles back into the
   repo.
 - Theme state paths follow Omarchy 4's move from
@@ -43,12 +53,22 @@
   `haoshoku-special-workspace` now emits `hl.dsp.*` Lua expressions instead of
   the legacy `dispatch <name> <args>` form, which is a parse error on v4;
   dispatch failures now propagate as script failures rather than being masked.
+- T3 Code moved from `special:t3code` to workspace 1. `SUPER+T` now focuses
+  workspace 1 and launches T3 Code if missing via the `numbered` recipe; the
+  bare `t3code` recipe is retired.
 - The gaming-workspace toggle now emits v4 Lua dispatch expressions. On
   Omarchy 4, the legacy positional form is a parse error, which made
   `SUPER + SHIFT + G` a silent no-op.
-- The default Omarchy plugin set is now six plugins after dropping
-  `robzolkos.agent-usage`, `tmn73.calendar`, `crmne.mpris`, and
-  `dorneles.lock-keys`, which the user had uninstalled.
+- The gaming workspace moved from workspace 11 to workspace 2, so stock
+  `SUPER+2` reaches it. `SUPER+SHIFT+G` still toggles it and now ensures Steam
+  on both branches. Workspace 2 is a normal persistent workspace, so the old
+  disappear-when-empty behavior is gone, and the hyprmoncfg PC profile now
+  defines workspaces 1-10.
+- The default Omarchy plugin set is now eight plugins: `tmn73.calendar`,
+  `crmne.mpris`, `dorneles.lock-keys`, and `hass` were dropped, while
+  `io.github.thetrueferret.decent-workspaces`, `dizziee.system-stats`, and
+  `robzolkos.agent-usage` were added, the first and last displacing the stock
+  `omarchy.workspaces` and `omarchy.agents` widgets.
 
 ## 8.6.1 - 2026-08-15
 
