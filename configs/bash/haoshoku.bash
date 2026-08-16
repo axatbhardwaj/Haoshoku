@@ -27,11 +27,13 @@ haoshoku_run_initializers
 unset -f haoshoku_run_initializers
 
 cursor() { command cursor "$@" >/dev/null 2>&1 & }
-antigravity() { command antigravity --new-window "$@" >/dev/null 2>&1 & }
+# Migration: remove stale definitions from shells that sourced the old fragment.
+unalias agy 2>/dev/null
+unset -f antigravity 2>/dev/null
 
 alias ls='eza --icons --group-directories-first -1'
 alias dog='zeditor'
-alias agy='antigravity'
+alias antigravity='command agy'
 alias lss='ls -a -h'
 alias ps='ps auxfh'
 alias tf='fuck'

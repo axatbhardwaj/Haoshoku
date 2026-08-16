@@ -22,13 +22,12 @@ if status is-interactive
         command cursor $argv >/dev/null 2>&1 &
     end
 
-    function antigravity
-        command antigravity --new-window $argv >/dev/null 2>&1 &
-    end
+    # Migration: remove the stale alias-function from sessions that sourced the old config.
+    functions --erase agy 2>/dev/null
 
     alias ls='eza --icons --group-directories-first -1'
     alias dog="zeditor"
-    alias agy="antigravity"
+    alias antigravity="command agy"
     alias lss="ls -a -h"
     alias rmf="rm -r -f -v"
     alias ps="ps auxfh"
