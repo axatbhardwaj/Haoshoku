@@ -15,16 +15,6 @@ const MANIFEST = [
 			"Needs the hyprmoncfg AUR package and daemon (installed separately; not handled by this installer)",
 	},
 	{
-		id: "crmne.mpris",
-		url: "https://github.com/crmne/omarchy-mpris.git",
-		manualAuth: null,
-	},
-	{
-		id: "dorneles.lock-keys",
-		url: "https://github.com/jvlianodorneles/lock-keys.git",
-		manualAuth: null,
-	},
-	{
 		id: "white.nights",
 		url: "https://github.com/nightdevil00/white.nights.git",
 		manualAuth: null,
@@ -52,8 +42,6 @@ const MANIFEST = [
 ];
 
 const MISSING_WHEN_FIRST_5_PRESENT = [
-	"io.github.treramey.raindrop-bookmarks",
-	"hass",
 	"omaconnect",
 ];
 
@@ -171,7 +159,7 @@ describe("Omarchy plugin installer", () => {
 		expect(calls).toEqual([["omarchy", "version"]]);
 		expect(lines.warning.join("\n")).toContain("Omarchy 4 or newer");
 	});
-	it("installs only the 3 missing plugins when 5 of 8 are already enabled", async () => {
+	it("installs only the 1 missing plugin when 5 of 6 are already enabled", async () => {
 		const enabledIds = MANIFEST.slice(0, 5).map((plugin) => plugin.id);
 		const { calls, runner } = makeRunner({
 			installedJsonBody: installedJson(enabledIds),
@@ -185,7 +173,7 @@ describe("Omarchy plugin installer", () => {
 		});
 
 		const addCalls = commandType(calls, "add");
-		expect(addCalls).toHaveLength(3);
+		expect(addCalls).toHaveLength(1);
 		for (const id of MISSING_WHEN_FIRST_5_PRESENT) {
 			const url = MANIFEST.find((plugin) => plugin.id === id).url;
 			expect(addCalls).toContainEqual([
@@ -230,12 +218,12 @@ describe("Omarchy plugin installer", () => {
 		]);
 		expect(result.installed).toEqual([]);
 		expect(result.enabled).toEqual(["robzolkos.github"]);
-		expect(result.alreadyReady).toHaveLength(7);
+		expect(result.alreadyReady).toHaveLength(5);
 		expect(result.failed).toEqual([]);
 	});
 
 	it("records a failed install as non-fatal and keeps processing the rest", async () => {
-		const enabledIds = MANIFEST.slice(0, 5).map((plugin) => plugin.id);
+		const enabledIds = MANIFEST.slice(0, 4).map((plugin) => plugin.id);
 		const { calls, runner } = makeRunner({
 			installedJsonBody: installedJson(enabledIds),
 			failAddFor: ["hass"],
@@ -248,12 +236,10 @@ describe("Omarchy plugin installer", () => {
 			logImpl,
 		});
 
-		expect(commandType(calls, "add")).toHaveLength(3);
+		expect(commandType(calls, "add")).toHaveLength(2);
 		expect(result.failed).toEqual(["hass"]);
-		expect(result.installed.sort()).toEqual(
-			["io.github.treramey.raindrop-bookmarks", "omaconnect"].sort(),
-		);
-		expect(result.alreadyReady).toHaveLength(5);
+		expect(result.installed).toEqual(["omaconnect"]);
+		expect(result.alreadyReady).toHaveLength(4);
 		expect(lines.warning.join("\n")).toContain("hass");
 	});
 
@@ -304,8 +290,8 @@ describe("Omarchy plugin installer", () => {
 			logImpl,
 		});
 
-		expect(commandType(calls, "add")).toHaveLength(8);
-		expect(result.installed).toHaveLength(8);
+		expect(commandType(calls, "add")).toHaveLength(6);
+		expect(result.installed).toHaveLength(6);
 		expect(result.failed).toEqual([]);
 		expect(lines.warning.join("\n")).toContain("plugin list");
 	});
@@ -333,8 +319,8 @@ describe("Omarchy plugin installer", () => {
 			logImpl,
 		});
 
-		expect(commandType(calls, "add")).toHaveLength(8);
-		expect(result.installed).toHaveLength(8);
+		expect(commandType(calls, "add")).toHaveLength(6);
+		expect(result.installed).toHaveLength(6);
 		expect(result.failed).toEqual([]);
 		expect(lines.warning.join("\n")).toContain(
 			"treating all manifest plugins as missing",
@@ -361,24 +347,19 @@ describe("Omarchy plugin installer", () => {
 			logImpl,
 		});
 
-		expect(commandType(calls, "add")).toHaveLength(8);
-		expect(result.installed).toHaveLength(8);
+		expect(commandType(calls, "add")).toHaveLength(6);
+		expect(result.installed).toHaveLength(6);
 		expect(result.failed).toEqual([]);
 		expect(lines.warning.join("\n")).toContain(
 			"treating all manifest plugins as missing",
 		);
 	});
 
-	it("ships a manifest on disk with exactly the 8 expected plugins", () => {
+	it("ships a manifest on disk with exactly the 6 expected plugins", () => {
 		const EXPECTED_PLUGINS = [
 			{
 				id: "crmne.hyprmoncfg",
 				url: "https://github.com/crmne/omarchy-hyprmoncfg.git",
-			},
-			{ id: "crmne.mpris", url: "https://github.com/crmne/omarchy-mpris.git" },
-			{
-				id: "dorneles.lock-keys",
-				url: "https://github.com/jvlianodorneles/lock-keys.git",
 			},
 			{
 				id: "white.nights",
@@ -400,7 +381,7 @@ describe("Omarchy plugin installer", () => {
 		];
 
 		const onDisk = JSON.parse(fs.readFileSync(MANIFEST_PATH, "utf-8"));
-		expect(onDisk.length).toBe(8);
+		expect(onDisk.length).toBe(6);
 		expect(
 			onDisk.map((plugin) => ({ id: plugin.id, url: plugin.url })),
 		).toEqual(EXPECTED_PLUGINS);

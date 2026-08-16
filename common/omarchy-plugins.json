@@ -5,16 +5,6 @@
 		"manualAuth": "Needs the hyprmoncfg AUR package and daemon (installed separately; not handled by this installer)"
 	},
 	{
-		"id": "crmne.mpris",
-		"url": "https://github.com/crmne/omarchy-mpris.git",
-		"manualAuth": null
-	},
-	{
-		"id": "dorneles.lock-keys",
-		"url": "https://github.com/jvlianodorneles/lock-keys.git",
-		"manualAuth": null
-	},
-	{
 		"id": "white.nights",
 		"url": "https://github.com/nightdevil00/white.nights.git",
 		"manualAuth": null

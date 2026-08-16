@@ -46,8 +46,9 @@
 - The gaming-workspace toggle now emits v4 Lua dispatch expressions. On
   Omarchy 4, the legacy positional form is a parse error, which made
   `SUPER + SHIFT + G` a silent no-op.
-- The default Omarchy plugin set is now eight plugins after dropping
-  `robzolkos.agent-usage` and `tmn73.calendar`, which the user had uninstalled.
+- The default Omarchy plugin set is now six plugins after dropping
+  `robzolkos.agent-usage`, `tmn73.calendar`, `crmne.mpris`, and
+  `dorneles.lock-keys`, which the user had uninstalled.
 
 ## 8.6.1 - 2026-08-15
 
