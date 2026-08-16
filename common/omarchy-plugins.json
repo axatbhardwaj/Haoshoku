@@ -20,19 +20,9 @@
 		"manualAuth": null
 	},
 	{
-		"id": "robzolkos.agent-usage",
-		"url": "https://github.com/robzolkos/omarchy-agent-usage.git",
-		"manualAuth": null
-	},
-	{
 		"id": "robzolkos.github",
 		"url": "https://github.com/robzolkos/omarchy-github.git",
 		"manualAuth": "GitHub token"
-	},
-	{
-		"id": "tmn73.calendar",
-		"url": "https://github.com/tmn73/omarchy-calendar.git",
-		"manualAuth": "Google OAuth"
 	},
 	{
 		"id": "io.github.treramey.raindrop-bookmarks",

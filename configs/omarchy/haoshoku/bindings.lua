@@ -45,7 +45,7 @@ o.bind("SUPER + Z", "Zed", "uwsm-app -- zeditor --new")
 
 hl.unbind("SUPER + SHIFT + RETURN")
 o.bind("SUPER + SHIFT + RETURN", "Browser", "omarchy-launch-browser")
-hl.unbind("SUPER + SHIFT + ALT + F")
+hl.unbind("SUPER + ALT + SHIFT + F")
 o.bind(
   "SUPER + ALT + SHIFT + F",
   "File manager (cwd)",
@@ -133,7 +133,7 @@ o.bind(
 -- + WhatsApp), bound in the workspace module. Google Messages used the same
 -- modifier set spelled SUPER SHIFT CTRL, so one keypress fired both binds and
 -- toggled the workspace back off. Launch Google Messages from Walker.
-hl.unbind("SUPER + CTRL + SHIFT + G")
+hl.unbind("SUPER + SHIFT + CTRL + G")
 
 -- Add extra bindings here, for example:
 -- o.bind("SUPER + SHIFT + R", nil, "alacritty -e ssh your-server")

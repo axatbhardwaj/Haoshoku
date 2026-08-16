@@ -23,6 +23,7 @@ describe("user app configuration", () => {
 
 		await configureUserApps({
 			promptUserImpl: async () => false,
+			configureGitImpl: record("git"),
 			configureBrowserIntegrationImpl: record("browser"),
 			configureAudioImpl: record("audio"),
 			configureBashImpl: record("bash"),
@@ -35,8 +36,12 @@ describe("user app configuration", () => {
 			enableServicesImpl: record("services"),
 			configureClaudeImpl: record("claude"),
 			installGhStackImpl: record("gh-stack"),
+			installSuperpowersImpl: record("superpowers"),
+			bootstrapClaudePolicyImpl: record("bootstrap"),
 			configureClaudeStayAwakeImpl: record("stay-awake"),
+			configureClaudeRemoteControlImpl: record("remote-control"),
 			configurePrWatchImpl: record("pr-watch"),
+			syncWorktreeCleanupImpl: record("worktree-cleanup"),
 			configureCodexImpl: record("codex"),
 			configureAgentOsImpl: record("agent-os"),
 		});
@@ -589,12 +594,27 @@ describe("Arch package-manager preflight", () => {
 
 	it("stops the full setup when package-manager preparation fails", async () => {
 		const events = [];
+		const unreachable = async () => {
+			throw new Error("setup continued after package-manager preparation failed");
+		};
 		const result = await runCachyOSSetup({
 			promptDeviceTypeImpl: async () => events.push("device-type"),
 			prepareArchPackageManagerImpl: async () => {
 				events.push("prepare");
 				return false;
 			},
+			ensureRustToolchainImpl: unreachable,
+			ensureAurHelperImpl: unreachable,
+			installDevToolsImpl: unreachable,
+			commandExistsImpl: unreachable,
+			installSystemPackagesImpl: unreachable,
+			installFlatpakAppsImpl: unreachable,
+			configureUserAppsImpl: unreachable,
+			configureBraveManagedPoliciesImpl: unreachable,
+			configureHyprmoncfgImpl: unreachable,
+			configureOmarchyWorkspacesImpl: unreachable,
+			configureOmarchyPluginsImpl: unreachable,
+			configureOmazedImpl: unreachable,
 		});
 
 		expect(result).toBe(false);

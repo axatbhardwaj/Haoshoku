@@ -11,10 +11,10 @@ describe("Omarchy migration documentation", () => {
 			"Migration, workspaces, hyprmoncfg, and plugin helpers gate on the installed Omarchy major version.",
 		);
 		expect(changelog.replace(/\s+/g, " ")).toContain(
-			"Dispatch exit status is not treated as a failure signal; only an unrunnable `hyprctl` fails the launcher.",
+			"On Omarchy 4, `hyprctl dispatch` evaluates its argument as Lua, so `haoshoku-special-workspace` now emits `hl.dsp.*` Lua expressions instead of the legacy `dispatch <name> <args>` form, which is a parse error on v4; dispatch failures now propagate as script failures rather than being masked.",
 		);
-		expect(changelog).not.toContain(
-			"Dispatch failures in `haoshoku-special-workspace` propagate instead of being masked.",
+		expect(changelog.replace(/\s+/g, " ")).toContain(
+			"The default Omarchy plugin set is now eight plugins after dropping `robzolkos.agent-usage` and `tmn73.calendar`, which the user had uninstalled.",
 		);
 	});
 

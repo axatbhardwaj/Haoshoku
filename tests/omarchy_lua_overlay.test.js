@@ -22,6 +22,7 @@ const specialWorkspacePath = path.join(
 	"scripts",
 	"haoshoku-special-workspace",
 );
+const omarchyDefaultHyprDirectory = "/usr/share/omarchy/default/hypr";
 
 function readExistingOverlays() {
 	return overlayPaths.flatMap((file) =>
@@ -41,6 +42,11 @@ function filesBelow(directory) {
 
 function unbindCalls(source) {
 	return [...source.matchAll(/hl\.unbind\("([^"]+)"\)/g)].map(([call]) => call);
+}
+
+function canonicalUnbindCall(call) {
+	const chord = call.match(/^hl\.unbind\("([^"]+)"\)$/)?.[1] ?? "";
+	return `hl.unbind("${canonicalLuaChord(chord)}")`;
 }
 
 const modifierOrder = new Map(
@@ -226,18 +232,42 @@ function checkLuaSyntax(file) {
 }
 
 describe("Omarchy v4 Lua overlay", () => {
-	it("spells every Lua unbind in canonical modifier order", () => {
-		const noncanonical = readExistingOverlays().flatMap(({ file, source }) =>
-			[...source.matchAll(/hl\.unbind\("([^"]+)"\)/g)].flatMap(([, chord]) => {
-				const canonical = canonicalLuaChord(chord);
-				return chord === canonical
-					? []
-					: [{ canonical, chord, file: path.basename(file) }];
-			}),
+	if (!fs.existsSync(omarchyDefaultHyprDirectory)) {
+		console.info(
+			`SKIP: ${omarchyDefaultHyprDirectory} is absent; live Omarchy unbind audit not run`,
 		);
+	}
 
-		expect(noncanonical).toEqual([]);
-	});
+	(fs.existsSync(omarchyDefaultHyprDirectory) ? it : it.skip)(
+		"matches every Lua unbind to an exact Omarchy v4 bind literal",
+		() => {
+			const overlayUnbinds = fs
+				.readdirSync(overlayDirectory, { withFileTypes: true })
+				.filter((entry) => entry.isFile() && entry.name.endsWith(".lua"))
+				.flatMap((entry) => {
+					const source = fs
+						.readFileSync(path.join(overlayDirectory, entry.name), "utf8")
+						.replace(/--.*$/gm, "");
+					return [...source.matchAll(/hl\.unbind\("([^"]+)"\)/g)].map(
+						([, chord]) => ({ chord, file: entry.name }),
+					);
+				});
+			const stockBinds = new Set(
+				filesBelow(omarchyDefaultHyprDirectory)
+					.filter((file) => file.endsWith(".lua"))
+					.flatMap((file) => {
+						const source = fs.readFileSync(file, "utf8").replace(/--.*$/gm, "");
+						return [...source.matchAll(/o\.bind\(\s*"([^"]+)"/g)].map(
+							([, chord]) => chord,
+						);
+					}),
+			);
+
+			expect(
+				overlayUnbinds.filter(({ chord }) => !stockBinds.has(chord)),
+			).toEqual([]);
+		},
+	);
 
 	it("loads bindings before every workspace-overlay reclaim", () => {
 		const bindingsSource = fs.readFileSync(overlayPaths[0], "utf8");
@@ -343,7 +373,9 @@ describe("Omarchy v4 Lua overlay", () => {
 			.map((file) => path.relative(repoRoot, file));
 		const luaUnbinds = [
 			...new Set(
-				readExistingOverlays().flatMap(({ source }) => unbindCalls(source)),
+				readExistingOverlays().flatMap(({ source }) =>
+					unbindCalls(source).map(canonicalUnbindCall),
+				),
 			),
 		].sort();
 		const swaps = JSON.parse(fs.readFileSync(swapsPath, "utf8")).swaps;
@@ -361,9 +393,10 @@ describe("Omarchy v4 Lua overlay", () => {
 				missingRegistryFields.push(index);
 				continue;
 			}
+			const canonicalCall = canonicalUnbindCall(swap.hl_unbind);
 			registryCounts.set(
-				swap.hl_unbind,
-				(registryCounts.get(swap.hl_unbind) ?? 0) + 1,
+				canonicalCall,
+				(registryCounts.get(canonicalCall) ?? 0) + 1,
 			);
 		}
 
@@ -471,7 +504,7 @@ describe("Omarchy v4 Lua overlay", () => {
 		});
 	});
 
-	it("does not treat hyprctl dispatch exit status as a failure signal", () => {
+	it("treats exit-zero hyprctl dispatch diagnostics as failures", () => {
 		const directory = fs.mkdtempSync(
 			path.join(os.tmpdir(), "haoshoku-dispatch-failure-"),
 		);
@@ -500,7 +533,7 @@ fi
 			},
 		);
 
-		expect(result.exitCode).toBe(0);
+		expect(result.exitCode).toBe(1);
 		expect(result.stderr.toString()).toContain("invalid dispatcher");
 	});
 });

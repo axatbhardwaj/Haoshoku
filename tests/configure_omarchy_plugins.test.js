@@ -30,19 +30,9 @@ const MANIFEST = [
 		manualAuth: null,
 	},
 	{
-		id: "robzolkos.agent-usage",
-		url: "https://github.com/robzolkos/omarchy-agent-usage.git",
-		manualAuth: null,
-	},
-	{
 		id: "robzolkos.github",
 		url: "https://github.com/robzolkos/omarchy-github.git",
 		manualAuth: "GitHub token",
-	},
-	{
-		id: "tmn73.calendar",
-		url: "https://github.com/tmn73/omarchy-calendar.git",
-		manualAuth: "Google OAuth",
 	},
 	{
 		id: "io.github.treramey.raindrop-bookmarks",
@@ -61,7 +51,7 @@ const MANIFEST = [
 	},
 ];
 
-const MISSING_WHEN_FIRST_7_PRESENT = [
+const MISSING_WHEN_FIRST_5_PRESENT = [
 	"io.github.treramey.raindrop-bookmarks",
 	"hass",
 	"omaconnect",
@@ -70,7 +60,6 @@ const MISSING_WHEN_FIRST_7_PRESENT = [
 const MANUAL_AUTH_IDS = [
 	"crmne.hyprmoncfg",
 	"robzolkos.github",
-	"tmn73.calendar",
 	"io.github.treramey.raindrop-bookmarks",
 	"hass",
 	"omaconnect",
@@ -182,8 +171,8 @@ describe("Omarchy plugin installer", () => {
 		expect(calls).toEqual([["omarchy", "version"]]);
 		expect(lines.warning.join("\n")).toContain("Omarchy 4 or newer");
 	});
-	it("installs only the 3 missing plugins when 7 of 10 are already enabled", async () => {
-		const enabledIds = MANIFEST.slice(0, 7).map((plugin) => plugin.id);
+	it("installs only the 3 missing plugins when 5 of 8 are already enabled", async () => {
+		const enabledIds = MANIFEST.slice(0, 5).map((plugin) => plugin.id);
 		const { calls, runner } = makeRunner({
 			installedJsonBody: installedJson(enabledIds),
 		});
@@ -197,7 +186,7 @@ describe("Omarchy plugin installer", () => {
 
 		const addCalls = commandType(calls, "add");
 		expect(addCalls).toHaveLength(3);
-		for (const id of MISSING_WHEN_FIRST_7_PRESENT) {
+		for (const id of MISSING_WHEN_FIRST_5_PRESENT) {
 			const url = MANIFEST.find((plugin) => plugin.id === id).url;
 			expect(addCalls).toContainEqual([
 				"omarchy",
@@ -210,7 +199,7 @@ describe("Omarchy plugin installer", () => {
 		}
 		expect(commandType(calls, "enable")).toHaveLength(0);
 		expect(result.installed.sort()).toEqual(
-			[...MISSING_WHEN_FIRST_7_PRESENT].sort(),
+			[...MISSING_WHEN_FIRST_5_PRESENT].sort(),
 		);
 		expect(result.enabled).toEqual([]);
 		expect(result.failed).toEqual([]);
@@ -241,12 +230,12 @@ describe("Omarchy plugin installer", () => {
 		]);
 		expect(result.installed).toEqual([]);
 		expect(result.enabled).toEqual(["robzolkos.github"]);
-		expect(result.alreadyReady).toHaveLength(9);
+		expect(result.alreadyReady).toHaveLength(7);
 		expect(result.failed).toEqual([]);
 	});
 
 	it("records a failed install as non-fatal and keeps processing the rest", async () => {
-		const enabledIds = MANIFEST.slice(0, 7).map((plugin) => plugin.id);
+		const enabledIds = MANIFEST.slice(0, 5).map((plugin) => plugin.id);
 		const { calls, runner } = makeRunner({
 			installedJsonBody: installedJson(enabledIds),
 			failAddFor: ["hass"],
@@ -264,12 +253,12 @@ describe("Omarchy plugin installer", () => {
 		expect(result.installed.sort()).toEqual(
 			["io.github.treramey.raindrop-bookmarks", "omaconnect"].sort(),
 		);
-		expect(result.alreadyReady).toHaveLength(7);
+		expect(result.alreadyReady).toHaveLength(5);
 		expect(lines.warning.join("\n")).toContain("hass");
 	});
 
 	it("lists exactly the manual-auth plugins regardless of install state", async () => {
-		const enabledIds = MANIFEST.slice(0, 7).map((plugin) => plugin.id);
+		const enabledIds = MANIFEST.slice(0, 5).map((plugin) => plugin.id);
 		const { runner } = makeRunner({
 			installedJsonBody: installedJson(enabledIds),
 		});
@@ -315,8 +304,8 @@ describe("Omarchy plugin installer", () => {
 			logImpl,
 		});
 
-		expect(commandType(calls, "add")).toHaveLength(10);
-		expect(result.installed).toHaveLength(10);
+		expect(commandType(calls, "add")).toHaveLength(8);
+		expect(result.installed).toHaveLength(8);
 		expect(result.failed).toEqual([]);
 		expect(lines.warning.join("\n")).toContain("plugin list");
 	});
@@ -344,8 +333,8 @@ describe("Omarchy plugin installer", () => {
 			logImpl,
 		});
 
-		expect(commandType(calls, "add")).toHaveLength(10);
-		expect(result.installed).toHaveLength(10);
+		expect(commandType(calls, "add")).toHaveLength(8);
+		expect(result.installed).toHaveLength(8);
 		expect(result.failed).toEqual([]);
 		expect(lines.warning.join("\n")).toContain(
 			"treating all manifest plugins as missing",
@@ -372,15 +361,15 @@ describe("Omarchy plugin installer", () => {
 			logImpl,
 		});
 
-		expect(commandType(calls, "add")).toHaveLength(10);
-		expect(result.installed).toHaveLength(10);
+		expect(commandType(calls, "add")).toHaveLength(8);
+		expect(result.installed).toHaveLength(8);
 		expect(result.failed).toEqual([]);
 		expect(lines.warning.join("\n")).toContain(
 			"treating all manifest plugins as missing",
 		);
 	});
 
-	it("ships a manifest on disk with exactly the 10 expected plugins", () => {
+	it("ships a manifest on disk with exactly the 8 expected plugins", () => {
 		const EXPECTED_PLUGINS = [
 			{
 				id: "crmne.hyprmoncfg",
@@ -396,16 +385,8 @@ describe("Omarchy plugin installer", () => {
 				url: "https://github.com/nightdevil00/white.nights.git",
 			},
 			{
-				id: "robzolkos.agent-usage",
-				url: "https://github.com/robzolkos/omarchy-agent-usage.git",
-			},
-			{
 				id: "robzolkos.github",
 				url: "https://github.com/robzolkos/omarchy-github.git",
-			},
-			{
-				id: "tmn73.calendar",
-				url: "https://github.com/tmn73/omarchy-calendar.git",
 			},
 			{
 				id: "io.github.treramey.raindrop-bookmarks",
@@ -419,7 +400,7 @@ describe("Omarchy plugin installer", () => {
 		];
 
 		const onDisk = JSON.parse(fs.readFileSync(MANIFEST_PATH, "utf-8"));
-		expect(onDisk.length).toBe(10);
+		expect(onDisk.length).toBe(8);
 		expect(
 			onDisk.map((plugin) => ({ id: plugin.id, url: plugin.url })),
 		).toEqual(EXPECTED_PLUGINS);

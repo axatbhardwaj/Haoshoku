@@ -57,6 +57,13 @@ function sourceBindingIndex(source, chord) {
 	)?.index ?? -1;
 }
 
+function sourceUnbindIndex(source, chord) {
+	return [...source.matchAll(/hl\.unbind\("([^"]+)"\)/g)].find(
+		([, unboundChord]) =>
+			canonicalLuaChord(unboundChord) === canonicalLuaChord(chord),
+	)?.index ?? -1;
+}
+
 function relocationBlock(source, chord) {
 	const index = sourceBindingIndex(source, chord);
 	return index < 0 ? "" : source.slice(index, index + 400);
@@ -93,16 +100,19 @@ describe("Omarchy keybinding swaps", () => {
 
 	it("keeps every recorded unbind in its owner Lua source", () => {
 		for (const swap of swaps) {
-			expect(sourceFor(swap.config_file), swap.key_combination_taken).toContain(
-				swap.hl_unbind,
-			);
+			const chord = swap.hl_unbind.match(/^hl\.unbind\("([^"]+)"\)$/)?.[1];
+			expect(
+				sourceUnbindIndex(sourceFor(swap.config_file), chord),
+				swap.key_combination_taken,
+			).toBeGreaterThan(-1);
 		}
 	});
 
 	it("places each relocated replacement after its Lua unbind", () => {
 		for (const swap of swaps.filter((swap) => swap.moved_to)) {
 			const source = sourceFor(swap.config_file);
-			const unbindIndex = source.indexOf(swap.hl_unbind);
+			const chord = swap.hl_unbind.match(/^hl\.unbind\("([^"]+)"\)$/)?.[1];
+			const unbindIndex = sourceUnbindIndex(source, chord);
 			const replacement = sourceBindingIndex(source, luaChord(swap.moved_to));
 			expect(unbindIndex, swap.key_combination_taken).toBeGreaterThan(-1);
 			expect(replacement, swap.moved_to).toBeGreaterThan(unbindIndex);
@@ -146,7 +156,7 @@ describe("Omarchy keybinding swaps", () => {
 		)) {
 			const chord = swap.hl_unbind.match(/^hl\.unbind\("([^"]+)"\)$/)?.[1];
 			const ownerSource = sourceFor(swap.config_file);
-			const ownerUnbind = ownerSource.indexOf(swap.hl_unbind);
+			const ownerUnbind = sourceUnbindIndex(ownerSource, chord);
 			const localReplacement = sourceBindingIndex(ownerSource, chord);
 			const laterOwnerReplacement = localReplacement > ownerUnbind;
 			const workspaceReplacement = [

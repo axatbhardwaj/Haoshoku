@@ -37,8 +37,12 @@
 - Hyprland config validation now parses `hyprctl configerrors` output; its
   exit status is always 0, so the exit code alone could never detect a
   broken config.
-- Dispatch exit status is not treated as a failure signal; only an unrunnable
-  `hyprctl` fails the launcher.
+- On Omarchy 4, `hyprctl dispatch` evaluates its argument as Lua, so
+  `haoshoku-special-workspace` now emits `hl.dsp.*` Lua expressions instead of
+  the legacy `dispatch <name> <args>` form, which is a parse error on v4;
+  dispatch failures now propagate as script failures rather than being masked.
+- The default Omarchy plugin set is now eight plugins after dropping
+  `robzolkos.agent-usage` and `tmn73.calendar`, which the user had uninstalled.
 
 ## 8.6.1 - 2026-08-15
 

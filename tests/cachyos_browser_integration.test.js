@@ -6,6 +6,31 @@ import {
 	configureUserApps,
 } from "../src/os_scripts/cachyos.js";
 
+function userAppDoubles(overrides = {}) {
+	return {
+		promptUserImpl: async () => false,
+		configureGitImpl: async () => {},
+		configureBrowserIntegrationImpl: async () => {},
+		configureAudioImpl: async () => {},
+		configureBashImpl: () => {},
+		configureFastfetchImpl: async () => {},
+		configureKittyImpl: async () => {},
+		runCommandImpl: async () => true,
+		enableServicesImpl: async () => {},
+		configureClaudeImpl: async () => {},
+		installGhStackImpl: async () => {},
+		installSuperpowersImpl: async () => {},
+		bootstrapClaudePolicyImpl: async () => true,
+		configureClaudeStayAwakeImpl: async () => {},
+		configureClaudeRemoteControlImpl: async () => {},
+		configurePrWatchImpl: async () => {},
+		syncWorktreeCleanupImpl: async () => {},
+		configureCodexImpl: async () => {},
+		configureAgentOsImpl: async () => {},
+		...overrides,
+	};
+}
+
 describe("CachyOS browser integration", () => {
 	// Mutation caught: activating MIME defaults before the installed wrapper
 	// exists can leave the desktop handler pointing at a missing command.
@@ -26,7 +51,7 @@ describe("CachyOS browser integration", () => {
 		const calls = [];
 		const record = (name) => async () => calls.push(name);
 
-		await configureUserApps({
+		await configureUserApps(userAppDoubles({
 			promptUserImpl: async () => false,
 			configureBrowserIntegrationImpl: record("browser-integration"),
 			configureAudioImpl: record("audio"),
@@ -39,7 +64,7 @@ describe("CachyOS browser integration", () => {
 			configurePrWatchImpl: record("pr-watch"),
 			configureCodexImpl: record("codex"),
 			configureAgentOsImpl: record("agent-os"),
-		});
+		}));
 
 		expect(calls.slice(0, 2)).toEqual(["browser-integration", "audio"]);
 	});
@@ -49,7 +74,7 @@ describe("CachyOS browser integration", () => {
 		const prompts = [];
 		const record = (name) => async () => calls.push(name);
 
-		await configureUserApps({
+		await configureUserApps(userAppDoubles({
 			promptUserImpl: async (message, initial) => {
 				prompts.push({ message, initial });
 				return false;
@@ -66,7 +91,7 @@ describe("CachyOS browser integration", () => {
 			configurePrWatchImpl: record("pr-watch"),
 			configureCodexImpl: record("codex"),
 			configureAgentOsImpl: record("agent-os"),
-		});
+		}));
 
 		expect(
 			prompts.filter(
@@ -83,7 +108,7 @@ describe("CachyOS browser integration", () => {
 		const prompts = [];
 		const record = (name) => async () => calls.push(name);
 
-		await configureUserApps({
+		await configureUserApps(userAppDoubles({
 			promptUserImpl: async (message, initial) => {
 				prompts.push({ message, initial });
 				return false;
@@ -100,7 +125,7 @@ describe("CachyOS browser integration", () => {
 			configurePrWatchImpl: record("pr-watch"),
 			configureCodexImpl: record("codex"),
 			configureAgentOsImpl: record("agent-os"),
-		});
+		}));
 
 		expect({
 			prompt: prompts.find(({ message }) =>
@@ -123,7 +148,7 @@ describe("CachyOS browser integration", () => {
 		const bootstrapCalls = [];
 		const record = (name) => async () => calls.push(name);
 
-		await configureUserApps({
+		await configureUserApps(userAppDoubles({
 			promptUserImpl: async (message, initial) => {
 				prompts.push({ message, initial });
 				return message === "Bootstrap private Claude policy repository?";
@@ -144,7 +169,7 @@ describe("CachyOS browser integration", () => {
 			configurePrWatchImpl: record("pr-watch"),
 			configureCodexImpl: record("codex"),
 			configureAgentOsImpl: record("agent-os"),
-		});
+		}));
 
 		expect(calls.indexOf("bootstrap")).toBe(calls.indexOf("claude") + 1);
 		expect(
@@ -166,7 +191,7 @@ describe("CachyOS browser integration", () => {
 		log.warning = (message) => warnings.push(message);
 
 		try {
-			await configureUserApps({
+			await configureUserApps(userAppDoubles({
 				promptUserImpl: async (message) =>
 					message === "Bootstrap private Claude policy repository?",
 				configureBrowserIntegrationImpl: record("browser-integration"),
@@ -184,7 +209,7 @@ describe("CachyOS browser integration", () => {
 				configurePrWatchImpl: record("pr-watch"),
 				configureCodexImpl: record("codex"),
 				configureAgentOsImpl: record("agent-os"),
-			});
+			}));
 		} finally {
 			log.warning = originalWarning;
 		}

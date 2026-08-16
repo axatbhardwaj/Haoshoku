@@ -13,6 +13,7 @@ function userAppDoubles(overrides = {}) {
 		configureAudioImpl: async () => {},
 		configureBashImpl: () => {},
 		configureFastfetchImpl: async () => {},
+		configureKittyImpl: async () => {},
 		runCommandImpl: async () => true,
 		enableServicesImpl: async () => {},
 		configureClaudeImpl: async () => {},

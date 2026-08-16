@@ -4,8 +4,39 @@ set -euo pipefail
 recipe="${1:-}"
 profiles_helper="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/haoshoku-chromium-profiles"
 
+lua_string() {
+  jq -Rnr --arg value "$1" '$value | @json'
+}
+
 dispatch() {
-  hyprctl dispatch "$@" >/dev/null
+  local expression="$1" output status=0
+  output=$(hyprctl dispatch "$expression" 2>&1) || status=$?
+  if (( status == 0 )) && [[ -z $output || $output == "ok" ]]; then
+    [[ -n $output ]] && printf '%s\n' "$output"
+    return 0
+  fi
+  [[ -z $output ]] || printf '%s\n' "$output" >&2
+  return 1
+}
+
+dispatch_exec() {
+  dispatch "hl.dsp.exec_cmd($(lua_string "$1"))"
+}
+
+dispatch_toggle_special_workspace() {
+  dispatch "hl.dsp.workspace.toggle_special($(lua_string "$1"))"
+}
+
+dispatch_focus_workspace() {
+  dispatch "hl.dsp.focus({ workspace = $(lua_string "$1") })"
+}
+
+dispatch_focus_monitor() {
+  dispatch "hl.dsp.focus({ monitor = $(lua_string "$1") })"
+}
+
+dispatch_move_to_workspace_silent() {
+  dispatch "hl.dsp.window.move({ workspace = $(lua_string "$1"), window = $(lua_string "$2"), follow = false })"
 }
 
 has_client() {
@@ -42,7 +73,7 @@ launch() {
   local launch_command
   shift
   printf -v launch_command '%q ' "$@"
-  dispatch exec "[workspace ${workspace} silent] uwsm-app -- $launch_command"
+  dispatch_exec "[workspace ${workspace} silent] uwsm-app -- $launch_command"
 }
 
 launch_if_missing() {
@@ -61,7 +92,7 @@ ensure_kitty() {
   probe_status=0
   stray="$(has_client_class "$class" "$workspace" stray)" || probe_status=$?
   case "$probe_status" in
-    0) dispatch movetoworkspacesilent "$workspace,address:$stray" ;;
+    0) dispatch_move_to_workspace_silent "$workspace" "address:$stray" ;;
     1)
       if [[ -n "$session" ]]; then
         launch "$workspace" kitty --class "$class" --title "${class#haoshoku-}" --session "$session"
@@ -116,7 +147,7 @@ if [[ "$recipe" == numbered || "$recipe" == numbered-login ]]; then
   [[ $# -eq 3 ]] || { echo "usage: haoshoku-special-workspace $recipe WORKSPACE APP" >&2; exit 2; }
   workspace="$2" app="$3"
   if [[ "$recipe" == numbered ]]; then
-    dispatch workspace "$workspace"
+    dispatch_focus_workspace "$workspace"
   fi
   case "$app" in
     steam) launch_if_missing "$workspace" '^[Ss]team$' steam ;;
@@ -138,7 +169,7 @@ fi
 if [[ "$recipe" == assistants || "$recipe" == t3code ]]; then
   [[ $# -eq 1 ]] || { echo "usage: haoshoku-special-workspace $recipe" >&2; exit 2; }
   workspace="$recipe"
-  dispatch togglespecialworkspace "$workspace"
+  dispatch_toggle_special_workspace "$workspace"
 
   if ! clients="$(assistant_clients)"; then
     exit 0
@@ -157,7 +188,7 @@ if [[ "$recipe" == assistants || "$recipe" == t3code ]]; then
     app="${class_and_app#*:}"
     if assistant_class_present "$clients" "$class"; then
       while IFS= read -r address; do
-        dispatch movetoworkspacesilent "special:$workspace,address:$address"
+        dispatch_move_to_workspace_silent "special:$workspace" "address:$address"
       done < <(assistant_addresses_outside_workspace "$clients" "$class" "special:$workspace")
     else
       launch "special:$workspace" "$app"
@@ -226,18 +257,18 @@ load_special_workspace_state() {
 }
 
 toggle_special_workspace() {
-  [[ -n "$visible_monitor" ]] || dispatch focusmonitor "$monitor"
-  dispatch togglespecialworkspace "$workspace"
+  [[ -n "$visible_monitor" ]] || dispatch_focus_monitor "$monitor"
+  dispatch_toggle_special_workspace "$workspace"
 }
 
 focus_or_toggle_special_workspace() {
   if [[ -z "$visible_monitor" ]]; then
-    dispatch focusmonitor "$monitor"
-    dispatch togglespecialworkspace "$workspace"
+    dispatch_focus_monitor "$monitor"
+    dispatch_toggle_special_workspace "$workspace"
   elif [[ "$visible_monitor" != "$focused_monitor" ]]; then
-    dispatch focusmonitor "$visible_monitor"
+    dispatch_focus_monitor "$visible_monitor"
   else
-    dispatch togglespecialworkspace "$workspace"
+    dispatch_toggle_special_workspace "$workspace"
   fi
 }
 
@@ -276,7 +307,7 @@ if [[ -n "$browser_profile" ]]; then
     )
     reveal_special_workspace
     printf -v chromium_command '%q ' "${chromium[@]}"
-    dispatch exec "[workspace special:$workspace silent] uwsm-app -- $chromium_command"
+    dispatch_exec "[workspace special:$workspace silent] uwsm-app -- $chromium_command"
   fi
   exit 0
 elif [[ "$recipe" == haki || "$recipe" == agents ]]; then

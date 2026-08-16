@@ -134,7 +134,7 @@ esac
 			"activeworkspace -j",
 			"dispatch workspace 11",
 			"clients -j",
-			"dispatch exec [workspace 11 silent] uwsm-app -- steam",
+			'dispatch hl.dsp.exec_cmd("[workspace 11 silent] uwsm-app -- steam ")',
 		]);
 	});
 
