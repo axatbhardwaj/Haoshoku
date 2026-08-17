@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 9.2.0 - 2026-08-17
 
 - Resync the bundled Claude runtime from live: rename `sol-wrapper` to
   `sol-high-wrapper` and `luna-wrapper` to `luna-max-wrapper`, and add
