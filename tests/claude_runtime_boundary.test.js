@@ -17,11 +17,10 @@ const OPENCODE_LAUNCHER_PATH = path.join(
 	"run-opencode-seat.sh",
 );
 const FIXTURES_DIR = path.join(import.meta.dir, "fixtures");
-const PRIVATE_SOURCE_ROOT = process.env.HAOSHOKU_CLAUDE_RUNTIME_SOURCE_ROOT;
-const PRIVATE_SOURCE_SHA = "413cf10231e8c5fa339666e6ccfea6a5a4ec3735";
 const RUNTIME_FILES = [
-	"agents/sol-wrapper.md",
-	"agents/luna-wrapper.md",
+	"agents/sol-high-wrapper.md",
+	"agents/sol-medium-wrapper.md",
+	"agents/luna-max-wrapper.md",
 	"agents/opencode-wrapper.md",
 	"agents/grok-wrapper.md",
 	"agents/madhyastha.md",
@@ -45,28 +44,30 @@ const RUNTIME_FILES = [
 	"skills/html-explainer/template.html",
 ];
 const PINNED_DIGESTS = {
-	"agents/sol-wrapper.md":
-		"f5382cf2cc9b75197556a143e02fa4afe1ab80e2688dba73946aa40581f6a5b6",
-	"agents/luna-wrapper.md":
-		"92a65d590128fe1c8608a36d016264d7fa5482c0ce4c637ad42203e9d30dabad",
+	"agents/sol-high-wrapper.md":
+		"110882784feeda0b60889a65424289238b0dee7864beddb817734513eb6a9191",
+	"agents/sol-medium-wrapper.md":
+		"5118400fade4ec63123d1941a9a7b8ef2a7b54d6c0c85810c93ad2e00e3af5b6",
+	"agents/luna-max-wrapper.md":
+		"ce3e349667d796e0dda146bb347e960e574d4eb89e7e2f6790b058fd98709656",
 	"agents/opencode-wrapper.md":
-		"8c154a5f5f6e1cb021b0a768eff35b5e876adaf462782ce12fb9387ee815144a",
+		"c0e853b96e71ea0da5a397203945c1a06262f17758378e74b13ea65bec5e3386",
 	"agents/grok-wrapper.md":
 		"69f0876934f8aeea6ec62d90d694ea481b1bc1906b2ea16a9a40cbb14e1b4130",
 	"agents/madhyastha.md":
 		"cc7278ea49f202acf7a1336ae9e20cce1eb716a199856419c56c71a8fbc89d7f",
 	"agents/anveshaka.md":
-		"42926e8bb514f634ff067bddf728f468a7b8c542a7bf6853dc884720d27e1577",
+		"bea04ed384020ea0d016e03302e30d489fdccc589d852a66de53f4c5e3bb29cb",
 	"agents/fable-planner.md":
 		"f3f8f61d17972237eff9d6282007b65cb45133ce5f551bb44756f7da0f780567",
 	"agents/opus-reviewer.md":
 		"471946a434a78b02c1cdd1f8ff7101be4d1ef594272a3909d5d61bcb79415256",
 	"agents/run-codex-task.sh":
-		"faef3eddc4dddafc2a1bf2d2edf45a13e710519266dd88507da259f97e5fd4d6",
+		"eb327792e5b2702cba9ba9c22f77fc0aab4177016491e81abfb4e2addd7b884e",
 	"agents/run-opencode-seat.sh":
 		"476e35ed2469a3f4b5c6f1e5baa1c022432ef8cfaaed03c4f831b5e560a50307",
 	"agents/validate-codex-wrapper.sh":
-		"250dcf53eddc87a3af3a40bf4be1e7d2b651557b71da5a93b9d413d5ca06be66",
+		"2170491a79707e2bfdabefa5feb54b8fc894c6690106d540a29fd98b68b92c2a",
 	"agents/codex-result.schema.json":
 		"cccad847ac6a90694bbad15daddc42f4a55f7219a5ed9f717db4dcdfc7e4bfa0",
 	"agents/prepare-pr-review-render-workspace.sh":
@@ -76,41 +77,25 @@ const PINNED_DIGESTS = {
 	"skills/discovering-work/agents/openai.yaml":
 		"61d4bfdd85a518acacc2ec655f483049173290946faca7536b436857ca5d7583",
 	"skills/implement-work/SKILL.md":
-		"2a32cbde04ffa5c7e4bee5492b1bbb64f07da728741a6468cc3ffe81abe9d24e",
+		"78c7298da06c5c75cf78fb930843435b59217f66b0a09fb2dafaedaa13201b4e",
 	"skills/review-pr/SKILL.md":
-		"a59c68c8196bf45e1352d779f44ca352059d5dfeea089dac063c5064616a4786",
+		"0921974b2befd9d4c6c414c6f84f409c24af0ef553e5ed369ce50d892d9dceb1",
 	"skills/create-pr/SKILL.md":
-		"af13f63d3a2bf5f5b30db6760b06e7ea0ba6b6a435df47cbfb584c02c0a2c2f1",
+		"f13a38f8d00da88415f2ae97d4c0285d3c98bd0490081d0bd497a7c0c33362cf",
 	"skills/brainstorm/SKILL.md":
-		"638a3d1555064af8ff068113872fff869e562787ff0beb90ef4986f6492359bd",
+		"1424c54e3d8d998322928bfe039c754f1d4b8d4aaa3a3507d99c8fd5ea30a1b7",
 	"skills/babysit-pr/SKILL.md":
-		"3c3cae8efd059caa09d4888a74ae1fca2c9604d49ce4cc64b77e60ecc2b4c105",
+		"10720a23c158b5249bb9b9379c8a41ab21cd46ba9c10a74cf3dfed7dc17d7d66",
 	"skills/linear-ticketing/SKILL.md":
 		"3612162702391ebebf93c6f177bfebbd036386fa7fd348d2b49ef5a0ae8c48d8",
 	"skills/html-explainer/SKILL.md":
-		"7224676536d3628b24a5175c8bd9d4ebcd8eadc7b4d17121edb2878ebb3fd6a0",
+		"3cb1a31a9965145f9b0ac3f85648baa0c0262965c60a1870957ef0323f9e37e5",
 	"skills/html-explainer/template.html":
 		"f467f7333d3812705f77bec340a47c18a22f4fd1c1dd19a1502214627028e5c3",
 };
 
 function digest(contents) {
 	return createHash("sha256").update(contents).digest("hex");
-}
-
-function privateSource(relativePath) {
-	if (!PRIVATE_SOURCE_ROOT) return undefined;
-	const result = Bun.spawnSync(
-		[
-			"git",
-			"-C",
-			PRIVATE_SOURCE_ROOT,
-			"show",
-			`${PRIVATE_SOURCE_SHA}:${relativePath}`,
-		],
-		{ stderr: "pipe", stdout: "pipe" },
-	);
-	expect(result.exitCode, relativePath).toBe(0);
-	return result.stdout.toString();
 }
 
 function runOpencodeReceiptFixture(fixtureName, version) {
@@ -285,15 +270,8 @@ it("opencode receipt compatibility records an omitted variant as empty", () => {
 	});
 });
 
-it("matches the pinned private source for every bundled runtime file", () => {
-	if (!PRIVATE_SOURCE_ROOT) return;
-	const mismatches = RUNTIME_FILES.filter(
-		(relativePath) =>
-			fs.readFileSync(path.join(CLAUDE_CONFIG_DIR, relativePath), "utf8") !==
-			privateSource(relativePath),
-	);
-	expect(mismatches).toEqual([]);
-});
+// The pinned private commit predates the seat renames, and that repository has
+// since removed the runtime. Repo-local PINNED_DIGESTS detect unreviewed drift.
 
 it("deploys the complete public Claude fallback runtime into a fresh home", async () => {
 	expect(PERSONAL_FILES.map((file) => file.src)).toEqual([
@@ -302,6 +280,13 @@ it("deploys the complete public Claude fallback runtime into a fresh home", asyn
 		"gitignore.template",
 		...RUNTIME_FILES,
 	]);
+	expect(
+		PERSONAL_FILES.some(
+			(file) =>
+				file.src.startsWith("skills/omarchy/") ||
+				file.src.startsWith("skills/diagnose-crash/"),
+		),
+	).toBe(false);
 
 	const claudeHome = fs.mkdtempSync(
 		path.join(os.tmpdir(), "haoshoku-public-claude-runtime-"),

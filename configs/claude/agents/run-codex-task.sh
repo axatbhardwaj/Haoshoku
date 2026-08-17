@@ -263,6 +263,7 @@ fi
 # danger-full-access remains unreachable by design.
 case "$MODEL" in
   sol)   MODEL_ID="gpt-5.6-sol" ;;
+  sol-medium) MODEL_ID="gpt-5.6-sol" ;;
   luna)  MODEL_ID="gpt-5.6-luna" ;;
   *) echo "model not in allowlist: $MODEL" >&2; exit 64 ;;
 esac
@@ -278,6 +279,7 @@ fi
 # justification, is rejected.
 case "$MODEL" in
   sol)   EFFORT="high"; EFFORT_SOURCE="model_default" ;;
+  sol-medium) EFFORT="medium"; EFFORT_SOURCE="model_default" ;;
   luna)  EFFORT="max";  EFFORT_SOURCE="model_default" ;;
 esac
 if [ -n "$EFFORT_ARG" ]; then
@@ -842,8 +844,9 @@ case "${CODEX_WRAPPER_GATEWAY:-}" in
     echo "Refusing: no wrapper route marker. Dispatch via a named wrapper." >&2
     exit 6
     ;;
-  sol-wrapper) GATEWAY_MODEL="sol" ;;
-  luna-wrapper) GATEWAY_MODEL="luna" ;;
+  sol-high-wrapper) GATEWAY_MODEL="sol" ;;
+  sol-medium-wrapper) GATEWAY_MODEL="sol-medium" ;;
+  luna-max-wrapper) GATEWAY_MODEL="luna" ;;
   *)
     report "blocked_invalid_gateway_marker" null false
     echo "Refusing: invalid wrapper route marker: $CODEX_WRAPPER_GATEWAY" >&2

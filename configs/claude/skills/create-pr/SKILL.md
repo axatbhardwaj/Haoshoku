@@ -26,7 +26,7 @@ description: Local changes ready to become GitHub pull requests.
 
 ## PR copy
 
-- Dispatch `luna-wrapper` (implementation mode) writing only a declared
+- Dispatch `luna-max-wrapper` (implementation mode) writing only a declared
   local copy file. Its packet carries per-layer evidence: ranges and
   numstats, commits and hunks, linked issues, checks, risks, and the stack
   map. Reject path-only packets.

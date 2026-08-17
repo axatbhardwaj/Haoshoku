@@ -88,9 +88,11 @@ it("keeps the seat hierarchy and a model-independent orchestrator", () => {
 	for (const seat of [
 		"fable-planner",
 		"opus-reviewer",
-		"sol-wrapper",
-		"luna-wrapper",
+		"sol-high-wrapper",
+		"sol-medium-wrapper",
+		"luna-max-wrapper",
 		"grok-wrapper",
+		"opencode-wrapper",
 	]) {
 		expect(
 			rows.some((row) => row.includes(`\`${seat}\``)),
@@ -300,8 +302,13 @@ it("preserves dirty work, ephemeral artifacts, consumer formats, and posting gat
 	);
 	expectRule(
 		safeguards,
-		/agents\s+execute\s+it[\s\S]*implementation\s+plans,?\s+specs,?\s+task\s+lists[\s\S]*plain\s+markdown/i,
-		"Agent-executed plans, specs, and task lists must be plain markdown",
+		/agents\s+execute\s+it[\s\S]*task\s+lists\s+derived\s+from\s+an\s+already-approved\s+plan[\s\S]*plain\s+markdown/i,
+		"Task lists derived from an already-approved plan must be plain markdown",
+	);
+	expectRule(
+		safeguards,
+		/planning\s+artifacts\s+are\s+HTML,?\s+always[\s\S]*plans,?\s+implementation\s+plans,?\s+and\s+specs[\s\S]*self-contained\s+dark\s+HTML[\s\S]*html-explainer[\s\S]*never\s+as\s+markdown/i,
+		"Plans, implementation plans, and specs must be self-contained dark HTML via html-explainer, never markdown",
 	);
 	expectRule(
 		safeguards,
