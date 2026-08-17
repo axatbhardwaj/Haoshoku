@@ -85,7 +85,11 @@ describe("opencode wrapper Bash policy", () => {
 		);
 	});
 
-	for (const identity of ["sol-wrapper", "luna-wrapper"]) {
+	for (const identity of [
+		"sol-high-wrapper",
+		"sol-medium-wrapper",
+		"luna-max-wrapper",
+	]) {
 		it(`does not grant the OpenCode launcher to ${identity}`, () => {
 			expectBlocked(identity, IMPLEMENTATION_COMMAND);
 		});
@@ -274,7 +278,7 @@ describe("opencode seat launcher fail-closed gates", () => {
 			const result = runLauncher(
 				fixture,
 				implementationArgs(fixture.workspace),
-				"sol-wrapper",
+				"retired-wrapper",
 			);
 			expect(result.exitCode, result.stderr.toString()).toBe(6);
 			expect(JSON.parse(result.stdout.toString()).launcher_status).toBe(
