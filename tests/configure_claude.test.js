@@ -444,7 +444,7 @@ describe("syncClaudeConfig() respects the Claude home git index", () => {
 	});
 
 	it("does not overwrite a tracked public runtime file", async () => {
-		const runtimeFile = "agents/sol-wrapper.md";
+		const runtimeFile = "agents/sol-high-wrapper.md";
 		const livePath = path.join(claudeDir, runtimeFile);
 		fs.mkdirSync(path.dirname(livePath), { recursive: true });
 		fs.writeFileSync(livePath, "# Private Sol wrapper\n");
@@ -1073,7 +1073,7 @@ describe("Claude runtime manifest keeps undeclared entries untouched", () => {
 	it("warns when a required runtime file is absent from the bundle", async () => {
 		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
 
-		expect(logs.warning.join("\n")).toContain("agents/sol-wrapper.md");
+		expect(logs.warning.join("\n")).toContain("agents/sol-high-wrapper.md");
 	});
 
 	it("does not emit a merge-deploy summary", async () => {
