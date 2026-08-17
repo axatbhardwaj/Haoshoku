@@ -271,7 +271,7 @@ it("opencode receipt compatibility records an omitted variant as empty", () => {
 });
 
 // The pinned private commit predates the seat renames, and that repository has
-// since removed the runtime. Repo-local PINNED_DIGESTS now enforce provenance.
+// since removed the runtime. Repo-local PINNED_DIGESTS detect unreviewed drift.
 
 it("deploys the complete public Claude fallback runtime into a fresh home", async () => {
 	expect(PERSONAL_FILES.map((file) => file.src)).toEqual([

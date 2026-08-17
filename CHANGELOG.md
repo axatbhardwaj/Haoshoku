@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Resync the bundled Claude runtime from live: rename `sol-wrapper` to
+  `sol-high-wrapper` and `luna-wrapper` to `luna-max-wrapper`, and add
+  `sol-medium-wrapper`. Upgrades leave the old agent definitions in
+  `~/.claude/agents/`, where the validator and launcher hard-refuse them but
+  they remain visible in the agent picker; delete those files manually.
+
 ## 9.0.0 - 2026-08-16
 
 - Breaking: Omarchy 4 or newer required; Omarchy 3 no longer supported.
