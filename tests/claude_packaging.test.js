@@ -5,8 +5,9 @@ import path from "node:path";
 
 const PROJECT_ROOT = path.resolve(import.meta.dir, "..");
 const PUBLIC_RUNTIME_FILES = [
-	"configs/claude/agents/sol-wrapper.md",
-	"configs/claude/agents/luna-wrapper.md",
+	"configs/claude/agents/sol-high-wrapper.md",
+	"configs/claude/agents/sol-medium-wrapper.md",
+	"configs/claude/agents/luna-max-wrapper.md",
 	"configs/claude/agents/opencode-wrapper.md",
 	"configs/claude/agents/grok-wrapper.md",
 	"configs/claude/agents/madhyastha.md",
