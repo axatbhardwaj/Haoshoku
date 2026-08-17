@@ -119,7 +119,7 @@ sleep 300
 EOF
 chmod +x "$fixture_dir/fakebin/codex"
 
-detach_output=$(CODEX_WRAPPER_GATEWAY=sol-wrapper PATH="$fixture_dir/fakebin:$PATH" bash "$LAUNCHER" \
+detach_output=$(CODEX_WRAPPER_GATEWAY=sol-high-wrapper PATH="$fixture_dir/fakebin:$PATH" bash "$LAUNCHER" \
   --mode review --model sol --workspace "$ROOT" --prompt-file "$fixture_dir/prompt.md" --detach \
   2>"$fixture_dir/detach-parent.err")
 detach_status=$?
@@ -167,7 +167,7 @@ EOF
 chmod +x "$measurement_dir/fakebin/ps" "$measurement_dir/fakebin/codex"
 measurement_output=$(FAKE_PS_STATE="$measurement_dir/ps-called" \
   FAKE_PS_PGID=424242 \
-  CODEX_WRAPPER_GATEWAY=sol-wrapper PATH="$measurement_dir/fakebin:$PATH" bash "$LAUNCHER" \
+  CODEX_WRAPPER_GATEWAY=sol-high-wrapper PATH="$measurement_dir/fakebin:$PATH" bash "$LAUNCHER" \
   --mode review --model sol --workspace "$ROOT" --prompt-file "$measurement_dir/prompt.md" \
   --run-dir "$measurement_dir" --detach 2>"$measurement_dir/detach-parent.err")
 measurement_status=$?
@@ -413,7 +413,7 @@ done
 printf '{}\n' > "$output"
 EOF
 chmod +x "$publication_dir/fakebin/codex"
-publication_output=$(CODEX_WRAPPER_GATEWAY=sol-wrapper PATH="$publication_dir/fakebin:$PATH" bash "$LAUNCHER" \
+publication_output=$(CODEX_WRAPPER_GATEWAY=sol-high-wrapper PATH="$publication_dir/fakebin:$PATH" bash "$LAUNCHER" \
   --mode review --model sol --workspace "$ROOT" --prompt-file "$publication_dir/prompt.md" \
   --run-dir "$publication_dir" 2>"$publication_dir/foreground.err")
 publication_status=$?
