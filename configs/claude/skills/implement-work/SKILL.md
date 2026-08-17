@@ -7,7 +7,7 @@ description: Implement features, changes, or bugfixes; not review-only work.
 
 You are the orchestrator. Native subagents: `fable-planner` (plan,
 adjudicate) and `opus-reviewer` (cold review). Codex seats only through
-`sol-wrapper` — never call `run-codex-task.sh` directly.
+`sol-high-wrapper` — never call `run-codex-task.sh` directly.
 
 ## Workflow rule
 
@@ -49,15 +49,19 @@ edit is small.
    with per-task write scopes or the named reason parallelization is
    infeasible (see Parallel fan-out). A sequential plan with no stated
    reason goes back to Fable.
-2. **Sol reviews the plan.** Dispatch `sol-wrapper` in review mode with the
-   plan and the same evidence. Sol challenges feasibility, hidden work, and
-   KISS/YAGNI/SOLID proportionality.
+2. **Sol reviews the plan.** Dispatch `sol-medium-wrapper` in review mode with
+   the plan and the same evidence. Sol challenges feasibility, hidden work, and
+   KISS/YAGNI/SOLID proportionality. Medium is the right seat here: a plan
+   critique writes no code and is reversible. Escalate to `sol-high-wrapper`
+   only if the plan itself turns on an escalation trigger.
 3. **Adjudication.** On material dissent, send both positions with evidence
    back to `fable-planner` for a ruling. Fable outranks Sol and Opus on plan
    judgment; the user outranks Fable.
-4. **Sol implements.** Dispatch `sol-wrapper` in implementation mode with
-   the adjudicated plan, exact scope, prohibited changes, and verification
-   commands. TDD is mandatory: failing test first with RED evidence, then
+4. **Sol implements.** Dispatch `sol-medium-wrapper` by default, or
+   `sol-high-wrapper` when the task hits an escalation trigger (irreversible,
+   unknown shape, handed back from medium, or cross-cutting — see CLAUDE.md
+   §1). Pass the adjudicated plan, exact scope, prohibited changes, and
+   verification commands. TDD is mandatory: failing test first with RED evidence, then
    the passing run. Use detach-and-wait for long runs. When the
    adjudicated plan marks a parallel group, use the parallel fan-out
    instead of a single dispatch.
@@ -85,10 +89,10 @@ manufactured split that fails the validity tests above.
 
 1. **Fan out.** Create one temporary git worktree per task, each on its
    own branch off the same base SHA, named after the plan's task id. At
-   two tasks, dispatch both `sol-wrapper`s directly in one message. At
+   two tasks, dispatch both `sol-high-wrapper`s directly in one message. At
    three or more, the Workflow rule triggers: author an inline Workflow
    at dispatch time from the plan's parallel groups — one `agent()` per
-   task with `agentType: 'sol-wrapper'`, the task's worktree as its
+   task with `agentType: 'sol-high-wrapper'`, the task's worktree as its
    workspace, a schema forcing the structured report shape, and one
    phase per group. The workflow covers dispatch and per-task collection
    only; merge, adjudication, and the review gate never go inside it.
@@ -99,7 +103,7 @@ manufactured split that fails the validity tests above.
    integration branch in plan dependency order. A clean merge is
    orchestrator plumbing — no code is authored, so it does not breach
    "the orchestrator does not implement". Any conflict is evidence the
-   write scopes were not disjoint: dispatch `sol-wrapper` with the
+   write scopes were not disjoint: dispatch `sol-high-wrapper` with the
    conflict as its exact scope; never hand-resolve in the main thread.
    Opus never merges — a reviewer who performed the integration is no
    longer cold.

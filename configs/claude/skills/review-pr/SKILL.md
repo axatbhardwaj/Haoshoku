@@ -22,9 +22,9 @@ angle. Distinct angles, no shared conclusions:
 | Lens | Route | Angle |
 |---|---|---|
 | opus-reviewer, effort medium | native | correctness, security, data loss, concurrency |
-| sol-wrapper review mode (high) | seat | regressions, compatibility, architecture, operational risk |
-| luna-wrapper review mode (max) | seat | maintainability, documentation, KISS/YAGNI/SOLID |
-| luna-wrapper review mode (max) | seat | error handling, silent failures, test gaps |
+| sol-high-wrapper review mode (high) | seat | regressions, compatibility, architecture, operational risk |
+| luna-max-wrapper review mode (max) | seat | maintainability, documentation, KISS/YAGNI/SOLID |
+| luna-max-wrapper review mode (max) | seat | error handling, silent failures, test gaps |
 | sonnet | native | API misuse, edge cases, off-by-one and boundary bugs |
 | sonnet | native | diff completeness, dead code, drift from stated intent |
 

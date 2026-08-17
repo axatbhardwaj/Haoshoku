@@ -54,8 +54,14 @@ export const PERSONAL_FILES = [
 	// .template name because a real .gitignore here would be honoured by git and
 	// npm-packlist, silently dropping bundle files from the published package.
 	{ src: "gitignore.template", dest: ".gitignore" },
-	{ src: "agents/sol-wrapper.md" },
-	{ src: "agents/luna-wrapper.md" },
+	// diagnose-crash and omarchy are deliberately NOT bundled: syncClaudeConfig()
+	// unconditionally copies each manifested source over an untracked live copy
+	// on every deploy, on every machine. Both live skills are symlinks into
+	// /usr/share/omarchy/default/agents/skills — system-owned content that
+	// Haoshoku does not own and must not republish in its published npm package.
+	{ src: "agents/sol-high-wrapper.md" },
+	{ src: "agents/sol-medium-wrapper.md" },
+	{ src: "agents/luna-max-wrapper.md" },
 	{ src: "agents/opencode-wrapper.md" },
 	{ src: "agents/grok-wrapper.md" },
 	{ src: "agents/madhyastha.md" },

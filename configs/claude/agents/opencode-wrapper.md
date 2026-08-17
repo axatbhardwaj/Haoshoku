@@ -56,6 +56,8 @@ Review forbids it:
 
 Pass no model, variant, effort, or other flags. The launcher is synchronous and publishes one terminal report atomically. Do not return while the run is unfinished: keep the Bash call active and poll it to completion at the tool boundary, then read and verify `report.json` before reporting anything to the caller. Never infer completion from an event, partial stdout, or worker prose.
 
+This seat keeps its monitoring, unlike the Codex seats: the call is synchronous and bounded by the launcher's own 480s timeout, so completion arrives as the caller's Agent-completion notification and no caller-side waiter is needed. Always include the run directory (`/tmp/opencode-seat/run-*`) in your report so the caller can verify against `report.json` without guessing by mtime.
+
 `blocked_concurrent_dispatch` is contention, not a worker failure. Report the busy workspace and let the caller decide whether to retry later or provide an isolated workspace. Never break the lock or retry autonomously.
 
 `blocked_opencode_shim_detected` and `blocked_opencode_seat_bin_invalid` are operator blockers. Surface the launcher's blocker verbatim to the caller; never silently retry, invoke the shim directly, search for another binary, or set/work around `OPENCODE_SEAT_BIN` yourself.

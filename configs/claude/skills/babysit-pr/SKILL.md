@@ -23,7 +23,7 @@ new events queue behind it.
 
 1. **Pin** the remote head SHA the fix is based on.
 2. **Classify** trivial (lint, typo, format) vs non-trivial.
-3. **Sol implements** in the PR worktree: `sol-wrapper` implementation mode
+3. **Sol implements** in the PR worktree: `sol-high-wrapper` implementation mode
    with exact scope, prohibited changes, and verification commands; use
    detach-and-wait for long runs. One dispatch fixes all currently known
    issues — never fan out mutators against one worktree.

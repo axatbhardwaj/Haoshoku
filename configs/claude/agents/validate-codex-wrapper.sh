@@ -8,7 +8,7 @@
 [ "$#" -eq 1 ] || { echo "Blocked: wrapper identity is required; failing closed." >&2; exit 2; }
 WRAPPER_GATEWAY=$1
 case "$WRAPPER_GATEWAY" in
-  sol-wrapper|luna-wrapper|opencode-wrapper) ;;
+  sol-high-wrapper|sol-medium-wrapper|luna-max-wrapper|opencode-wrapper) ;;
   *) echo "Blocked: invalid wrapper identity: ${WRAPPER_GATEWAY:-<empty>}; failing closed." >&2; exit 2 ;;
 esac
 
@@ -342,7 +342,7 @@ safe_opencode_launcher_command() {
 
 safe_render_workspace_command() {
   local trusted_home helper cleanup_target
-  [ "$WRAPPER_GATEWAY" = "luna-wrapper" ] || return 1
+  [ "$WRAPPER_GATEWAY" = "luna-max-wrapper" ] || return 1
   trusted_home=$(trusted_home_for_uid) || return 1
   [ "${HOME:-}" = "$trusted_home" ] || return 1
   case "$CMD" in
@@ -386,8 +386,9 @@ safe_wrapper_route() {
 
   [ "$model_count" -eq 1 ] && [ "$mode_count" -eq 1 ] || return 1
   case "$WRAPPER_GATEWAY" in
-    sol-wrapper) [ "$model" = "sol" ] && [ "$attribution_count" -eq 0 ] ;;
-    luna-wrapper)
+    sol-high-wrapper) [ "$model" = "sol" ] && [ "$attribution_count" -eq 0 ] ;;
+    sol-medium-wrapper) [ "$model" = "sol-medium" ] && [ "$attribution_count" -eq 0 ] ;;
+    luna-max-wrapper)
       [ "$model" = "luna" ] && { [ "$mode" = "review" ] || [ "$mode" = "implementation" ]; } || return 1
       if [ "$mode" = "implementation" ]; then
         [ "$attribution_count" -eq 1 ] && [ -n "$attribution_path" ]

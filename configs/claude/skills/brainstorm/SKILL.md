@@ -17,7 +17,14 @@ Interview the user relentlessly until you reach a shared understanding.
 - Work in **rounds**. The **frontier** is every decision whose
   prerequisites are already settled — the questions you can ask now
   without guessing at unheard answers. Ask the whole frontier in one
-  round; number each question and give your recommended answer, then wait:
+  round, interactively, via `AskUserQuestion`: put your recommended
+  answer first with `(Recommended)` in the label, and give each real
+  alternative its own option. The tool caps a call at four questions, so
+  a wider frontier is several back-to-back calls in the same round —
+  keep calling until the round is covered, then wait.
+- Only drop to prose for a question that genuinely has no option set —
+  open-ended naming, a number, a free-form constraint. Then number it and
+  give your recommended answer:
 
   ```
   ❓ **Q1** — **<question title>**: <body, choices welcome>
@@ -38,7 +45,7 @@ Interview the user relentlessly until you reach a shared understanding.
 
 Spawn concurrently (as an inline Workflow when ≥3 agents):
 
-- `luna-wrapper` research dispatch (read-only, effort max): primary-source
+- `luna-max-wrapper` research dispatch (read-only, effort max): primary-source
   facts with citations and freshness.
 - Native Explore/sonnet agents: codebase reality, prior art, constraints.
 
@@ -57,7 +64,7 @@ unknowns. Never present a single-source or unverified claim as fact.
    smallest sufficient architecture, nearest rejected alternative,
    observable acceptance checks, risks, and open questions that materially
    change the plan.
-2. Dispatch `sol-wrapper` in review mode, cold, with the formalized plan
+2. Dispatch `sol-high-wrapper` in review mode, cold, with the formalized plan
    and the same evidence — an independent check by a different model
    family.
 3. Material dissent returns to `fable-planner` for adjudication. Fable
