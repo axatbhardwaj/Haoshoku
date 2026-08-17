@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { promptDeviceType } from "../src/helpers/configure_hyprland.js";
+import { promptDeviceType } from "../src/common/device_type.js";
 import { configureOmarchyWorkspaces } from "../src/helpers/configure_omarchy_workspaces.js";
 import { runCachyOSSetup } from "../src/os_scripts/cachyos.js";
 

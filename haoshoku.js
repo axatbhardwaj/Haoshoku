@@ -32,7 +32,7 @@ import {
 	syncCodexConfig,
 } from "./src/helpers/configure_codex.js";
 import { installGhStack } from "./src/helpers/configure_gh_stack.js";
-import { promptDeviceType } from "./src/helpers/configure_hyprland.js";
+import { promptDeviceType } from "./src/common/device_type.js";
 import {
 	backupMimeappsConfig,
 	syncMimeappsConfig,
@@ -70,7 +70,7 @@ const program = new Command();
 program
 	.name("haoshoku")
 	.description("Haoshoku: portable setup for Arch / Omarchy and Debian Server.")
-	.version("9.0.0")
+	.version("9.1.0")
 	.addHelpText("before", getBanner());
 
 program

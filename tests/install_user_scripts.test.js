@@ -250,69 +250,6 @@ describe("installUserScripts — deployment", () => {
 		expect(script).not.toContain("@DEFAULT_AUDIO_SINK@");
 	});
 
-	it.skip("ships caelestia-restart with a bounded recovery ladder and IPC health check", () => {
-		const script = fs.readFileSync(
-			path.join(process.cwd(), "configs", "scripts", "caelestia-restart"),
-			"utf8",
-		);
-
-		// Behavioural assertions run against executable text only. The helper
-		// documents its own commands in the header, so asserting against the
-		// raw file lets a comment satisfy an ordering check and the test then
-		// passes no matter what the code does.
-		const code = script
-			.split("\n")
-			.filter((line) => !line.trim().startsWith("#"))
-			.join("\n");
-
-		expect(code).toContain("flock -n");
-
-		// Every call that talks to the shell socket must be bounded, or it can
-		// hang while holding the lock and silently disable the shortcut.
-		expect(code).toMatch(/timeout\s+5\s+caelestia shell -k/);
-		expect(code).toContain("timeout 5 qs list --all");
-		expect(code).toContain("timeout 3 qs -c caelestia ipc show");
-
-		// The IPC wait is bounded by wall clock, not by an iteration count:
-		// each probe can burn its own timeout, which would multiply the bound.
-		expect(code).toContain("date +%s");
-
-		// Stop before start.
-		expect(code).toContain("caelestia shell -d");
-		expect(code.indexOf("caelestia shell -k")).toBeLessThan(
-			code.indexOf("caelestia shell -d"),
-		);
-
-		// Escalate cooperative -> TERM -> KILL, in that order.
-		expect(code).toContain("kill -TERM");
-		expect(code).toContain("kill -KILL");
-		expect(code.indexOf("kill -TERM")).toBeLessThan(code.indexOf("kill -KILL"));
-
-		// Healthy IPC alone is not success: a ladder survivor answers exactly
-		// as a fresh shell would, and --no-duplicate would have refused ours.
-		expect(code).toMatch(/if wait_for_ipc[\s\S]*any_alive \$pids/);
-
-		// The started shell is a daemon that outlives this script. If it
-		// inherits fd 9 it holds the flock for the rest of the session, and
-		// every later press takes the silent exit-2 path — the shortcut would
-		// work exactly once per login and then die without a word.
-		expect(code).toMatch(/caelestia shell -d[^\n]*9>&-/);
-
-		// A negative PID is a process-group selector: `kill -TERM -1` would
-		// signal every process this user owns. Validate before kill can see it.
-		expect(code).toContain("$3 ~ /^[0-9]+$/");
-
-		// A bare /caelestia/ substring also matches unrelated quickshell
-		// configs nested under a directory of that name.
-		expect(code).toContain(String.raw`\/caelestia\/shell\.qml`);
-
-		expect(code).toContain("hyprctl notify");
-		expect(script).not.toContain("notify-send");
-		expect(script).not.toContain("pgrep");
-		expect(script).not.toContain("by-pid");
-		expect(script).not.toContain("hyprctl reload");
-	});
-
 	it.skip("ships claude-desktop-toggle as a Claude-only special workspace", () => {
 		const script = fs.readFileSync(
 			path.join(process.cwd(), "configs", "scripts", "claude-desktop-toggle"),

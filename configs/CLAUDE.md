@@ -14,7 +14,7 @@ Template configuration files copied to user's `~/.config/` during setup.
 | --------------- | ----------------------------------- | ----------------------------------------- |
 | `agent-os/`     | Pinned Agent OS revision and customized `shape-spec` command | Updating the Agent OS pin or planning workflow |
 | `alacritty/`    | Alacritty terminal config           | Modifying Alacritty settings              |
-| `kitty/`        | Primary terminal config, Haki/agents split sessions, and the terminal-agnostic OSC-palette regeneration tool | Modifying terminal settings, split sessions, or re-syncing the Caelestia palette |
+| `kitty/`        | Primary terminal config and Haki/agents split sessions | Modifying terminal settings or split sessions |
 | `ghostty/`      | Retained legacy Ghostty config; installed but no longer deployed or wired to keybinds | Reviewing the former Ghostty setup |
 | `fastfetch/`    | Fastfetch system info config        | Modifying system info display             |
 | `fish/`         | Fish shell config                   | Modifying shell behavior, aliases         |
@@ -29,11 +29,9 @@ Template configuration files copied to user's `~/.config/` during setup.
 | `kde/`          | KDE Ocean theme bundle (5 components)   | Modifying KDE theme deployment            |
 | `kwin/`         | KWin script placing KDE Activity windows on outputs by connector name | Modifying activity-window output placement |
 | `zed/`          | Zed editor config (sanitized backup)    | Modifying Zed settings, themes            |
-| `caelestia/`    | Caelestia user prefs (`hypr-user.conf`, `cli.json`) | Modifying workspace pins, keybinds, special-workspace toggles |
 | `audio/`        | PipeWire/WirePlumber drop-in configs (portable PipeWire + device-routed WirePlumber variants; PC has the lossless headset rule) | Modifying audio config, adding device-specific WirePlumber rules |
 | `mimeapps/`     | XDG default-application associations (`mimeapps.list`) — fully portable, no device routing | Changing default apps for MIME types or URI scheme handlers |
 | `omarchy/`      | Omarchy 4 Hyprland Lua overlays and keybinding-swap registry | Read `omarchy/CLAUDE.md` before changing overlays, require wiring, keybindings, or ownership boundaries |
 | `pr-watch/`     | Bun PR-readiness watcher and executable wrapper | Modifying PR polling, event detection, or watcher runtime |
 | `scripts/`      | Executable shell wrappers deployed to `~/.local/bin/` | Adding PATH-shadow wrappers, game-launch hooks |
-| `caelestia-lockfix/` | Caelestia lock-screen portrait-fix kit (`apply.sh` + two QML patches) — workaround for upstream Caelestia bug | Updating the portrait-fix patch or re-seeding after a caelestia-shell update |
 | `worktree-cleanup/` | Safe DeFi worktree cleanup script and weekly systemd user timer | Modifying cleanup eligibility, deployment, or scheduling |

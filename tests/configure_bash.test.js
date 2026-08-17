@@ -42,7 +42,7 @@ describe("configureBash", () => {
 		for (const text of [
 			"alias ls=",
 			"alias dog=",
-			"alias agy=",
+			"alias antigravity=",
 			"alias gd=",
 			"alias gpl=",
 			"starship init bash",
@@ -57,6 +57,72 @@ describe("configureBash", () => {
 		expect(fragment).not.toMatch(
 			/cachyos|caelestia|fish|\babbr\b|\bset -gx\b/i,
 		);
+	});
+
+	it("migrates stale Antigravity definitions to the agy binary", () => {
+		configureBash({ home });
+		const bin = path.join(home, "bin");
+		fs.mkdirSync(bin, { recursive: true });
+		const agy = path.join(bin, "agy");
+		fs.writeFileSync(agy, '#!/usr/bin/env bash\necho "$@" >> "$AGY_LOG"\n');
+		fs.chmodSync(agy, 0o755);
+		const agyLog = path.join(home, "agy.log");
+		for (const command of [
+			"starship",
+			"direnv",
+			"zoxide",
+			"pyenv",
+			"thefuck",
+		]) {
+			const executable = path.join(bin, command);
+			fs.writeFileSync(executable, "#!/bin/sh\nexit 0\n");
+			fs.chmodSync(executable, 0o755);
+		}
+		const conda = path.join(home, "anaconda3", "bin", "conda");
+		fs.mkdirSync(path.dirname(conda), { recursive: true });
+		fs.writeFileSync(conda, "#!/bin/sh\nexit 0\n");
+		fs.chmodSync(conda, 0o755);
+		const functionProbe = path.join(home, "antigravity.function");
+
+		const result = spawnSync(
+			"bash",
+			[
+				"--noprofile",
+				"--norc",
+				"-ic",
+				[
+					"alias agy='antigravity'",
+					'antigravity() { command antigravity --new-window "$@" >/dev/null 2>&1 & }',
+					'source "$1"',
+					'eval "antigravity from-alias"',
+					'eval "agy direct"',
+					"type -t agy",
+					"type -t antigravity",
+					'declare -F antigravity > "$2" || true',
+				].join("\n"),
+				"bash",
+				path.join(home, ".config", "haoshoku", "bashrc"),
+				functionProbe,
+			],
+			{
+				encoding: "utf8",
+				env: {
+					HOME: home,
+					PATH: `${home}/bin:/usr/bin:/bin`,
+					AGY_LOG: agyLog,
+				},
+			},
+		);
+
+		expect(result.status).toBe(0);
+		expect(result.stdout.trim().split("\n").slice(-2)).toEqual([
+			"file",
+			"alias",
+		]);
+		expect(fs.readFileSync(functionProbe, "utf8")).toBe("");
+		const calls = fs.readFileSync(agyLog, "utf8");
+		expect(calls).toContain("from-alias");
+		expect(calls).toContain("direct");
 	});
 
 	it("configures non-interactive shells without running fastfetch", () => {

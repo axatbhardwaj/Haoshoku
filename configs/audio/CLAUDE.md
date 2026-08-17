@@ -21,8 +21,6 @@ The **WirePlumber** drop-ins are **device-specific**: they hardcode this PC's ex
 - `deviceType === "laptop"` → no WirePlumber rule currently ships; laptop does not need the lossless hard-pin setup
 - Anything else (unset, malformed, `"other"`) → skip device-specific WirePlumber rules
 
-This mirrors the pattern already used in `configs/caelestia/` where `hypr-user-pc.conf` vs `hypr-user-laptop.conf` are routed by the `deviceType` field in `~/.haoshoku.json`.
-
 The `src/helpers/configure_audio.js` helper reads `deviceType`, syncs the portable PipeWire drop-ins, and deploys a matching WirePlumber variant only when a known variant exists. Run `haoshoku --audio` to deploy `configs/audio/` into `~/.config/`, and `haoshoku --audio-backup` to snapshot the live configs back.
 
 ## Notes

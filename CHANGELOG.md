@@ -8,6 +8,14 @@
   `~/.claude/agents/`, where the validator and launcher hard-refuse them but
   they remain visible in the agent picker; delete those files manually.
 
+## 9.1.0 - 2026-08-16
+
+- Install the KDE Connect backend for the default omaconnect plugin and start
+  its daemon explicitly in Omarchy 4, where Hyprland does not process the XDG
+  autostart entry, so phone sync is reliably available from login.
+- Remove the retired Caelestia subsystem while retaining device-type routing as
+  shared configuration for Omarchy and audio setup.
+
 ## 9.0.0 - 2026-08-16
 
 - Breaking: Omarchy 4 or newer required; Omarchy 3 no longer supported.

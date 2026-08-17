@@ -25,7 +25,7 @@ import { configureCodex } from "../helpers/configure_codex.js";
 import { configureKitty } from "../helpers/configure_kitty.js";
 import { installGhStack } from "../helpers/configure_gh_stack.js";
 import { configureHyprmoncfg } from "../helpers/configure_hyprmoncfg.js";
-import { promptDeviceType } from "../helpers/configure_hyprland.js";
+import { promptDeviceType } from "../common/device_type.js";
 import { configureMimeapps } from "../helpers/configure_mimeapps.js";
 import { configureOmarchyBar } from "../helpers/configure_omarchy_bar.js";
 import { configureOmarchyPlugins } from "../helpers/configure_omarchy_plugins.js";
