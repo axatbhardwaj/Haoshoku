@@ -292,6 +292,12 @@ authority.
 - Preserve unrelated dirty changes. Know the branch before editing. Never
   `git add -A` in a repository with unrelated work in progress.
 - Commits: semantic prefix, subject ≤50 characters, one logical change.
+  Aim for about 100 changed lines per commit; a commit may span as many
+  files as that one change needs — file count is not the unit, the logical
+  change is. When a change outgrows that, split it into commits that each
+  stand alone and pass the suite, rather than shipping one large commit.
+  Generated output — lockfiles, recomputed digests, snapshots — rides with
+  the change that caused it and does not count toward the line budget.
 - Plans, specs, reports, and temporary state stay in gitignored locations
   and are never committed. Check the ignore rule before writing one.
 - Never auto-post to GitHub except where a skill explicitly authorizes it
