@@ -64,8 +64,6 @@ export const PERSONAL_FILES = [
 	{ src: "agents/luna-max-wrapper.md" },
 	{ src: "agents/opencode-wrapper.md" },
 	{ src: "agents/grok-wrapper.md" },
-	{ src: "agents/madhyastha.md" },
-	{ src: "agents/anveshaka.md" },
 	{ src: "agents/fable-planner.md" },
 	{ src: "agents/opus-reviewer.md" },
 	{ src: "agents/run-codex-task.sh" },

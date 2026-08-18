@@ -23,8 +23,6 @@ const RUNTIME_FILES = [
 	"agents/luna-max-wrapper.md",
 	"agents/opencode-wrapper.md",
 	"agents/grok-wrapper.md",
-	"agents/madhyastha.md",
-	"agents/anveshaka.md",
 	"agents/fable-planner.md",
 	"agents/opus-reviewer.md",
 	"agents/run-codex-task.sh",
@@ -47,21 +45,17 @@ const PINNED_DIGESTS = {
 	"agents/sol-high-wrapper.md":
 		"110882784feeda0b60889a65424289238b0dee7864beddb817734513eb6a9191",
 	"agents/sol-medium-wrapper.md":
-		"5118400fade4ec63123d1941a9a7b8ef2a7b54d6c0c85810c93ad2e00e3af5b6",
+		"b4d38ad18a22482081a7348724b0beb9474808bf26a722ce9eb947b796f6f81b",
 	"agents/luna-max-wrapper.md":
 		"ce3e349667d796e0dda146bb347e960e574d4eb89e7e2f6790b058fd98709656",
 	"agents/opencode-wrapper.md":
 		"c0e853b96e71ea0da5a397203945c1a06262f17758378e74b13ea65bec5e3386",
 	"agents/grok-wrapper.md":
 		"69f0876934f8aeea6ec62d90d694ea481b1bc1906b2ea16a9a40cbb14e1b4130",
-	"agents/madhyastha.md":
-		"cc7278ea49f202acf7a1336ae9e20cce1eb716a199856419c56c71a8fbc89d7f",
-	"agents/anveshaka.md":
-		"bea04ed384020ea0d016e03302e30d489fdccc589d852a66de53f4c5e3bb29cb",
 	"agents/fable-planner.md":
 		"f3f8f61d17972237eff9d6282007b65cb45133ce5f551bb44756f7da0f780567",
 	"agents/opus-reviewer.md":
-		"471946a434a78b02c1cdd1f8ff7101be4d1ef594272a3909d5d61bcb79415256",
+		"5ae2914bdf3b846cb76fc60ba9bf683de782d40a60bf14d50d325e874ae002e8",
 	"agents/run-codex-task.sh":
 		"eb327792e5b2702cba9ba9c22f77fc0aab4177016491e81abfb4e2addd7b884e",
 	"agents/run-opencode-seat.sh":
@@ -77,7 +71,7 @@ const PINNED_DIGESTS = {
 	"skills/discovering-work/agents/openai.yaml":
 		"61d4bfdd85a518acacc2ec655f483049173290946faca7536b436857ca5d7583",
 	"skills/implement-work/SKILL.md":
-		"78c7298da06c5c75cf78fb930843435b59217f66b0a09fb2dafaedaa13201b4e",
+		"9842546ad4da3fe13a33c206e9bb2631b8bd5970fd315b0faa4b8d5a2d5f97a5",
 	"skills/review-pr/SKILL.md":
 		"0921974b2befd9d4c6c414c6f84f409c24af0ef553e5ed369ce50d892d9dceb1",
 	"skills/create-pr/SKILL.md":

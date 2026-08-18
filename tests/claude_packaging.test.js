@@ -10,8 +10,6 @@ const PUBLIC_RUNTIME_FILES = [
 	"configs/claude/agents/luna-max-wrapper.md",
 	"configs/claude/agents/opencode-wrapper.md",
 	"configs/claude/agents/grok-wrapper.md",
-	"configs/claude/agents/madhyastha.md",
-	"configs/claude/agents/anveshaka.md",
 	"configs/claude/agents/fable-planner.md",
 	"configs/claude/agents/opus-reviewer.md",
 	"configs/claude/agents/run-codex-task.sh",
