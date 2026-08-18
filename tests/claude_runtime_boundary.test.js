@@ -71,7 +71,7 @@ const PINNED_DIGESTS = {
 	"skills/discovering-work/agents/openai.yaml":
 		"61d4bfdd85a518acacc2ec655f483049173290946faca7536b436857ca5d7583",
 	"skills/implement-work/SKILL.md":
-		"9842546ad4da3fe13a33c206e9bb2631b8bd5970fd315b0faa4b8d5a2d5f97a5",
+		"456121787487c1ac2d1915c834ba4627bbe54d7c913c9ec876ba7d346f821e43",
 	"skills/review-pr/SKILL.md":
 		"0921974b2befd9d4c6c414c6f84f409c24af0ef553e5ed369ce50d892d9dceb1",
 	"skills/create-pr/SKILL.md":

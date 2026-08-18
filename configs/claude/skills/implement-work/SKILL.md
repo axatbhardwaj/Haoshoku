@@ -6,8 +6,8 @@ description: Implement features, changes, or bugfixes; not review-only work.
 # Implement Work
 
 You are the orchestrator. Native subagents: `fable-planner` (plan,
-adjudicate) and `opus-reviewer` (cold review). Codex seats only through
-`sol-high-wrapper` — never call `run-codex-task.sh` directly.
+adjudicate) and `opus-reviewer` (cold review). Codex seats only through the
+sol wrappers — never call `run-codex-task.sh` directly.
 
 ## Workflow rule
 
@@ -51,9 +51,8 @@ edit is small.
    reason goes back to Fable.
 2. **Sol reviews the plan.** Dispatch `sol-medium-wrapper` in review mode with
    the plan and the same evidence. Sol challenges feasibility, hidden work, and
-   KISS/YAGNI/SOLID proportionality. Medium is the right seat here: a plan
-   critique writes no code and is reversible. Escalate to `sol-high-wrapper`
-   only if the plan itself turns on an escalation trigger.
+   KISS/YAGNI/SOLID proportionality. Escalate to `sol-high-wrapper` only if
+   the plan itself turns on an escalation trigger.
 3. **Adjudication.** On material dissent, send both positions with evidence
    back to `fable-planner` for a ruling. Fable outranks Sol and Opus on plan
    judgment; the user outranks Fable.
@@ -72,16 +71,17 @@ edit is small.
    against its exact scope and acceptance checks. This is same-model
    self-review and is acceptable only because step 7 stays cross-model and
    full-diff; Opus is never spent on per-dispatch deltas.
-7. **One cold Opus review per request.** After the final dispatch, spawn
-   `opus-reviewer`, cold, with the full base..HEAD diff, reports, and
+7. **One cold Opus review of the final diff.** After the final dispatch,
+   spawn `opus-reviewer`, cold, with the full base..HEAD diff, reports, and
    acceptance checks — never per-dispatch deltas alone, and never with
-   Sol's self-assessment as a conclusion. Same rule the parallel fan-out
-   uses for per-task diffs. Exactly one Opus pass per request.
+   Sol's self-assessment as a conclusion. One pass when the verdict is
+   clean; the fix loop below is the only path that spends another.
 8. **Fix loop.** Material findings return to step 4 with the findings as the
    scope. `sol-medium-wrapper` verifies each remediation against the
-   specific findings it was sent to address; re-run Opus only if the fix
-   was cross-cutting or architectural. Maximum two remediation rounds;
-   then stop and report.
+   specific findings it was sent to address; a remediation that changes the
+   diff invalidates the prior pass, so the loop closes with a fresh Opus
+   pass over the final base..HEAD. Maximum two remediation rounds; then
+   stop and report.
 
 ## Parallel fan-out — step 4 variant
 
@@ -143,7 +143,7 @@ Remove the temporary worktrees after integration.
 - A seat failure blocks its phase and is reported; never silently fall back
   to a native model for implementation.
 - **Your own green test run is not the Opus gate.** Passing tests are an
-  input to step 6, never a substitute for it. "Tests pass, done" skips the
+  input to the step 7 Opus gate, never a substitute for it. "Tests pass, done" skips the
   gate; a bare self-approval is not evidence.
 - Completion evidence = Opus `pass` + Sol's report covering the exact
   base/HEAD. Downstream skills (create-pr) require it fresh.

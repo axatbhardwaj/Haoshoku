@@ -2,8 +2,9 @@
 
 ## Unreleased
 
-- Resync the bundled Claude runtime: the implement-work skill now runs a
-  single cold Opus review per request over the full branch diff, with
+- Resync the bundled Claude runtime: the implement-work skill now runs a final
+  cold Opus review over the full branch diff, re-run after any fix loop that
+  changes it, with
   intermediate dispatch checks delegated to `sol-medium-wrapper`;
   `sol-medium-wrapper` now dispatches on the priority (fast) service tier,
   with the tier enforced in its receipt check; and `opus-reviewer` now
