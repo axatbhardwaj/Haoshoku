@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+- Resync the bundled Claude runtime: the implement-work skill now runs a
+  single cold Opus review per request over the full branch diff, with
+  intermediate dispatch checks delegated to `sol-medium-wrapper`;
+  `sol-medium-wrapper` now dispatches on the priority (fast) service tier,
+  with the tier enforced in its receipt check; and `opus-reviewer` now
+  explicitly pins `effort: high`.
+- Retire the `anveshaka` and `madhyastha` agents, removing them from the
+  bundle, the deployment manifest, and the test pins. Upgrades leave the old
+  agent definitions in `~/.claude/agents/`, where they remain visible in the
+  agent picker; delete those files manually.
+
 ## 9.2.0 - 2026-08-17
 
 - Resync the bundled Claude runtime from live: rename `sol-wrapper` to
