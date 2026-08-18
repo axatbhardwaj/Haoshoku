@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 9.3.0 - 2026-08-18
 
 - Resync the bundled Claude runtime: the implement-work skill now runs a final
   cold Opus review over the full branch diff, re-run after any fix loop that
