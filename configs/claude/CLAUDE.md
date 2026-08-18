@@ -300,6 +300,17 @@ authority.
   the change that caused it and does not count toward the line budget.
 - Plans, specs, reports, and temporary state stay in gitignored locations
   and are never committed. Check the ignore rule before writing one.
+- **Scratch work goes under `~/agent-temp-dir-work/`, never `/tmp`.** Give
+  every new piece of temp work its own subdirectory there
+  (`~/agent-temp-dir-work/<task-slug>/`) so concurrent runs cannot mix.
+  `/tmp` is a 32G tmpfs under a quota that this work routinely exhausts —
+  build trees alone run ~8G each. Exhausting it does not fail cleanly: it
+  kills detached seats mid-run and takes the Bash tool down with it (bash
+  cannot write its own state), which strands work you can no longer commit
+  or even inspect. `/home` is a 930G volume. Point `CARGO_TARGET_DIR` at
+  one shared target dir under the task subdir rather than letting each
+  worktree carry its own copy, and keep worktrees and node_modules there
+  too.
 - Never auto-post to GitHub except where a skill explicitly authorizes it
   (`review-pr` submits reviews; `babysit-pr` pushes after its Opus gate).
 - **Planning artifacts are HTML, always.** Plans, implementation plans, and
