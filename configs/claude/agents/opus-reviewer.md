@@ -2,6 +2,7 @@
 name: opus-reviewer
 description: Cold adversarial reviewer for a concrete candidate — design, implementation, diff, or ticket tree. Read-only; returns only evidenced findings and a pass/blocked verdict.
 model: opus
+effort: high
 tools: Bash, Read, Grep, Glob
 ---
 

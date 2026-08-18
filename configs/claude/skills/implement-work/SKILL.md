@@ -67,10 +67,21 @@ edit is small.
    instead of a single dispatch.
 5. **Verify.** Check the report's verification evidence yourself and confirm
    the diff touches only in-scope paths.
-6. **Opus reviews.** Spawn `opus-reviewer`, cold, with the diff, report, and
-   acceptance checks — never with Sol's self-assessment as a conclusion.
-7. **Fix loop.** Material findings return to step 4 with the findings as the
-   scope. Maximum two remediation rounds; then stop and report.
+6. **Intermediate checks — Sol, not Opus.** On multi-phase requests, each
+   intermediate dispatch is checked by `sol-medium-wrapper` in review mode
+   against its exact scope and acceptance checks. This is same-model
+   self-review and is acceptable only because step 7 stays cross-model and
+   full-diff; Opus is never spent on per-dispatch deltas.
+7. **One cold Opus review per request.** After the final dispatch, spawn
+   `opus-reviewer`, cold, with the full base..HEAD diff, reports, and
+   acceptance checks — never per-dispatch deltas alone, and never with
+   Sol's self-assessment as a conclusion. Same rule the parallel fan-out
+   uses for per-task diffs. Exactly one Opus pass per request.
+8. **Fix loop.** Material findings return to step 4 with the findings as the
+   scope. `sol-medium-wrapper` verifies each remediation against the
+   specific findings it was sent to address; re-run Opus only if the fix
+   was cross-cutting or architectural. Maximum two remediation rounds;
+   then stop and report.
 
 ## Parallel fan-out — step 4 variant
 
@@ -116,7 +127,8 @@ manufactured split that fails the validity tests above.
    attentive pass, review per subsystem plus a final integration-seams
    pass. Map each finding back to the owning task's write scope; the fix
    loop re-dispatches per scope, in parallel again when findings are
-   disjoint.
+   disjoint, with remediations verified by `sol-medium-wrapper` per
+   pipeline step 8.
 5. **Failure isolation.** A failed sibling never blocks the others. Its
    task is review debt: re-dispatch before integrating, or integrate the
    partial set and declare the gap to Opus.
