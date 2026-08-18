@@ -310,7 +310,9 @@ authority.
   or even inspect. `/home` is a 930G volume. Point `CARGO_TARGET_DIR` at
   one shared target dir under the task subdir rather than letting each
   worktree carry its own copy, and keep worktrees and node_modules there
-  too.
+  too. Exception: launcher-owned run dirs and contention worktrees under
+  `/tmp/codex-wrapper/` and `/tmp/opencode-seat/` stay where the launcher
+  puts them — the wrapper hooks confine writes there by design.
 - Never auto-post to GitHub except where a skill explicitly authorizes it
   (`review-pr` submits reviews; `babysit-pr` pushes after its Opus gate).
 - **Planning artifacts are HTML, always.** Plans, implementation plans, and

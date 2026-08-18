@@ -8,11 +8,16 @@
   intermediate dispatch checks delegated to `sol-medium-wrapper`;
   `sol-medium-wrapper` now dispatches on the priority (fast) service tier,
   with the tier enforced in its receipt check; and `opus-reviewer` now
-  explicitly pins `effort: high`.
+  explicitly pins `effort: high`, while the review-pr panel's Opus lens now
+  documents `effort high` to match the pinned agent definition.
 - Retire the `anveshaka` and `madhyastha` agents, removing them from the
   bundle, the deployment manifest, and the test pins. Upgrades leave the old
   agent definitions in `~/.claude/agents/`, where they remain visible in the
   agent picker; delete those files manually.
+- Add a deployed Claude scratch-directory policy requiring scratch work under
+  `~/agent-temp-dir-work`, explaining the `/tmp` quota rationale, and exempting
+  launcher-owned `/tmp` paths. Because `--claude` deploys `CLAUDE.md` over the
+  live copy, this is a user-visible policy change.
 
 ## 9.2.0 - 2026-08-17
 

@@ -73,7 +73,7 @@ const PINNED_DIGESTS = {
 	"skills/implement-work/SKILL.md":
 		"456121787487c1ac2d1915c834ba4627bbe54d7c913c9ec876ba7d346f821e43",
 	"skills/review-pr/SKILL.md":
-		"0921974b2befd9d4c6c414c6f84f409c24af0ef553e5ed369ce50d892d9dceb1",
+		"074dc2ddf385188d98ab162bbf4649b06fe456d0f32bf8fa0575045f20cf9b60",
 	"skills/create-pr/SKILL.md":
 		"f13a38f8d00da88415f2ae97d4c0285d3c98bd0490081d0bd497a7c0c33362cf",
 	"skills/brainstorm/SKILL.md":

@@ -21,7 +21,7 @@ angle. Distinct angles, no shared conclusions:
 
 | Lens | Route | Angle |
 |---|---|---|
-| opus-reviewer, effort medium | native | correctness, security, data loss, concurrency |
+| opus-reviewer, effort high | native | correctness, security, data loss, concurrency |
 | sol-high-wrapper review mode (high) | seat | regressions, compatibility, architecture, operational risk |
 | luna-max-wrapper review mode (max) | seat | maintainability, documentation, KISS/YAGNI/SOLID |
 | luna-max-wrapper review mode (max) | seat | error handling, silent failures, test gaps |
