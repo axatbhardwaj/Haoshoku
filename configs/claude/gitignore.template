@@ -1,6 +1,5 @@
 # Deny-first. This repo tracks the POLICY SURFACE only — the files that govern how
-# sessions behave — so that Codex dispatches into ~/.claude produce a real diff the
-# vadi can review. Everything else here is state, cache, secrets, or 1.1GB of
+# sessions behave. Everything else here is state, cache, secrets, or 1.1GB of
 # transcripts, and none of it belongs in version control.
 #
 # Adding a new tracked path means adding an explicit `!` line below. The default is NO.
@@ -10,7 +9,6 @@
 !.gitignore
 !CLAUDE.md
 !settings.json
-!agents/
 !workflows/
 !output-styles/
 !conventions/

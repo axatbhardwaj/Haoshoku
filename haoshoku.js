@@ -1,9 +1,9 @@
 #!/usr/bin/env bun
-import fs from "node:fs";
 
 import { Command } from "commander";
 import prompts from "prompts";
 import { detectOS, findActiveModeFlags } from "./src/common/cli_utils.js";
+import { promptDeviceType } from "./src/common/device_type.js";
 import { getBanner, showBanner } from "./src/common/ui.js";
 import { log, promptUser } from "./src/common/utils.js";
 import { configureAgentOs } from "./src/helpers/configure_agent_os.js";
@@ -17,7 +17,6 @@ import {
 	bootstrapClaudePolicy,
 	installSuperpowers,
 	syncClaudeConfig,
-	updateClaudeConfig,
 } from "./src/helpers/configure_claude.js";
 import {
 	backupClaudeRemoteControl,
@@ -32,20 +31,19 @@ import {
 	syncCodexConfig,
 } from "./src/helpers/configure_codex.js";
 import { installGhStack } from "./src/helpers/configure_gh_stack.js";
-import { promptDeviceType } from "./src/common/device_type.js";
+import {
+	backupHyprmoncfg,
+	configureHyprmoncfg,
+} from "./src/helpers/configure_hyprmoncfg.js";
 import {
 	backupMimeappsConfig,
 	syncMimeappsConfig,
 } from "./src/helpers/configure_mimeapps.js";
 import {
-	backupHyprmoncfg,
-	configureHyprmoncfg,
-} from "./src/helpers/configure_hyprmoncfg.js";
-import { configureOmarchyPlugins } from "./src/helpers/configure_omarchy_plugins.js";
-import {
 	backupOmarchyBar,
 	configureOmarchyBar,
 } from "./src/helpers/configure_omarchy_bar.js";
+import { configureOmarchyPlugins } from "./src/helpers/configure_omarchy_plugins.js";
 import { configureOmarchyWorkspaces } from "./src/helpers/configure_omarchy_workspaces.js";
 import {
 	backupPrWatch,
@@ -58,7 +56,6 @@ import {
 } from "./src/helpers/configure_worktree_cleanup.js";
 import { installUserScripts } from "./src/helpers/install_user_scripts.js";
 import {
-	CACHE_DIR,
 	printAvailableSkills,
 	syncSkills,
 } from "./src/helpers/skill_manager.js";
@@ -81,7 +78,7 @@ program
 	)
 	.option(
 		"--claude-backup",
-		"Backup Claude Code personal files to configs/claude/",
+		"Backup Claude Code config (CLAUDE.md, statusline, .gitignore)",
 	)
 	.option(
 		"--claude-remote-control",
@@ -95,7 +92,7 @@ program
 		"--claude-bootstrap",
 		"Bootstrap private policy repository at ~/.claude/",
 	)
-	.option("--claude-update", "Update cached config and sync Claude config")
+	.option("--claude-update", "Redeploy the packaged Claude Code config")
 	.option("--codex", "Deploy Codex config (AGENTS.md) to ~/.codex/")
 	.option("--codex-backup", "Backup ~/.codex/AGENTS.md to configs/codex/")
 	.option(
@@ -209,7 +206,6 @@ async function runAction(options) {
 	}
 
 	if (options.claudeUpdate) {
-		await updateClaudeConfig();
 		await syncClaudeConfig();
 		return;
 	}
@@ -290,16 +286,6 @@ async function runAction(options) {
 	}
 
 	if (options.claude) {
-		if (!fs.existsSync(CACHE_DIR)) {
-			log.info("Cache is empty, syncing skills first...");
-			const result = syncSkills({ update: false });
-			if (result.status !== "ok") {
-				log.warning(
-					`Skill sync skipped (${result.status}) — continuing with config deploy.`,
-				);
-			}
-		}
-
 		await syncClaudeConfig();
 		return;
 	}
@@ -528,12 +514,6 @@ async function runAction(options) {
 		default:
 			log.error(`Unsupported OS: ${osType}`);
 			process.exit(1);
-	}
-
-	if (
-		await promptUser("Sync Claude Code skills from configured sources?", true)
-	) {
-		syncSkills({ update: false });
 	}
 }
 

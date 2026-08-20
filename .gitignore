@@ -330,9 +330,6 @@ tasks/
 # Branch/session working notes (local-only)
 BRANCH-NOTES.md
 
-# Codex launcher result artifact (local-only)
-/report.json
-
 # Local Git worktrees
 /.worktrees/
 

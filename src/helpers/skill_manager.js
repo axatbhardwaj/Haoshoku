@@ -21,7 +21,6 @@ const HOME = homedir();
 const XDG_CACHE_HOME = process.env.XDG_CACHE_HOME || path.join(HOME, ".cache");
 export const CACHE_DIR = path.join(XDG_CACHE_HOME, "haoshoku");
 const CLAUDE_SKILLS_DIR = path.join(HOME, ".claude", "skills");
-const CLAUDE_AGENTS_DIR = path.join(HOME, ".claude", "agents");
 const AGENTS_SKILLS_DIR = path.join(HOME, ".agents", "skills");
 const CONFIG_PATH = path.join(HOME, ".haoshoku.json");
 
@@ -570,86 +569,6 @@ export function mergeSkills(sources, opts = {}) {
 }
 
 /**
- * Symlink agent .md files to ~/.claude/agents/ with priority order.
- * Same first-source-wins semantics as mergeSkills: earlier sources in
- * the array take priority when multiple sources provide the same agent name.
- */
-export function mergeAgents(sources, opts = {}) {
-	const agentsDir = opts.agentsDir ?? CLAUDE_AGENTS_DIR;
-
-	// Replace old whole-directory symlink (from configure_claude) with real dir
-	if (pathExists(agentsDir)) {
-		try {
-			const stats = fs.lstatSync(agentsDir);
-			if (stats.isSymbolicLink()) {
-				fs.unlinkSync(agentsDir);
-			}
-		} catch {}
-	}
-
-	if (!fs.existsSync(agentsDir)) {
-		fs.mkdirSync(agentsDir, { recursive: true });
-	}
-
-	const seenAgents = new Set();
-	let inPlaceAgents = 0;
-	let shadowedAgents = 0;
-	let failedAgents = 0;
-
-	for (const source of sources) {
-		const srcAgentsDir = path.join(source.cachePath, "agents");
-		if (!fs.existsSync(srcAgentsDir)) continue;
-
-		const entries = fs.readdirSync(srcAgentsDir, { withFileTypes: true });
-		for (const entry of entries) {
-			if (!entry.isFile() || !entry.name.endsWith(".md")) continue;
-			if (seenAgents.has(entry.name)) continue;
-
-			const srcPath = path.join(srcAgentsDir, entry.name);
-			const destPath = path.join(agentsDir, entry.name);
-
-			if (pathExists(destPath)) {
-				const destStat = fs.lstatSync(destPath);
-				if (!destStat.isSymbolicLink()) {
-					log.info(
-						`Skipped agent ${entry.name}: local file wins at ${destPath}`,
-					);
-					shadowedAgents++;
-					seenAgents.add(entry.name);
-					continue;
-				}
-				if (updateSymlinkIfNeeded(destPath, srcPath)) {
-					inPlaceAgents++;
-					seenAgents.add(entry.name);
-					continue;
-				}
-			}
-
-			try {
-				fs.symlinkSync(srcPath, destPath);
-				log.info(`Symlinked agent ${entry.name} from ${source.name}`);
-				inPlaceAgents++;
-				seenAgents.add(entry.name);
-			} catch (error) {
-				failedAgents++;
-				log.error(`Failed to symlink agent ${entry.name}: ${error.message}`);
-			}
-		}
-	}
-
-	const agentLabel = inPlaceAgents === 1 ? "agent" : "agents";
-	const shadowLabel = shadowedAgents === 1 ? "local shadow" : "local shadows";
-	const failedLabel = failedAgents === 1 ? "agent" : "agents";
-	const summary = `${inPlaceAgents} ${agentLabel} in place at ${agentsDir}; ${shadowedAgents} ${shadowLabel} skipped; ${failedAgents} ${failedLabel} failed`;
-	if (failedAgents > 0) {
-		log.warning(summary);
-	} else {
-		log.success(summary);
-	}
-	return seenAgents;
-}
-
-/**
  * Collect sources from config.
  * Continues on individual source failures to allow partial success.
  */
@@ -711,7 +630,7 @@ export function printAvailableSkills() {
  * in haoshoku.js so shell users still see failures.
  *
  * Status values:
- *   - "ok"          → at least one source synced + skills/agents merged
+ *   - "ok"          → at least one source synced + skills merged
  *   - "no-sources"  → skillSources array is empty (informational, not failure)
  *   - "all-failed"  → had sources, none could be cloned/updated (error)
  */
@@ -722,7 +641,6 @@ export function syncSkills(options = {}) {
 		cacheDir = CACHE_DIR,
 		skillsDir = CLAUDE_SKILLS_DIR,
 		agentsSkillsDir = AGENTS_SKILLS_DIR,
-		agentsDir = CLAUDE_AGENTS_DIR,
 	} = options;
 
 	const config = loadConfig(configPath);
@@ -746,6 +664,5 @@ export function syncSkills(options = {}) {
 	// Codex reads Agent Skills from ~/.agents/skills — mirror the same symlinks
 	// there so skills are available to Codex too, not just Claude Code.
 	mergeSkills(sources, { skillsDir: agentsSkillsDir });
-	mergeAgents(sources, { agentsDir });
 	return { status: "ok", merged: sources.length };
 }

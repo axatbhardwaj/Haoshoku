@@ -107,7 +107,7 @@ agent_icon() {
     claude-code-guide)                     printf '📚' ;;
     statusline-setup)                      printf '📊' ;;
 
-    # plugin agents (pr-review-toolkit, feature-dev, codex, hookify, plugin-dev, skill-creator)
+    # plugin agents (pr-review-toolkit, feature-dev, hookify, plugin-dev, skill-creator)
     code-reviewer)                         printf '🔍' ;;
     code-simplifier)                       printf '✂️' ;;
     code-architect)                        printf '🏗️' ;;
@@ -116,7 +116,6 @@ agent_icon() {
     pr-test-analyzer)                      printf '🧪' ;;
     silent-failure-hunter)                 printf '🕵️' ;;
     type-design-analyzer)                  printf '🏷️' ;;
-    codex-rescue)                          printf '🆘' ;;
     agent-creator)                         printf '🛠️' ;;
     plugin-validator)                      printf '✅' ;;
     skill-reviewer)                        printf '🔍' ;;

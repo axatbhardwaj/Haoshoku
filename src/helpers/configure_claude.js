@@ -40,9 +40,10 @@ const GIT_REPOSITORY_ENV_VARS = [
 	"GIT_WORK_TREE",
 ];
 
-// Exported so tests can assert the public fallback is complete. Each entry is
+// Exported so tests can assert the portable baseline is complete. Each entry is
 // copied independently: a private Claude repository retains ownership of its
-// tracked files, while a fresh or untracked home receives the public runtime.
+// tracked files, while a fresh or untracked home receives the public personal-file
+// baseline.
 //
 // ~/.claude.json is deliberately NOT tracked: it is Claude Code runtime
 // state (caches, usage stats, per-project session metadata, oauthAccount),
@@ -54,33 +55,6 @@ export const PERSONAL_FILES = [
 	// .template name because a real .gitignore here would be honoured by git and
 	// npm-packlist, silently dropping bundle files from the published package.
 	{ src: "gitignore.template", dest: ".gitignore" },
-	// diagnose-crash and omarchy are deliberately NOT bundled: syncClaudeConfig()
-	// unconditionally copies each manifested source over an untracked live copy
-	// on every deploy, on every machine. Both live skills are symlinks into
-	// /usr/share/omarchy/default/agents/skills — system-owned content that
-	// Haoshoku does not own and must not republish in its published npm package.
-	{ src: "agents/sol-high-wrapper.md" },
-	{ src: "agents/sol-medium-wrapper.md" },
-	{ src: "agents/luna-max-wrapper.md" },
-	{ src: "agents/opencode-wrapper.md" },
-	{ src: "agents/grok-wrapper.md" },
-	{ src: "agents/fable-planner.md" },
-	{ src: "agents/opus-reviewer.md" },
-	{ src: "agents/run-codex-task.sh" },
-	{ src: "agents/run-opencode-seat.sh" },
-	{ src: "agents/validate-codex-wrapper.sh" },
-	{ src: "agents/codex-result.schema.json" },
-	{ src: "agents/prepare-pr-review-render-workspace.sh" },
-	{ src: "skills/discovering-work/SKILL.md" },
-	{ src: "skills/discovering-work/agents/openai.yaml" },
-	{ src: "skills/implement-work/SKILL.md" },
-	{ src: "skills/review-pr/SKILL.md" },
-	{ src: "skills/create-pr/SKILL.md" },
-	{ src: "skills/brainstorm/SKILL.md" },
-	{ src: "skills/babysit-pr/SKILL.md" },
-	{ src: "skills/linear-ticketing/SKILL.md" },
-	{ src: "skills/html-explainer/SKILL.md" },
-	{ src: "skills/html-explainer/template.html" },
 ];
 
 /** Resolve where a PERSONAL_FILES entry lives on a given $HOME (inside ~/.claude/). */
@@ -305,20 +279,6 @@ export async function installClaude() {
 
 	log.info("Installing Claude Code...");
 	await runCommand(`curl -fsSL ${CLAUDE_INSTALL_URL} | bash`);
-}
-
-/** Update cached claude-config by pulling latest (delegates to skill_manager). */
-export async function updateClaudeConfig() {
-	const { syncSkills } = await import("./skill_manager.js");
-	log.info("Updating Claude config from remote...");
-	const result = syncSkills({ update: true });
-	if (result.status === "ok") {
-		log.success("Claude config updated.");
-	} else {
-		log.warning(
-			`Skill update did not complete (${result.status}) — continuing.`,
-		);
-	}
 }
 
 /**

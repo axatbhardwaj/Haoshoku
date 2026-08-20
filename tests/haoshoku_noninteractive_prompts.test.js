@@ -98,15 +98,13 @@ describe("non-interactive entrypoint prompts", () => {
 		expect(result.output).not.toContain("ARCH_SETUP_CALLED");
 	});
 
-	it("declines skill sync after an explicit setup when stdin has no answer", () => {
+	it("does not offer or run implicit skill sync after an explicit setup", () => {
 		const result = runEntrypoint({ args: ["--os", "arch"] });
 
 		expect(result.exitCode).toBe(0);
 		expect(result.durationMs).toBeLessThan(3000);
 		expect(result.output).toContain("ARCH_SETUP_CALLED");
-		expect(result.output).toContain(
-			'Interactive confirmation unavailable; declining "Sync Claude Code skills from configured sources?".',
-		);
+		expect(result.output).not.toContain("Sync Claude Code skills");
 		expect(result.output).not.toContain("SKILL_SYNC_CALLED");
 	});
 });

@@ -16,9 +16,9 @@ describe("PERSONAL_FILES manifest", () => {
 		expect(srcs).toContain("statusline-command.sh");
 	});
 
-	it("keeps the root personal files in stable order", () => {
+	it("keeps the managed surface to the three portable root files", () => {
 		const srcs = PERSONAL_FILES.map((f) => f.src);
-		expect(srcs.slice(0, 3)).toEqual([
+		expect(srcs).toEqual([
 			"CLAUDE.md",
 			"statusline-command.sh",
 			"gitignore.template",
@@ -45,16 +45,67 @@ describe("PERSONAL_FILES manifest", () => {
 			).toBe(true);
 		}
 	});
+});
 
-	it("keeps every bundled SKILL.md within the 150-line hard cap", () => {
-		const configsDir = path.resolve(import.meta.dir, "..", "configs", "claude");
-		for (const file of PERSONAL_FILES) {
-			if (!file.src.endsWith("SKILL.md")) continue;
-			const lines = fs
-				.readFileSync(path.join(configsDir, file.src), "utf-8")
-				.trimEnd()
-				.split("\n").length;
-			expect(lines, `${file.src} exceeds 150 lines`).toBeLessThanOrEqual(150);
+describe("portable Claude backup boundary", () => {
+	it("deploys only root personal config into a fresh Claude home", async () => {
+		const claudeHome = fs.mkdtempSync(
+			path.join(os.tmpdir(), "haoshoku-claude-root-config-"),
+		);
+
+		try {
+			await syncClaudeConfig({ claudeHome });
+			const claudeDir = path.join(claudeHome, ".claude");
+
+			expect(fs.existsSync(path.join(claudeDir, "agents"))).toBe(false);
+			expect(fs.existsSync(path.join(claudeDir, "skills"))).toBe(false);
+		} finally {
+			fs.rmSync(claudeHome, { recursive: true, force: true });
+		}
+	});
+
+	it("backs up root personal config without importing custom agents or skills", async () => {
+		const claudeHome = fs.mkdtempSync(
+			path.join(os.tmpdir(), "haoshoku-claude-backup-boundary-"),
+		);
+		const backupDir = fs.mkdtempSync(
+			path.join(os.tmpdir(), "haoshoku-claude-backup-output-"),
+		);
+		const claudeDir = path.join(claudeHome, ".claude");
+
+		try {
+			for (const [relativePath, contents] of [
+				["CLAUDE.md", "# Personal policy\n"],
+				["statusline-command.sh", "#!/bin/sh\n"],
+				[".gitignore", "*\n"],
+				["agents/grok-wrapper.md", "# Custom agent\n"],
+				["skills/brainstorm/SKILL.md", "# Standalone skill\n"],
+			]) {
+				const livePath = path.join(claudeDir, relativePath);
+				fs.mkdirSync(path.dirname(livePath), { recursive: true });
+				fs.writeFileSync(livePath, contents);
+			}
+
+			const summary = await backupClaudeConfig({
+				srcDir: backupDir,
+				claudeHome,
+			});
+
+			expect(summary).toEqual({ backedUp: 3, refused: 0 });
+			expect(fs.existsSync(path.join(backupDir, "agents"))).toBe(false);
+			expect(fs.existsSync(path.join(backupDir, "skills"))).toBe(false);
+			expect(fs.readFileSync(path.join(backupDir, "CLAUDE.md"), "utf8")).toBe(
+				"# Personal policy\n",
+			);
+			expect(
+				fs.readFileSync(path.join(backupDir, "statusline-command.sh"), "utf8"),
+			).toBe("#!/bin/sh\n");
+			expect(
+				fs.readFileSync(path.join(backupDir, "gitignore.template"), "utf8"),
+			).toBe("*\n");
+		} finally {
+			fs.rmSync(claudeHome, { recursive: true, force: true });
+			fs.rmSync(backupDir, { recursive: true, force: true });
 		}
 	});
 });
@@ -441,30 +492,6 @@ describe("syncClaudeConfig() respects the Claude home git index", () => {
 		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
 
 		expect(fs.readFileSync(livePath, "utf-8")).toBe("# Private policy\n");
-	});
-
-	it("does not overwrite a tracked public runtime file", async () => {
-		const runtimeFile = "agents/sol-high-wrapper.md";
-		const livePath = path.join(claudeDir, runtimeFile);
-		fs.mkdirSync(path.dirname(livePath), { recursive: true });
-		fs.writeFileSync(livePath, "# Private Sol wrapper\n");
-		fs.mkdirSync(path.dirname(path.join(configsDir, runtimeFile)), {
-			recursive: true,
-		});
-		fs.writeFileSync(
-			path.join(configsDir, runtimeFile),
-			"# Public Sol wrapper\n",
-		);
-		const add = Bun.spawnSync(["git", "add", "--", runtimeFile], {
-			cwd: claudeDir,
-			stderr: "pipe",
-			stdout: "pipe",
-		});
-		expect(add.exitCode).toBe(0);
-
-		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
-
-		expect(fs.readFileSync(livePath, "utf-8")).toBe("# Private Sol wrapper\n");
 	});
 
 	it("uses the destination path when deciding whether .gitignore is tracked", async () => {
@@ -884,7 +911,7 @@ describe("Claude settings.json remains unmanaged", () => {
 	});
 });
 
-describe("Claude runtime manifest keeps undeclared entries untouched", () => {
+describe("Claude root manifest keeps undeclared directories untouched", () => {
 	let tmpDir;
 	let configsDir;
 	let claudeHome;
@@ -1070,12 +1097,6 @@ describe("Claude runtime manifest keeps undeclared entries untouched", () => {
 		}).toEqual({ agent: false, workflow: false });
 	});
 
-	it("warns when a required runtime file is absent from the bundle", async () => {
-		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
-
-		expect(logs.warning.join("\n")).toContain("agents/sol-high-wrapper.md");
-	});
-
 	it("does not emit a merge-deploy summary", async () => {
 		await syncClaudeConfig({ srcDir: configsDir, claudeHome });
 
@@ -1173,6 +1194,7 @@ describe("Claude runtime manifest keeps undeclared entries untouched", () => {
 	it("leaves every non-personal Claude directory untouched in both directions", async () => {
 		const directories = [
 			"agents",
+			"skills",
 			"workflows",
 			"conventions",
 			"output-styles",

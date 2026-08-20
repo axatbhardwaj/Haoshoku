@@ -4,29 +4,10 @@ import os from "node:os";
 import path from "node:path";
 
 const PROJECT_ROOT = path.resolve(import.meta.dir, "..");
-const PUBLIC_RUNTIME_FILES = [
-	"configs/claude/agents/sol-high-wrapper.md",
-	"configs/claude/agents/sol-medium-wrapper.md",
-	"configs/claude/agents/luna-max-wrapper.md",
-	"configs/claude/agents/opencode-wrapper.md",
-	"configs/claude/agents/grok-wrapper.md",
-	"configs/claude/agents/fable-planner.md",
-	"configs/claude/agents/opus-reviewer.md",
-	"configs/claude/agents/run-codex-task.sh",
-	"configs/claude/agents/run-opencode-seat.sh",
-	"configs/claude/agents/validate-codex-wrapper.sh",
-	"configs/claude/agents/codex-result.schema.json",
-	"configs/claude/agents/prepare-pr-review-render-workspace.sh",
-	"configs/claude/skills/discovering-work/SKILL.md",
-	"configs/claude/skills/discovering-work/agents/openai.yaml",
-	"configs/claude/skills/implement-work/SKILL.md",
-	"configs/claude/skills/review-pr/SKILL.md",
-	"configs/claude/skills/create-pr/SKILL.md",
-	"configs/claude/skills/brainstorm/SKILL.md",
-	"configs/claude/skills/babysit-pr/SKILL.md",
-	"configs/claude/skills/linear-ticketing/SKILL.md",
-	"configs/claude/skills/html-explainer/SKILL.md",
-	"configs/claude/skills/html-explainer/template.html",
+const PORTABLE_ROOT_FILES = [
+	"configs/claude/CLAUDE.md",
+	"configs/claude/gitignore.template",
+	"configs/claude/statusline-command.sh",
 ];
 
 it("keeps packed configs/claude files free of literal home-directory paths", () => {
@@ -59,12 +40,21 @@ it("keeps packed configs/claude files free of literal home-directory paths", () 
 			.map((file) => file.path)
 			.filter((filePath) => filePath.startsWith("configs/claude/"));
 		expect(claudeFiles.length).toBeGreaterThan(0);
-		expect(claudeFiles).toEqual(expect.arrayContaining(PUBLIC_RUNTIME_FILES));
+		expect(claudeFiles).toEqual(expect.arrayContaining(PORTABLE_ROOT_FILES));
+		expect(
+			["agents", "skills"].filter((directory) =>
+				fs.existsSync(path.join(PROJECT_ROOT, "configs", "claude", directory)),
+			),
+		).toEqual([]);
+		expect(
+			claudeFiles.filter(
+				(filePath) =>
+					filePath.startsWith("configs/claude/agents/") ||
+					filePath.startsWith("configs/claude/skills/"),
+			),
+		).toEqual([]);
 
-		const baselineFiles = claudeFiles.filter(
-			(filePath) => !PUBLIC_RUNTIME_FILES.includes(filePath),
-		);
-		const leakingFiles = baselineFiles.filter((filePath) => {
+		const leakingFiles = claudeFiles.filter((filePath) => {
 			const contents = fs.readFileSync(
 				path.join(PROJECT_ROOT, filePath),
 				"utf8",

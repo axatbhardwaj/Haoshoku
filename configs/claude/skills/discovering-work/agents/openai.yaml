@@ -1,4 +1,0 @@
-interface:
-  display_name: "Work Discovery"
-  short_description: "Clarify scope before implementation begins"
-  default_prompt: "Use $discovering-work to clarify this request before choosing execution."

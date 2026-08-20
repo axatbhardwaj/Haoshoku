@@ -78,6 +78,7 @@ function deployModeFeaturesFromCli() {
 	// branches, so exclude them instead of claiming default-path coverage.
 	const excludedNonDefaultModes = new Set([
 		"--claude-update",
+		"--skills",
 		"--skills-update",
 		"--3-4-migrate",
 	]);
@@ -293,75 +294,6 @@ function runDebianDefaultPath() {
 	);
 }
 
-function runSharedCliDefault(targetOs) {
-	const cliPath = path.resolve(import.meta.dir, "..", "haoshoku.js");
-	const cliUtilsPath = path.resolve(
-		import.meta.dir,
-		"..",
-		"src",
-		"common",
-		"cli_utils.js",
-	);
-	const archPath = path.resolve(
-		import.meta.dir,
-		"..",
-		"src",
-		"os_scripts",
-		"cachyos.js",
-	);
-	const debianPath = path.resolve(
-		import.meta.dir,
-		"..",
-		"src",
-		"os_scripts",
-		"debian_server.js",
-	);
-	const skillsPath = path.resolve(
-		import.meta.dir,
-		"..",
-		"src",
-		"helpers",
-		"skill_manager.js",
-	);
-	return runIsolated(
-		`
-			import { mock } from "bun:test";
-			const calls = [];
-			mock.module("prompts", () => ({ default: async () => ({ value: true }) }));
-			mock.module(${JSON.stringify(cliUtilsPath)}, () => ({
-				detectOS: () => ${JSON.stringify(targetOs)},
-				findActiveModeFlags: () => [],
-			}));
-			mock.module(${JSON.stringify(archPath)}, () => ({
-				runCachyOSSetup: async () => true,
-			}));
-			mock.module(${JSON.stringify(debianPath)}, () => ({
-				runDebianServerSetup: async () => true,
-			}));
-			mock.module(${JSON.stringify(skillsPath)}, () => ({
-				CACHE_DIR: "/haoshoku-test-cache",
-				printAvailableSkills() {},
-				syncSkills() {
-					calls.push("skills");
-					return { status: "ok" };
-				},
-			}));
-			Object.defineProperty(process.stdin, "isTTY", { value: true });
-			process.argv = [process.execPath, ${JSON.stringify(cliPath)}];
-			await import(${JSON.stringify(cliPath)});
-			const deadline = Date.now() + 5000;
-			while (!calls.includes("skills")) {
-				if (Date.now() >= deadline) {
-					throw new Error("Timed out waiting for the default-path skill sync");
-				}
-				await Bun.sleep(20);
-			}
-			console.log("DEFAULT_CALLS=" + JSON.stringify(calls));
-		`,
-		"DEFAULT_CALLS",
-	);
-}
-
 const deployModeFeatures = deployModeFeaturesFromCli();
 const defaultCallsByPath = new Map();
 
@@ -427,14 +359,11 @@ describe("default-run reachability", () => {
 	beforeAll(() => {
 		defaultCallsByPath.set(
 			"arch",
-			new Set([...runArchDefaultPath(), ...runSharedCliDefault("arch")]),
+			new Set(runArchDefaultPath()),
 		);
 		defaultCallsByPath.set(
 			"debian-server",
-			new Set([
-				...runDebianDefaultPath(),
-				...runSharedCliDefault("debian-server"),
-			]),
+			new Set(runDebianDefaultPath()),
 		);
 	});
 

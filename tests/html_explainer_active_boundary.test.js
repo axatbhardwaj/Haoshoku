@@ -18,9 +18,6 @@ const RETIRED_IDENTIFIERS = [["dvan", "dva"].join(""), ["samv", "ada"].join("")]
 const activeConfigFiles = [
 	"configs/codex/AGENTS.md",
 	...SKILL_FILES.map((file) => path.join("configs/codex", SKILL_PATH, file)),
-	"configs/claude/agents/luna-max-wrapper.md",
-	"configs/claude/skills/html-explainer/SKILL.md",
-	"configs/claude/skills/html-explainer/template.html",
 ];
 
 function digest(contents) {
@@ -45,19 +42,6 @@ it("keeps the HTML Explainer skill on the active public configuration boundary",
 	expect(activeCodexConfig).toContain("html-explainer");
 	expect(activeCodexConfig).toContain("artifact-meta");
 	expect(activeCodexConfig).toContain("artifact.");
-
-	// luna-max-wrapper resolves these exact paths at dispatch time; a rename that
-	// misses it silently breaks every HTML deliverable dispatch.
-	const lunaMaxWrapper = fs.readFileSync(
-		path.join(PROJECT_ROOT, "configs/claude/agents/luna-max-wrapper.md"),
-		"utf8",
-	);
-	for (const required of [
-		"~/.claude/skills/html-explainer/SKILL.md",
-		"~/.claude/skills/html-explainer/template.html",
-	]) {
-		expect(lunaMaxWrapper, "luna-max-wrapper.md").toContain(required);
-	}
 
 	for (const relativePath of activeConfigFiles) {
 		const contents = fs.readFileSync(
