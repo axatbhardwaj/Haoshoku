@@ -132,8 +132,8 @@ therefore reverted on the next deploy. Every other top-level key — including
 
 ## Claude policy bootstrap
 
-During full setup, Haoshoku deploys its public Claude fallback and integration
-files, then asks whether to bootstrap the configured private Claude policy
+During full setup, Haoshoku deploys its three-file Claude baseline, then asks
+whether to bootstrap the configured private Claude policy
 repository; the prompt defaults to Yes. If that repository is unreachable or
 authentication fails, setup continues and can be retried with:
 
@@ -141,9 +141,9 @@ authentication fails, setup continues and can be retried with:
 haoshoku --claude-bootstrap
 ```
 
-The private repository owns the live `CLAUDE.md`, `settings.json`, wrapper
-agents, workflows, conventions, and output styles. Haoshoku owns only the
-bootstrap orchestration and its public fallback/integration files. Bootstrap
+The private repository may own the live `CLAUDE.md`, `settings.json`, workflows,
+conventions, and output styles. Haoshoku owns only the bootstrap orchestration
+and its portable public baseline. Bootstrap
 does not run `git clean`, so Omarchy's managed
 `~/.claude/skills/omarchy` symlink survives.
 
@@ -298,8 +298,9 @@ complete; Haoshoku never changes existing Tailscale routes automatically.
 
 The full Debian path asks about Git, the private Claude policy, Superpowers,
 Claude stay-awake, Claude Remote Control, and automatic worktree cleanup; then
-reaches the common skills-sync offer. Superpowers is applied after any accepted
-policy checkout so the checkout cannot erase its registration.
+finishes without implicitly syncing external skills. Superpowers is applied
+after any accepted policy checkout so the checkout cannot erase its
+registration. Use `haoshoku --skills` explicitly when desired.
 
 Debian Server does not ask for `deviceType`: that value only selects desktop
 audio and Hyprland/Omarchy variants. For the same reason the Debian path does

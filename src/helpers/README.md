@@ -15,29 +15,26 @@ The Claude configuration has deliberately separate ownership paths:
 
 **Copied from haoshoku template (`configs/claude/`):**
 - `CLAUDE.md`, `statusline-command.sh`, `.gitignore` — personal config
-- The fixed wrapper and role definitions, launcher/hook/schema dependencies,
-  canonical review workflows, and required discovery/deliverable skill files
 - Updates via `--claude-backup` (capture) and `--claude` (deploy)
-- No directory walker: only the explicit fallback manifest is read or written
+- No directory walker: only the explicit portable-baseline manifest is read or written
 
-**Symlinked from cache:** `skills/` and non-shadowed agent files
+**Symlinked from cache:** skills only
 - Source: `~/.cache/haoshoku/{owner}-{repo}/` (runtime git clone)
 - Updates via `--skills` or `--skills-update`
 
-**Bootstrapped separately inside `~/.claude/`:** private executable policy
+**Bootstrapped separately inside `~/.claude/`:** private policy
 - A private policy repository the user owns supplies the live policy checkout
-- This public installer deliberately cannot discover or fetch it
-- A fresh machine can run the complete public fallback before optional private bootstrap
+- The policy is not bundled; `--claude-bootstrap` fetches the configured repository
+- A fresh machine can deploy the portable three-file baseline before optional private bootstrap
 
-Executable policy comes from a private policy repository the user owns; follow the [canonical in-place bootstrap procedure](../../configs/claude/README.md#executable-policy-bootstrap).
+Private policy comes from a repository the user owns; follow the [canonical in-place bootstrap procedure](../../configs/claude/README.md#private-policy-bootstrap).
 
 ## Functions
 
 | Function                 | Purpose                                             |
 | ------------------------ | --------------------------------------------------- |
-| `syncClaudeConfig()`     | Copy the explicit public fallback into `~/.claude/` |
+| `syncClaudeConfig()`     | Copy the portable baseline into `~/.claude/`        |
 | `backupClaudeConfig()`   | Guard and copy that manifest to the template        |
-| `updateClaudeConfig()`   | Pull latest from cached repos                       |
 | `installClaude()`        | Install Claude Code CLI if not present              |
 | `installSuperpowers()`   | Enable Superpowers plugin in settings.json          |
 | `configureClaude()`      | Install + sync (used by OS setup scripts)           |
@@ -46,18 +43,18 @@ Executable policy comes from a private policy repository the user owns; follow t
 
 - `--claude` - deploy the explicit public Claude fallback manifest
 - `--claude-backup` - back up that manifest through the home-path refusal guard
-- `--claude-update` - update cache + sync
+- `--claude-update` - redeploy the packaged three-file baseline
 - `--superpowers` - enable Superpowers plugin in settings.json
 
 ## Skill Manager Architecture
 
-Runtime git cloning for Claude skills and agents.
+Runtime git cloning for skills.
 
-**Separation**: `skill_manager.js` handles cache-backed skill/agent fetching and syncing; `configure_claude.js` handles the explicit public fallback manifest. The private policy repository bootstrapped in place at `~/.claude/` can own richer executable policy.
+**Separation**: `skill_manager.js` handles cache-backed skill fetching and syncing; `configure_claude.js` handles the explicit portable-baseline manifest. The private policy repository bootstrapped in place at `~/.claude/` can own richer policy.
 
 **Cache Location**: XDG_CACHE_HOME/haoshoku/ follows XDG Base Directory spec, prevents home directory pollution.
 
-**Symlinks**: Skills are symlinked to `~/.claude/skills/`. Agents are symlinked into `~/.claude/agents/` unless a real local file with the same name shadows the cached agent.
+**Symlinks**: Skills are symlinked to `~/.claude/skills/` and `~/.agents/skills/`. Source `agents/` directories are ignored.
 
 ### Cache Structure
 
@@ -66,18 +63,18 @@ Runtime git cloning for Claude skills and agents.
     │
     ▼
 $XDG_CACHE_HOME/haoshoku/          # Typically ~/.cache/haoshoku/
-    └── axatbhardwaj-claude-skills/ # Skills + agents
+    └── axatbhardwaj-claude-skills/ # Skills
     │
     ▼
 ~/.claude/skills/ → symlinks merged from cache
-~/.claude/agents/ → private/local files + non-shadowed cache symlinks
+~/.agents/skills/ → the same skills for Codex
 ```
 
 ### Priority Rules
 
 - Sources processed in config array order (first wins)
-- First occurrence of skill/agent name wins (Set-based deduplication)
-- ~/.claude/skills/ contains symlinks; ~/.claude/agents/ may also contain real files from the private policy checkout
+- First occurrence of a skill name wins (Set-based deduplication)
+- Both skill directories contain symlinks into the cache
 
 ### Design Decisions
 
@@ -89,7 +86,7 @@ $XDG_CACHE_HOME/haoshoku/          # Typically ~/.cache/haoshoku/
 
 **Why fetch+reset instead of pull**: Handles shallow clones and force-push scenarios (git pull fails for shallow repos without tracking branches).
 
-**Why auto-sync on first --claude run**: Empty cache indicates first run. Auto-sync reduces setup friction for new users (npm global install workflow).
+**Why skill sync is explicit**: `--claude`, `--claude-update`, and the default setup stay on the portable config boundary. Only `--skills` and `--skills-update` fetch or link external skills.
 
 ### Invariants
 
@@ -100,6 +97,6 @@ $XDG_CACHE_HOME/haoshoku/          # Typically ~/.cache/haoshoku/
 
 ### CLI Flags
 
-- `--skills` - clone/sync skills and agents from configured sources
+- `--skills` - clone/sync skills from configured sources
 - `--skills-update` - pull latest from all cached repos
 - `--skills-list` - list available skills by source

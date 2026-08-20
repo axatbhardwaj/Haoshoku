@@ -8,20 +8,20 @@ Haoshoku uses a hybrid approach for configuration management:
 
 - **Regular configs** (fish, warp, alacritty, zed): Copied to destination. Ensures the system remains functional even if the source repository is moved or deleted, though changes to the local repo won't be reflected until setup runs again.
 - **Claude bundled config** (`CLAUDE.md`, `statusline-command.sh`, `gitignore.template`): Exactly these three files are copied by `--claude` and captured by `--claude-backup`; the template is mapped to `~/.claude/.gitignore`.
-- **Claude executable policy** (`~/.claude/agents/`, `~/.claude/workflows/`): Intentionally absent from this public bundle. Bootstrap a private policy repository the user owns in place at `~/.claude/`.
-- **Claude skills and cache-backed agents** (from runtime git clones): Synced separately with `--skills` and symlinked from the cache; real local agents from the private policy checkout take priority.
+- **Claude executable policy** (`~/.claude/workflows/` and other private files): Intentionally absent from this public bundle. Bootstrap a private policy repository the user owns in place at `~/.claude/`.
+- **Claude and Codex skills** (from runtime git clones): Synced only through explicit `--skills` or `--skills-update` invocations and symlinked from the cache. Source `agents/` directories are ignored.
 
-Executable policy comes from a private policy repository the user owns; follow the [canonical in-place bootstrap procedure](claude/README.md#executable-policy-bootstrap).
+Private policy comes from a repository the user owns; follow the [canonical in-place bootstrap procedure](claude/README.md#private-policy-bootstrap).
 
 ## Architecture
 
 - **Isolation**: Each application has its own subdirectory (e.g., `fish/`, `warp/`).
 - **Standardization**: Configs are pre-configured with sensible defaults, nerd fonts, and color schemes (often matching the Haoshoku theme).
-- **Runtime Cloning**: Claude skills and external agents are fetched from configured sources to `~/.cache/haoshoku/` by `--skills`, enabling npm global installs without bundling those repositories.
+- **Runtime Cloning**: Skills are fetched from configured sources to `~/.cache/haoshoku/` by `--skills`, enabling npm global installs without bundling those repositories.
 
 ## Design Decisions
 
-- **Copy vs Symlink**: User-modifiable configs are copied, externally sourced Claude skills and non-shadowed agents are symlinked, and private executable policy remains outside the public package.
+- **Copy vs Symlink**: User-modifiable configs are copied, externally sourced skills are symlinked, and private executable policy remains outside the public package.
 - **Subdirectory Structure**: Mirrors the standard `~/.config/` structure for easier mental mapping.
 
 ## Invariants

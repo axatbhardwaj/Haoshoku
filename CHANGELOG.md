@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+- Breaking: retire Haoshoku's custom Claude agent/wrapper runtime and bundled
+  standalone Claude skills. `--claude` and `--claude-backup` now manage only
+  `CLAUDE.md`, `statusline-command.sh`, and `.gitignore`; only an explicit
+  `--skills` or `--skills-update` invocation syncs external skills for Claude
+  and Codex, and source `agents/` directories are ignored.
+  Upgrades deliberately do not recursively prune co-owned live directories, so
+  remove any previously deployed files through an explicit reviewed path list.
+- Back up the current compact Claude preferences policy and stop allowing
+  `agents/` in the deny-first private-policy ignore template. Native Claude and
+  Codex subagents remain available through their engines, while Dvandva keeps
+  its plugin-local skills and role briefs. Remove the retired `codex-rescue`
+  display special case from the retained statusline.
+
 ## 9.3.0 - 2026-08-18
 
 - Resync the bundled Claude runtime: the implement-work skill now runs a final

@@ -7,16 +7,18 @@ Public Claude Code personal-file bundle deployed to `~/.claude/`.
 | Bundle source | Live destination | Direction |
 | --- | --- | --- |
 | `CLAUDE.md`, `statusline-command.sh`, `gitignore.template` | `~/.claude/` (`gitignore.template` maps to `.gitignore`) | Both |
-| Five wrapper agents, two native planner/reviewer agents, launchers (`run-codex-task.sh` and `run-opencode-seat.sh`), validation hook, result schema, and render-workspace preparer | `~/.claude/agents/` | Deploy |
-| Orchestration skills (`implement-work`, `review-pr`, `create-pr`, `brainstorm`, `babysit-pr`, `linear-ticketing`, `html-explainer`, `discovering-work`) | `~/.claude/skills/` | Deploy |
 
-`haoshoku --claude` uses this explicit public fallback manifest; it never walks
+Custom agent definitions, wrapper launchers, and standalone skills are outside
+this bundle. Claude and Codex use their native subagent/model facilities;
+Dvandva remains available through its plugin-local skills and role briefs.
+
+`haoshoku --claude` uses this explicit portable-baseline manifest; it never walks
 directories. The template name keeps the deny-first ignore file visible to git
 and npm-packlist inside this package. If `~/.claude` is itself the root of a
 git repository, any destination tracked in that repository's index is skipped
 with an explanatory log line. Untracked destinations deploy normally. The
 check fails open: if the directory is not a repository, git is unavailable, or
-the query errors, the public fallback deploys as usual.
+the query errors, the portable baseline deploys as usual.
 
 `haoshoku --claude-backup` considers the same manifest in reverse. Index
 ownership does not affect this backup direction.
@@ -25,13 +27,12 @@ absolute home-directory path is not written to this public bundle, the offending
 file is named in a warning, and the final summary reports backed-up and refused
 counts.
 
-## Executable policy bootstrap
+## Private policy bootstrap
 
-This public package carries the minimum complete runtime named by its fallback
-policy: fixed wrappers and roles, their launcher/hook/schema dependencies, the
-canonical review workflows, and the required discovery and deliverable skills.
-It does not recursively copy policy directories or become a general private
-policy backup.
+The deployable config manifest carries only the three portable root files
+above. The adjacent `README.md` is package documentation, not a deployed file.
+Haoshoku does not recursively copy policy directories or become a general
+private-policy backup.
 
 During full setup, after Haoshoku deploys its public baseline, it asks whether
 to bootstrap the configured private Claude policy repository in place at
@@ -58,8 +59,8 @@ files remain in place. Bootstrap never runs `git clean`, so the Omarchy-managed
 
 The private repository may own the live `CLAUDE.md`, `settings.json`, richer
 policy, conventions, and output styles. Haoshoku owns bootstrap orchestration
-and the complete public fallback runtime only. A private tracked file wins over
-a colliding public fallback file.
+and the portable public baseline only. A private tracked file wins over
+a colliding public baseline file.
 
 The private repository owns every destination it tracks, including a locally
 modified tracked file: `haoshoku --claude` skips that path instead of replacing
@@ -86,20 +87,25 @@ move it outside the repository to make it durable. Timestamped
 that root: they do not appear in `git status`, and `git clean -xfd` removes
 them. Move any needed ignored backup outside the repository before cleaning.
 
-`haoshoku --skills` remains a separate system: it may link non-shadowed agent
-definitions from configured skill sources. That cache-backed behavior does not
-make this bundle an owner of private executable policy beyond the explicit
-fallback manifest.
+`haoshoku --skills` remains a separate, explicit system for linking skills from
+configured sources into Claude's and Codex's shared skill directories. Neither
+`--claude`, `--claude-update`, nor the default setup invokes it implicitly. It
+deliberately ignores any source repository's `agents/` directory.
+
+Upgrading Haoshoku does not recursively delete previously deployed files from
+`~/.claude/agents/` or `~/.claude/skills/`, because those directories may be
+co-owned. Retire old files through an explicit, reviewed path list; never delete
+either parent configuration directory.
 
 ## Commands
 
 ```bash
-# Deploy the public fallback manifest
+# Deploy the portable baseline manifest
 haoshoku --claude
 
 # Back up the same explicit manifest where permitted by the refusal guard
 haoshoku --claude-backup
 
-# Sync skills and cache-backed agent definitions separately
+# Sync skills separately
 haoshoku --skills
 ```
