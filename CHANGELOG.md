@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 10.0.1 - 2026-08-20
 
 - Remove retired cross-engine orchestration identifiers and role labels from
   maintained source, examples, ignore rules, and the packaged HTML skill while
