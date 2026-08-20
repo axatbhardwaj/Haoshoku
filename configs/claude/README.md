@@ -10,7 +10,7 @@ Public Claude Code personal-file bundle deployed to `~/.claude/`.
 
 Custom agent definitions, wrapper launchers, and standalone skills are outside
 this bundle. Claude and Codex use their native subagent/model facilities;
-Dvandva remains available through its plugin-local skills and role briefs.
+retired cross-engine plugin workflows remain outside Haoshoku.
 
 `haoshoku --claude` uses this explicit portable-baseline manifest; it never walks
 directories. The template name keeps the deny-first ignore file visible to git

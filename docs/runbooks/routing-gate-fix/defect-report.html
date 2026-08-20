@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Routing-gate Stop hook — defect report</title>
-<script type="application/json" id="dvandva-artifact-meta">
+<script type="application/json" id="artifact-meta">
 {
-  "schema": "dvandva.artifact.research.v1",
+  "schema": "artifact.research.v1",
   "artifact_type": "defect-report",
   "title": "Routing-gate Stop hook — defect report (D1–D7)",
   "date": "2026-07-21",
@@ -18,13 +18,13 @@
     color-scheme: dark;
     --ground:#0b0f14; --panel:#121821; --panel2:#182130; --line:#26303e;
     --ink:#dce4ee; --dim:#8a97a8; --faint:#5c6774;
-    --vadi:#34d399; --prat:#a78bfa; --team:#5ca9ff; --human:#e0a63d; --seal:#46c26a; --stop:#ff6a5e;
+    --actor-a:#34d399; --actor-b:#a78bfa; --team:#5ca9ff; --human:#e0a63d; --seal:#46c26a; --stop:#ff6a5e;
     --mono:"JetBrains Mono","Cascadia Code",ui-monospace,SFMono-Regular,Menlo,monospace;
     --sans:system-ui,-apple-system,"Segoe UI",sans-serif;
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--ground);color:var(--ink);font:16px/1.65 var(--sans)}
-  a{color:var(--vadi)}
+  a{color:var(--actor-a)}
   main{max-width:1120px;margin:0 auto;padding:0 2.2rem 6rem}
   section{margin-top:4.2rem}
   .eyebrow{font:600 .72rem/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--faint);margin:0 0 .9rem}
@@ -51,13 +51,13 @@
   .lane .dot{width:12px;height:12px;border-radius:50%;display:inline-block}
   .lane p{font-size:.9rem;color:var(--dim)}
   .lane .route{font:.78rem/2 var(--mono);color:var(--ink);overflow-x:auto;white-space:nowrap;padding-bottom:.2rem}
-  .k-vadi{color:var(--vadi)} .k-prat{color:var(--prat)} .k-team{color:var(--team)} .k-human{color:var(--human)} .k-seal{color:var(--seal)}
+  .k-actor-a{color:var(--actor-a)} .k-actor-b{color:var(--actor-b)} .k-team{color:var(--team)} .k-human{color:var(--human)} .k-seal{color:var(--seal)}
   table{border-collapse:collapse;width:100%;margin:1rem 0;font-size:.86rem}
   th,td{border:1px solid var(--line);padding:.5rem .7rem;text-align:left;vertical-align:top}
   th{background:var(--panel2);font:600 .72rem/1.4 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
   tr:nth-child(even) td{background:var(--panel)}
   nav{position:sticky;top:0;background:rgba(11,15,20,.94);backdrop-filter:blur(6px);border-bottom:1px solid var(--line);padding:.5rem 2.2rem;font:.8rem var(--mono);z-index:9}
-  nav a{color:var(--dim);text-decoration:none;margin-right:1.05rem} nav a:hover{color:var(--vadi)}
+  nav a{color:var(--dim);text-decoration:none;margin-right:1.05rem} nav a:hover{color:var(--actor-a)}
   header{padding:4.5rem 2.2rem 0;max-width:1120px;margin:0 auto}
   .foot{margin-top:5rem;border-top:1px solid var(--line);padding-top:1.2rem;font:.75rem var(--mono);color:var(--faint)}
   @media (prefers-reduced-motion: reduce){*{animation:none !important;transition:none !important}}
@@ -67,7 +67,7 @@
   .filter{display:flex;flex-wrap:wrap;gap:.55rem;margin:0 0 .8rem}
   .filter button{font:600 .72rem/1 var(--mono);letter-spacing:.06em;padding:.55em .9em;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--dim);cursor:pointer}
   .filter button:hover{color:var(--ink);border-color:var(--dim)}
-  .filter button.on{color:var(--vadi);border-color:var(--vadi);background:rgba(52,211,153,.08)}
+  .filter button.on{color:var(--actor-a);border-color:var(--actor-a);background:rgba(52,211,153,.08)}
   .sev{font:600 .68rem/1 var(--mono);letter-spacing:.08em;padding:.4em .75em;border-radius:999px;border:1px solid;white-space:nowrap}
   .sev-blocker{color:var(--stop);border-color:var(--stop);background:rgba(255,106,94,.09)}
   .sev-major{color:var(--human);border-color:var(--human);background:rgba(224,166,61,.09)}
@@ -83,9 +83,9 @@
   details.defect .dbody{padding:1.1rem 1.3rem 1.2rem}
   summary[id]{scroll-margin-top:4rem}
   .right{list-style:none;padding:0;margin:1.2rem 0;max-width:78ch}
-  .right>li{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--vadi);border-radius:10px;padding:1rem 1.25rem;margin:.8rem 0;color:var(--ink)}
+  .right>li{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--actor-a);border-radius:10px;padding:1rem 1.25rem;margin:.8rem 0;color:var(--ink)}
   .right>li p{margin:.3rem 0}
-  /* svg legend/role classes — var names carry the legend: human / seal / stop / team / vadi */
+  /* svg legend/role classes — var names carry the legend: human / seal / stop / team / actor-a */
   .exit.human{fill:var(--human)}
   .node.team{fill:var(--team)}
   .node.panel{fill:var(--panel2);stroke:var(--line)}
@@ -93,11 +93,11 @@
   .wire.seal{stroke:var(--seal);stroke-width:1.6;fill:none}
   .wire.stop{stroke:var(--stop);stroke-width:1.6;fill:none}
   .gate{fill:none;stroke:var(--seal);stroke-width:1.6}
-  .bar.vadi{fill:var(--vadi)}
+  .bar.actor-a{fill:var(--actor-a)}
   .bar.stop{fill:var(--stop)}
   .dead{fill:none;stroke:var(--stop);stroke-width:1.6}
   .tGround{fill:var(--ground)} .tInk{fill:var(--ink)} .tDim{fill:var(--dim)} .tFaint{fill:var(--faint)}
-  .tStop{fill:var(--stop)} .tSeal{fill:var(--seal)} .tVadi{fill:var(--vadi)} .tHuman{fill:var(--human)} .tTeam{fill:var(--team)}
+  .tStop{fill:var(--stop)} .tSeal{fill:var(--seal)} .tActorA{fill:var(--actor-a)} .tHuman{fill:var(--human)} .tTeam{fill:var(--team)}
 </style>
 </head>
 <body>
@@ -279,9 +279,9 @@
       <text x="826" y="26" class="tFaint" font-size="9">what the gate did</text>
       <text x="24" y="66" class="tInk" font-size="10.5">~40-line memory note</text>
       <text x="24" y="82" class="tFaint" font-size="8.5">tool: Write</text>
-      <rect x="380" y="58" width="34" height="18" rx="3" class="bar vadi"/>
+      <rect x="380" y="58" width="34" height="18" rx="3" class="bar actor-a"/>
       <rect x="800" y="54" width="14" height="22" class="gate"/>
-      <text x="826" y="64" class="tVadi" font-size="10">GATED — blocked 4&#215;</text>
+      <text x="826" y="64" class="tActorA" font-size="10">GATED — blocked 4&#215;</text>
       <text x="826" y="80" class="tFaint" font-size="8.5">the only artifact the gate ever saw</text>
       <text x="24" y="134" class="tInk" font-size="10.5">MEMORY.md index line</text>
       <text x="24" y="150" class="tFaint" font-size="8.5">tool: python3 heredoc via Bash ( &lt;&lt; trips AMBIGUOUS_BASH )</text>

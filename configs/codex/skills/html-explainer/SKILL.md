@@ -27,7 +27,7 @@ Every page has these parts, in order:
 6. A `.foot` stamp naming what the page reflects and its version, commit, or
    as-of date.
 
-Map the subject's two opposing actors to `--vadi` and `--prat`—for example,
+Map the subject's two opposing actors to `--actor-a` and `--actor-b`—for example,
 writer/reviewer or before/after. Reserve `--team` for shared ownership,
 `--human` for human decisions, `--seal` for success, and `--stop` for failure.
 
@@ -66,7 +66,7 @@ stages, draw one transit map instead of repeated flowcharts.
 |---|---|
 | Improvised dark palette | Keep the template tokens verbatim |
 | Structure described only in bullets | Draw the relationship; annotate it with prose |
-| One accent owns every state | Map actors to `--vadi` and `--prat` |
+| One accent owns every state | Map actors to `--actor-a` and `--actor-b` |
 | Figure lacks its insight | Add a specific `figcaption` |
 | External fonts, scripts, or CDNs | Keep the file self-contained and offline |
 

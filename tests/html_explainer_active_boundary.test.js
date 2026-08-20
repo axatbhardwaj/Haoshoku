@@ -8,11 +8,11 @@ const SKILL_PATH = "skills/html-explainer";
 const SKILL_FILES = ["SKILL.md", "agents/openai.yaml", "template.html"];
 const PINNED_DIGESTS = {
 	"SKILL.md":
-		"12c0cc2ff84e4c396f4e720996b4ee576fcb572cf7f207b9d3b16e72b0c37410",
+		"e93f612526b4cf320917a6c6d77b274c18476f38e12bfd4f757c9a3e9c256727",
 	"agents/openai.yaml":
 		"7f224c19d0ea397af25deedde727f8197724c49d7b1f4e164efa279db603a717",
 	"template.html":
-		"f467f7333d3812705f77bec340a47c18a22f4fd1c1dd19a1502214627028e5c3",
+		"c70b817d679842558f538126f2d43e1f2d08596969030dab01a338a218708466",
 };
 const RETIRED_IDENTIFIERS = [["dvan", "dva"].join(""), ["samv", "ada"].join("")];
 const activeConfigFiles = [

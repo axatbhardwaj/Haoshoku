@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Remove retired cross-engine orchestration identifiers and role labels from
+  maintained source, examples, ignore rules, and the packaged HTML skill while
+  preserving native Claude and Codex subagent support.
+
 ## 10.0.0 - 2026-08-20
 
 - Breaking: retire Haoshoku's custom Claude agent/wrapper runtime and bundled
@@ -11,8 +17,8 @@
   remove any previously deployed files through an explicit reviewed path list.
 - Back up the current compact Claude preferences policy and stop allowing
   `agents/` in the deny-first private-policy ignore template. Native Claude and
-  Codex subagents remain available through their engines, while Dvandva keeps
-  its plugin-local skills and role briefs. Remove the retired `codex-rescue`
+  Codex subagents remain available through their engines; retired cross-engine
+  plugin workflows stay outside the package. Remove the retired `codex-rescue`
   display special case from the retained statusline.
 
 ## 9.3.0 - 2026-08-18
@@ -496,7 +502,7 @@
 
 - Refresh the Zed Caelestia theme from the theme-editor export. `configs/zed/themes/caelestia.json` is replaced wholesale; the export is a superset of what shipped before, so nothing is dropped. `border` and `border.variant` move to opaque mint (`#98EDCEFF`) from the dark `#1E1E25` pair, and gutter line numbers, the active line number, the active wrap guide and indent guides become mint as well. Newly present: `editor.indent_guide_active`, `minimap.thumb.{background,hover_background,border}`, `panel.{indent_guide,indent_guide_hover,overlay_background,overlay_hover}` and the `version_control.*` family — keys the previous file predated. Only the theme JSON is adopted; its `extension.toml` is not, because `syncZedTheme()` serves the theme from `~/.config/zed/themes/` and installing it as a dev extension would put a second "Caelestia" entry in the theme picker.
 - Stop the routing-gate inventing targets and losing real debt. Two defects, neither of which reduces what the gate blocks. First, worker dispatches discharged writes they never reviewed: `transcript_uncovered` dropped every write older than the last dispatch *before* receipt coverage was consulted, so an unrelated implementation dispatch silently cleared earlier unreviewed writes — two genuinely unreviewed chair-authored files vanished that way. The dispatch-based discharge is removed entirely; a write now stays uncovered until an actual `mode=review` receipt covers it by workspace containment and timestamp. The correct consequence is that the uncovered set grows across a long session until a covering review runs, and the acknowledgement dedup means the gate only speaks when that set changes. Second, the shell scanner named targets that do not exist, reading command text without checking the path was absolute and metacharacter-free.
-- Version-control the Codex dispatch kit and back up the live Claude config, including the `dvandva` DAG reframe, the blocked-sink rule, the OpenCode lane removal, and the switch to the Direct output style.
+- Version-control the Codex dispatch kit and back up the live Claude config, including the former orchestration DAG reframe, the blocked-sink rule, the OpenCode lane removal, and the switch to the Direct output style.
 - Add `pr-watch`: a watch-only PR snapshot/diff/readiness core with a CLI and deploy helper, plus a `readiness_lost` event, a `gh` timeout, and a single-instance lock.
 - Derive Codex reasoning effort from `--mode` rather than a global pin — `review` → `xhigh`, `implementation` → `high` — with upward-only escalation gated on a format-valid `--effort-justification` token. Basis: quality is not monotonic in effort (GPT-5.6 system card, 2026-06-25).
 - Block once per distinct uncovered state in the routing gate, and never suppress a suspected-stale transcript.
@@ -686,7 +692,7 @@
 - Add 17 new adversarial test cases (red/blue/green workflow) covering each confirmed bug surface plus positive companion tests. Total hyprland tests: 39 → 58; full project suite: 56 → 77, all green.
 
 ## 4.6.1 - 2026-05-19
-- Exclude local agent/runtime state (`.claude/`, `.dvandva/`, `superpowers/`) and generated video output from package dry-runs/publishes.
+- Exclude local agent/runtime state (`.claude/`, the retired orchestration state directory, `superpowers/`) and generated video output from package dry-runs/publishes.
 - Fix lint-only issues in the Remotion video components so the release branch passes `bun run lint` cleanly.
 
 ## 4.6.0 - 2026-05-19

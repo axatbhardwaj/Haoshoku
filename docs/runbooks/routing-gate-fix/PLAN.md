@@ -7,7 +7,7 @@
 > suppression, and the `/tmp/claude-routing-gate` state path. Following them literally will test the
 > wrong outcomes. Retained for the audit trail only.
 
-# PLAN — routing-gate.sh fix (D1–D8), full dvandva
+# PLAN — routing-gate.sh fix (D1–D8), full paired-review run
 
 Author: madhyastha (Fable). Status: awaiting pre-execution review by a different model family.
 
@@ -93,7 +93,7 @@ the conversation, exactly wrong for a pausing session. Field absent or malformed
 Document as new limitation #5 with direction stated.
 
 **D2 termination mechanics.** Per-path block counter in `/tmp/claude-routing-gate/<session_id>.json`
-(hook state *should* die with reboot; the "no /tmp continuity" rule governs prativadi session
+(hook state *should* die with reboot; the "no /tmp continuity" rule governs peer-review session
 pointers, not this; `/tmp/**` is already excluded from `durable_path`, so the hook never gates its
 own state). Cap = **2 hard blocks per path**, matching the policy's two-round cap. At cap: emit
 `hookSpecificOutput.additionalContext` once — "debt logged for <path>; record it in your completion
@@ -176,9 +176,9 @@ snapshots next to the durable backup after each green station (tmpfs hedge).
   because codex moderation blocked adversarial-fixture work previously. Both read-only over the same
   artifacts → genuinely parallel. Gate: findings-or-explicit-none; dispositions closed (<=2 rounds).
 - **S4 — Report correction (independent branch).** `opencode-wrapper` (alias `kimi`) — HTML
-  deliverable, rupakara-mandatory; dvandva invoked with no exemptions, so no trivial-edit shortcut.
+  deliverable, rupakara-mandatory; the paired-review protocol had no exemptions, so no trivial-edit shortcut.
   In `/home/xzat/reports/routing-gate-hook-report.html`, correct block count five→four at every
-  occurrence: the `dvandva-artifact-meta` basis string, thesis paragraph, facts-table basis row,
+  occurrence: the `artifact-meta` basis string, thesis paragraph, facts-table basis row,
   header chip `blocked 5×`, verdict paragraph, D1's "five separate turns" and "five blocks to one",
   D3's observed table `Blocked 5×` and SVG text `GATED — blocked 5×` — plus a footer errata line.
   Nothing else changes. Acceptance: grep for five/5× block-count tokens returns zero; four/4× present
