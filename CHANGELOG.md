@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 10.0.0 - 2026-08-20
 
 - Breaking: retire Haoshoku's custom Claude agent/wrapper runtime and bundled
   standalone Claude skills. `--claude` and `--claude-backup` now manage only
