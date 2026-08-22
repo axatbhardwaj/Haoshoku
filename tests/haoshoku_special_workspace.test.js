@@ -277,7 +277,7 @@ printf '%s\\0' "$@" > "$BROWSER_CALL"
 		fs.writeFileSync(
 			claudeDesktop,
 			`#!/usr/bin/env bash
-printf 'claude\n' >> "$CALL_LOG"
+printf 'claude-desktop\n' >> "$CALL_LOG"
 `,
 		);
 		fs.writeFileSync(
@@ -471,6 +471,7 @@ fi
 			...strictDispatch,
 			clients: JSON.stringify([
 				kittyClient("0xcodex", "1", "chatgpt"),
+				kittyClient("0xclaude", "special:assistants", claudeClass),
 			]),
 		});
 		const stash = await run(["stash"], strictDispatch);
@@ -1045,7 +1046,7 @@ exit 17
 		return { address, class: className, workspace: { name: workspace } };
 	}
 
-	it("toggles the ChatGPT workspace, reclaims ChatGPT, ignores Claude, and probes once", async () => {
+	it("toggles the assistants workspace, reclaims ChatGPT and Claude, and probes once", async () => {
 		const clientProbeLog = path.join(directory, "client-probes");
 		const result = await run(["assistants"], {
 			clientProbeLog,
@@ -1059,16 +1060,17 @@ exit 17
 		expect(dispatchCalls()).toEqual([
 			"dispatch togglespecialworkspace assistants",
 			"dispatch movetoworkspacesilent special:assistants,address:0xcodex",
+			"dispatch movetoworkspacesilent special:assistants,address:0xclaude",
 		]);
 		expect(fs.readFileSync(clientProbeLog, "utf8").trim().split("\n")).toEqual([
 			"clients -j",
 		]);
 	});
 
-	it("does not move or relaunch ChatGPT already on its special workspace", async () => {
+	it("does not move or relaunch assistants already on their special workspace", async () => {
 		const result = await run(["assistants"], {
 			clients: JSON.stringify([
-				assistantClient("0xclaude", claudeClass, "2"),
+				assistantClient("0xclaude", claudeClass, "special:assistants"),
 				assistantClient("0xcodex", codexClass, "special:assistants"),
 			]),
 		});
@@ -1079,7 +1081,7 @@ exit 17
 		]);
 	});
 
-	it("launches only missing ChatGPT into the assistants workspace", async () => {
+	it("launches both missing desktop assistants into the assistants workspace", async () => {
 		const result = await run(["assistants"]);
 
 		expect(result.exitCode).toBe(0);
@@ -1087,6 +1089,23 @@ exit 17
 			"dispatch togglespecialworkspace assistants",
 			"dispatch exec [workspace special:assistants silent] uwsm-app -- codex-desktop ",
 			"codex-desktop",
+			"dispatch exec [workspace special:assistants silent] uwsm-app -- claude-desktop ",
+			"claude-desktop",
+		]);
+	});
+
+	it("launches only missing Claude when ChatGPT is already present", async () => {
+		const result = await run(["assistants"], {
+			clients: JSON.stringify([
+				assistantClient("0xcodex", codexClass, "special:assistants"),
+			]),
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(dispatchCalls()).toEqual([
+			"dispatch togglespecialworkspace assistants",
+			"dispatch exec [workspace special:assistants silent] uwsm-app -- claude-desktop ",
+			"claude-desktop",
 		]);
 	});
 
@@ -1103,6 +1122,7 @@ exit 17
 			"dispatch togglespecialworkspace assistants",
 			"dispatch exec [workspace special:assistants silent] uwsm-app -- codex-desktop ",
 			"codex-desktop",
+			"dispatch movetoworkspacesilent special:assistants,address:0xclaude",
 		]);
 	});
 
@@ -1116,6 +1136,8 @@ exit 17
 			"dispatch togglespecialworkspace assistants",
 			"dispatch exec [workspace special:assistants silent] uwsm-app -- codex-desktop ",
 			"codex-desktop",
+			"dispatch exec [workspace special:assistants silent] uwsm-app -- claude-desktop ",
+			"claude-desktop",
 		]);
 	});
 

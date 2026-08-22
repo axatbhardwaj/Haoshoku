@@ -176,7 +176,10 @@ if [[ "$recipe" == assistants ]]; then
     exit 0
   fi
 
-  class_apps=('chatgpt:codex-desktop')
+  class_apps=(
+    'chatgpt:codex-desktop'
+    'com.anthropic.Claude:claude-desktop'
+  )
 
   for class_and_app in "${class_apps[@]}"; do
     class="${class_and_app%%:*}"

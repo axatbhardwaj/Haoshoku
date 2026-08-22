@@ -106,8 +106,8 @@ post-reload helper use `numbered-login 7 kitty`. Haki and agents use their own
 exact Kitty classes and split sessions. `SUPER+Return` remains Omarchy's
 `xdg-terminal-exec` route, whose XDG default is Kitty; `SUPER+T` focuses workspace
 1 and ensures T3 Code via the numbered recipe. The assistants recipe runs at login
-and on `SUPER+I`, managing only ChatGPT in `special:assistants`; Twitch retains its
-own special workspace.
+and on `SUPER+I`, managing ChatGPT and Claude Desktop in `special:assistants`;
+Twitch retains its own special workspace.
 
 ## Narrow appearance carve-outs
 
