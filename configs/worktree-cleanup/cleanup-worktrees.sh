@@ -43,8 +43,8 @@ decide() {
   [[ "$pr" == OPEN ]] && { echo "KEEP"; return; }                            # active PR
   [[ "$unpushed" == 1 ]] && { echo "REVIEW:unpushed commits"; return; }       # local-only commits beyond any merge
 
-  # Artifact guard: a worktree holding gitignored ./superpowers/ docs is the
-  # only local copy of that research/plan/review — never auto-remove it. This
+  # Legacy artifact guard: an older worktree may still hold ignored planning
+  # docs under ./superpowers/ as their only local copy. Never auto-remove it. This
   # wraps exactly the two REMOVE outcomes below; KEEP/other-REVIEW are untouched.
   local artifact_review=""
   [[ "$has_artifacts" == 1 ]] && artifact_review="REVIEW:local ./superpowers/ artifacts"
@@ -92,10 +92,9 @@ git_facts() {
   echo "${dirty}|${unpushed}|${merged}"
 }
 
-# has_artifacts <wt>: echoes 1 if the worktree holds a non-empty gitignored
-# superpowers/ dir (research/plans/review HTML — the only local copy of design
-# deliverables per the workspace convention). git status never reports these
-# because they are gitignored, so removal would silently destroy them.
+# has_artifacts <wt>: echoes 1 if an older worktree holds a non-empty ignored
+# superpowers/ directory. It may be the only local copy of historical planning
+# deliverables, so removal would silently destroy it.
 has_artifacts() {
   local wt=$1
   if [[ -d "$wt/superpowers" ]] && [[ -n "$(find "$wt/superpowers" -type f -print -quit 2>/dev/null)" ]]; then

@@ -26,7 +26,7 @@ describe("promptDeviceType", () => {
 	it("prompts again interactively and preselects the stored device type", async () => {
 		fs.writeFileSync(
 			configPath,
-			`${JSON.stringify({ deviceType: "pc", skillSources: ["existing"] })}\n`,
+			`${JSON.stringify({ deviceType: "pc", customSetting: "existing" })}\n`,
 		);
 		let question;
 
@@ -43,14 +43,14 @@ describe("promptDeviceType", () => {
 		expect(question.choices[question.initial].value).toBe("pc");
 		expect(JSON.parse(fs.readFileSync(configPath, "utf8"))).toEqual({
 			deviceType: "laptop",
-			skillSources: ["existing"],
+			customSetting: "existing",
 		});
 	});
 
 	it("preselects PC instead of Skip when stored deviceType is null", async () => {
 		fs.writeFileSync(
 			configPath,
-			`${JSON.stringify({ deviceType: null, skillSources: ["existing"] })}\n`,
+			`${JSON.stringify({ deviceType: null, customSetting: "existing" })}\n`,
 		);
 		let question;
 
@@ -66,7 +66,7 @@ describe("promptDeviceType", () => {
 		expect(question.choices[question.initial].value).toBe("pc");
 		expect(JSON.parse(fs.readFileSync(configPath, "utf8"))).toEqual({
 			deviceType: null,
-			skillSources: ["existing"],
+			customSetting: "existing",
 		});
 	});
 
@@ -101,7 +101,7 @@ describe("promptDeviceType", () => {
 	it("does NOT modify ~/.haoshoku.json when the user picks Skip", async () => {
 		fs.writeFileSync(
 			configPath,
-			JSON.stringify({ skillSources: ["existing"] }, null, 2),
+			JSON.stringify({ customSetting: "existing" }, null, 2),
 		);
 		const before = fs.readFileSync(configPath, "utf8");
 		const result = await promptDeviceType({
@@ -115,11 +115,7 @@ describe("promptDeviceType", () => {
 	it("preserves existing config keys when persisting deviceType (merge, not overwrite)", async () => {
 		fs.writeFileSync(
 			configPath,
-			JSON.stringify(
-				{ skillSources: ["https://example.com/foo.git"], extra: 42 },
-				null,
-				2,
-			),
+			JSON.stringify({ customSetting: "keep-me", extra: 42 }, null, 2),
 		);
 		await promptDeviceType({
 			configPath,
@@ -127,7 +123,7 @@ describe("promptDeviceType", () => {
 		});
 		const persisted = JSON.parse(fs.readFileSync(configPath, "utf8"));
 		expect(persisted.deviceType).toBe("pc");
-		expect(persisted.skillSources).toEqual(["https://example.com/foo.git"]);
+		expect(persisted.customSetting).toBe("keep-me");
 		expect(persisted.extra).toBe(42);
 	});
 
@@ -181,7 +177,7 @@ describe("promptDeviceType", () => {
 	it("uses the stored device type without prompting or rewriting it when non-interactive", async () => {
 		fs.writeFileSync(
 			configPath,
-			`${JSON.stringify({ deviceType: "laptop", skillSources: ["existing"] })}\n`,
+			`${JSON.stringify({ deviceType: "laptop", customSetting: "existing" })}\n`,
 		);
 		const before = fs.readFileSync(configPath, "utf8");
 
@@ -200,7 +196,7 @@ describe("promptDeviceType", () => {
 	it("keeps the stored laptop type when the interactive prompt fails", async () => {
 		fs.writeFileSync(
 			configPath,
-			`${JSON.stringify({ deviceType: "laptop", skillSources: ["existing"] })}\n`,
+			`${JSON.stringify({ deviceType: "laptop", customSetting: "existing" })}\n`,
 		);
 		const before = fs.readFileSync(configPath, "utf8");
 		const warnings = [];

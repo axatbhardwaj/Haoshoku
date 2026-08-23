@@ -36,6 +36,7 @@ function maintainedPaths() {
 
 function maintainedText(relativePath) {
 	const absolutePath = path.join(PROJECT_ROOT, relativePath);
+	if (!fs.existsSync(absolutePath)) return "";
 	const stat = fs.lstatSync(absolutePath);
 	if (stat.isSymbolicLink()) return fs.readlinkSync(absolutePath);
 	if (!stat.isFile()) return "";

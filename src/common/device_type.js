@@ -11,7 +11,7 @@ const HOME = homedir();
 /**
  * Prompt the user for which device type this machine is (PC / laptop / skip).
  * On PC/laptop, persists `{ deviceType: <value> }` into
- * ~/.haoshoku.json (merged with any existing keys — e.g. skillSources).
+ * ~/.haoshoku.json (merged with any existing keys — e.g. custom settings).
  * On skip/cancel, returns null and does NOT touch the file; downstream routing
  * retains a valid stored device type or its PC default when none is stored.
  * An unavailable prompt likewise does not write. Its return value reports the

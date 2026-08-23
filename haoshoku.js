@@ -6,7 +6,6 @@ import { detectOS, findActiveModeFlags } from "./src/common/cli_utils.js";
 import { promptDeviceType } from "./src/common/device_type.js";
 import { getBanner, showBanner } from "./src/common/ui.js";
 import { log, promptUser } from "./src/common/utils.js";
-import { configureAgentOs } from "./src/helpers/configure_agent_os.js";
 import {
 	backupAudioConfig,
 	syncAudioConfig,
@@ -14,8 +13,6 @@ import {
 import { configureBraveManagedPolicies } from "./src/helpers/configure_brave_managed_policies.js";
 import {
 	backupClaudeConfig,
-	bootstrapClaudePolicy,
-	installSuperpowers,
 	syncClaudeConfig,
 } from "./src/helpers/configure_claude.js";
 import {
@@ -55,10 +52,7 @@ import {
 	syncWorktreeCleanup,
 } from "./src/helpers/configure_worktree_cleanup.js";
 import { installUserScripts } from "./src/helpers/install_user_scripts.js";
-import {
-	printAvailableSkills,
-	syncSkills,
-} from "./src/helpers/skill_manager.js";
+import { configureSkills, listSkills } from "./src/helpers/configure_skills.js";
 import { runCachyOSSetup } from "./src/os_scripts/cachyos.js";
 import { runDebianServerSetup } from "./src/os_scripts/debian_server.js";
 
@@ -88,25 +82,16 @@ program
 		"--claude-remote-control-backup",
 		"Backup Claude Remote Control supervisor and user unit",
 	)
-	.option(
-		"--claude-bootstrap",
-		"Bootstrap private policy repository at ~/.claude/",
-	)
 	.option("--claude-update", "Redeploy the packaged Claude Code config")
 	.option("--codex", "Deploy Codex config (AGENTS.md) to ~/.codex/")
 	.option("--codex-backup", "Backup ~/.codex/AGENTS.md to configs/codex/")
 	.option(
-		"--agent-os",
-		"Provision Agent OS (~/agent-os) at the pinned SHA + customization",
-	)
-	.option(
 		"--server-t3-code",
 		"Configure the T3 Code headless service and T3 Connect on Debian",
 	)
-	.option("--skills", "Sync skills from configured sources")
-	.option("--skills-update", "Update cached skill sources")
-	.option("--skills-list", "List available skills")
-	.option("--superpowers", "Enable the Superpowers plugin for Claude Code")
+	.option("--skills", "Install Matt Pocock skills for Claude Code and Codex")
+	.option("--skills-update", "Refresh Matt Pocock skills")
+	.option("--skills-list", "List globally installed skills")
 	.option(
 		"--gh-stack",
 		"Install GitHub's gh-stack extension for stacked pull requests",
@@ -225,11 +210,6 @@ async function runAction(options) {
 		return;
 	}
 
-	if (options.claudeBootstrap) {
-		await bootstrapClaudePolicy();
-		return;
-	}
-
 	if (options.codexBackup) {
 		await backupCodexConfig();
 		return;
@@ -237,11 +217,6 @@ async function runAction(options) {
 
 	if (options.codex) {
 		await syncCodexConfig();
-		return;
-	}
-
-	if (options.agentOs) {
-		await configureAgentOs();
 		return;
 	}
 
@@ -255,11 +230,6 @@ async function runAction(options) {
 		return;
 	}
 
-	if (options.superpowers) {
-		await installSuperpowers();
-		return;
-	}
-
 	if (options.ghStack) {
 		const result = await installGhStack();
 		if (result !== "installed" && result !== "already-installed") {
@@ -269,19 +239,17 @@ async function runAction(options) {
 	}
 
 	if (options.skillsUpdate) {
-		const result = syncSkills({ update: true });
-		if (result.status === "all-failed") process.exit(1);
+		if (!(await configureSkills())) process.exit(1);
 		return;
 	}
 
 	if (options.skills) {
-		const result = syncSkills({ update: false });
-		if (result.status === "all-failed") process.exit(1);
+		if (!(await configureSkills())) process.exit(1);
 		return;
 	}
 
 	if (options.skillsList) {
-		printAvailableSkills();
+		if (!(await listSkills())) process.exit(1);
 		return;
 	}
 

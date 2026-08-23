@@ -1,6 +1,5 @@
 import { describe, expect, it } from "bun:test";
 
-import { log } from "../src/common/utils.js";
 import {
 	configureBrowserIntegration,
 	configureUserApps,
@@ -19,14 +18,12 @@ function userAppDoubles(overrides = {}) {
 		enableServicesImpl: async () => {},
 		configureClaudeImpl: async () => {},
 		installGhStackImpl: async () => {},
-		installSuperpowersImpl: async () => {},
-		bootstrapClaudePolicyImpl: async () => true,
 		configureClaudeStayAwakeImpl: async () => {},
 		configureClaudeRemoteControlImpl: async () => {},
 		configurePrWatchImpl: async () => {},
 		syncWorktreeCleanupImpl: async () => {},
 		configureCodexImpl: async () => {},
-		configureAgentOsImpl: async () => {},
+		configureSkillsImpl: async () => true,
 		...overrides,
 	};
 }
@@ -51,56 +48,24 @@ describe("CachyOS browser integration", () => {
 		const calls = [];
 		const record = (name) => async () => calls.push(name);
 
-		await configureUserApps(userAppDoubles({
-			promptUserImpl: async () => false,
-			configureBrowserIntegrationImpl: record("browser-integration"),
-			configureAudioImpl: record("audio"),
-			configureBashImpl: () => calls.push("bash"),
-			configureFastfetchImpl: record("fastfetch"),
-			runCommandImpl: record("uosc"),
-			enableServicesImpl: record("services"),
-			configureClaudeImpl: record("claude"),
-			configureClaudeStayAwakeImpl: record("stay-awake"),
-			configurePrWatchImpl: record("pr-watch"),
-			configureCodexImpl: record("codex"),
-			configureAgentOsImpl: record("agent-os"),
-		}));
+		await configureUserApps(
+			userAppDoubles({
+				promptUserImpl: async () => false,
+				configureBrowserIntegrationImpl: record("browser-integration"),
+				configureAudioImpl: record("audio"),
+				configureBashImpl: () => calls.push("bash"),
+				configureFastfetchImpl: record("fastfetch"),
+				runCommandImpl: record("uosc"),
+				enableServicesImpl: record("services"),
+				configureClaudeImpl: record("claude"),
+				configureClaudeStayAwakeImpl: record("stay-awake"),
+				configurePrWatchImpl: record("pr-watch"),
+				configureCodexImpl: record("codex"),
+				configureSkillsImpl: record("skills"),
+			}),
+		);
 
 		expect(calls.slice(0, 2)).toEqual(["browser-integration", "audio"]);
-	});
-
-	it("continues without bootstrapping private Claude policy when declined", async () => {
-		const calls = [];
-		const prompts = [];
-		const record = (name) => async () => calls.push(name);
-
-		await configureUserApps(userAppDoubles({
-			promptUserImpl: async (message, initial) => {
-				prompts.push({ message, initial });
-				return false;
-			},
-			configureBrowserIntegrationImpl: record("browser-integration"),
-			configureAudioImpl: record("audio"),
-			configureBashImpl: () => calls.push("bash"),
-			configureFastfetchImpl: record("fastfetch"),
-			runCommandImpl: record("uosc"),
-			enableServicesImpl: record("services"),
-			configureClaudeImpl: record("claude"),
-			bootstrapClaudePolicyImpl: record("bootstrap"),
-			configureClaudeStayAwakeImpl: record("stay-awake"),
-			configurePrWatchImpl: record("pr-watch"),
-			configureCodexImpl: record("codex"),
-			configureAgentOsImpl: record("agent-os"),
-		}));
-
-		expect(
-			prompts.filter(
-				({ message, initial }) =>
-					message === "Bootstrap private Claude policy repository?" && initial,
-			),
-		).toHaveLength(1);
-		expect(calls.filter((call) => call === "bootstrap")).toHaveLength(0);
-		expect(calls).toContain("agent-os");
 	});
 
 	it("defaults remote-control services off and does nothing when declined", async () => {
@@ -108,24 +73,26 @@ describe("CachyOS browser integration", () => {
 		const prompts = [];
 		const record = (name) => async () => calls.push(name);
 
-		await configureUserApps(userAppDoubles({
-			promptUserImpl: async (message, initial) => {
-				prompts.push({ message, initial });
-				return false;
-			},
-			configureBrowserIntegrationImpl: record("browser-integration"),
-			configureAudioImpl: record("audio"),
-			configureBashImpl: () => calls.push("bash"),
-			configureFastfetchImpl: record("fastfetch"),
-			runCommandImpl: record("uosc"),
-			enableServicesImpl: record("services"),
-			configureClaudeImpl: record("claude"),
-			configureClaudeStayAwakeImpl: record("stay-awake"),
-			configureClaudeRemoteControlImpl: record("remote-control"),
-			configurePrWatchImpl: record("pr-watch"),
-			configureCodexImpl: record("codex"),
-			configureAgentOsImpl: record("agent-os"),
-		}));
+		await configureUserApps(
+			userAppDoubles({
+				promptUserImpl: async (message, initial) => {
+					prompts.push({ message, initial });
+					return false;
+				},
+				configureBrowserIntegrationImpl: record("browser-integration"),
+				configureAudioImpl: record("audio"),
+				configureBashImpl: () => calls.push("bash"),
+				configureFastfetchImpl: record("fastfetch"),
+				runCommandImpl: record("uosc"),
+				enableServicesImpl: record("services"),
+				configureClaudeImpl: record("claude"),
+				configureClaudeStayAwakeImpl: record("stay-awake"),
+				configureClaudeRemoteControlImpl: record("remote-control"),
+				configurePrWatchImpl: record("pr-watch"),
+				configureCodexImpl: record("codex"),
+				configureSkillsImpl: record("skills"),
+			}),
+		);
 
 		expect({
 			prompt: prompts.find(({ message }) =>
@@ -140,82 +107,5 @@ describe("CachyOS browser integration", () => {
 			},
 			remoteCalls: [],
 		});
-	});
-
-	it("bootstraps private Claude policy after the public baseline", async () => {
-		const calls = [];
-		const prompts = [];
-		const bootstrapCalls = [];
-		const record = (name) => async () => calls.push(name);
-
-		await configureUserApps(userAppDoubles({
-			promptUserImpl: async (message, initial) => {
-				prompts.push({ message, initial });
-				return message === "Bootstrap private Claude policy repository?";
-			},
-			configureBrowserIntegrationImpl: record("browser-integration"),
-			configureAudioImpl: record("audio"),
-			configureBashImpl: () => calls.push("bash"),
-			configureFastfetchImpl: record("fastfetch"),
-			runCommandImpl: record("uosc"),
-			enableServicesImpl: record("services"),
-			configureClaudeImpl: record("claude"),
-			bootstrapClaudePolicyImpl: async (options) => {
-				calls.push("bootstrap");
-				bootstrapCalls.push(options);
-				return true;
-			},
-			configureClaudeStayAwakeImpl: record("stay-awake"),
-			configurePrWatchImpl: record("pr-watch"),
-			configureCodexImpl: record("codex"),
-			configureAgentOsImpl: record("agent-os"),
-		}));
-
-		expect(calls.indexOf("bootstrap")).toBe(calls.indexOf("claude") + 1);
-		expect(
-			prompts.filter(
-				({ message, initial }) =>
-					message === "Bootstrap private Claude policy repository?" && initial,
-			),
-		).toHaveLength(1);
-		expect(bootstrapCalls).toEqual([{ strict: false }]);
-		expect(calls).toContain("agent-os");
-	});
-
-	it("warns with a retry command and continues when policy bootstrap fails", async () => {
-		const calls = [];
-		const warnings = [];
-		const bootstrapCalls = [];
-		const record = (name) => async () => calls.push(name);
-		const originalWarning = log.warning;
-		log.warning = (message) => warnings.push(message);
-
-		try {
-			await configureUserApps(userAppDoubles({
-				promptUserImpl: async (message) =>
-					message === "Bootstrap private Claude policy repository?",
-				configureBrowserIntegrationImpl: record("browser-integration"),
-				configureAudioImpl: record("audio"),
-				configureBashImpl: () => calls.push("bash"),
-				configureFastfetchImpl: record("fastfetch"),
-				runCommandImpl: record("uosc"),
-				enableServicesImpl: record("services"),
-				configureClaudeImpl: record("claude"),
-				bootstrapClaudePolicyImpl: async (options) => {
-					bootstrapCalls.push(options);
-					return false;
-				},
-				configureClaudeStayAwakeImpl: record("stay-awake"),
-				configurePrWatchImpl: record("pr-watch"),
-				configureCodexImpl: record("codex"),
-				configureAgentOsImpl: record("agent-os"),
-			}));
-		} finally {
-			log.warning = originalWarning;
-		}
-
-		expect(warnings.join("\n")).toContain("haoshoku --claude-bootstrap");
-		expect(bootstrapCalls).toEqual([{ strict: false }]);
-		expect(calls).toContain("agent-os");
 	});
 });

@@ -1,7 +1,6 @@
 # Local agent/runtime state
 .claude/
 /.worktrees/
-superpowers/
 BRANCH-NOTES.md
 
 # Secrets and local environment

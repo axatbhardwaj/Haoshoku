@@ -4,10 +4,6 @@ import os from "node:os";
 import path from "node:path";
 
 import { log, promptUser } from "../src/common/utils.js";
-import {
-	bootstrapClaudePolicy,
-	installSuperpowers,
-} from "../src/helpers/configure_claude.js";
 import { promptDeviceType } from "../src/common/device_type.js";
 import {
 	configureUserApps,
@@ -28,43 +24,6 @@ function makeHome() {
 	);
 	temporaryHomes.push(home);
 	return home;
-}
-
-function runGit(args, cwd) {
-	const result = Bun.spawnSync(["git", ...args], {
-		cwd,
-		stderr: "pipe",
-		stdout: "pipe",
-	});
-	expect(result.exitCode).toBe(0);
-}
-
-function createPolicyRemote(root) {
-	const remote = path.join(root, "policy.git");
-	const seed = path.join(root, "policy-seed");
-	runGit(["init", "--bare", "--initial-branch=main", remote], root);
-	fs.mkdirSync(seed);
-	runGit(["init", "--initial-branch=main"], seed);
-	fs.writeFileSync(
-		path.join(seed, "settings.json"),
-		`${JSON.stringify({ enabledPlugins: { "policy@example": true } }, null, 2)}\n`,
-	);
-	runGit(["add", "settings.json"], seed);
-	runGit(
-		[
-			"-c",
-			"user.name=Haoshoku Tests",
-			"-c",
-			"user.email=haoshoku-tests@example.com",
-			"commit",
-			"-m",
-			"seed policy",
-		],
-		seed,
-	);
-	runGit(["remote", "add", "origin", remote], seed);
-	runGit(["push", "origin", "main"], seed);
-	return remote;
 }
 
 function deployModeFeaturesFromCli() {
@@ -197,15 +156,13 @@ function runArchDefaultPath() {
 					runCommandImpl: record("uosc", true),
 					enableServicesImpl: record("services"),
 					configureClaudeImpl: record("claude"),
-					bootstrapClaudePolicyImpl: record("claudeBootstrap", true),
 					installGhStackImpl: record("ghStack"),
-					installSuperpowersImpl: record("superpowers"),
 					configureClaudeStayAwakeImpl: record("claudeStayAwake"),
 					configureClaudeRemoteControlImpl: record("claudeRemoteControl"),
 					configurePrWatchImpl: record("prWatch"),
 					syncWorktreeCleanupImpl: record("worktreeCleanup"),
 					configureCodexImpl: record("codex"),
-					configureAgentOsImpl: record("agentOs"),
+					configureSkillsImpl: record("skills", true),
 				}),
 				configureBraveManagedPoliciesImpl: record("braveManagedPolicies", true),
 				configureHyprmoncfgImpl: record("monitors"),
@@ -261,8 +218,6 @@ function runDebianDefaultPath() {
 			}));
 			mock.module(${JSON.stringify(helperPath("configure_claude.js"))}, () => ({
 				configureClaude: record("claude"),
-				bootstrapClaudePolicy: record("claudeBootstrap", true),
-				installSuperpowers: record("superpowers"),
 			}));
 			mock.module(${JSON.stringify(helperPath("configure_gh_stack.js"))}, () => ({ installGhStack: record("ghStack") }));
 			mock.module(${JSON.stringify(helperPath("configure_claude_stay_awake.js"))}, () => ({
@@ -280,8 +235,8 @@ function runDebianDefaultPath() {
 			mock.module(${JSON.stringify(helperPath("configure_codex.js"))}, () => ({
 				configureCodex: record("codex"),
 			}));
-			mock.module(${JSON.stringify(helperPath("configure_agent_os.js"))}, () => ({
-				configureAgentOs: record("agentOs"),
+			mock.module(${JSON.stringify(helperPath("configure_skills.js"))}, () => ({
+				configureSkills: record("skills", true),
 			}));
 			mock.module(${JSON.stringify(helperPath("configure_t3_code_server.js"))}, () => ({
 				configureT3CodeServer: record("serverT3Code", true),
@@ -343,28 +298,20 @@ function userAppDoubles(overrides = {}) {
 		enableServicesImpl: async () => {},
 		configureClaudeImpl: async () => {},
 		installGhStackImpl: async () => {},
-		bootstrapClaudePolicyImpl: async () => true,
 		configureClaudeStayAwakeImpl: async () => {},
 		configureClaudeRemoteControlImpl: async () => {},
 		configurePrWatchImpl: async () => {},
 		syncWorktreeCleanupImpl: async () => {},
-		installSuperpowersImpl: async () => {},
 		configureCodexImpl: async () => {},
-		configureAgentOsImpl: async () => {},
+		configureSkillsImpl: async () => true,
 		...overrides,
 	};
 }
 
 describe("default-run reachability", () => {
 	beforeAll(() => {
-		defaultCallsByPath.set(
-			"arch",
-			new Set(runArchDefaultPath()),
-		);
-		defaultCallsByPath.set(
-			"debian-server",
-			new Set(runDebianDefaultPath()),
-		);
+		defaultCallsByPath.set("arch", new Set(runArchDefaultPath()));
+		defaultCallsByPath.set("debian-server", new Set(runDebianDefaultPath()));
 	});
 
 	for (const deployFeature of deployModeFeatures) {
@@ -404,56 +351,6 @@ describe("default-run reachability", () => {
 			);
 		});
 	}
-
-	it("offers Superpowers and invokes its helper when accepted", async () => {
-		const offers = [];
-		let installCalls = 0;
-
-		await configureUserApps(
-			userAppDoubles({
-				promptUserImpl: async (message, initial) => {
-					offers.push({ message, initial });
-					return message === "Enable Superpowers plugin for Claude Code?";
-				},
-				installSuperpowersImpl: async () => {
-					installCalls += 1;
-				},
-			}),
-		);
-
-		expect(offers).toContainEqual({
-			message: "Enable Superpowers plugin for Claude Code?",
-			initial: true,
-		});
-		expect(installCalls).toBe(1);
-	});
-
-	it("continues app setup when accepted Superpowers installation throws", async () => {
-		const events = [];
-		const warnings = [];
-		const originalWarning = log.warning;
-		log.warning = (message) => warnings.push(message);
-
-		try {
-			await configureUserApps(
-				userAppDoubles({
-					promptUserImpl: async (message) =>
-						message === "Enable Superpowers plugin for Claude Code?",
-					installSuperpowersImpl: async () => {
-						throw new Error("settings write failed");
-					},
-					configureCodexImpl: async () => events.push("codex"),
-					configureAgentOsImpl: async () => events.push("agent-os"),
-				}),
-			);
-		} finally {
-			log.warning = originalWarning;
-		}
-
-		expect(events).toEqual(["codex", "agent-os"]);
-		expect(warnings.join("\n")).toContain("settings write failed");
-		expect(warnings.join("\n")).toContain("continuing");
-	});
 
 	it("keeps Claude stay-awake unconditional when optional offers are declined", async () => {
 		const offers = [];
@@ -499,61 +396,6 @@ describe("default-run reachability", () => {
 		expect(prWatchCalls).toBe(1);
 	});
 
-	it("enables Superpowers on a fresh machine when its offer is accepted", async () => {
-		const home = makeHome();
-		const settingsPath = path.join(home, ".claude", "settings.json");
-		const offer = "Enable Superpowers plugin for Claude Code?";
-		const prompts = [];
-
-		await configureUserApps(
-			userAppDoubles({
-				promptUserImpl: async (message) => {
-					prompts.push(message);
-					return message === offer;
-				},
-				installSuperpowersImpl: () => installSuperpowers(settingsPath),
-			}),
-		);
-
-		expect(prompts).toContain(offer);
-		const settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
-		expect(settings.enabledPlugins["superpowers@claude-plugins-official"]).toBe(
-			true,
-		);
-	});
-
-	it("keeps Superpowers enabled after the complete Claude policy setup sequence", async () => {
-		const home = makeHome();
-		const settingsPath = path.join(home, ".claude", "settings.json");
-		const configPath = path.join(home, ".haoshoku.json");
-		const remote = createPolicyRemote(home);
-		fs.writeFileSync(
-			configPath,
-			`${JSON.stringify({ claudeBootstrapUrl: remote }, null, 2)}\n`,
-		);
-
-		await configureUserApps(
-			userAppDoubles({
-				promptUserImpl: async (message) =>
-					message === "Enable Superpowers plugin for Claude Code?" ||
-					message === "Bootstrap private Claude policy repository?",
-				installSuperpowersImpl: () => installSuperpowers(settingsPath),
-				bootstrapClaudePolicyImpl: (options) =>
-					bootstrapClaudePolicy({
-						...options,
-						claudeHome: home,
-						configPath,
-					}),
-			}),
-		);
-
-		const settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
-		expect(settings.enabledPlugins).toEqual({
-			"policy@example": true,
-			"superpowers@claude-plugins-official": true,
-		});
-	});
-
 	it("offers disclosed opt-in worktree cleanup and invokes its helper when accepted", async () => {
 		const offers = [];
 		let cleanupCalls = 0;
@@ -594,14 +436,14 @@ describe("default-run reachability", () => {
 						throw new Error("timer deployment failed");
 					},
 					configureCodexImpl: async () => events.push("codex"),
-					configureAgentOsImpl: async () => events.push("agent-os"),
+					configureSkillsImpl: async () => events.push("skills"),
 				}),
 			);
 		} finally {
 			log.warning = originalWarning;
 		}
 
-		expect(events).toEqual(["codex", "agent-os"]);
+		expect(events).toEqual(["codex", "skills"]);
 		expect(warnings.join("\n")).toContain("timer deployment failed");
 		expect(warnings.join("\n")).toContain("continuing");
 	});
@@ -648,12 +490,10 @@ describe("default-run reachability", () => {
 									promptUserImpl: nonInteractivePrompt,
 									configureGitImpl: record("git"),
 									installGhStackImpl: record("gh-stack"),
-									bootstrapClaudePolicyImpl: record("bootstrap", true),
 									configureClaudeStayAwakeImpl: record("stay-awake"),
 									configureClaudeRemoteControlImpl: record("remote-control"),
 									configurePrWatchImpl: record("pr-watch"),
 									syncWorktreeCleanupImpl: record("worktree-cleanup"),
-									installSuperpowersImpl: record("superpowers"),
 								}),
 							),
 					}),
@@ -675,9 +515,6 @@ describe("default-run reachability", () => {
 		expect(warnings.join("\n")).toContain(
 			'Interactive confirmation unavailable; declining "Configure git?".',
 		);
-		expect(warnings.join("\n")).toContain(
-			'Interactive confirmation unavailable; declining "Bootstrap private Claude policy repository?".',
-		);
 		expect(warnings.join("\n")).not.toContain("gh-stack");
 		expect(warnings.join("\n")).not.toContain(
 			"Enable Claude stay-awake service?",
@@ -685,9 +522,6 @@ describe("default-run reachability", () => {
 		expect(warnings.join("\n")).not.toContain("Enable PR watch helper?");
 		expect(warnings.join("\n")).toContain(
 			'Interactive confirmation unavailable; declining "Enable automatic git worktree cleanup? This enables a persistent weekly timer that runs cleanup-worktrees.sh --apply and deletes eligible worktrees.".',
-		);
-		expect(warnings.join("\n")).toContain(
-			'Interactive confirmation unavailable; declining "Enable Superpowers plugin for Claude Code?".',
 		);
 	});
 });

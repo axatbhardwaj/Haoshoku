@@ -4,7 +4,7 @@ Weekly git-worktree cleanup for `~/defi` (a shell script + a systemd **user** ti
 
 | File | Deployed to | Notes |
 |------|-------------|-------|
-| `cleanup-worktrees.sh` | `~/defi/.worktree-cleanup/` (chmod 755) | Removes only provably-safe worktrees (clean + every commit on a remote + PR merged / branch merged); reviews dirty / unpushed / detached / open-PR / `superpowers/`-artifact ones |
+| `cleanup-worktrees.sh` | `~/defi/.worktree-cleanup/` (chmod 755) | Removes only provably-safe worktrees (clean + every commit on a remote + PR merged / branch merged); reviews dirty / unpushed / detached / open-PR / legacy `superpowers/`-artifact ones |
 | `defi-worktree-cleanup.service` | `~/.config/systemd/user/` | `oneshot`, runs the script with `--apply` |
 | `defi-worktree-cleanup.timer` | `~/.config/systemd/user/` | `OnCalendar=Fri 18:00`, `Persistent=true` |
 | `test-cleanup.sh` | *(not deployed)* | Unit tests for the script's pure `decide()` logic |
