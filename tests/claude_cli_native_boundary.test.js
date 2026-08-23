@@ -12,11 +12,11 @@ const CLAUDE_HELPER_PATH = path.join(
 	"helpers",
 	"configure_claude.js",
 );
-const SKILL_MANAGER_PATH = path.join(
+const SKILLS_HELPER_PATH = path.join(
 	PROJECT_ROOT,
 	"src",
 	"helpers",
-	"skill_manager.js",
+	"configure_skills.js",
 );
 const CLI_UTILS_PATH = path.join(PROJECT_ROOT, "src", "common", "cli_utils.js");
 const ARCH_SETUP_PATH = path.join(
@@ -28,7 +28,6 @@ const ARCH_SETUP_PATH = path.join(
 
 function runCli(args, { defaultSetup = false } = {}) {
 	const home = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-native-cli-"));
-	const missingCache = path.join(home, "missing-cache");
 	const setupMocks = defaultSetup
 		? `
 			mock.module("prompts", () => ({ default: async () => ({ value: true }) }));
@@ -51,19 +50,15 @@ function runCli(args, { defaultSetup = false } = {}) {
 		${setupMocks}
 		mock.module(${JSON.stringify(CLAUDE_HELPER_PATH)}, () => ({
 			backupClaudeConfig: async () => {},
-			bootstrapClaudePolicy: async () => true,
 			configureClaude: async () => {},
-			installSuperpowers: async () => {},
 			syncClaudeConfig: async () => calls.push("claude"),
-			updateClaudeConfig: async () => calls.push("skill-update"),
 		}));
-		mock.module(${JSON.stringify(SKILL_MANAGER_PATH)}, () => ({
-			CACHE_DIR: ${JSON.stringify(missingCache)},
-			printAvailableSkills: () => {},
-			syncSkills: () => {
+		mock.module(${JSON.stringify(SKILLS_HELPER_PATH)}, () => ({
+			configureSkills: async () => {
 				calls.push("skills");
-				return { status: "ok" };
+				return true;
 			},
+			listSkills: async () => true,
 		}));
 		process.argv = [process.execPath, ${JSON.stringify(CLI_PATH)}, ...${JSON.stringify(args)}];
 		await import(${JSON.stringify(CLI_PATH)});

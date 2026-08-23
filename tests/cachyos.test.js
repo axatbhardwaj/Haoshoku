@@ -36,14 +36,12 @@ describe("user app configuration", () => {
 			enableServicesImpl: record("services"),
 			configureClaudeImpl: record("claude"),
 			installGhStackImpl: record("gh-stack"),
-			installSuperpowersImpl: record("superpowers"),
-			bootstrapClaudePolicyImpl: record("bootstrap"),
 			configureClaudeStayAwakeImpl: record("stay-awake"),
 			configureClaudeRemoteControlImpl: record("remote-control"),
 			configurePrWatchImpl: record("pr-watch"),
 			syncWorktreeCleanupImpl: record("worktree-cleanup"),
 			configureCodexImpl: record("codex"),
-			configureAgentOsImpl: record("agent-os"),
+			configureSkillsImpl: record("skills"),
 		});
 
 		expect(events).toEqual([
@@ -59,7 +57,7 @@ describe("user app configuration", () => {
 			"stay-awake",
 			"pr-watch",
 			"codex",
-			"agent-os",
+			"skills",
 		]);
 	});
 });
@@ -595,7 +593,9 @@ describe("Arch package-manager preflight", () => {
 	it("stops the full setup when package-manager preparation fails", async () => {
 		const events = [];
 		const unreachable = async () => {
-			throw new Error("setup continued after package-manager preparation failed");
+			throw new Error(
+				"setup continued after package-manager preparation failed",
+			);
 		};
 		const result = await runCachyOSSetup({
 			promptDeviceTypeImpl: async () => events.push("device-type"),

@@ -60,14 +60,12 @@ const TEST_CALLER_CONTRACTS = new Map([
 			"enableServicesImpl",
 			"configureClaudeImpl",
 			"installGhStackImpl",
-			"installSuperpowersImpl",
-			"bootstrapClaudePolicyImpl",
 			"configureClaudeStayAwakeImpl",
 			"configureClaudeRemoteControlImpl",
 			"configurePrWatchImpl",
 			"syncWorktreeCleanupImpl",
 			"configureCodexImpl",
-			"configureAgentOsImpl",
+			"configureSkillsImpl",
 		],
 	],
 	[
@@ -145,9 +143,7 @@ function providedOptions(source, argumentsSource, requiredOptions) {
 	}
 	return requiredOptions.filter((option) =>
 		searchableSources.some((candidate) =>
-			new RegExp(`(?:^|[,{]\\s*)${option}\\s*(?=[:,}])`, "m").test(
-				candidate,
-			),
+			new RegExp(`(?:^|[,{]\\s*)${option}\\s*(?=[:,}])`, "m").test(candidate),
 		),
 	);
 }
@@ -166,7 +162,9 @@ function testCallerViolations() {
 				const provided = new Set(
 					providedOptions(source, call.argumentsSource, requiredOptions),
 				);
-				const missing = requiredOptions.filter((option) => !provided.has(option));
+				const missing = requiredOptions.filter(
+					(option) => !provided.has(option),
+				);
 				if (missing.length > 0) {
 					violations.push({ file, line: call.line, entryPoint, missing });
 				}
@@ -181,9 +179,7 @@ function injectableOptions(entryPoint) {
 	const signature = source.slice(0, source.indexOf("} = {})"));
 	return [
 		...new Set(
-			[...signature.matchAll(/\b([A-Za-z]\w+Impl)\b/g)].map(
-				([, name]) => name,
-			),
+			[...signature.matchAll(/\b([A-Za-z]\w+Impl)\b/g)].map(([, name]) => name),
 		),
 	];
 }

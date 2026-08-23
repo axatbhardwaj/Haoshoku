@@ -14,7 +14,6 @@ it("keeps local runtime ignore configuration explicit", () => {
 		".todos/",
 		".claude/",
 		"tasks/",
-		"/superpowers/",
 		"/.worktrees/",
 		"BRANCH-NOTES.md",
 	]) {
@@ -29,11 +28,11 @@ it("keeps local runtime ignore configuration explicit", () => {
 	for (const expected of [
 		".claude/",
 		"/.worktrees/",
-		"superpowers/",
 		"BRANCH-NOTES.md",
 		".sidecar/",
 		".todos/",
 		"node_modules/",
+		"/docs/superpowers/",
 	]) {
 		expect(packageIgnore).toContain(expected);
 	}

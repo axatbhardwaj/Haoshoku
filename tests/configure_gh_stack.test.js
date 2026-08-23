@@ -18,14 +18,12 @@ function userAppDoubles(overrides = {}) {
 		enableServicesImpl: async () => {},
 		configureClaudeImpl: async () => {},
 		installGhStackImpl: async () => {},
-		bootstrapClaudePolicyImpl: async () => true,
-		installSuperpowersImpl: async () => {},
 		configureClaudeStayAwakeImpl: async () => {},
 		configureClaudeRemoteControlImpl: async () => {},
 		configurePrWatchImpl: async () => {},
 		syncWorktreeCleanupImpl: async () => {},
 		configureCodexImpl: async () => {},
-		configureAgentOsImpl: async () => {},
+		configureSkillsImpl: async () => true,
 		...overrides,
 	};
 }
@@ -129,13 +127,13 @@ describe("gh stack provisioning", () => {
 						},
 					}),
 				configureCodexImpl: async () => continued.push("codex"),
-				configureAgentOsImpl: async () => continued.push("agent-os"),
+				configureSkillsImpl: async () => continued.push("skills"),
 			}),
 		);
 
 		expect(warnings.join("\n")).toContain("authentication required");
 		expect(warnings.join("\n")).toContain("continuing");
-		expect(continued).toEqual(["codex", "agent-os"]);
+		expect(continued).toEqual(["codex", "skills"]);
 	});
 
 	it("returns a non-zero CLI status when standalone installation fails", () => {

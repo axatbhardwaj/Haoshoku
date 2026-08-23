@@ -12,7 +12,6 @@ Template configuration files copied to user's `~/.config/` during setup.
 
 | Directory       | What                                | When to read                              |
 | --------------- | ----------------------------------- | ----------------------------------------- |
-| `agent-os/`     | Pinned Agent OS revision and customized `shape-spec` command | Updating the Agent OS pin or planning workflow |
 | `alacritty/`    | Alacritty terminal config           | Modifying Alacritty settings              |
 | `kitty/`        | Primary terminal config and Haki/agents split sessions | Modifying terminal settings or split sessions |
 | `ghostty/`      | Retained legacy Ghostty config; installed but no longer deployed or wired to keybinds | Reviewing the former Ghostty setup |
@@ -21,10 +20,10 @@ Template configuration files copied to user's `~/.config/` during setup.
 | `bash/`         | Portable interactive Bash additions loaded after Omarchy defaults | Modifying Bash initializers, aliases, or PATH additions |
 | `warp/`         | Retained dormant Warp tab configs and shipped Elysian theme | Reviewing the former Warp setup |
 | `vencord/`      | Vencord Discord theme               | Modifying Discord appearance              |
-| `claude/`       | Claude Code personal config (copied)    | Modifying settings, backup/restore        |
+| `claude/`       | Claude Code compact personal policy (copied) | Modifying policy backup/restore       |
 | `claude-remote-control/` | Claude Remote Control tmux supervisor + systemd user-unit template | Modifying persistent Claude sessions, restart behavior, or attach lifecycle |
 | `claude-stay-awake/` | Claude CLI sleep-inhibitor watcher and systemd user unit | Modifying suspend blocking or session detection |
-| `codex/`        | Codex compatibility guidance template | Modifying deployed Codex agent guidance   |
+| `codex/`        | Codex compact personal policy | Modifying deployed Codex agent guidance   |
 | `hyprmoncfg/`   | Authored monitor/workspace profile JSON consumed by hyprmoncfg; Haoshoku NEVER writes generated `monitors.lua` | Modifying monitor layouts or monitor-bound workspace rules without crossing the hyprmoncfg ownership boundary |
 | `kde/`          | KDE Ocean theme bundle (5 components)   | Modifying KDE theme deployment            |
 | `kwin/`         | KWin script placing KDE Activity windows on outputs by connector name | Modifying activity-window output placement |

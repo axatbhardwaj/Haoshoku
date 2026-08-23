@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- Back up the live compact Claude and Codex personal policy as the portable
+  baseline. Retire the remaining private-policy bootstrap, Agent OS,
+  Superpowers installers, bundled HTML skill, and custom skill clone/merge
+  layer so none can resurrect the previous orchestration stack.
+- Delegate shared skill installation to the upstream Skills CLI with
+  `mattpocock/skills` as Haoshoku's single declared source for Claude Code and
+  Codex. Full Arch and Debian setup reconcile the same source.
+
 ## 10.0.1 - 2026-08-20
 
 - Remove retired cross-engine orchestration identifiers and role labels from

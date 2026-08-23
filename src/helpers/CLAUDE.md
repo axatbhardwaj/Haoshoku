@@ -6,14 +6,14 @@ Standalone setup scripts for specific tools.
 
 | File                  | What                                   | When to read                                  |
 | --------------------- | -------------------------------------- | --------------------------------------------- |
-| `configure_agent_os.js` | Pinned Agent OS install plus Haoshoku command/standards overlays | Updating Agent OS provisioning or customizations |
 | `configure_bash.js` | Portable Bash fragment deploy plus idempotent `.bashrc` source wiring | Adding or debugging Bash setup |
 | `configure_brave_managed_policies.js` | Brave theme/default-browser managed policies plus policy-tree repair | Modifying browser policies, theme color sync, or policy ownership |
 | `configure_chromium_profiles.js` | Validated shared browser-profile registry seeding in `~/.haoshoku.json` | Modifying managed browser profiles or session-name validation |
 | `configure_claude.js` | Claude config sync, backup, update     | Adding Claude config features, debugging sync |
 | `configure_claude_stay_awake.js` | claude-stay-awake sleep inhibitor deploy/enable/backup | Adding or debugging the Claude sleep inhibitor |
 | `configure_claude_remote_control.js` | Claude Remote Control trust/disclaimer seed, supervisor + user-unit deploy/enable/backup | Adding or debugging persistent Claude Remote Control sessions |
-| `configure_codex.js` | Codex CLI/Superpowers install plus personal config sync/backup | Adding Codex setup features or debugging config sync |
+| `configure_codex.js` | Codex CLI plus personal config sync/backup | Adding Codex setup features or debugging config sync |
+| `configure_skills.js` | Matt Pocock skill installation through the upstream Skills CLI | Updating the shared Claude/Codex skill source |
 | `configure_gh_stack.js` | Idempotent `github/gh-stack` extension install | Adding or debugging stacked-PR tooling setup |
 | `configure_pr_watch.js` | pr-watch PR watcher sync/backup | Adding or debugging the PR watcher deploy |
 | `configure_t3_code_server.js` | Debian T3 Code service plus idempotent T3 Connect lifecycle | Adding or debugging T3 Connect authorization, provisioning, or service verification |
@@ -34,5 +34,4 @@ Standalone setup scripts for specific tools.
 | `configure_worktree_cleanup.js` | Worktree cleanup script/timer sync, backup, and user-timer enablement | Modifying cleanup deployment, backup, or scheduling |
 | `install_user_scripts.js` | Copy `configs/scripts/*` → `~/.local/bin/` + chmod 755 | Adding user-level shell wrappers (PATH shadows, helper commands) |
 | `migrate_omarchy_3_to_4.js` | Re-runnable `--3-4-migrate` flow; requires Omarchy >= 4 and defers while the Quattro live shim remains active | Modifying legacy cleanup, Lua/plugin deployment, monitor handoff, or migration gates |
-| `skill_manager.js`    | Runtime git clone for Claude skills    | Adding skill sources, debugging skill sync    |
 | `README.md`           | Architecture and design decisions      | Understanding symlink vs copy pattern         |

@@ -47,8 +47,6 @@ function runDefaultSetupWithSafeDoubles() {
 		};
 		const promptAnswers = new Set([
 			"Configure git?",
-			"Bootstrap private Claude policy repository?",
-			"Enable Superpowers plugin for Claude Code?",
 			"Enable Claude stay-awake service?",
 			"Install Claude Remote Control services with all permission checks bypassed? This permanently sets bypassPermissionsModeAccepted: true in ~/.claude.json for every Claude Code session on this machine, not only these services. To undo it, edit ~/.claude.json and remove the flag or set it to false.",
 			"Enable automatic git worktree cleanup? This enables a persistent weekly timer that runs cleanup-worktrees.sh --apply and deletes eligible worktrees.",
@@ -78,8 +76,6 @@ function runDefaultSetupWithSafeDoubles() {
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_git.js"))}, () => ({ configureGit: record("git") }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_claude.js"))}, () => ({
 			configureClaude: record("claude"),
-			bootstrapClaudePolicy: record("bootstrap", true),
-			installSuperpowers: record("superpowers"),
 		}));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_gh_stack.js"))}, () => ({ installGhStack: record("gh-stack") }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_claude_stay_awake.js"))}, () => ({ configureClaudeStayAwake: record("stay-awake") }));
@@ -87,7 +83,7 @@ function runDefaultSetupWithSafeDoubles() {
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_pr_watch.js"))}, () => ({ configurePrWatch: record("pr-watch") }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_worktree_cleanup.js"))}, () => ({ syncWorktreeCleanup: record("worktree-cleanup") }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_codex.js"))}, () => ({ configureCodex: record("codex") }));
-		mock.module(${JSON.stringify(modulePath("src/helpers/configure_agent_os.js"))}, () => ({ configureAgentOs: record("agent-os") }));
+		mock.module(${JSON.stringify(modulePath("src/helpers/configure_skills.js"))}, () => ({ configureSkills: record("skills", true) }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_t3_code_server.js"))}, () => ({ configureT3CodeServer: record("t3-code-server", true) }));
 		const { runDebianServerSetup } = await import(${JSON.stringify(debianModule)} + "?default-path-test");
 		await runDebianServerSetup();
@@ -196,19 +192,9 @@ describe("Debian default path", () => {
 			message: "Configure git?",
 			initial: true,
 		});
-		expect(prompts).toContainEqual({
-			type: "prompt",
-			message: "Bootstrap private Claude policy repository?",
-			initial: true,
-		});
 		expect(prompts.some(({ message }) => message.includes("gh-stack"))).toBe(
 			false,
 		);
-		expect(prompts).toContainEqual({
-			type: "prompt",
-			message: "Enable Superpowers plugin for Claude Code?",
-			initial: true,
-		});
 		expect(prompts).toContainEqual({
 			type: "prompt",
 			message: "Enable Claude stay-awake service?",
@@ -231,15 +217,13 @@ describe("Debian default path", () => {
 			"t3-code-server",
 			"git",
 			"claude",
-			"bootstrap",
 			"gh-stack",
-			"superpowers",
 			"stay-awake",
 			"remote-control",
 			"pr-watch",
 			"worktree-cleanup",
 			"codex",
-			"agent-os",
+			"skills",
 		]);
 	});
 });

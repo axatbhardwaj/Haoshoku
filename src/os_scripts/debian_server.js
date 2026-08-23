@@ -10,15 +10,11 @@ import {
 	runCommand,
 	safeCopyFile,
 } from "../common/utils.js";
-import { configureAgentOs } from "../helpers/configure_agent_os.js";
-import {
-	bootstrapClaudePolicy,
-	configureClaude,
-	installSuperpowers,
-} from "../helpers/configure_claude.js";
+import { configureClaude } from "../helpers/configure_claude.js";
 import { configureClaudeRemoteControl } from "../helpers/configure_claude_remote_control.js";
 import { configureClaudeStayAwake } from "../helpers/configure_claude_stay_awake.js";
 import { configureCodex } from "../helpers/configure_codex.js";
+import { configureSkills } from "../helpers/configure_skills.js";
 import { installGhStack } from "../helpers/configure_gh_stack.js";
 import { configureGit } from "../helpers/configure_git.js";
 import { configurePrWatch } from "../helpers/configure_pr_watch.js";
@@ -316,34 +312,12 @@ export async function runDebianServerSetup() {
 	// monitor, workspace, and Omazed configuration therefore remain Arch-only.
 	if (await promptUser("Configure git?", true)) await configureGit();
 	await configureClaude();
-	if (await promptUser("Bootstrap private Claude policy repository?", true)) {
-		try {
-			if (!(await bootstrapClaudePolicy({ strict: false }))) {
-				log.warning(
-					"Claude policy bootstrap failed — continuing. Retry with: haoshoku --claude-bootstrap",
-				);
-			}
-		} catch (err) {
-			log.warning(
-				`Claude policy bootstrap failed (${err?.message ?? err}) — continuing. Retry with: haoshoku --claude-bootstrap`,
-			);
-		}
-	}
 	try {
 		await installGhStack();
 	} catch (err) {
 		log.warning(
 			`GitHub gh-stack extension installation failed (${err?.message ?? err}) — continuing with remaining server setup.`,
 		);
-	}
-	if (await promptUser("Enable Superpowers plugin for Claude Code?", true)) {
-		try {
-			await installSuperpowers();
-		} catch (err) {
-			log.warning(
-				`Superpowers plugin installation failed (${err?.message ?? err}) — continuing with remaining server setup.`,
-			);
-		}
 	}
 	if (await promptUser("Enable Claude stay-awake service?", true)) {
 		await configureClaudeStayAwake();
@@ -372,7 +346,11 @@ export async function runDebianServerSetup() {
 		}
 	}
 	await configureCodex();
-	await configureAgentOs();
+	if (!(await configureSkills())) {
+		log.warning(
+			"Matt Pocock skills were not installed — continuing. Retry with: haoshoku --skills",
+		);
+	}
 
 	if (!t3CodeConfigured) {
 		log.error("Debian Server setup finished, but T3 Code was not configured.");

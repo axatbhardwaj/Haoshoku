@@ -20,12 +20,12 @@ function runEntrypoint({ args = [], detectedOS, input = "" } = {}) {
 		"os_scripts",
 		"cachyos.js",
 	);
-	const skillManagerPath = path.resolve(
+	const skillsHelperPath = path.resolve(
 		import.meta.dir,
 		"..",
 		"src",
 		"helpers",
-		"skill_manager.js",
+		"configure_skills.js",
 	);
 	const detectionMock =
 		detectedOS === undefined
@@ -45,13 +45,12 @@ function runEntrypoint({ args = [], detectedOS, input = "" } = {}) {
 				return true;
 			},
 		}));
-		mock.module(${JSON.stringify(skillManagerPath)}, () => ({
-			CACHE_DIR: "/haoshoku-test-cache",
-			printAvailableSkills: () => {},
-			syncSkills: () => {
+		mock.module(${JSON.stringify(skillsHelperPath)}, () => ({
+			configureSkills: async () => {
 				console.log("SKILL_SYNC_CALLED");
-				return { status: "ok" };
+				return true;
 			},
+			listSkills: async () => true,
 		}));
 		process.argv = [process.execPath, ${JSON.stringify(cliPath)}, ...${JSON.stringify(args)}];
 		await import(${JSON.stringify(cliPath)});

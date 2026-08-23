@@ -9,19 +9,15 @@ import {
 	runCommand,
 	safeCopyFile,
 } from "../common/utils.js";
-import { configureAgentOs } from "../helpers/configure_agent_os.js";
 import { configureAudio } from "../helpers/configure_audio.js";
 import { configureBash } from "../helpers/configure_bash.js";
 import { configureBraveManagedPolicies } from "../helpers/configure_brave_managed_policies.js";
 import { configureChromiumProfiles } from "../helpers/configure_chromium_profiles.js";
-import {
-	bootstrapClaudePolicy,
-	configureClaude,
-	installSuperpowers,
-} from "../helpers/configure_claude.js";
+import { configureClaude } from "../helpers/configure_claude.js";
 import { configureClaudeRemoteControl } from "../helpers/configure_claude_remote_control.js";
 import { configureClaudeStayAwake } from "../helpers/configure_claude_stay_awake.js";
 import { configureCodex } from "../helpers/configure_codex.js";
+import { configureSkills } from "../helpers/configure_skills.js";
 import { configureKitty } from "../helpers/configure_kitty.js";
 import { installGhStack } from "../helpers/configure_gh_stack.js";
 import { configureHyprmoncfg } from "../helpers/configure_hyprmoncfg.js";
@@ -553,14 +549,12 @@ export async function configureUserApps({
 	enableServicesImpl = enableServices,
 	configureClaudeImpl = configureClaude,
 	installGhStackImpl = installGhStack,
-	installSuperpowersImpl = installSuperpowers,
-	bootstrapClaudePolicyImpl = bootstrapClaudePolicy,
 	configureClaudeStayAwakeImpl = configureClaudeStayAwake,
 	configureClaudeRemoteControlImpl = configureClaudeRemoteControl,
 	configurePrWatchImpl = configurePrWatch,
 	syncWorktreeCleanupImpl = syncWorktreeCleanup,
 	configureCodexImpl = configureCodex,
-	configureAgentOsImpl = configureAgentOs,
+	configureSkillsImpl = configureSkills,
 } = {}) {
 	if (await promptUserImpl("Configure git?", true)) {
 		const configureGit =
@@ -594,32 +588,6 @@ export async function configureUserApps({
 			`GitHub gh-stack extension installation failed (${err?.message ?? err}) — continuing with remaining app setup.`,
 		);
 	}
-	if (
-		await promptUserImpl("Bootstrap private Claude policy repository?", true)
-	) {
-		try {
-			if (!(await bootstrapClaudePolicyImpl({ strict: false }))) {
-				log.warning(
-					"Claude policy bootstrap failed — continuing. Retry with: haoshoku --claude-bootstrap",
-				);
-			}
-		} catch (err) {
-			log.warning(
-				`Claude policy bootstrap failed (${err?.message ?? err}) — continuing. Retry with: haoshoku --claude-bootstrap`,
-			);
-		}
-	}
-	if (
-		await promptUserImpl("Enable Superpowers plugin for Claude Code?", true)
-	) {
-		try {
-			await installSuperpowersImpl();
-		} catch (err) {
-			log.warning(
-				`Superpowers plugin installation failed (${err?.message ?? err}) — continuing with remaining app setup.`,
-			);
-		}
-	}
 	// These two portable helpers predate the confirmation expansion and were
 	// intentionally unconditional. Keep unattended setup behavior stable.
 	await configureClaudeStayAwakeImpl();
@@ -648,7 +616,11 @@ export async function configureUserApps({
 		}
 	}
 	await configureCodexImpl();
-	await configureAgentOsImpl();
+	if (!(await configureSkillsImpl())) {
+		log.warning(
+			"Matt Pocock skills were not installed — continuing. Retry with: haoshoku --skills",
+		);
+	}
 }
 
 export async function runCachyOSSetup({

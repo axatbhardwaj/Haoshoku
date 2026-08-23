@@ -62,7 +62,7 @@ describe("syncKdePlasma", () => {
 
 	it("opting in retires the obsolete Brave Work launcher", async () => {
 		const stateFile = path.join(home, ".haoshoku.json");
-		fs.writeFileSync(stateFile, '{"skillSources":["example"]}\n');
+		fs.writeFileSync(stateFile, '{"customSetting":"example"}\n');
 		const applications = path.join(home, ".local", "share", "applications");
 		fs.mkdirSync(applications, { recursive: true });
 		fs.writeFileSync(
@@ -73,7 +73,7 @@ describe("syncKdePlasma", () => {
 		await syncKdePlasma({ home, reload: false, enableActivities: true });
 
 		expect(JSON.parse(fs.readFileSync(stateFile, "utf8"))).toEqual({
-			skillSources: ["example"],
+			customSetting: "example",
 			kdeActivities: true,
 		});
 		const flux = fs.readFileSync(

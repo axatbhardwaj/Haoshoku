@@ -1,7 +1,6 @@
 # Local agent/runtime state
 .claude/
 /.worktrees/
-superpowers/
 BRANCH-NOTES.md
 
 # Secrets and local environment
@@ -17,3 +16,6 @@ dist/
 out/
 video/out/
 *.tgz
+
+# Historical design artifacts are retained in Git, not shipped at runtime
+/docs/superpowers/

@@ -141,9 +141,6 @@ dist
 # SvelteKit build / generate output
 .svelte-kit
 
-# Local Superpowers planning/spec artifacts
-/superpowers/
-/agent-os/
 /BRANCH-NOTES.md
 
 ### Python ###
@@ -321,9 +318,6 @@ pyrightconfig.json
 .claude/
 tasks/
 
-# Superpowers brainstorming + planning artifacts (local-only, never committed)
-/superpowers/
-
 # End of https://www.toptal.com/developers/gitignore/api/python,node
 
 # Branch/session working notes (local-only)
@@ -331,9 +325,6 @@ BRANCH-NOTES.md
 
 # Local Git worktrees
 /.worktrees/
-
-# Planning artifacts: specs and plans are never committed (CLAUDE.md §7)
-docs/superpowers/
 
 # Hyprmoncfg profile backups
 /configs/hyprmoncfg/profiles/*.bak.*

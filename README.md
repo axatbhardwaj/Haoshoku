@@ -58,11 +58,9 @@ The Arch setup:
   helper reads the persisted config independently. Device-specific audio stays
   unset without an explicitly persisted selection, and the next interactive
   full setup asks again;
-- keeps Claude stay-awake and PR watch as unconditional portable setup steps,
-  matching their behavior before confirmations were expanded. Full setup asks
-  before the private Claude policy, Superpowers, Claude Remote Control, and
-  automatic git worktree cleanup. Superpowers, Remote Control, and worktree
-  cleanup default to No. The worktree offer explains that it enables a
+- keeps Claude stay-awake, PR watch, and the Matt Pocock skill set as portable
+  setup steps. Full setup asks before Claude Remote Control and automatic git
+  worktree cleanup; both default to No. The worktree offer explains that it enables a
   persistent weekly timer running
   `cleanup-worktrees.sh --apply`, which deletes eligible worktrees. Without
   interactive confirmation—including piped stdin—Haoshoku declines these real
@@ -130,22 +128,18 @@ including bar-widget enablement. Disabling a bar widget through Omarchy's UI is
 therefore reverted on the next deploy. Every other top-level key — including
 `idle`, `plugins`, `disabledPlugins`, `version`, and unknown keys — is preserved.
 
-## Claude policy bootstrap
+## Claude and Codex policy
 
-During full setup, Haoshoku deploys its three-file Claude baseline, then asks
-whether to bootstrap the configured private Claude policy
-repository; the prompt defaults to Yes. If that repository is unreachable or
-authentication fails, setup continues and can be retried with:
+Haoshoku deploys the current compact personal policy to both engines. Back up
+live edits with:
 
 ```bash
-haoshoku --claude-bootstrap
+haoshoku --claude-backup
+haoshoku --codex-backup
 ```
 
-The private repository may own the live `CLAUDE.md`, `settings.json`, workflows,
-conventions, and output styles. Haoshoku owns only the bootstrap orchestration
-and its portable public baseline. Bootstrap
-does not run `git clean`, so Omarchy's managed
-`~/.claude/skills/omarchy` symlink survives.
+Claude runtime state and `settings.json` remain machine-local. Haoshoku never
+walks runtime directories, imports agent definitions, or overwrites skills.
 
 ## Claude Remote Control
 
@@ -223,7 +217,6 @@ haoshoku --claude-backup
 haoshoku --claude-remote-control
 haoshoku --claude-remote-control-backup
 haoshoku --claude-update
-haoshoku --claude-bootstrap
 haoshoku --codex
 haoshoku --codex-backup
 haoshoku --server-t3-code
@@ -235,7 +228,6 @@ haoshoku --mimeapps-backup
 haoshoku --skills
 haoshoku --skills-update
 haoshoku --skills-list
-haoshoku --superpowers
 haoshoku --gh-stack
 haoshoku --claude-stay-awake
 haoshoku --pr-watch
@@ -269,7 +261,7 @@ haoshoku --os debian-server
 ```
 
 The Debian path remains deliberately headless. In addition to its server
-hardening, it installs the portable Claude, Codex, Agent OS, and PR-watch
+hardening, it installs the portable Claude, Codex, Matt Pocock skills, and PR-watch
 configuration and configures T3 Code's upstream-managed background service. It
 ensures Node.js satisfies T3 Code's current runtime range before running
 `npx --yes t3@latest service install` and verifying the service.
@@ -296,11 +288,10 @@ shows the old T3 HTTPS handler, remove that handler with
 `tailscale serve --https=443 off`. `No serve config` means cleanup is already
 complete; Haoshoku never changes existing Tailscale routes automatically.
 
-The full Debian path asks about Git, the private Claude policy, Superpowers,
-Claude stay-awake, Claude Remote Control, and automatic worktree cleanup; then
-finishes without implicitly syncing external skills. Superpowers is applied
-after any accepted policy checkout so the checkout cannot erase its
-registration. Use `haoshoku --skills` explicitly when desired.
+The full Debian path asks about Git, Claude stay-awake, Claude Remote Control,
+and automatic worktree cleanup. It installs Matt Pocock skills for Claude Code
+and Codex through the upstream Skills CLI; `haoshoku --skills` can refresh that
+same source independently.
 
 Debian Server does not ask for `deviceType`: that value only selects desktop
 audio and Hyprland/Omarchy variants. For the same reason the Debian path does

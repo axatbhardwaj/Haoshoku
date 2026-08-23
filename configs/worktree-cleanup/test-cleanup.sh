@@ -10,7 +10,7 @@
 # Contract:
 #   decide <is_main> <dirty> <detached> <unpushed> <pr_state> <merged_into_base> <has_artifacts>
 #     booleans are 1/0; pr_state is one of MERGED|CLOSED|OPEN|NONE|UNKNOWN
-#     has_artifacts = 1 when the worktree holds a non-empty gitignored
+#     has_artifacts = 1 when an older worktree holds a non-empty ignored
 #                     superpowers/ dir (research/plans/review HTML — the only
 #                     local copy; must never be auto-removed)
 #   echoes exactly one of:  KEEP | REMOVE | REVIEW:<reason>
@@ -86,7 +86,7 @@ check "gh unavailable + merged into base -> remove" \
 check "gh unavailable + unmerged -> review (flagged)" \
   "REVIEW:gh unavailable, unmerged" "$(decide 0 0 0 0 UNKNOWN 0 0)"
 
-# --- ARTIFACT GUARD: gitignored superpowers/ docs are the only local copy -----
+# --- LEGACY ARTIFACT GUARD: old superpowers/ docs may be the only local copy --
 check "SAFETY: merged PR but local superpowers/ artifacts -> review, never remove" \
   "REVIEW:local ./superpowers/ artifacts" "$(decide 0 0 0 0 MERGED 1 1)"
 check "SAFETY: no-PR merged-into-base but artifacts -> review, never remove" \
