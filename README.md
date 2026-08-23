@@ -120,6 +120,13 @@ that need manual setup afterwards (API tokens, OAuth, device pairing) are
 printed as a manual-auth checklist after installation.
 The Galaxy Buds plugin is installed from `aislandener/galaxy-buds-control` and
 reports Bluetooth pairing in that checklist; it requires no credentials.
+Agent Usage Plus replaces both Omarchy's stock `omarchy.agents` widget and the
+older `robzolkos.agent-usage` plugin. The full Arch setup deploys its required
+`~/.local/bin/omarchy-agent-usage-update` wrapper before installing plugins. If
+running only selected steps, run `haoshoku --scripts` before
+`haoshoku --omarchy-plugins`. That wrapper also scopes the Omarchy 4.0.0 Codex
+collector's retired `-a untrusted` compatibility translation to usage refreshes;
+ordinary Codex commands still execute the user's normal binary unchanged.
 
 ## Omarchy bar
 

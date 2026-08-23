@@ -16,6 +16,7 @@ binary acts as a PATH-shadow wrapper for that binary.
 | `haoshoku-special-workspace` | Implements numbered-app launchers including T3 Code, exact-class Kitty ownership for workspace 7/Haki/agents, ChatGPT mode, and focus/show/hide behavior for named app and browser special workspaces including Twitch. | Changing workspace recipes, placement, reclaim/launch-if-missing behavior, or browser toggles |
 | `haoshoku-zed-glass` | Post-processes Omazed's generated Zed theme with dotted `background.appearance`, alpha-adjusted surfaces, and neutral borders. | Changing Zed transparency, Omazed hooks, or protected theme surfaces |
 | `mic-toggle` | Toggles the default microphone through `wpctl` or `pactl` and reports the resulting state. | Changing microphone controls or notifications |
+| `omarchy-agent-usage-update` | Exposes Omarchy's packaged agent-usage collector at the user-owned path required by Agent Usage Plus. | Changing the managed agent-usage plugin or collector compatibility |
 
 ## Conventions
 

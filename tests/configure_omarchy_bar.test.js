@@ -547,6 +547,20 @@ it("ships Omarchy's generic media widget in the left bar section", () => {
 	);
 });
 
+it("replaces the stock Agents widget with Agent Usage Plus in the right bar section", () => {
+	const bar = JSON.parse(fs.readFileSync(SHIPPED_BAR, "utf8"));
+	const allIds = Object.values(bar.layout)
+		.flat()
+		.map(({ id }) => id);
+	const rightIds = bar.layout.right.map(({ id }) => id);
+
+	expect(allIds).not.toContain("omarchy.agents");
+	expect(allIds).not.toContain("robzolkos.agent-usage");
+	expect(rightIds.indexOf("io.github.viganogabriele.agent-usage-plus")).toBe(
+		rightIds.indexOf("omarchy.bluetooth") - 1,
+	);
+});
+
 it("ships selected controls inside the bundled tray drawer", () => {
 	const bar = JSON.parse(fs.readFileSync(SHIPPED_BAR, "utf8"));
 	const rightIds = bar.layout.right.map(({ id }) => id);

@@ -49,7 +49,7 @@ const MANIFEST = [
 		id: "io.github.viganogabriele.agent-usage-plus",
 		url: "https://github.com/viganogabriele/agent-usage-plus.git",
 		manualAuth: null,
-		disableOnInstall: ["omarchy.agents"],
+		disableOnInstall: ["omarchy.agents", "robzolkos.agent-usage"],
 	},
 	{
 		id: "aislandener.galaxy-buds",
@@ -522,7 +522,7 @@ describe("Omarchy plugin installer", () => {
 				id: "io.github.viganogabriele.agent-usage-plus",
 				url: "https://github.com/viganogabriele/agent-usage-plus.git",
 				manualAuth: null,
-				disableOnInstall: ["omarchy.agents"],
+				disableOnInstall: ["omarchy.agents", "robzolkos.agent-usage"],
 			},
 			{
 				id: "aislandener.galaxy-buds",
