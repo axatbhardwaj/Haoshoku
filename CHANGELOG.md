@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 11.0.1 - 2026-08-23
 
 - Enable Omarchy's built-in generic media widget in the managed bar so MPRIS
   players such as Spotify and Brave expose now-playing controls after setup.
