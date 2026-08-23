@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Enable Omarchy's built-in generic media widget in the managed bar so MPRIS
+  players such as Spotify and Brave expose now-playing controls after setup.
+- Install and enable the Galaxy Buds plugin, surface its Bluetooth-pairing
+  requirement, and preserve its right-bar placement and label configuration.
+
 ## 11.0.0 - 2026-08-23
 
 - Back up the live compact Claude and Codex personal policy as the portable
