@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 11.0.0 - 2026-08-23
 
 - Back up the live compact Claude and Codex personal policy as the portable
   baseline. Retire the remaining private-policy bootstrap, Agent OS,
