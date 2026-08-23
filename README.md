@@ -123,6 +123,11 @@ printed as a manual-auth checklist after installation.
 
 Use `haoshoku --omarchy-bar` to deploy `configs/omarchy/bar.json`, and use
 `haoshoku --omarchy-bar-backup` to capture the live bar back into the repo.
+The shipped layout enables Omarchy's built-in `omarchy.media` widget in the
+left section, providing now-playing details and controls for MPRIS players such
+as Spotify and Brave. It is supplied by Omarchy itself, so it does not belong
+in Haoshoku's third-party plugin manifest or require a separate clone step.
+The full Arch setup deploys this layout automatically.
 Haoshoku claims the `bar` key of `~/.config/omarchy/shell.json` wholesale,
 including bar-widget enablement. Disabling a bar widget through Omarchy's UI is
 therefore reverted on the next deploy. Every other top-level key — including

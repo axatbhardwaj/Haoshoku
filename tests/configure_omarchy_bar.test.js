@@ -406,3 +406,13 @@ it("places every manifest bar widget in the shipped bar layout", () => {
 	);
 	expect([...expectedBarWidgetIds].every((id) => barIds.has(id))).toBe(true);
 });
+
+it("ships Omarchy's generic media widget in the left bar section", () => {
+	const bar = JSON.parse(fs.readFileSync(SHIPPED_BAR, "utf8"));
+	const leftIds = bar.layout.left.map(({ id }) => id);
+
+	expect(leftIds).toContain("omarchy.media");
+	expect(leftIds.indexOf("omarchy.media")).toBe(
+		leftIds.indexOf("io.github.thetrueferret.decent-workspaces") + 1,
+	);
+});
