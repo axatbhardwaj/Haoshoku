@@ -12,9 +12,6 @@
 			},
 			{
 				"id": "omarchy.media"
-			},
-			{
-				"id": "robzolkos.agent-usage"
 			}
 		],
 		"center": [
@@ -55,6 +52,9 @@
 			},
 			{
 				"id": "crmne.hyprmoncfg"
+			},
+			{
+				"id": "io.github.viganogabriele.agent-usage-plus"
 			},
 			{
 				"id": "omarchy.bluetooth"

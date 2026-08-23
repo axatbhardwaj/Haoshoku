@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Replace both the stock Agents widget and the former Agent Usage plugin with
+  Agent Usage Plus, keeping it in the stock right-bar position and deploying
+  the user-path collector wrapper required by the upstream plugin. The wrapper
+  also translates Omarchy 4.0.0's retired Codex `untrusted` approval value to
+  `never` only inside usage refreshes, restoring rate-limit discovery on
+  current Codex releases without changing normal Codex launches.
+
 ## 11.0.1 - 2026-08-23
 
 - Enable Omarchy's built-in generic media widget in the managed bar so MPRIS

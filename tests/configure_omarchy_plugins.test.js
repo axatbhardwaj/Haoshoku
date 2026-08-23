@@ -46,10 +46,10 @@ const MANIFEST = [
 		manualAuth: null,
 	},
 	{
-		id: "robzolkos.agent-usage",
-		url: "https://github.com/robzolkos/omarchy-agent-usage.git",
+		id: "io.github.viganogabriele.agent-usage-plus",
+		url: "https://github.com/viganogabriele/agent-usage-plus.git",
 		manualAuth: null,
-		disableOnInstall: ["omarchy.agents"],
+		disableOnInstall: ["omarchy.agents", "robzolkos.agent-usage"],
 	},
 	{
 		id: "aislandener.galaxy-buds",
@@ -272,7 +272,7 @@ describe("Omarchy plugin installer", () => {
 		expect(result.installed).toEqual([
 			"omaconnect",
 			"io.github.thetrueferret.decent-workspaces",
-			"robzolkos.agent-usage",
+			"io.github.viganogabriele.agent-usage-plus",
 			"aislandener.galaxy-buds",
 		]);
 		expect(result.alreadyReady).toHaveLength(4);
@@ -510,10 +510,10 @@ describe("Omarchy plugin installer", () => {
 				manualAuth: null,
 			},
 			{
-				id: "robzolkos.agent-usage",
-				url: "https://github.com/robzolkos/omarchy-agent-usage.git",
+				id: "io.github.viganogabriele.agent-usage-plus",
+				url: "https://github.com/viganogabriele/agent-usage-plus.git",
 				manualAuth: null,
-				disableOnInstall: ["omarchy.agents"],
+				disableOnInstall: ["omarchy.agents", "robzolkos.agent-usage"],
 			},
 			{
 				id: "aislandener.galaxy-buds",

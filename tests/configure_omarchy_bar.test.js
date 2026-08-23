@@ -193,7 +193,7 @@ describe("configureOmarchyBar", () => {
 
 	it("warns for a manifest plugin missing on disk and still deploys", async () => {
 		const fixture = makeFixture({ shell: { version: 1 } });
-		fs.rmSync(path.join(fixture.pluginsDir, "robzolkos.agent-usage"), { recursive: true });
+		fs.rmSync(path.join(fixture.pluginsDir, "io.github.viganogabriele.agent-usage-plus"), { recursive: true });
 
 		const result = await configureOmarchyBar(fixture.opts);
 
@@ -390,7 +390,7 @@ it("places every manifest bar widget in the shipped bar layout", () => {
 		"omaconnect",
 		"io.github.thetrueferret.decent-workspaces",
 		"dizziee.system-stats",
-		"robzolkos.agent-usage",
+		"io.github.viganogabriele.agent-usage-plus",
 		"aislandener.galaxy-buds",
 	]);
 	const manifestIds = new Set(
@@ -415,6 +415,20 @@ it("ships Omarchy's generic media widget in the left bar section", () => {
 	expect(leftIds).toContain("omarchy.media");
 	expect(leftIds.indexOf("omarchy.media")).toBe(
 		leftIds.indexOf("io.github.thetrueferret.decent-workspaces") + 1,
+	);
+});
+
+it("replaces the stock Agents widget with Agent Usage Plus in the right bar section", () => {
+	const bar = JSON.parse(fs.readFileSync(SHIPPED_BAR, "utf8"));
+	const allIds = Object.values(bar.layout)
+		.flat()
+		.map(({ id }) => id);
+	const rightIds = bar.layout.right.map(({ id }) => id);
+
+	expect(allIds).not.toContain("omarchy.agents");
+	expect(allIds).not.toContain("robzolkos.agent-usage");
+	expect(rightIds.indexOf("io.github.viganogabriele.agent-usage-plus")).toBe(
+		rightIds.indexOf("omarchy.bluetooth") - 1,
 	);
 });
 
