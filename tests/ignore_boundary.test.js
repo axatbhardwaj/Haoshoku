@@ -32,6 +32,7 @@ it("keeps local runtime ignore configuration explicit", () => {
 		".sidecar/",
 		".todos/",
 		"node_modules/",
+		"/docs/superpowers/",
 	]) {
 		expect(packageIgnore).toContain(expected);
 	}

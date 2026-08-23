@@ -16,3 +16,6 @@ dist/
 out/
 video/out/
 *.tgz
+
+# Historical design artifacts are retained in Git, not shipped at runtime
+/docs/superpowers/
