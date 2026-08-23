@@ -381,7 +381,7 @@ it("keeps every shipped third-party bar id in the plugin manifest", () => {
 });
 
 it("places every manifest bar widget in the shipped bar layout", () => {
-	// The manifest has no kinds field. These are all eight ids except the
+	// The manifest has no kinds field. These are all ids except the
 	// raindrop-bookmarks overlay, which does not belong in bar.layout.
 	const expectedBarWidgetIds = new Set([
 		"crmne.hyprmoncfg",
@@ -391,6 +391,7 @@ it("places every manifest bar widget in the shipped bar layout", () => {
 		"io.github.thetrueferret.decent-workspaces",
 		"dizziee.system-stats",
 		"robzolkos.agent-usage",
+		"aislandener.galaxy-buds",
 	]);
 	const manifestIds = new Set(
 		JSON.parse(fs.readFileSync(SHIPPED_MANIFEST, "utf8")).map(({ id }) => id),
@@ -405,4 +406,27 @@ it("places every manifest bar widget in the shipped bar layout", () => {
 		expectedBarWidgetIds,
 	);
 	expect([...expectedBarWidgetIds].every((id) => barIds.has(id))).toBe(true);
+});
+
+it("ships Omarchy's generic media widget in the left bar section", () => {
+	const bar = JSON.parse(fs.readFileSync(SHIPPED_BAR, "utf8"));
+	const leftIds = bar.layout.left.map(({ id }) => id);
+
+	expect(leftIds).toContain("omarchy.media");
+	expect(leftIds.indexOf("omarchy.media")).toBe(
+		leftIds.indexOf("io.github.thetrueferret.decent-workspaces") + 1,
+	);
+});
+
+it("ships Galaxy Buds beside audio with repository-owned label configuration", () => {
+	const bar = JSON.parse(fs.readFileSync(SHIPPED_BAR, "utf8"));
+	const rightIds = bar.layout.right.map(({ id }) => id);
+	const buds = bar.layout.right.find(
+		({ id }) => id === "aislandener.galaxy-buds",
+	);
+
+	expect(buds).toEqual({ id: "aislandener.galaxy-buds", labels: {} });
+	expect(rightIds.indexOf("aislandener.galaxy-buds")).toBe(
+		rightIds.indexOf("omarchy.audio") - 1,
+	);
 });

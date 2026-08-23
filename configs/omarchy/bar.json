@@ -11,6 +11,9 @@
 				"id": "io.github.thetrueferret.decent-workspaces"
 			},
 			{
+				"id": "omarchy.media"
+			},
+			{
 				"id": "robzolkos.agent-usage"
 			}
 		],
@@ -58,6 +61,10 @@
 			},
 			{
 				"id": "omarchy.network"
+			},
+			{
+				"id": "aislandener.galaxy-buds",
+				"labels": {}
 			},
 			{
 				"id": "omarchy.audio"

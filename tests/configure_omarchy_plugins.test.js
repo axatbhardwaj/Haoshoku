@@ -51,19 +51,25 @@ const MANIFEST = [
 		manualAuth: null,
 		disableOnInstall: ["omarchy.agents"],
 	},
+	{
+		id: "aislandener.galaxy-buds",
+		url: "https://github.com/aislandener/galaxy-buds-control.git",
+		manualAuth: "Galaxy Buds Bluetooth pairing",
+	},
 ];
 
 const DECENT_WORKSPACES = MANIFEST.find(
 	(plugin) => plugin.id === "io.github.thetrueferret.decent-workspaces",
 );
 
-const MISSING_WHEN_FIRST_7_PRESENT = ["robzolkos.agent-usage"];
+const MISSING_WHEN_FIRST_8_PRESENT = ["aislandener.galaxy-buds"];
 
 const MANUAL_AUTH_IDS = [
 	"crmne.hyprmoncfg",
 	"robzolkos.github",
 	"io.github.treramey.raindrop-bookmarks",
 	"omaconnect",
+	"aislandener.galaxy-buds",
 ];
 
 function installedJson(
@@ -179,8 +185,8 @@ describe("Omarchy plugin installer", () => {
 		expect(calls).toEqual([["omarchy", "version"]]);
 		expect(lines.warning.join("\n")).toContain("Omarchy 4 or newer");
 	});
-	it("installs only the 1 missing plugin when 7 of 8 are already enabled", async () => {
-		const enabledIds = MANIFEST.slice(0, 7).map((plugin) => plugin.id);
+	it("installs only the 1 missing plugin when 8 of 9 are already enabled", async () => {
+		const enabledIds = MANIFEST.slice(0, 8).map((plugin) => plugin.id);
 		const { calls, runner } = makeRunner({
 			installedJsonBody: installedJson(enabledIds),
 		});
@@ -194,7 +200,7 @@ describe("Omarchy plugin installer", () => {
 
 		const addCalls = commandType(calls, "add");
 		expect(addCalls).toHaveLength(1);
-		for (const id of MISSING_WHEN_FIRST_7_PRESENT) {
+		for (const id of MISSING_WHEN_FIRST_8_PRESENT) {
 			const url = MANIFEST.find((plugin) => plugin.id === id).url;
 			expect(addCalls).toContainEqual([
 				"omarchy",
@@ -207,7 +213,7 @@ describe("Omarchy plugin installer", () => {
 		}
 		expect(commandType(calls, "enable")).toHaveLength(0);
 		expect(result.installed.sort()).toEqual(
-			[...MISSING_WHEN_FIRST_7_PRESENT].sort(),
+			[...MISSING_WHEN_FIRST_8_PRESENT].sort(),
 		);
 		expect(result.enabled).toEqual([]);
 		expect(result.failed).toEqual([]);
@@ -238,7 +244,7 @@ describe("Omarchy plugin installer", () => {
 		]);
 		expect(result.installed).toEqual([]);
 		expect(result.enabled).toEqual(["robzolkos.github"]);
-		expect(result.alreadyReady).toHaveLength(7);
+		expect(result.alreadyReady).toHaveLength(8);
 		expect(result.failed).toEqual([]);
 	});
 
@@ -259,7 +265,7 @@ describe("Omarchy plugin installer", () => {
 			logImpl,
 		});
 
-		expect(commandType(calls, "add")).toHaveLength(4);
+		expect(commandType(calls, "add")).toHaveLength(5);
 		expect(commandType(calls, "remove")).toEqual([]);
 		expect(result.failed).toEqual(["dizziee.system-stats"]);
 		expect(result.configureFailed).toEqual([]);
@@ -267,6 +273,7 @@ describe("Omarchy plugin installer", () => {
 			"omaconnect",
 			"io.github.thetrueferret.decent-workspaces",
 			"robzolkos.agent-usage",
+			"aislandener.galaxy-buds",
 		]);
 		expect(result.alreadyReady).toHaveLength(4);
 		expect(lines.warning.join("\n")).toContain("dizziee.system-stats");
@@ -342,7 +349,11 @@ describe("Omarchy plugin installer", () => {
 					id: "io.github.treramey.raindrop-bookmarks",
 					requirement: "Raindrop API token",
 				},
-					{ id: "omaconnect", requirement: "KDE Connect pairing" },
+				{ id: "omaconnect", requirement: "KDE Connect pairing" },
+				{
+					id: "aislandener.galaxy-buds",
+					requirement: "Galaxy Buds Bluetooth pairing",
+				},
 			],
 		});
 		expect(lines.warning.join("\n")).toContain("exit code 1");
@@ -459,7 +470,7 @@ describe("Omarchy plugin installer", () => {
 		);
 	});
 
-	it("ships a manifest on disk with exactly the 8 expected plugins", () => {
+	it("ships a manifest on disk with exactly the 9 expected plugins", () => {
 		const EXPECTED_PLUGINS = [
 			{
 				id: "crmne.hyprmoncfg",
@@ -503,6 +514,11 @@ describe("Omarchy plugin installer", () => {
 				url: "https://github.com/robzolkos/omarchy-agent-usage.git",
 				manualAuth: null,
 				disableOnInstall: ["omarchy.agents"],
+			},
+			{
+				id: "aislandener.galaxy-buds",
+				url: "https://github.com/aislandener/galaxy-buds-control.git",
+				manualAuth: "Galaxy Buds Bluetooth pairing",
 			},
 		];
 

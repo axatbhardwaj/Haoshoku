@@ -40,5 +40,10 @@
 		"url": "https://github.com/robzolkos/omarchy-agent-usage.git",
 		"manualAuth": null,
 		"disableOnInstall": ["omarchy.agents"]
+	},
+	{
+		"id": "aislandener.galaxy-buds",
+		"url": "https://github.com/aislandener/galaxy-buds-control.git",
+		"manualAuth": "Galaxy Buds Bluetooth pairing"
 	}
 ]
