@@ -46,8 +46,8 @@ const MANIFEST = [
 		manualAuth: null,
 	},
 	{
-		id: "robzolkos.agent-usage",
-		url: "https://github.com/robzolkos/omarchy-agent-usage.git",
+		id: "io.github.viganogabriele.agent-usage-plus",
+		url: "https://github.com/viganogabriele/agent-usage-plus.git",
 		manualAuth: null,
 		disableOnInstall: ["omarchy.agents"],
 	},
@@ -56,13 +56,21 @@ const MANIFEST = [
 		url: "https://github.com/aislandener/galaxy-buds-control.git",
 		manualAuth: "Galaxy Buds Bluetooth pairing",
 	},
+	{
+		id: "io.github.nag3sy.feishin",
+		url: "https://github.com/nag3sy/feishin-omarchy-plugin.git",
+		manualAuth: null,
+	},
 ];
 
 const DECENT_WORKSPACES = MANIFEST.find(
 	(plugin) => plugin.id === "io.github.thetrueferret.decent-workspaces",
 );
 
-const MISSING_WHEN_FIRST_8_PRESENT = ["aislandener.galaxy-buds"];
+const MISSING_WHEN_FIRST_8_PRESENT = [
+	"aislandener.galaxy-buds",
+	"io.github.nag3sy.feishin",
+];
 
 const MANUAL_AUTH_IDS = [
 	"crmne.hyprmoncfg",
@@ -185,7 +193,7 @@ describe("Omarchy plugin installer", () => {
 		expect(calls).toEqual([["omarchy", "version"]]);
 		expect(lines.warning.join("\n")).toContain("Omarchy 4 or newer");
 	});
-	it("installs only the 1 missing plugin when 8 of 9 are already enabled", async () => {
+	it("installs only the missing plugins when the first 8 are already enabled", async () => {
 		const enabledIds = MANIFEST.slice(0, 8).map((plugin) => plugin.id);
 		const { calls, runner } = makeRunner({
 			installedJsonBody: installedJson(enabledIds),
@@ -199,7 +207,7 @@ describe("Omarchy plugin installer", () => {
 		});
 
 		const addCalls = commandType(calls, "add");
-		expect(addCalls).toHaveLength(1);
+		expect(addCalls).toHaveLength(2);
 		for (const id of MISSING_WHEN_FIRST_8_PRESENT) {
 			const url = MANIFEST.find((plugin) => plugin.id === id).url;
 			expect(addCalls).toContainEqual([
@@ -244,7 +252,7 @@ describe("Omarchy plugin installer", () => {
 		]);
 		expect(result.installed).toEqual([]);
 		expect(result.enabled).toEqual(["robzolkos.github"]);
-		expect(result.alreadyReady).toHaveLength(8);
+		expect(result.alreadyReady).toHaveLength(9);
 		expect(result.failed).toEqual([]);
 	});
 
@@ -265,15 +273,16 @@ describe("Omarchy plugin installer", () => {
 			logImpl,
 		});
 
-		expect(commandType(calls, "add")).toHaveLength(5);
+		expect(commandType(calls, "add")).toHaveLength(6);
 		expect(commandType(calls, "remove")).toEqual([]);
 		expect(result.failed).toEqual(["dizziee.system-stats"]);
 		expect(result.configureFailed).toEqual([]);
 		expect(result.installed).toEqual([
 			"omaconnect",
 			"io.github.thetrueferret.decent-workspaces",
-			"robzolkos.agent-usage",
+			"io.github.viganogabriele.agent-usage-plus",
 			"aislandener.galaxy-buds",
+			"io.github.nag3sy.feishin",
 		]);
 		expect(result.alreadyReady).toHaveLength(4);
 		expect(lines.warning.join("\n")).toContain("dizziee.system-stats");
@@ -402,12 +411,12 @@ describe("Omarchy plugin installer", () => {
 		"{}",
 	])("skips all plugin work for a non-array plugin list (%s)", async (stdoutBody) => {
 		const calls = [];
-			const runner = async (argv) => {
-				calls.push(argv);
-				if (argv.join(" ") === "omarchy version") {
-					return { exitCode: 0, stdout: "Omarchy 4.0.0\n", stderr: "" };
-				}
-				if (argv.join(" ") === "omarchy plugin list --json") {
+		const runner = async (argv) => {
+			calls.push(argv);
+			if (argv.join(" ") === "omarchy version") {
+				return { exitCode: 0, stdout: "Omarchy 4.0.0\n", stderr: "" };
+			}
+			if (argv.join(" ") === "omarchy plugin list --json") {
 				return { exitCode: 0, stdout: stdoutBody, stderr: "" };
 			}
 			return { exitCode: 0, stdout: "", stderr: "" };
@@ -470,7 +479,7 @@ describe("Omarchy plugin installer", () => {
 		);
 	});
 
-	it("ships a manifest on disk with exactly the 9 expected plugins", () => {
+	it("ships a manifest on disk with exactly the 10 expected plugins", () => {
 		const EXPECTED_PLUGINS = [
 			{
 				id: "crmne.hyprmoncfg",
@@ -510,8 +519,8 @@ describe("Omarchy plugin installer", () => {
 				manualAuth: null,
 			},
 			{
-				id: "robzolkos.agent-usage",
-				url: "https://github.com/robzolkos/omarchy-agent-usage.git",
+				id: "io.github.viganogabriele.agent-usage-plus",
+				url: "https://github.com/viganogabriele/agent-usage-plus.git",
 				manualAuth: null,
 				disableOnInstall: ["omarchy.agents"],
 			},
@@ -519,6 +528,11 @@ describe("Omarchy plugin installer", () => {
 				id: "aislandener.galaxy-buds",
 				url: "https://github.com/aislandener/galaxy-buds-control.git",
 				manualAuth: "Galaxy Buds Bluetooth pairing",
+			},
+			{
+				id: "io.github.nag3sy.feishin",
+				url: "https://github.com/nag3sy/feishin-omarchy-plugin.git",
+				manualAuth: null,
 			},
 		];
 
@@ -668,7 +682,8 @@ describe("Omarchy plugin installer", () => {
 		const plainPlugin = MANIFEST[1];
 		const result = await configureOmarchyPlugins({
 			manifest: [plainPlugin],
-			runCommandImpl: makeRunner({ installedJsonBody: installedJson([]) }).runner,
+			runCommandImpl: makeRunner({ installedJsonBody: installedJson([]) })
+				.runner,
 			logImpl: makeLog().logImpl,
 		});
 
@@ -706,7 +721,10 @@ describe("Omarchy plugin installer", () => {
 
 	it("does not reapply disableOnInstall for a present-and-enabled plugin", async () => {
 		const { calls, runner } = makeRunner({
-			installedJsonBody: installedJson([DECENT_WORKSPACES.id, "omarchy.workspaces"]),
+			installedJsonBody: installedJson([
+				DECENT_WORKSPACES.id,
+				"omarchy.workspaces",
+			]),
 		});
 		const result = await configureOmarchyPlugins({
 			manifest: [DECENT_WORKSPACES],
@@ -737,7 +755,10 @@ describe("Omarchy plugin installer", () => {
 	});
 
 	it.each([
-		{ label: "disabled", list: installedJson([], { disabled: ["omarchy.workspaces"] }) },
+		{
+			label: "disabled",
+			list: installedJson([], { disabled: ["omarchy.workspaces"] }),
+		},
 		{ label: "absent", list: installedJson([]) },
 	])("skips a disableOnInstall target that is $label", async ({ list }) => {
 		const { calls, runner } = makeRunner({ installedJsonBody: list });
@@ -838,10 +859,7 @@ describe("Omarchy plugin installer", () => {
 				}
 				return {
 					exitCode: 0,
-					stdout: installedJson([
-						DECENT_WORKSPACES.id,
-						"omarchy.workspaces",
-					]),
+					stdout: installedJson([DECENT_WORKSPACES.id, "omarchy.workspaces"]),
 					stderr: "",
 				};
 			},
@@ -856,5 +874,4 @@ describe("Omarchy plugin installer", () => {
 		expect(second.configured).toEqual([]);
 		expect(second.configureFailed).toEqual([]);
 	});
-
 });

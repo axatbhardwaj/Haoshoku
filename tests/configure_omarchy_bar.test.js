@@ -10,24 +10,57 @@ import {
 
 const PROJECT_ROOT = path.resolve(import.meta.dir, "..");
 const SHIPPED_BAR = path.join(PROJECT_ROOT, "configs", "omarchy", "bar.json");
-const SHIPPED_MANIFEST = path.join(PROJECT_ROOT, "common", "omarchy-plugins.json");
+const SHIPPED_MANIFEST = path.join(
+	PROJECT_ROOT,
+	"common",
+	"omarchy-plugins.json",
+);
+const BUNDLED_TRAY_FILES = ["Tray.qml", "TrayModel.js", "manifest.json"];
 const tempRoots = [];
 
 function makeFixture({ bar, manifest, shell } = {}) {
 	const root = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-omarchy-bar-"));
 	tempRoots.push(root);
 	const repoBarPath = path.join(root, "repo", "configs", "omarchy", "bar.json");
-	const manifestPath = path.join(root, "repo", "common", "omarchy-plugins.json");
-	const liveShellPath = path.join(root, "home", ".config", "omarchy", "shell.json");
+	const manifestPath = path.join(
+		root,
+		"repo",
+		"common",
+		"omarchy-plugins.json",
+	);
+	const liveShellPath = path.join(
+		root,
+		"home",
+		".config",
+		"omarchy",
+		"shell.json",
+	);
 	const pluginsDir = path.join(root, "home", ".config", "omarchy", "plugins");
+	const repoPluginsDir = path.join(
+		root,
+		"repo",
+		"configs",
+		"omarchy",
+		"plugins",
+	);
 	fs.mkdirSync(path.dirname(repoBarPath), { recursive: true });
 	fs.mkdirSync(path.dirname(manifestPath), { recursive: true });
 	fs.mkdirSync(path.dirname(liveShellPath), { recursive: true });
 	fs.mkdirSync(pluginsDir, { recursive: true });
+	const repoTrayDir = path.join(repoPluginsDir, "xzat.tray");
+	fs.mkdirSync(repoTrayDir, { recursive: true });
+	for (const filename of BUNDLED_TRAY_FILES) {
+		fs.writeFileSync(path.join(repoTrayDir, filename), `repo ${filename}\n`);
+	}
 	fs.writeFileSync(repoBarPath, bar ?? fs.readFileSync(SHIPPED_BAR));
 	fs.writeFileSync(manifestPath, manifest ?? fs.readFileSync(SHIPPED_MANIFEST));
 	if (shell !== undefined) {
-		fs.writeFileSync(liveShellPath, typeof shell === "string" ? shell : `${JSON.stringify(shell, null, "\t")}\n`);
+		fs.writeFileSync(
+			liveShellPath,
+			typeof shell === "string"
+				? shell
+				: `${JSON.stringify(shell, null, "\t")}\n`,
+		);
 	}
 	try {
 		for (const { id } of JSON.parse(fs.readFileSync(manifestPath, "utf8"))) {
@@ -42,28 +75,52 @@ function makeFixture({ bar, manifest, shell } = {}) {
 		manifestPath,
 		liveShellPath,
 		pluginsDir,
+		repoPluginsDir,
 		warnings,
 		opts: {
 			repoBarPath,
 			manifestPath,
 			liveShellPath,
 			pluginsDir,
+			repoPluginsDir,
 			versionResult: { exitCode: 0, stdout: "Omarchy 4.0.0" },
 			logImpl: {
 				dim() {},
 				info() {},
 				success() {},
-				warning(message) { warnings.push(message); },
+				warning(message) {
+					warnings.push(message);
+				},
 			},
 		},
 	};
 }
 
 afterEach(() => {
-	for (const root of tempRoots.splice(0)) fs.rmSync(root, { recursive: true, force: true });
+	for (const root of tempRoots.splice(0))
+		fs.rmSync(root, { recursive: true, force: true });
 });
 
 describe("configureOmarchyBar", () => {
+	it("installs the bundled tray plugin in Omarchy's default user plugin path", async () => {
+		const fixture = makeFixture({
+			bar: `${JSON.stringify({ layout: { right: [{ id: "xzat.tray" }] } })}\n`,
+			shell: { version: 1 },
+		});
+
+		const result = await configureOmarchyBar(fixture.opts);
+
+		expect(result.status).toBe("configured");
+		for (const filename of BUNDLED_TRAY_FILES) {
+			expect(
+				fs.readFileSync(
+					path.join(fixture.pluginsDir, "xzat.tray", filename),
+					"utf8",
+				),
+			).toBe(`repo ${filename}\n`);
+		}
+	});
+
 	it("merges the owned bar while preserving unrelated top-level values", async () => {
 		const live = {
 			version: 1,
@@ -82,7 +139,9 @@ describe("configureOmarchyBar", () => {
 		expect(deployed.plugins).toEqual(live.plugins);
 		expect(deployed.disabledPlugins).toEqual(["omarchy.stock-widget"]);
 		expect(deployed.junk).toEqual(live.junk);
-		expect(deployed.bar).toEqual(JSON.parse(fs.readFileSync(fixture.repoBarPath, "utf8")));
+		expect(deployed.bar).toEqual(
+			JSON.parse(fs.readFileSync(fixture.repoBarPath, "utf8")),
+		);
 	});
 
 	it("refuses deployment when Omarchy is older than version 4", async () => {
@@ -114,9 +173,9 @@ describe("configureOmarchyBar", () => {
 
 		await configureOmarchyBar({ ...fixture.opts, now: () => 12345 });
 
-		expect(fs.readFileSync(`${fixture.liveShellPath}.malformed.12345`, "utf8")).toBe(
-			malformed,
-		);
+		expect(
+			fs.readFileSync(`${fixture.liveShellPath}.malformed.12345`, "utf8"),
+		).toBe(malformed);
 		const deployed = JSON.parse(fs.readFileSync(fixture.liveShellPath, "utf8"));
 		expect(deployed.version).toBe(1);
 		expect(deployed.idle).toEqual({ screensaver: 150, lock: 300 });
@@ -127,12 +186,15 @@ describe("configureOmarchyBar", () => {
 	it("treats parsed null live JSON as malformed and recovers from safe defaults", async () => {
 		const fixture = makeFixture({ shell: "null\n" });
 
-		const result = await configureOmarchyBar({ ...fixture.opts, now: () => 12346 });
+		const result = await configureOmarchyBar({
+			...fixture.opts,
+			now: () => 12346,
+		});
 
 		expect(result.status).toBe("configured");
-		expect(fs.readFileSync(`${fixture.liveShellPath}.malformed.12346`, "utf8")).toBe(
-			"null\n",
-		);
+		expect(
+			fs.readFileSync(`${fixture.liveShellPath}.malformed.12346`, "utf8"),
+		).toBe("null\n");
 		const deployed = JSON.parse(fs.readFileSync(fixture.liveShellPath, "utf8"));
 		expect(deployed.idle).toEqual({ screensaver: 150, lock: 300 });
 		expect(deployed.plugins).toEqual([]);
@@ -157,7 +219,10 @@ describe("configureOmarchyBar", () => {
 			{ layout: { left: "not-an-array" } },
 			{ layout: { left: [{}] } },
 		]) {
-			const fixture = makeFixture({ bar: `${JSON.stringify(bar)}\n`, shell: { version: 1 } });
+			const fixture = makeFixture({
+				bar: `${JSON.stringify(bar)}\n`,
+				shell: { version: 1 },
+			});
 
 			const result = await configureOmarchyBar(fixture.opts);
 
@@ -193,13 +258,17 @@ describe("configureOmarchyBar", () => {
 
 	it("warns for a manifest plugin missing on disk and still deploys", async () => {
 		const fixture = makeFixture({ shell: { version: 1 } });
-		fs.rmSync(path.join(fixture.pluginsDir, "robzolkos.agent-usage"), { recursive: true });
+		fs.rmSync(path.join(fixture.pluginsDir, "io.github.nag3sy.feishin"), {
+			recursive: true,
+		});
 
 		const result = await configureOmarchyBar(fixture.opts);
 
 		expect(result.status).toBe("configured");
 		expect(fixture.warnings.join("\n")).toContain("haoshoku --omarchy-plugins");
-		expect(JSON.parse(fs.readFileSync(fixture.liveShellPath, "utf8")).bar).toBeDefined();
+		expect(
+			JSON.parse(fs.readFileSync(fixture.liveShellPath, "utf8")).bar,
+		).toBeDefined();
 	});
 
 	it("uses safeCopyFile's unchanged path on an idempotent re-run", async () => {
@@ -231,15 +300,19 @@ describe("configureOmarchyBar", () => {
 			},
 		};
 
-		const result = await configureOmarchyBar({ ...fixture.opts, fsImpl, now: () => 77 });
+		const result = await configureOmarchyBar({
+			...fixture.opts,
+			fsImpl,
+			now: () => 77,
+		});
 
 		expect(result.changed).toBe(true);
-		expect(renames.some(({ destination }) => destination === fixture.liveShellPath)).toBe(
-			true,
-		);
-		expect(copies.some(({ destination }) => destination === fixture.liveShellPath)).toBe(
-			false,
-		);
+		expect(
+			renames.some(({ destination }) => destination === fixture.liveShellPath),
+		).toBe(true);
+		expect(
+			copies.some(({ destination }) => destination === fixture.liveShellPath),
+		).toBe(false);
 		expect(fs.statSync(fixture.liveShellPath).mode & 0o777).toBe(0o600);
 	});
 
@@ -261,7 +334,9 @@ describe("configureOmarchyBar", () => {
 
 		const result = await configureOmarchyBar({ ...fixture.opts, fsImpl });
 
-		expect(result).toEqual(expect.objectContaining({ status: "refused", changed: false }));
+		expect(result).toEqual(
+			expect.objectContaining({ status: "refused", changed: false }),
+		);
 		expect(fs.readFileSync(fixture.liveShellPath, "utf8")).toBe(concurrent);
 		expect(fixture.warnings.join("\n")).toContain("Re-run");
 	});
@@ -273,7 +348,9 @@ describe("configureOmarchyBar", () => {
 		await configureOmarchyBar({ ...fixture.opts, now: () => 88 });
 
 		for (const suffix of [".haoshoku-first-capture", ".bak", ".bak.88"]) {
-			expect(fs.readFileSync(`${fixture.liveShellPath}${suffix}`, "utf8")).toBe(original);
+			expect(fs.readFileSync(`${fixture.liveShellPath}${suffix}`, "utf8")).toBe(
+				original,
+			);
 		}
 	});
 
@@ -304,12 +381,49 @@ describe("configureOmarchyBar", () => {
 			layout: { left: [{ id: "omarchy.clock", format: "HH:mm" }] },
 		};
 		const live = JSON.parse(fs.readFileSync(fixture.liveShellPath, "utf8"));
-		fs.writeFileSync(fixture.liveShellPath, `${JSON.stringify({ ...live, bar: editedBar }, null, "\t")}\n`);
+		fs.writeFileSync(
+			fixture.liveShellPath,
+			`${JSON.stringify({ ...live, bar: editedBar }, null, "\t")}\n`,
+		);
 
 		const result = await backupOmarchyBar(fixture.opts);
 
 		expect(result.status).toBe("backed-up");
-		expect(JSON.parse(fs.readFileSync(fixture.repoBarPath, "utf8"))).toEqual(editedBar);
+		expect(JSON.parse(fs.readFileSync(fixture.repoBarPath, "utf8"))).toEqual(
+			editedBar,
+		);
+	});
+
+	it("backs up the live bundled tray plugin with the bar", async () => {
+		const fixture = makeFixture({
+			bar: `${JSON.stringify({ layout: { right: [{ id: "xzat.tray" }] } })}\n`,
+			shell: { version: 1 },
+		});
+		const liveTrayDir = path.join(fixture.pluginsDir, "xzat.tray");
+		fs.mkdirSync(liveTrayDir, { recursive: true });
+		for (const filename of BUNDLED_TRAY_FILES) {
+			fs.writeFileSync(path.join(liveTrayDir, filename), `live ${filename}\n`);
+		}
+		fs.rmSync(path.join(fixture.repoPluginsDir, "xzat.tray"), {
+			recursive: true,
+		});
+		fs.writeFileSync(
+			fixture.liveShellPath,
+			`${JSON.stringify({ version: 1, bar: { layout: { right: [{ id: "xzat.tray" }] } } })}\n`,
+		);
+
+		const result = await backupOmarchyBar(fixture.opts);
+
+		expect(result.status).toBe("backed-up");
+		expect(fixture.warnings.join("\n")).not.toContain("xzat.tray");
+		for (const filename of BUNDLED_TRAY_FILES) {
+			expect(
+				fs.readFileSync(
+					path.join(fixture.repoPluginsDir, "xzat.tray", filename),
+					"utf8",
+				),
+			).toBe(`live ${filename}\n`);
+		}
 	});
 
 	it("skips backup when the live shell file is missing", async () => {
@@ -355,7 +469,9 @@ describe("configureOmarchyBar", () => {
 
 		expect(result.status).toBe("backed-up");
 		expect(fixture.warnings.join("\n")).toContain("unknown.widget");
-		expect(fixture.warnings.join("\n")).toContain("common/omarchy-plugins.json");
+		expect(fixture.warnings.join("\n")).toContain(
+			"common/omarchy-plugins.json",
+		);
 	});
 
 	it("leaves the repository bar byte-identical after deploy then backup", async () => {
@@ -369,15 +485,20 @@ describe("configureOmarchyBar", () => {
 	});
 });
 
-it("keeps every shipped third-party bar id in the plugin manifest", () => {
+it("keeps every shipped third-party bar id installable", () => {
 	const bar = JSON.parse(fs.readFileSync(SHIPPED_BAR, "utf8"));
-	const manifestIds = new Set(JSON.parse(fs.readFileSync(SHIPPED_MANIFEST, "utf8")).map(({ id }) => id));
+	const installableIds = new Set([
+		...JSON.parse(fs.readFileSync(SHIPPED_MANIFEST, "utf8")).map(
+			({ id }) => id,
+		),
+		"xzat.tray",
+	]);
 	const thirdPartyIds = Object.values(bar.layout)
 		.flat()
 		.map(({ id }) => id)
 		.filter((id) => !id.startsWith("omarchy."));
 
-	expect(thirdPartyIds.every((id) => manifestIds.has(id))).toBe(true);
+	expect(thirdPartyIds.every((id) => installableIds.has(id))).toBe(true);
 });
 
 it("places every manifest bar widget in the shipped bar layout", () => {
@@ -389,22 +510,30 @@ it("places every manifest bar widget in the shipped bar layout", () => {
 		"robzolkos.github",
 		"omaconnect",
 		"io.github.thetrueferret.decent-workspaces",
+		"io.github.nag3sy.feishin",
 		"dizziee.system-stats",
-		"robzolkos.agent-usage",
+		"io.github.viganogabriele.agent-usage-plus",
 		"aislandener.galaxy-buds",
 	]);
 	const manifestIds = new Set(
 		JSON.parse(fs.readFileSync(SHIPPED_MANIFEST, "utf8")).map(({ id }) => id),
 	);
-	const barIds = new Set(
-		Object.values(JSON.parse(fs.readFileSync(SHIPPED_BAR, "utf8")).layout)
+	const barIds = new Set([
+		"aislandener.galaxy-buds",
+		"crmne.hyprmoncfg",
+		"white.nights",
+		...Object.values(JSON.parse(fs.readFileSync(SHIPPED_BAR, "utf8")).layout)
 			.flat()
 			.map(({ id }) => id),
-	);
+	]);
 
-	expect(new Set([...manifestIds].filter((id) => id !== "io.github.treramey.raindrop-bookmarks"))).toEqual(
-		expectedBarWidgetIds,
-	);
+	expect(
+		new Set(
+			[...manifestIds].filter(
+				(id) => id !== "io.github.treramey.raindrop-bookmarks",
+			),
+		),
+	).toEqual(expectedBarWidgetIds);
 	expect([...expectedBarWidgetIds].every((id) => barIds.has(id))).toBe(true);
 });
 
@@ -414,19 +543,23 @@ it("ships Omarchy's generic media widget in the left bar section", () => {
 
 	expect(leftIds).toContain("omarchy.media");
 	expect(leftIds.indexOf("omarchy.media")).toBe(
-		leftIds.indexOf("io.github.thetrueferret.decent-workspaces") + 1,
+		leftIds.indexOf("io.github.nag3sy.feishin") + 1,
 	);
 });
 
-it("ships Galaxy Buds beside audio with repository-owned label configuration", () => {
+it("ships selected controls inside the bundled tray drawer", () => {
 	const bar = JSON.parse(fs.readFileSync(SHIPPED_BAR, "utf8"));
 	const rightIds = bar.layout.right.map(({ id }) => id);
-	const buds = bar.layout.right.find(
-		({ id }) => id === "aislandener.galaxy-buds",
-	);
+	const tray = bar.layout.right.find(({ id }) => id === "xzat.tray");
 
-	expect(buds).toEqual({ id: "aislandener.galaxy-buds", labels: {} });
-	expect(rightIds.indexOf("aislandener.galaxy-buds")).toBe(
-		rightIds.indexOf("omarchy.audio") - 1,
-	);
+	expect(tray.embeddedWidgets.map(({ id }) => id)).toEqual([
+		"aislandener.galaxy-buds",
+		"crmne.hyprmoncfg",
+		"omarchy.monitor",
+		"white.nights",
+	]);
+	expect(rightIds).not.toContain("aislandener.galaxy-buds");
+	expect(rightIds).not.toContain("crmne.hyprmoncfg");
+	expect(rightIds).not.toContain("omarchy.monitor");
+	expect(rightIds).not.toContain("white.nights");
 });

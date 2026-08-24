@@ -64,6 +64,14 @@ disabling a bar widget through Omarchy's UI is reverted on the next deploy. It
 preserves every other top-level key, including `idle`, `plugins`,
 `disabledPlugins`, `version`, and unknown keys.
 
+The bar deploy and backup commands also own the three runtime files for the
+bundled `xzat.tray` plugin under `plugins/xzat.tray/`: `Tray.qml`,
+`TrayModel.js`, and `manifest.json`. Deployment copies them to Omarchy's default
+user plugin path, `~/.config/omarchy/plugins/xzat.tray/`; do not add this bundled
+plugin to the remote plugin manifest.
+`TrayModel.js` deliberately stays in the ES5-style dialect accepted by QML and
+is excluded from Biome's application-JavaScript rules.
+
 ## Window-class and workspace contracts
 
 The window classes matched by `workspaces-*.lua`—`chromium-flux` and

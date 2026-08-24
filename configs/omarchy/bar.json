@@ -11,10 +11,10 @@
 				"id": "io.github.thetrueferret.decent-workspaces"
 			},
 			{
-				"id": "omarchy.media"
+				"id": "io.github.nag3sy.feishin"
 			},
 			{
-				"id": "robzolkos.agent-usage"
+				"id": "omarchy.media"
 			}
 		],
 		"center": [
@@ -42,7 +42,21 @@
 		],
 		"right": [
 			{
-				"id": "omarchy.tray"
+				"id": "xzat.tray",
+				"embeddedWidgets": [
+					{
+						"id": "aislandener.galaxy-buds"
+					},
+					{
+						"id": "crmne.hyprmoncfg"
+					},
+					{
+						"id": "omarchy.monitor"
+					},
+					{
+						"id": "white.nights"
+					}
+				]
 			},
 			{
 				"id": "omaconnect"
@@ -51,10 +65,7 @@
 				"id": "robzolkos.github"
 			},
 			{
-				"id": "white.nights"
-			},
-			{
-				"id": "crmne.hyprmoncfg"
+				"id": "io.github.viganogabriele.agent-usage-plus"
 			},
 			{
 				"id": "omarchy.bluetooth"
@@ -63,14 +74,7 @@
 				"id": "omarchy.network"
 			},
 			{
-				"id": "aislandener.galaxy-buds",
-				"labels": {}
-			},
-			{
 				"id": "omarchy.audio"
-			},
-			{
-				"id": "omarchy.monitor"
 			},
 			{
 				"id": "omarchy.power"

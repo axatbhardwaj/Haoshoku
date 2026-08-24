@@ -125,14 +125,12 @@ reports Bluetooth pairing in that checklist; it requires no credentials.
 
 Use `haoshoku --omarchy-bar` to deploy `configs/omarchy/bar.json`, and use
 `haoshoku --omarchy-bar-backup` to capture the live bar back into the repo.
-The shipped layout enables Omarchy's built-in `omarchy.media` widget in the
-left section, providing now-playing details and controls for MPRIS players such
-as Spotify and Brave. It is supplied by Omarchy itself, so it does not belong
-in Haoshoku's third-party plugin manifest or require a separate clone step.
-The full Arch setup deploys this layout automatically.
-It also places `aislandener.galaxy-buds` immediately before `omarchy.audio` in
-the right section. Its optional display-label overrides live in that entry's
-`labels` object in `configs/omarchy/bar.json`, so they survive later deploys.
+The same commands deploy and back up Haoshoku's bundled `xzat.tray` plugin at
+`~/.config/omarchy/plugins/xzat.tray`. Its overflow drawer combines status
+notifier items with Galaxy Buds, hyprmoncfg, Display, and No Sleep controls.
+The full Arch setup restores the plugin and layout automatically; no separate
+clone step is needed. Feishin and Omarchy's generic MPRIS widget remain in the
+left section, while Agent Usage Plus stays visible on the right.
 Haoshoku claims the `bar` key of `~/.config/omarchy/shell.json` wholesale,
 including bar-widget enablement. Disabling a bar widget through Omarchy's UI is
 therefore reverted on the next deploy. Every other top-level key — including
