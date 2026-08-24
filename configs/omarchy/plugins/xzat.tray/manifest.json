@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "xzat.tray",
+  "name": "Tray + Controls",
+  "version": "1.0.0",
+  "author": "Omarchy",
+  "description": "Status notifier items and selected Omarchy controls",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Tray.qml"
+  },
+  "barWidget": {
+    "displayName": "Tray + Controls",
+    "description": "Status notifier items and selected Omarchy controls",
+    "category": "Status",
+    "allowMultiple": false
+  },
+  "omarchy": {
+    "clonedFrom": "omarchy.tray"
+  }
+}
