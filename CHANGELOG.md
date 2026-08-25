@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 11.2.0 - 2026-08-25
 
 - Automatically detect fresh Arch installations as PC or laptop from DMI
   chassis data, falling back to battery presence when DMI is inconclusive.
