@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 11.1.0 - 2026-08-25
 
 - Bundle the user-owned `xzat.tray` Omarchy plugin and deploy or back it up with
   the managed bar. The overflow drawer now keeps status notifier items together
