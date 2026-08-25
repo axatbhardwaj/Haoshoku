@@ -13,6 +13,10 @@ const pluginsHelper = path.join(
 	projectRoot,
 	"src/helpers/configure_omarchy_plugins.js",
 );
+const appearanceHelper = path.join(
+	projectRoot,
+	"src/helpers/configure_omarchy_appearance.js",
+);
 const migrationHelper = path.join(
 	projectRoot,
 	"src/helpers/migrate_omarchy_3_to_4.js",
@@ -31,14 +35,16 @@ function runCliMode({
 			? ["configureHyprmoncfg", "backupHyprmoncfg"]
 			: helperPath === pluginsHelper
 				? ["configureOmarchyPlugins"]
-				: ["migrateOmarchy3To4"];
+				: helperPath === appearanceHelper
+					? ["configureOmarchyAppearance"]
+					: ["migrateOmarchy3To4"];
 	const childScript = `
 		import { mock } from "bun:test";
 		mock.module(${JSON.stringify(helperPath)}, () => ({
 			${helperExports
 				.map(
 					(exportName) =>
-							`${exportName}: async () => { ${exportName === helperExport ? `console.log(${JSON.stringify(marker)}); ${exportName === "migrateOmarchy3To4" ? `return ${JSON.stringify(migrationResult ?? { status: migrationStatus })};` : ""}` : ""} }`,
+						`${exportName}: async () => { ${exportName === helperExport ? `console.log(${JSON.stringify(marker)}); ${exportName === "migrateOmarchy3To4" ? `return ${JSON.stringify(migrationResult ?? { status: migrationStatus })};` : exportName === "configureOmarchyAppearance" ? 'return { status: "configured" };' : ""}` : ""} }`,
 				)
 				.join(",\n\t\t\t")}
 		}));
@@ -82,6 +88,12 @@ describe("Omarchy one-shot CLI modes", () => {
 				helperPath: pluginsHelper,
 				helperExport: "configureOmarchyPlugins",
 				marker: "OMARCHY_PLUGINS_CONFIGURED",
+			},
+			{
+				flag: "--omarchy-appearance",
+				helperPath: appearanceHelper,
+				helperExport: "configureOmarchyAppearance",
+				marker: "OMARCHY_APPEARANCE_CONFIGURED",
 			},
 			{
 				flag: "--3-4-migrate",
@@ -146,9 +158,7 @@ describe("Omarchy one-shot CLI modes", () => {
 						restoredFrom: "/tmp/monitors.lua.bak.42",
 					},
 				],
-				manualAuthChecklist: [
-					{ id: "weather", requirement: "sign in" },
-				],
+				manualAuthChecklist: [{ id: "weather", requirement: "sign in" }],
 				laptopFollowUp: "save the laptop profile",
 				recoveryInstruction: "restore monitors.lua from backup",
 			},
@@ -176,6 +186,9 @@ describe("Omarchy one-shot CLI modes", () => {
 		);
 		expect(help).toContain(
 			"--omarchy-plugins Configure the Omarchy plugins declared in common/omarchy-plugins.json",
+		);
+		expect(help).toContain(
+			"--omarchy-appearance Apply the pinned Omarchy theme, background, and font from configs/omarchy/appearance.json",
 		);
 		expect(help).toContain(
 			"--3-4-migrate Migrate an Omarchy 3 configuration to Omarchy 4",

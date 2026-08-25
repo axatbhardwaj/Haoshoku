@@ -3,7 +3,14 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { promptDeviceType } from "../src/common/device_type.js";
+import {
+	detectDeviceType,
+	promptDeviceType,
+} from "../src/common/device_type.js";
+
+function promptWithoutDetection(options) {
+	return promptDeviceType({ detectDeviceTypeImpl: () => null, ...options });
+}
 
 describe("promptDeviceType", () => {
 	let tmpDir;
@@ -23,15 +30,95 @@ describe("promptDeviceType", () => {
 		return fn;
 	}
 
-	it("prompts again interactively and preselects the stored device type", async () => {
+	it("detects portable chassis types and a battery fallback", () => {
+		const chassisTypePath = path.join(tmpDir, "chassis_type");
+		const powerSupplyPath = path.join(tmpDir, "power_supply");
+		fs.writeFileSync(chassisTypePath, "10\n");
+		expect(detectDeviceType({ chassisTypePath, powerSupplyPath })).toBe(
+			"laptop",
+		);
+
+		fs.writeFileSync(chassisTypePath, "3\n");
+		expect(detectDeviceType({ chassisTypePath, powerSupplyPath })).toBe("pc");
+
+		fs.writeFileSync(chassisTypePath, "2\n");
+		fs.mkdirSync(path.join(powerSupplyPath, "BAT0"), { recursive: true });
+		fs.writeFileSync(path.join(powerSupplyPath, "BAT0", "type"), "Battery\n");
+		expect(detectDeviceType({ chassisTypePath, powerSupplyPath })).toBe(
+			"laptop",
+		);
+	});
+
+	it("persists an automatically detected type without prompting", async () => {
+		let promptCalls = 0;
+		const result = await promptDeviceType({
+			configPath,
+			detectDeviceTypeImpl: () => "laptop",
+			promptFn: async () => {
+				promptCalls += 1;
+				return { device: "pc" };
+			},
+		});
+
+		expect(result).toBe("laptop");
+		expect(promptCalls).toBe(0);
+		expect(JSON.parse(fs.readFileSync(configPath, "utf8"))).toEqual({
+			deviceType: "laptop",
+		});
+	});
+
+	it("honors a stored explicit type without detecting or prompting", async () => {
 		fs.writeFileSync(
 			configPath,
-			`${JSON.stringify({ deviceType: "pc", customSetting: "existing" })}\n`,
+			`${JSON.stringify({ deviceType: "pc", preserved: true })}\n`,
+		);
+		let detectionCalls = 0;
+		let promptCalls = 0;
+		const result = await promptDeviceType({
+			configPath,
+			detectDeviceTypeImpl: () => {
+				detectionCalls += 1;
+				return "laptop";
+			},
+			promptFn: async () => {
+				promptCalls += 1;
+				return { device: "laptop" };
+			},
+		});
+
+		expect(result).toBe("pc");
+		expect(detectionCalls).toBe(0);
+		expect(promptCalls).toBe(0);
+		expect(JSON.parse(fs.readFileSync(configPath, "utf8"))).toEqual({
+			deviceType: "pc",
+			preserved: true,
+		});
+	});
+
+	it("lets an explicit CLI value replace a stored type", async () => {
+		fs.writeFileSync(configPath, `${JSON.stringify({ deviceType: "pc" })}\n`);
+
+		expect(
+			await promptDeviceType({
+				configPath,
+				forcedDeviceType: "laptop",
+				detectDeviceTypeImpl: () => "pc",
+			}),
+		).toBe("laptop");
+		expect(JSON.parse(fs.readFileSync(configPath, "utf8"))).toEqual({
+			deviceType: "laptop",
+		});
+	});
+
+	it("prompts for an invalid stored type and preserves unrelated settings", async () => {
+		fs.writeFileSync(
+			configPath,
+			`${JSON.stringify({ deviceType: "other", customSetting: "existing" })}\n`,
 		);
 		let question;
 
 		expect(
-			await promptDeviceType({
+			await promptWithoutDetection({
 				configPath,
 				isTTY: true,
 				promptFn: async (receivedQuestion) => {
@@ -54,7 +141,7 @@ describe("promptDeviceType", () => {
 		);
 		let question;
 
-		await promptDeviceType({
+		await promptWithoutDetection({
 			configPath,
 			isTTY: true,
 			promptFn: async (receivedQuestion) => {
@@ -71,7 +158,7 @@ describe("promptDeviceType", () => {
 	});
 
 	it("persists 'laptop' to ~/.haoshoku.json when the user picks Laptop", async () => {
-		const result = await promptDeviceType({
+		const result = await promptWithoutDetection({
 			configPath,
 			promptFn: buildPromptFn({ device: "laptop" }),
 		});
@@ -83,7 +170,7 @@ describe("promptDeviceType", () => {
 
 	it("offers only device types that have routable config variants", async () => {
 		let question;
-		await promptDeviceType({
+		await promptWithoutDetection({
 			configPath,
 			promptFn: async (receivedQuestion) => {
 				question = receivedQuestion;
@@ -104,7 +191,7 @@ describe("promptDeviceType", () => {
 			JSON.stringify({ customSetting: "existing" }, null, 2),
 		);
 		const before = fs.readFileSync(configPath, "utf8");
-		const result = await promptDeviceType({
+		const result = await promptWithoutDetection({
 			configPath,
 			promptFn: buildPromptFn({ device: null }),
 		});
@@ -117,7 +204,7 @@ describe("promptDeviceType", () => {
 			configPath,
 			JSON.stringify({ customSetting: "keep-me", extra: 42 }, null, 2),
 		);
-		await promptDeviceType({
+		await promptWithoutDetection({
 			configPath,
 			promptFn: buildPromptFn({ device: "pc" }),
 		});
@@ -133,7 +220,7 @@ describe("promptDeviceType", () => {
 		const originalLog = console.log;
 		console.log = (...args) => messages.push(args.join(" "));
 		try {
-			await promptDeviceType({
+			await promptWithoutDetection({
 				configPath,
 				promptFn: buildPromptFn({ device: "laptop" }),
 			});
@@ -156,7 +243,7 @@ describe("promptDeviceType", () => {
 
 		try {
 			expect(
-				await promptDeviceType({
+				await promptWithoutDetection({
 					configPath,
 					isTTY: false,
 					promptFn: async () => {
@@ -182,7 +269,7 @@ describe("promptDeviceType", () => {
 		const before = fs.readFileSync(configPath, "utf8");
 
 		expect(
-			await promptDeviceType({
+			await promptWithoutDetection({
 				configPath,
 				isTTY: false,
 				promptFn: async () => {
@@ -193,23 +280,25 @@ describe("promptDeviceType", () => {
 		expect(fs.readFileSync(configPath, "utf8")).toBe(before);
 	});
 
-	it("keeps the stored laptop type when the interactive prompt fails", async () => {
+	it("keeps the stored laptop type without opening an interactive prompt", async () => {
 		fs.writeFileSync(
 			configPath,
 			`${JSON.stringify({ deviceType: "laptop", customSetting: "existing" })}\n`,
 		);
 		const before = fs.readFileSync(configPath, "utf8");
-		const warnings = [];
+		const messages = [];
+		let promptCalls = 0;
 		const originalWarning = console.log;
-		console.log = (...args) => warnings.push(args.join(" "));
+		console.log = (...args) => messages.push(args.join(" "));
 
 		try {
 			expect(
-				await promptDeviceType({
+				await promptWithoutDetection({
 					configPath,
 					isTTY: true,
 					promptFn: async () => {
-						throw new Error("terminal unavailable");
+						promptCalls += 1;
+						return { device: "pc" };
 					},
 				}),
 			).toBe("laptop");
@@ -218,8 +307,8 @@ describe("promptDeviceType", () => {
 		}
 
 		expect(fs.readFileSync(configPath, "utf8")).toBe(before);
-		expect(warnings.join("\n")).toContain("terminal unavailable");
-		expect(warnings.join("\n")).toContain("returning stored deviceType laptop");
+		expect(promptCalls).toBe(0);
+		expect(messages.join("\n")).toContain("Using stored deviceType laptop");
 	});
 
 	it("does not persist the non-interactive pc fallback and prompts on the next run", async () => {
@@ -228,7 +317,7 @@ describe("promptDeviceType", () => {
 		console.log = (...args) => warnings.push(args.join(" "));
 		let fallbackResult;
 		try {
-			fallbackResult = await promptDeviceType({
+			fallbackResult = await promptWithoutDetection({
 				configPath,
 				isTTY: false,
 				promptFn: async () => {
@@ -249,7 +338,7 @@ describe("promptDeviceType", () => {
 		);
 
 		let promptCalls = 0;
-		const interactiveResult = await promptDeviceType({
+		const interactiveResult = await promptWithoutDetection({
 			configPath,
 			isTTY: true,
 			promptFn: async () => {
@@ -270,7 +359,7 @@ describe("promptDeviceType", () => {
 		const before = fs.readFileSync(configPath, "utf8");
 
 		expect(
-			await promptDeviceType({
+			await promptWithoutDetection({
 				configPath,
 				isTTY: false,
 				promptFn: async () => {
@@ -288,7 +377,7 @@ describe("promptDeviceType", () => {
 
 		try {
 			expect(
-				await promptDeviceType({
+				await promptWithoutDetection({
 					configPath,
 					isTTY: true,
 					promptFn: async () => {
@@ -306,7 +395,7 @@ describe("promptDeviceType", () => {
 
 		let promptCalls = 0;
 		expect(
-			await promptDeviceType({
+			await promptWithoutDetection({
 				configPath,
 				isTTY: true,
 				promptFn: async () => {

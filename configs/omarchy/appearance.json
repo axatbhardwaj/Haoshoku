@@ -1,0 +1,10 @@
+{
+	"schemaVersion": 1,
+	"theme": {
+		"name": "elysian",
+		"repository": "https://github.com/axatbhardwaj/omarchy-elysian-theme.git",
+		"revision": "a89efc5a56879423c18e79a375d640b2d42d2829"
+	},
+	"background": "1-verdant-mountain.jpg",
+	"font": "JetBrainsMono Nerd Font"
+}

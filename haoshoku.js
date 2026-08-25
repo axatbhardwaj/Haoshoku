@@ -40,6 +40,7 @@ import {
 	backupOmarchyBar,
 	configureOmarchyBar,
 } from "./src/helpers/configure_omarchy_bar.js";
+import { configureOmarchyAppearance } from "./src/helpers/configure_omarchy_appearance.js";
 import { configureOmarchyPlugins } from "./src/helpers/configure_omarchy_plugins.js";
 import { configureOmarchyWorkspaces } from "./src/helpers/configure_omarchy_workspaces.js";
 import {
@@ -161,6 +162,10 @@ program
 	.option(
 		"--omarchy-bar-backup",
 		"Backup the bar key from Omarchy shell.json to configs/omarchy/bar.json",
+	)
+	.option(
+		"--omarchy-appearance",
+		"Apply the pinned Omarchy theme, background, and font from configs/omarchy/appearance.json",
 	)
 	.option("--3-4-migrate", "Migrate an Omarchy 3 configuration to Omarchy 4")
 	.option(
@@ -315,8 +320,7 @@ async function runAction(options) {
 			return;
 		}
 		await promptDeviceType({
-			isTTY: true,
-			promptFn: async () => ({ device: options.deviceType }),
+			forcedDeviceType: options.deviceType,
 		});
 		return;
 	}
@@ -353,6 +357,12 @@ async function runAction(options) {
 
 	if (options.omarchyBarBackup) {
 		await backupOmarchyBar();
+		return;
+	}
+
+	if (options.omarchyAppearance) {
+		const result = await configureOmarchyAppearance();
+		if (result.status !== "configured") process.exitCode = 1;
 		return;
 	}
 

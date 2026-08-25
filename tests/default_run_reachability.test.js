@@ -86,6 +86,10 @@ const DELIBERATE_OMISSIONS = {
 			"The Omarchy bar requires the Omarchy desktop environment.",
 		],
 		[
+			"--omarchy-appearance",
+			"Omarchy appearance requires the Omarchy desktop environment.",
+		],
+		[
 			"--brave-managed-policies",
 			"Brave/Omarchy theming is not installed on the server path.",
 		],
@@ -170,6 +174,7 @@ function runArchDefaultPath() {
 				configureOmarchyPluginsImpl: record("omarchyPlugins"),
 				configureOmarchyBarImpl: record("omarchyBar"),
 				configureOmazedImpl: record("omazed"),
+				configureOmarchyAppearanceImpl: record("omarchyAppearance"),
 			});
 			console.log("DEFAULT_CALLS=" + JSON.stringify(calls));
 		`,
@@ -283,6 +288,7 @@ function defaultSetupOverrides({
 		configureOmarchyPluginsImpl: async () => {},
 		configureOmarchyBarImpl: async () => {},
 		configureOmazedImpl: async () => {},
+		configureOmarchyAppearanceImpl: async () => {},
 	};
 }
 
@@ -321,7 +327,7 @@ describe("default-run reachability", () => {
 	}
 
 	for (const isOmarchy of [true, false]) {
-		it(`invokes the device-type helper when Omarchy is ${isOmarchy}`, async () => {
+		it(`automatically detects device type when Omarchy is ${isOmarchy}`, async () => {
 			const home = makeHome();
 			const configPath = path.join(home, ".haoshoku.json");
 			let deviceTypeCalls = 0;
@@ -334,6 +340,7 @@ describe("default-run reachability", () => {
 						deviceTypeCalls += 1;
 						return promptDeviceType({
 							configPath,
+							detectDeviceTypeImpl: () => "laptop",
 							isTTY: true,
 							promptFn: async () => {
 								interactivePromptCalls += 1;
@@ -345,7 +352,7 @@ describe("default-run reachability", () => {
 			);
 
 			expect(deviceTypeCalls).toBe(1);
-			expect(interactivePromptCalls).toBe(1);
+			expect(interactivePromptCalls).toBe(0);
 			expect(JSON.parse(fs.readFileSync(configPath, "utf8")).deviceType).toBe(
 				"laptop",
 			);
@@ -478,6 +485,7 @@ describe("default-run reachability", () => {
 						promptDeviceTypeImpl: () =>
 							promptDeviceType({
 								configPath,
+								detectDeviceTypeImpl: () => null,
 								isTTY: false,
 								promptFn: async () => {
 									interactivePromptCalls += 1;
