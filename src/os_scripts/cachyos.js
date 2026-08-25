@@ -23,6 +23,7 @@ import { installGhStack } from "../helpers/configure_gh_stack.js";
 import { configureHyprmoncfg } from "../helpers/configure_hyprmoncfg.js";
 import { promptDeviceType } from "../common/device_type.js";
 import { configureMimeapps } from "../helpers/configure_mimeapps.js";
+import { configureOmarchyAppearance } from "../helpers/configure_omarchy_appearance.js";
 import { configureOmarchyBar } from "../helpers/configure_omarchy_bar.js";
 import { configureOmarchyPlugins } from "../helpers/configure_omarchy_plugins.js";
 import { configureOmarchyWorkspaces } from "../helpers/configure_omarchy_workspaces.js";
@@ -639,6 +640,7 @@ export async function runCachyOSSetup({
 	configureOmarchyPluginsImpl = configureOmarchyPlugins,
 	configureOmarchyBarImpl = configureOmarchyBar,
 	configureOmazedImpl = configureOmazed,
+	configureOmarchyAppearanceImpl = configureOmarchyAppearance,
 } = {}) {
 	const configureBraveManagedPolicies = configureBraveManagedPoliciesImpl;
 	const configureHyprmoncfg = configureHyprmoncfgImpl;
@@ -646,6 +648,7 @@ export async function runCachyOSSetup({
 	const configureOmarchyPlugins = configureOmarchyPluginsImpl;
 	const configureOmarchyBar = configureOmarchyBarImpl;
 	const configureOmazed = configureOmazedImpl;
+	const configureOmarchyAppearance = configureOmarchyAppearanceImpl;
 
 	await promptDeviceTypeImpl();
 	if (!(await prepareArchPackageManagerImpl())) return false;
@@ -703,6 +706,15 @@ export async function runCachyOSSetup({
 		}
 	}
 	if (isOmarchy) await configureOmazed();
+	if (isOmarchy) {
+		try {
+			await configureOmarchyAppearance();
+		} catch (err) {
+			log.warning(
+				`Omarchy appearance configuration failed (${err?.message ?? err}) — continuing with remaining setup.`,
+			);
+		}
+	}
 
 	log.success("Arch setup finished. Please restart your terminal or log out.");
 	return true;

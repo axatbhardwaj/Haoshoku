@@ -11,7 +11,9 @@ const projectRoot = path.resolve(import.meta.dir, "..");
 const temporaryHomes = [];
 
 function makeHome(configState) {
-	const home = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-device-routing-"));
+	const home = fs.mkdtempSync(
+		path.join(os.tmpdir(), "haoshoku-device-routing-"),
+	);
 	temporaryHomes.push(home);
 	fs.mkdirSync(path.join(home, ".config", "hypr"), { recursive: true });
 	fs.writeFileSync(
@@ -56,6 +58,7 @@ describe("Omarchy deviceType routing", () => {
 			promptDeviceTypeImpl: () =>
 				promptDeviceType({
 					configPath: path.join(home, ".haoshoku.json"),
+					detectDeviceTypeImpl: () => null,
 					promptFn: async () => ({ device: "laptop" }),
 				}),
 			configureBraveManagedPoliciesImpl: async () => true,
@@ -65,6 +68,7 @@ describe("Omarchy deviceType routing", () => {
 			configureOmarchyBarImpl: async () => {},
 			configureOmarchyPluginsImpl: async () => {},
 			configureOmazedImpl: async () => {},
+			configureOmarchyAppearanceImpl: async () => {},
 		});
 
 		expect(result).toBe(true);

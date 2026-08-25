@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- Automatically detect fresh Arch installations as PC or laptop from DMI
+  chassis data, falling back to battery presence when DMI is inconclusive.
+  Persist the result before device-routed setup, honor an existing explicit
+  selection, and keep `--device-type` as the manual override.
+- Add a portable Omarchy appearance manifest and `--omarchy-appearance` mode.
+  Full Arch setup safely installs Elysian at its pinned commit and asks Omarchy
+  to apply the tracked background and font. Matching dirty checkouts are
+  preserved; foreign theme directories are never replaced.
+
 ## 11.1.0 - 2026-08-25
 
 - Bundle the user-owned `xzat.tray` Omarchy plugin and deploy or back it up with

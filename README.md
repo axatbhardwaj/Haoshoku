@@ -39,9 +39,10 @@ The Arch setup:
   Nerd Font group;
 - keeps Bash as the account shell and adds portable aliases and tool
   initialization through `~/.config/haoshoku/bashrc`;
-- preserves Omarchy's `.bashrc`, themes, terminals, wallpapers, lock screen,
-  and Quickshell/Hyprland appearance — Omarchy 4 replaced Waybar, Walker,
-  Mako, and SwayOSD with a single Quickshell process. Displaced Omarchy
+- preserves Omarchy's `.bashrc`, lock screen, and core Quickshell/Hyprland
+  configuration. It asks Omarchy to apply the pinned Elysian theme, selected
+  background, and font from `configs/omarchy/appearance.json`; it does not
+  copy generated `current/theme` state between machines. Displaced Omarchy
   keybindings are
   relocated or explicitly superseded and documented in
   [`configs/omarchy/keybinding-swaps.json`](configs/omarchy/keybinding-swaps.json),
@@ -49,15 +50,12 @@ The Arch setup:
 - deploys `~/.config/hypr/haoshoku/{bindings,workspaces}.lua` and appends
   exactly two `require` lines to `~/.config/hypr/hyprland.lua`; Omarchy 4
   loads user config via `require()` and no longer sources `.conf` files;
-- asks for a `pc` or `laptop` `deviceType` on every full Arch-family setup,
-  preselecting any stored valid value, then saves an accepted selection in
-  `~/.haoshoku.json` before device-routed audio and Hyprland configuration.
-  Choosing Skip persists nothing; Hyprland routing retains a valid stored
-  value or uses its own PC default when none is stored. When the prompt cannot
-  run, no fallback is persisted or wired through as run state; each downstream
-  helper reads the persisted config independently. Device-specific audio stays
-  unset without an explicitly persisted selection, and the next interactive
-  full setup asks again;
+- automatically determines `pc` or `laptop` from Linux DMI chassis data, with
+  battery detection as the fallback, and saves it to `~/.haoshoku.json` before
+  device-routed audio and Hyprland configuration. A valid stored choice wins,
+  so `haoshoku --device-type pc|laptop` remains the explicit override. Only
+  ambiguous hardware falls back to the interactive selector; Skip persists
+  nothing and leaves device-specific audio unset;
 - keeps Claude stay-awake, PR watch, and the Matt Pocock skill set as portable
   setup steps. Full setup asks before Claude Remote Control and automatic git
   worktree cleanup; both default to No. The worktree offer explains that it enables a
@@ -92,8 +90,23 @@ The Arch setup:
   installer or deletes unrelated Zed themes;
 - continues after individual optional application failures and reports them.
 
-Haoshoku deliberately does not configure Fish, KDE Plasma, KWin, SDDM,
-terminal themes, Zed themes, or wallpapers.
+Haoshoku deliberately does not configure Fish, KDE Plasma, KWin, SDDM, or
+arbitrary application themes. Omarchy remains responsible for generating and
+applying all files downstream of the declared appearance.
+
+## Omarchy appearance
+
+[`configs/omarchy/appearance.json`](configs/omarchy/appearance.json) declares a
+public theme repository at an immutable Git commit, one background filename
+inside that theme, and the font family. Full Arch setup and
+`haoshoku --omarchy-appearance` reconcile the theme under
+`~/.config/omarchy/themes/`, then call Omarchy's own theme, background, and font
+commands.
+
+An existing checkout from another repository is never replaced. A matching
+checkout with local changes is preserved and applied as-is; a clean matching
+checkout advances to the declared commit. This keeps custom work recoverable
+while making a fresh laptop reproduce the tracked appearance.
 
 ## Omarchy plugins
 
@@ -253,11 +266,12 @@ haoshoku --hyprmoncfg-backup
 haoshoku --omarchy-plugins
 haoshoku --omarchy-bar
 haoshoku --omarchy-bar-backup
+haoshoku --omarchy-appearance
 haoshoku --3-4-migrate
 ```
 
-Use `haoshoku --device-type pc` to switch back. Every full Arch-family setup
-asks for device type and preselects either valid stored value.
+Use `haoshoku --device-type pc` or `laptop` to override automatic detection.
+Later full Arch-family setups honor that stored explicit value.
 
 `haoshoku --3-4-migrate` is a re-runnable, idempotent migration from an
 Omarchy 3 layout to Omarchy 4: it strips dead `source =` lines, removes

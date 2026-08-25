@@ -24,6 +24,7 @@ const EXPECTED_OPTIONS = [
 	"configureOmarchyPluginsImpl",
 	"configureOmarchyBarImpl",
 	"configureOmazedImpl",
+	"configureOmarchyAppearanceImpl",
 ];
 
 const EXPECTED_AWAITED_STEPS = [
@@ -42,6 +43,7 @@ const EXPECTED_AWAITED_STEPS = [
 	"configureOmarchyPlugins",
 	"configureOmarchyBar",
 	"configureOmazed",
+	"configureOmarchyAppearance",
 ];
 
 const TEST_CALLER_CONTRACTS = new Map([
@@ -227,6 +229,7 @@ it("keeps the default Omarchy run behind explicit injectable side-effect seams",
 		configureOmarchyPluginsImpl: record("plugins"),
 		configureOmarchyBarImpl: record("bar"),
 		configureOmazedImpl: record("omazed"),
+		configureOmarchyAppearanceImpl: record("appearance"),
 	});
 
 	expect(result).toBe(true);
@@ -247,6 +250,7 @@ it("keeps the default Omarchy run behind explicit injectable side-effect seams",
 		"plugins",
 		"bar",
 		"omazed",
+		"appearance",
 	]);
 });
 

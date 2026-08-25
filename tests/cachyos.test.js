@@ -616,6 +616,7 @@ describe("Arch package-manager preflight", () => {
 			configureOmarchyPluginsImpl: unreachable,
 			configureOmarchyBarImpl: unreachable,
 			configureOmazedImpl: unreachable,
+			configureOmarchyAppearanceImpl: unreachable,
 		});
 
 		expect(result).toBe(false);
@@ -648,6 +649,7 @@ describe("Arch package-manager preflight", () => {
 				configureOmarchyPluginsImpl: record("plugins"),
 				configureOmarchyBarImpl: record("bar"),
 				configureOmazedImpl: record("omazed"),
+				configureOmarchyAppearanceImpl: record("appearance"),
 			});
 			return { events, result };
 		}
@@ -669,6 +671,7 @@ describe("Arch package-manager preflight", () => {
 				"plugins",
 				"bar",
 				"omazed",
+				"appearance",
 			],
 		});
 		expect(await runSetup(false)).toEqual({
@@ -709,10 +712,11 @@ describe("Arch package-manager preflight", () => {
 			configureOmarchyPluginsImpl: record("plugins"),
 			configureOmarchyBarImpl: record("bar"),
 			configureOmazedImpl: record("omazed"),
+			configureOmarchyAppearanceImpl: record("appearance"),
 		});
 
 		expect(events.indexOf("bar")).toBeGreaterThan(events.indexOf("plugins"));
-		expect(events).toEqual(["plugins", "bar", "omazed"]);
+		expect(events).toEqual(["plugins", "bar", "omazed", "appearance"]);
 	});
 
 	it("continues Omarchy setup when Brave policy provisioning throws", async () => {
@@ -744,6 +748,7 @@ describe("Arch package-manager preflight", () => {
 					configureOmarchyPluginsImpl: async () => events.push("plugins"),
 					configureOmarchyBarImpl: async () => events.push("bar"),
 					configureOmazedImpl: async () => events.push("omazed"),
+					configureOmarchyAppearanceImpl: async () => events.push("appearance"),
 				});
 			} catch (error) {
 				thrown = error;
@@ -756,6 +761,7 @@ describe("Arch package-manager preflight", () => {
 				"plugins",
 				"bar",
 				"omazed",
+				"appearance",
 			]);
 			expect(thrown).toBeUndefined();
 			expect(result).toBe(true);
@@ -797,6 +803,7 @@ describe("Arch package-manager preflight", () => {
 					configureOmarchyPluginsImpl: step("plugins"),
 					configureOmarchyBarImpl: step("bar"),
 					configureOmazedImpl: step("omazed"),
+					configureOmarchyAppearanceImpl: step("appearance"),
 				});
 
 				expect(result).toBe(true);
@@ -806,6 +813,7 @@ describe("Arch package-manager preflight", () => {
 					"plugins",
 					"bar",
 					"omazed",
+					"appearance",
 				]);
 				expect(warnings).toHaveLength(1);
 				expect(warnings[0]).toContain(`missing ${failingStep}-laptop.conf`);

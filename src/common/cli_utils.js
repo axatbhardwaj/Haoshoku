@@ -39,6 +39,7 @@ export const MODE_FLAGS = [
 	"omarchyPlugins",
 	"omarchyBar",
 	"omarchyBarBackup",
+	"omarchyAppearance",
 	"34Migrate",
 	"braveManagedPolicies",
 ];

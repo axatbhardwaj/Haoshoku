@@ -38,7 +38,13 @@ describe("haoshoku CLI help", () => {
 
 	it("retains portable one-shot configuration modes", () => {
 		const source = fs.readFileSync(CLI, "utf8");
-		for (const flag of ["--claude", "--codex", "--audio", "--mimeapps"]) {
+		for (const flag of [
+			"--claude",
+			"--codex",
+			"--audio",
+			"--mimeapps",
+			"--omarchy-appearance",
+		]) {
 			expect(source).toContain(`"${flag}"`);
 		}
 	});
