@@ -8,6 +8,7 @@
 	"files": {
 		"includes": [
 			"**",
+			"!configs/omarchy/plugins/xzat.tray/TrayModel.js",
 			"!tests/shell/fixtures/activeworkspace-empty.json",
 			"!tests/shell/fixtures/clients-malformed.json"
 		]

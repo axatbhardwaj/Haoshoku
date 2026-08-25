@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+- Bundle the user-owned `xzat.tray` Omarchy plugin and deploy or back it up with
+  the managed bar. The overflow drawer now keeps status notifier items together
+  with Galaxy Buds, hyprmoncfg, Display, and No Sleep controls while preserving
+  Feishin and generic MPRIS playback on the left.
+- Replace both the stock Agents widget and the former Agent Usage plugin with
+  Agent Usage Plus, keeping it in the stock right-bar position and deploying
+  the user-path collector wrapper required by the upstream plugin. The wrapper
+  also translates Omarchy 4.0.0's retired Codex `untrusted` approval value to
+  `never` only inside usage refreshes, restoring rate-limit discovery on
+  current Codex releases without changing normal Codex launches.
+- Manage Claude Desktop alongside Codex Desktop in the `Super+I` assistants
+  workspace, reclaiming either application when it is outside the workspace
+  and launching only the missing desktop app.
+
 ## 11.0.1 - 2026-08-23
 
 - Enable Omarchy's built-in generic media widget in the managed bar so MPRIS

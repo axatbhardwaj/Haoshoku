@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Omarchy 4.0.0 still passes the retired Codex approval value `untrusted`.
+# Translate it only for the collector subprocess; normal Codex launches keep
+# resolving to the user's real binary unchanged.
+if [[ ${HAOSHOKU_AGENT_USAGE_CODEX_SHIM:-0} == 1 && ${0##*/} == codex ]]; then
+	args=("$@")
+	for ((index = 0; index < ${#args[@]}; index++)); do
+		case "${args[$index]}" in
+		-a | --ask-for-approval)
+			if [[ ${args[$((index + 1))]:-} == untrusted ]]; then
+				args[$((index + 1))]=never
+			fi
+			;;
+		--ask-for-approval=untrusted)
+			args[$index]=--ask-for-approval=never
+			;;
+		esac
+	done
+	exec "$HAOSHOKU_REAL_CODEX" "${args[@]}"
+fi
+
+collector="${OMARCHY_PATH:-/usr/share/omarchy}/bin/omarchy-agent-usage-update"
+
+if [[ ! -x "$collector" ]]; then
+	echo "omarchy-agent-usage-update: packaged collector not found at $collector" >&2
+	exit 127
+fi
+
+real_codex=$(command -v codex || true)
+if [[ -z "$real_codex" ]]; then
+	exec "$collector" "$@"
+fi
+
+shim_root=${XDG_RUNTIME_DIR:-/tmp}
+shim_dir=$(mktemp -d "$shim_root/haoshoku-agent-usage.XXXXXX")
+trap 'rm -rf -- "$shim_dir"' EXIT
+ln -s -- "$0" "$shim_dir/codex"
+
+export HAOSHOKU_AGENT_USAGE_CODEX_SHIM=1
+export HAOSHOKU_REAL_CODEX="$real_codex"
+PATH="$shim_dir:$PATH" "$collector" "$@"

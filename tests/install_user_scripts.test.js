@@ -250,6 +250,57 @@ describe("installUserScripts — deployment", () => {
 		expect(script).not.toContain("@DEFAULT_AUDIO_SINK@");
 	});
 
+	it("ships the user-owned collector path required by Agent Usage Plus", () => {
+		const scriptPath = path.join(
+			process.cwd(),
+			"configs",
+			"scripts",
+			"omarchy-agent-usage-update",
+		);
+		const script = fs.readFileSync(scriptPath, "utf8");
+
+		expect(script).toContain("$" + "{OMARCHY_PATH:-/usr/share/omarchy}");
+		expect(script).toContain("/bin/omarchy-agent-usage-update");
+
+		const fakeOmarchyBin = path.join(tmpHome, "fake-omarchy", "bin");
+		const fakePathBin = path.join(tmpHome, "fake-path");
+		const capturePath = path.join(tmpHome, "codex-args");
+		fs.mkdirSync(fakeOmarchyBin, { recursive: true });
+		fs.mkdirSync(fakePathBin, { recursive: true });
+		const updater = path.join(fakeOmarchyBin, "omarchy-agent-usage-update");
+		const codex = path.join(fakePathBin, "codex");
+		fs.writeFileSync(
+			updater,
+			'#!/usr/bin/env bash\nset -euo pipefail\ncodex -s read-only -a untrusted app-server\n',
+		);
+		fs.writeFileSync(
+			codex,
+			'#!/usr/bin/env bash\nprintf "%s\\n" "$@" > "$CAPTURE_PATH"\n',
+		);
+		fs.chmodSync(updater, 0o755);
+		fs.chmodSync(codex, 0o755);
+
+		const result = Bun.spawnSync([scriptPath], {
+			env: {
+				...process.env,
+				CAPTURE_PATH: capturePath,
+				OMARCHY_PATH: path.dirname(fakeOmarchyBin),
+				PATH: `${fakePathBin}:/usr/bin:/bin`,
+			},
+			stdout: "pipe",
+			stderr: "pipe",
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(fs.readFileSync(capturePath, "utf8").trim().split("\n")).toEqual([
+			"-s",
+			"read-only",
+			"-a",
+			"never",
+			"app-server",
+		]);
+	});
+
 	it.skip("ships claude-desktop-toggle as a Claude-only special workspace", () => {
 		const script = fs.readFileSync(
 			path.join(process.cwd(), "configs", "scripts", "claude-desktop-toggle"),

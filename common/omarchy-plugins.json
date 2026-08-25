@@ -36,14 +36,19 @@
 		"manualAuth": null
 	},
 	{
-		"id": "robzolkos.agent-usage",
-		"url": "https://github.com/robzolkos/omarchy-agent-usage.git",
+		"id": "io.github.viganogabriele.agent-usage-plus",
+		"url": "https://github.com/viganogabriele/agent-usage-plus.git",
 		"manualAuth": null,
-		"disableOnInstall": ["omarchy.agents"]
+		"disableOnInstall": ["omarchy.agents", "robzolkos.agent-usage"]
 	},
 	{
 		"id": "aislandener.galaxy-buds",
 		"url": "https://github.com/aislandener/galaxy-buds-control.git",
 		"manualAuth": "Galaxy Buds Bluetooth pairing"
+	},
+	{
+		"id": "io.github.nag3sy.feishin",
+		"url": "https://github.com/nag3sy/feishin-omarchy-plugin.git",
+		"manualAuth": null
 	}
 ]
