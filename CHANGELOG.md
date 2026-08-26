@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 11.2.1 - 2026-08-26
 
 - Pin Elysian to its Omarchy 4-compatible v1.0.0 release. Recognized legacy
   local-origin checkouts are moved to a timestamped sibling backup before the
