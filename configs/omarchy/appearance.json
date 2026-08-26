@@ -3,7 +3,8 @@
 	"theme": {
 		"name": "elysian",
 		"repository": "https://github.com/axatbhardwaj/omarchy-elysian-theme.git",
-		"revision": "a89efc5a56879423c18e79a375d640b2d42d2829"
+		"revision": "29356fb68d2070d847a259de0f310b055df55823",
+		"legacyRevisions": ["42845dc048632425bc566b993f25145f05e840f1"]
 	},
 	"background": "1-verdant-mountain.jpg",
 	"font": "JetBrainsMono Nerd Font"

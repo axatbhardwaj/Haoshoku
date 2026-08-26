@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Pin Elysian to its Omarchy 4-compatible v1.0.0 release. Recognized legacy
+  local-origin checkouts are moved to a timestamped sibling backup before the
+  clean pinned theme is installed; failed installs restore the original
+  checkout, and unrelated theme directories remain untouched.
+
 ## 11.2.0 - 2026-08-25
 
 - Automatically detect fresh Arch installations as PC or laptop from DMI

@@ -7,8 +7,9 @@ the Omarchy workspace configurator, not by the overlay modules themselves.
 
 Omarchy remains the owner of applying appearance and core defaults.
 `appearance.json` may select a public theme revision, a background within that
-theme, and a font; the appearance helper must hand those values to Omarchy's own
-commands rather than copying generated current-theme state. Do not add theme,
+theme, a font, and exact legacy revisions eligible for recoverable replacement;
+the appearance helper must hand those values to Omarchy's own commands rather
+than copying generated current-theme state. Do not add theme,
 wallpaper, Waybar, Walker, terminal, lock-screen, animation, decoration, or other
 visual settings to the Haoshoku Lua overlays. Defaults MAY be displaced when a
 two-key toggle needs the slot, but every distinct `hl.unbind()` literal must have

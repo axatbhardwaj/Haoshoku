@@ -46,6 +46,13 @@ function validateManifest(manifest) {
 	if (!REVISION_PATTERN.test(manifest?.theme?.revision ?? "")) {
 		return "theme.revision must be a full 40-character Git commit";
 	}
+	const legacyRevisions = manifest?.theme?.legacyRevisions ?? [];
+	if (
+		!Array.isArray(legacyRevisions) ||
+		legacyRevisions.some((revision) => !REVISION_PATTERN.test(revision))
+	) {
+		return "theme.legacyRevisions must contain only full Git commits";
+	}
 	if (!BACKGROUND_PATTERN.test(manifest?.background ?? "")) {
 		return "background must be an image filename within the theme";
 	}
@@ -67,6 +74,17 @@ function normalizedRepository(value) {
 		.replace(/\.git$/, "");
 }
 
+function isLocalRepository(value) {
+	const repository = value.trim();
+	return (
+		repository.startsWith("file://") ||
+		repository.startsWith("~/") ||
+		path.isAbsolute(repository) ||
+		repository.startsWith("./") ||
+		repository.startsWith("../")
+	);
+}
+
 async function commandOk(runCommandImpl, argv, options = {}) {
 	try {
 		return await runCommandImpl(argv, options);
@@ -80,9 +98,10 @@ async function commandOk(runCommandImpl, argv, options = {}) {
 }
 
 /**
- * Reconcile the portable Omarchy appearance manifest without replacing an
- * existing theme checkout. Clean matching checkouts advance to the pinned
- * revision; matching checkouts with local edits are preserved and applied.
+ * Reconcile the portable Omarchy appearance manifest. Clean matching checkouts
+ * advance to the pinned revision; matching checkouts with local edits are
+ * preserved. Explicitly recognized legacy local clones are backed up and
+ * replaced transactionally.
  */
 export async function configureOmarchyAppearance({
 	manifest,
@@ -92,6 +111,8 @@ export async function configureOmarchyAppearance({
 	logImpl = log,
 	env = process.env,
 	versionResult,
+	nowImpl = Date.now,
+	renameImpl = fs.renameSync,
 } = {}) {
 	let appearance;
 	try {
@@ -117,12 +138,15 @@ export async function configureOmarchyAppearance({
 	});
 	if (!gate.ok) return { status: "refused", installed: false };
 
-	const { name, repository, revision } = appearance.theme;
+	const { name, repository, revision, legacyRevisions = [] } = appearance.theme;
 	const commandEnv = { ...env, HOME: home };
 	const themesPath = path.join(home, ".config", "omarchy", "themes");
 	const themePath = path.join(themesPath, name);
 	let installed = false;
 	let preservedLocalChanges = false;
+	let legacyBackupPath;
+	let installPinnedTheme = !fs.existsSync(themePath);
+	let replaceLegacyTheme = false;
 
 	if (fs.existsSync(themePath)) {
 		const remote = await commandOk(
@@ -134,55 +158,82 @@ export async function configureOmarchyAppearance({
 			remote.exitCode !== 0 ||
 			normalizedRepository(remote.stdout) !== normalizedRepository(repository)
 		) {
-			logImpl.warning(
-				`Preserving ${themePath}: it is not the managed ${name} theme checkout.`,
-			);
-			return { status: "conflict", installed: false, themePath };
-		}
-
-		const status = await commandOk(
-			runCommandImpl,
-			["git", "status", "--porcelain"],
-			{ cwd: themePath, env: commandEnv },
-		);
-		if (status.exitCode !== 0) {
-			logImpl.warning(
-				`Could not inspect ${name}; preserving it without applying.`,
-			);
-			return { status: "conflict", installed: false, themePath };
-		}
-		if (status.stdout.trim()) {
-			preservedLocalChanges = true;
-			logImpl.warning(
-				`Preserving local changes in the ${name} theme; applying the current checkout.`,
-			);
-		} else {
-			const fetched = await commandOk(
+			if (remote.exitCode !== 0 || !isLocalRepository(remote.stdout)) {
+				logImpl.warning(
+					`Preserving ${themePath}: it is not the managed ${name} theme checkout.`,
+				);
+				return { status: "conflict", installed: false, themePath };
+			}
+			const head = await commandOk(
 				runCommandImpl,
-				["git", "fetch", "--prune", "origin"],
+				["git", "rev-parse", "HEAD"],
 				{ cwd: themePath, env: commandEnv },
 			);
-			const checkedOut =
-				fetched.exitCode === 0
-					? await commandOk(
-							runCommandImpl,
-							["git", "checkout", "--detach", revision],
-							{ cwd: themePath, env: commandEnv },
-						)
-					: fetched;
-			if (checkedOut.exitCode !== 0) {
+			const topLevel = await commandOk(
+				runCommandImpl,
+				["git", "rev-parse", "--show-toplevel"],
+				{ cwd: themePath, env: commandEnv },
+			);
+			if (
+				head.exitCode !== 0 ||
+				!legacyRevisions.includes(head.stdout.trim()) ||
+				topLevel.exitCode !== 0 ||
+				path.resolve(topLevel.stdout.trim()) !== path.resolve(themePath)
+			) {
 				logImpl.warning(
-					`Could not update ${name} to ${revision}; preserving the existing checkout.`,
+					`Preserving ${themePath}: it is not the managed ${name} theme checkout.`,
 				);
-				return { status: "update-failed", installed: false, themePath };
+				return { status: "conflict", installed: false, themePath };
+			}
+
+			replaceLegacyTheme = true;
+			installPinnedTheme = true;
+		} else {
+			const status = await commandOk(
+				runCommandImpl,
+				["git", "status", "--porcelain"],
+				{ cwd: themePath, env: commandEnv },
+			);
+			if (status.exitCode !== 0) {
+				logImpl.warning(
+					`Could not inspect ${name}; preserving it without applying.`,
+				);
+				return { status: "conflict", installed: false, themePath };
+			}
+			if (status.stdout.trim()) {
+				preservedLocalChanges = true;
+				logImpl.warning(
+					`Preserving local changes in the ${name} theme; applying the current checkout.`,
+				);
+			} else {
+				const fetched = await commandOk(
+					runCommandImpl,
+					["git", "fetch", "--prune", "origin"],
+					{ cwd: themePath, env: commandEnv },
+				);
+				const checkedOut =
+					fetched.exitCode === 0
+						? await commandOk(
+								runCommandImpl,
+								["git", "checkout", "--detach", revision],
+								{ cwd: themePath, env: commandEnv },
+							)
+						: fetched;
+				if (checkedOut.exitCode !== 0) {
+					logImpl.warning(
+						`Could not update ${name} to ${revision}; preserving the existing checkout.`,
+					);
+					return { status: "update-failed", installed: false, themePath };
+				}
 			}
 		}
-	} else {
+	}
+
+	if (installPinnedTheme) {
 		fs.mkdirSync(themesPath, { recursive: true });
-		const stagingPath = fs.mkdtempSync(
-			path.join(themesPath, `.haoshoku-${name}-`),
-		);
+		let stagingPath;
 		try {
+			stagingPath = fs.mkdtempSync(path.join(themesPath, `.haoshoku-${name}-`));
 			const cloned = await commandOk(
 				runCommandImpl,
 				["git", "clone", repository, stagingPath],
@@ -202,10 +253,49 @@ export async function configureOmarchyAppearance({
 				);
 				return { status: "install-failed", installed: false, themePath };
 			}
-			fs.renameSync(stagingPath, themePath);
+
+			const stagedBackgroundPath = path.join(
+				stagingPath,
+				"backgrounds",
+				appearance.background,
+			);
+			if (!fs.existsSync(stagedBackgroundPath)) {
+				logImpl.warning(`Theme background is missing: ${stagedBackgroundPath}`);
+				return { status: "background-missing", installed: false, themePath };
+			}
+
+			if (replaceLegacyTheme) {
+				const backupPrefix = `${themePath}.haoshoku-backup-${nowImpl()}`;
+				legacyBackupPath = backupPrefix;
+				for (let suffix = 1; fs.existsSync(legacyBackupPath); suffix += 1) {
+					legacyBackupPath = `${backupPrefix}.${suffix}`;
+				}
+				renameImpl(themePath, legacyBackupPath);
+				logImpl.warning(
+					`Backed up the recognized legacy ${name} checkout to ${legacyBackupPath}.`,
+				);
+			}
+
+			try {
+				renameImpl(stagingPath, themePath);
+			} catch (error) {
+				if (legacyBackupPath && !fs.existsSync(themePath)) {
+					renameImpl(legacyBackupPath, themePath);
+					legacyBackupPath = undefined;
+				}
+				logImpl.warning(
+					`Could not activate the installed ${name} theme: ${error.message}`,
+				);
+				return {
+					status: "install-failed",
+					installed: false,
+					themePath,
+					legacyBackupPath,
+				};
+			}
 			installed = true;
 		} finally {
-			if (fs.existsSync(stagingPath)) {
+			if (stagingPath && fs.existsSync(stagingPath)) {
 				fs.rmSync(stagingPath, { recursive: true, force: true });
 			}
 		}
@@ -243,5 +333,6 @@ export async function configureOmarchyAppearance({
 		installed,
 		preservedLocalChanges,
 		themePath,
+		legacyBackupPath,
 	};
 }

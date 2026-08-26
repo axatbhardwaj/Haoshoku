@@ -105,8 +105,12 @@ commands.
 
 An existing checkout from another repository is never replaced. A matching
 checkout with local changes is preserved and applied as-is; a clean matching
-checkout advances to the declared commit. This keeps custom work recoverable
-while making a fresh laptop reproduce the tracked appearance.
+checkout advances to the declared commit. The manifest may identify exact
+legacy revisions from older local-origin installs. Those recognized checkouts
+are moved to a timestamped sibling backup before Haoshoku installs the clean
+pinned theme, and a failed install restores the original checkout. This keeps
+custom work recoverable while making a fresh laptop reproduce the tracked
+appearance.
 
 ## Omarchy plugins
 
