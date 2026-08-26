@@ -198,6 +198,9 @@ describe("Omarchy appearance configurator", () => {
 				if (argv.join(" ") === "git rev-parse HEAD") {
 					return { exitCode: 0, stdout: `${LEGACY_REVISION}\n`, stderr: "" };
 				}
+				if (argv.join(" ") === "git rev-parse --show-toplevel") {
+					return { exitCode: 0, stdout: `${themePath}\n`, stderr: "" };
+				}
 				if (argv[0] === "git" && argv[1] === "clone") {
 					const clonePath = argv.at(-1);
 					fs.mkdirSync(path.join(clonePath, ".git"), { recursive: true });
@@ -248,6 +251,9 @@ describe("Omarchy appearance configurator", () => {
 				if (argv.join(" ") === "git rev-parse HEAD") {
 					return { exitCode: 0, stdout: `${LEGACY_REVISION}\n`, stderr: "" };
 				}
+				if (argv.join(" ") === "git rev-parse --show-toplevel") {
+					return { exitCode: 0, stdout: `${themePath}\n`, stderr: "" };
+				}
 				if (argv[0] === "git" && argv[1] === "clone") {
 					return { exitCode: 1, stdout: "", stderr: "clone failed" };
 				}
@@ -262,6 +268,115 @@ describe("Omarchy appearance configurator", () => {
 		expect(fs.existsSync(`${themePath}.haoshoku-backup-1234567890`)).toBe(
 			false,
 		);
+	});
+
+	it("restores a recognized legacy checkout when the final directory swap fails", async () => {
+		const home = makeHome();
+		const themePath = seedTheme(home);
+		fs.writeFileSync(path.join(themePath, "local-change.txt"), "keep me");
+		let renameCount = 0;
+		const result = await configureOmarchyAppearance({
+			manifest: MANIFEST,
+			home,
+			versionResult: VERSION_RESULT,
+			nowImpl: () => 1234567890,
+			renameImpl: (source, destination) => {
+				renameCount += 1;
+				if (renameCount === 2) throw new Error("swap failed");
+				fs.renameSync(source, destination);
+			},
+			logImpl: makeLog(),
+			runCommandImpl: async (argv) => {
+				if (argv.join(" ") === "git remote get-url origin") {
+					return { exitCode: 0, stdout: "/missing/local/theme\n", stderr: "" };
+				}
+				if (argv.join(" ") === "git rev-parse HEAD") {
+					return { exitCode: 0, stdout: `${LEGACY_REVISION}\n`, stderr: "" };
+				}
+				if (argv.join(" ") === "git rev-parse --show-toplevel") {
+					return { exitCode: 0, stdout: `${themePath}\n`, stderr: "" };
+				}
+				if (argv[0] === "git" && argv[1] === "clone") {
+					const clonePath = argv.at(-1);
+					fs.mkdirSync(path.join(clonePath, "backgrounds"), {
+						recursive: true,
+					});
+					fs.writeFileSync(
+						path.join(clonePath, "backgrounds", MANIFEST.background),
+						"wallpaper",
+					);
+				}
+				return { exitCode: 0, stdout: "", stderr: "" };
+			},
+		});
+
+		expect(result.status).toBe("install-failed");
+		expect(
+			fs.readFileSync(path.join(themePath, "local-change.txt"), "utf8"),
+		).toBe("keep me");
+		expect(fs.existsSync(`${themePath}.haoshoku-backup-1234567890`)).toBe(
+			false,
+		);
+	});
+
+	it("keeps the legacy checkout active when the staged background is missing", async () => {
+		const home = makeHome();
+		const themePath = seedTheme(home);
+		fs.writeFileSync(path.join(themePath, "local-change.txt"), "keep me");
+		const result = await configureOmarchyAppearance({
+			manifest: MANIFEST,
+			home,
+			versionResult: VERSION_RESULT,
+			nowImpl: () => 1234567890,
+			logImpl: makeLog(),
+			runCommandImpl: async (argv) => {
+				if (argv.join(" ") === "git remote get-url origin") {
+					return { exitCode: 0, stdout: "/missing/local/theme\n", stderr: "" };
+				}
+				if (argv.join(" ") === "git rev-parse HEAD") {
+					return { exitCode: 0, stdout: `${LEGACY_REVISION}\n`, stderr: "" };
+				}
+				if (argv.join(" ") === "git rev-parse --show-toplevel") {
+					return { exitCode: 0, stdout: `${themePath}\n`, stderr: "" };
+				}
+				return { exitCode: 0, stdout: "", stderr: "" };
+			},
+		});
+
+		expect(result.status).toBe("background-missing");
+		expect(
+			fs.readFileSync(path.join(themePath, "local-change.txt"), "utf8"),
+		).toBe("keep me");
+		expect(fs.existsSync(`${themePath}.haoshoku-backup-1234567890`)).toBe(
+			false,
+		);
+	});
+
+	it("refuses an HTTPS fork even when it points at a recognized legacy revision", async () => {
+		const home = makeHome();
+		const themePath = seedTheme(home);
+		const result = await configureOmarchyAppearance({
+			manifest: MANIFEST,
+			home,
+			versionResult: VERSION_RESULT,
+			logImpl: makeLog(),
+			runCommandImpl: async (argv) => {
+				if (argv.join(" ") === "git remote get-url origin") {
+					return {
+						exitCode: 0,
+						stdout: "https://example.com/fork/omarchy-elysian-theme.git\n",
+						stderr: "",
+					};
+				}
+				if (argv.join(" ") === "git rev-parse HEAD") {
+					return { exitCode: 0, stdout: `${LEGACY_REVISION}\n`, stderr: "" };
+				}
+				return { exitCode: 0, stdout: "", stderr: "" };
+			},
+		});
+
+		expect(result.status).toBe("conflict");
+		expect(fs.existsSync(themePath)).toBe(true);
 	});
 
 	it("refuses to overwrite an existing theme from another source", async () => {
