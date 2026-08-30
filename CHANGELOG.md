@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Start T3 Code once at Omarchy login from both device workspace overlays.
+
 ## 11.2.1 - 2026-08-26
 
 - Pin Elysian to its Omarchy 4-compatible v1.0.0 release. Recognized legacy

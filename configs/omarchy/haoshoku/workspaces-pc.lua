@@ -4,6 +4,7 @@
 
 o.exec_on_start("haoshoku-special-workspace numbered-login 7 kitty")
 o.exec_on_start("haoshoku-special-workspace assistants")
+o.launch_on_start("t3code")
 -- Hyprland does not process XDG autostart, so
 -- /etc/xdg/autostart/org.kde.kdeconnect.daemon.desktop never fires. Start explicitly
 -- instead of relying on incidental D-Bus activation for phone sync after login.

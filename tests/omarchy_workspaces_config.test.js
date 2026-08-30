@@ -9,7 +9,10 @@ const overlayDirectory = path.join(
 	"omarchy",
 	"haoshoku",
 );
-const pc = fs.readFileSync(path.join(overlayDirectory, "workspaces-pc.lua"), "utf8");
+const pc = fs.readFileSync(
+	path.join(overlayDirectory, "workspaces-pc.lua"),
+	"utf8",
+);
 const laptop = fs.readFileSync(
 	path.join(overlayDirectory, "workspaces-laptop.lua"),
 	"utf8",
@@ -49,7 +52,9 @@ describe("Omarchy Lua workspace behavior", () => {
 			expect(overlay).toContain(
 				'o.window("^chromium-defi$", { border_color = "rgb(9762e2) rgb(9762e2)" })',
 			);
-			expect(overlay).not.toContain('o.window("^chromium-flux$", { border_color');
+			expect(overlay).not.toContain(
+				'o.window("^chromium-flux$", { border_color',
+			);
 		}
 	});
 
@@ -69,6 +74,9 @@ describe("Omarchy Lua workspace behavior", () => {
 
 	it("starts login services and routes the owned Kitty workspace exactly", () => {
 		for (const overlay of [pc, laptop]) {
+			expect(
+				overlay.match(/o\.launch_on_start\("t3code"\)/g) ?? [],
+			).toHaveLength(1);
 			expect(overlay).toContain('o.exec_on_start("/usr/bin/kdeconnectd")');
 			expect(overlay).toContain(
 				'o.exec_on_start("haoshoku-special-workspace numbered-login 7 kitty")',
