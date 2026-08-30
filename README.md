@@ -178,15 +178,16 @@ walks runtime directories, imports agent definitions, or overwrites skills.
 The optional Claude Remote Control setup runs persistent Claude sessions from
 three fixed roots: `haki` at `$HOME`, `dev` at `$HOME/dev`, and `work` at
 `$HOME/Work`. Instances whose roots do not exist are skipped with a warning.
-On Omarchy, `Super+A` opens the tagged Warp `haki` tab on the special workspace,
-with Claude above a fresh Codex pane below; KDE uses its own Warp `agents` route.
+On Omarchy, `haoshoku-special-workspace haki` opens the tagged Kitty `haki`
+session on its special workspace, with Claude above a fresh Codex pane below;
+it has no default keybinding. KDE uses its own Warp `agents` route.
 Set `claudeSessionName` in
 `~/.haoshoku.json` only to resume a named Haki Claude session. A missing or null
 value starts plain Claude; a
 syntactically invalid value is preserved, reported, and ignored. A valid name is
 passed as one literal argument to `claude -r`, but it resumes directly only when
 the name resolves uniquely; otherwise Claude may open its picker. This
-Haki keybinding never attaches to tmux
+Haki launcher never attaches to tmux
 or calls systemd.
 
 These sessions run Claude Remote Control in **server mode**

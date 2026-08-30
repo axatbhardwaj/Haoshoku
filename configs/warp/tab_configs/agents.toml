@@ -2,8 +2,8 @@ name = "Agents"
 title = "agents"
 color = "green"
 
-# Single Claude pane. This was a claude | codex vertical split; Super+A now opens
-# Claude alone and Codex is started by hand when it is actually wanted. With one
+# Dormant legacy single-Claude pane. Omarchy no longer binds Super+A to Haki or
+# this agents layout. Codex is started by hand when it is actually wanted. With one
 # pane there is no root split to declare — the pane is the whole tab.
 [[panes]]
 id = "claude"

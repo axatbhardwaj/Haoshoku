@@ -9,26 +9,30 @@ const overlayDirectory = path.join(
 	"omarchy",
 	"haoshoku",
 );
-const pc = fs.readFileSync(path.join(overlayDirectory, "workspaces-pc.lua"), "utf8");
+const pc = fs.readFileSync(
+	path.join(overlayDirectory, "workspaces-pc.lua"),
+	"utf8",
+);
 const laptop = fs.readFileSync(
 	path.join(overlayDirectory, "workspaces-laptop.lua"),
 	"utf8",
 );
 
 describe("Omarchy Lua workspace behavior", () => {
-	it("routes assistants and browser profiles by their exact owned classes", () => {
+	it("routes fixed-workspace apps without fixing T3 Code to a workspace", () => {
 		const expectedRules = [
 			'o.window("^chatgpt$", { workspace = "special:assistants silent" })',
 			'o.window("^com\\\\.anthropic\\\\.Claude$", { workspace = "special:assistants silent" })',
-			'o.window("^t3code$", { workspace = "1 silent" })',
 			'o.window("^brave-www\\\\.notion\\\\.so__-Default$", { workspace = "10 silent" })',
 			'o.window("^brave-x\\\\.com__-Default$", { workspace = "special:x" })',
 			'o.window("^chromium-flux$", { workspace = "special:browser-flux" })',
 			'o.window("^chromium-defi$", { workspace = "special:browser-defi" })',
 		];
 
-		for (const overlay of [pc, laptop])
+		for (const overlay of [pc, laptop]) {
 			for (const rule of expectedRules) expect(overlay).toContain(rule);
+			expect(overlay).not.toContain('o.window("^t3code$"');
+		}
 	});
 
 	it("keeps portal dialogs floating, pinned, and centered without pinning Nautilus", () => {
@@ -49,26 +53,32 @@ describe("Omarchy Lua workspace behavior", () => {
 			expect(overlay).toContain(
 				'o.window("^chromium-defi$", { border_color = "rgb(9762e2) rgb(9762e2)" })',
 			);
-			expect(overlay).not.toContain('o.window("^chromium-flux$", { border_color');
+			expect(overlay).not.toContain(
+				'o.window("^chromium-flux$", { border_color',
+			);
 		}
 	});
 
-	it("retains exact special-workspace toggle commands in both device profiles", () => {
+	it("retains exact application bindings in both device profiles", () => {
 		const commands = [
-			'o.bind("SUPER + A", "Show/focus/hide Haki session", "haoshoku-special-workspace haki")',
 			'o.bind("SUPER + I", "Show/focus/hide AI assistants workspace", "haoshoku-special-workspace assistants")',
-			'o.bind("SUPER + T", "Workspace 1 and T3 Code", "haoshoku-special-workspace numbered 1 t3code")',
+			'o.bind("SUPER + T", "T3 Code", o.launch_sole("^t3code$", "t3code"))',
 			'o.bind("SUPER + B", "Toggle Flux Brave Origin workspace", "haoshoku-special-workspace browser-toggle flux")',
 			'o.bind("SUPER + D", "Toggle DeFi Brave Origin workspace", "haoshoku-special-workspace browser-toggle defi")',
 			'o.bind("SUPER + SHIFT + G", "Toggle gaming workspace", "haoshoku-gaming-workspace toggle")',
 		];
 
-		for (const overlay of [pc, laptop])
+		for (const overlay of [pc, laptop]) {
 			for (const command of commands) expect(overlay).toContain(command);
+			expect(overlay).not.toContain('o.bind("SUPER + A"');
+		}
 	});
 
 	it("starts login services and routes the owned Kitty workspace exactly", () => {
 		for (const overlay of [pc, laptop]) {
+			expect(
+				overlay.match(/o\.launch_on_start\("t3code"\)/g) ?? [],
+			).toHaveLength(1);
 			expect(overlay).toContain('o.exec_on_start("/usr/bin/kdeconnectd")');
 			expect(overlay).toContain(
 				'o.exec_on_start("haoshoku-special-workspace numbered-login 7 kitty")',

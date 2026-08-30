@@ -12,6 +12,7 @@ hl.workspace_rule({ workspace = "10", persistent = true })
 
 o.exec_on_start("haoshoku-special-workspace numbered-login 7 kitty")
 o.exec_on_start("haoshoku-special-workspace assistants")
+o.launch_on_start("t3code")
 -- Hyprland does not process XDG autostart, so
 -- /etc/xdg/autostart/org.kde.kdeconnect.daemon.desktop never fires. Start explicitly
 -- instead of relying on incidental D-Bus activation for phone sync after login.
@@ -35,7 +36,6 @@ o.window("^brave-reanime\\.to__home-Default$", { workspace = "special:reanime" }
 o.window("^brave-www\\.twitch\\.tv__-Default$", { workspace = "special:twitch" })
 o.window("^chatgpt$", { workspace = "special:assistants silent" })
 o.window("^com\\.anthropic\\.Claude$", { workspace = "special:assistants silent" })
-o.window("^t3code$", { workspace = "1 silent" })
 o.window("^haoshoku-haki$", { workspace = "special:haki" })
 o.window("^haoshoku-agents$", { workspace = "special:agents" })
 o.window("^[Ss]potify$", { workspace = "special:music" })
@@ -106,9 +106,8 @@ o.bind(
   hl.dsp.workspace.toggle_special("scratchpad")
 )
 
-o.bind("SUPER + A", "Show/focus/hide Haki session", "haoshoku-special-workspace haki")
 o.bind("SUPER + I", "Show/focus/hide AI assistants workspace", "haoshoku-special-workspace assistants")
-o.bind("SUPER + T", "Workspace 1 and T3 Code", "haoshoku-special-workspace numbered 1 t3code")
+o.bind("SUPER + T", "T3 Code", o.launch_sole("^t3code$", "t3code"))
 o.bind("SUPER + SHIFT + T", "Show/focus/hide Twitch workspace", "haoshoku-special-workspace twitch")
 o.bind("SUPER + M", "Show/focus/hide music workspace", "haoshoku-special-workspace music")
 o.bind("SUPER + O", "Show/focus/hide 1Password workspace", "haoshoku-special-workspace 1password")

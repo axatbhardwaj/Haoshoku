@@ -7,8 +7,8 @@ available for manual recovery, but normal setup and active launchers use Kitty.
 
 | File                      | What                                                  | When to read                          |
 | ------------------------- | ----------------------------------------------------- | ------------------------------------- |
-| `tab_configs/haki.toml`   | Omarchy Super+A Haki two-pane Claude-over-Codex tab | Modifying the Haki workspace layout |
-| `tab_configs/agents.toml` | Caelestia Super+A agents tab (Claude only), tab title "agents" | Modifying the agents workspace layout |
+| `tab_configs/haki.toml`   | Dormant legacy Haki two-pane Claude-over-Codex tab | Modifying the legacy Haki layout |
+| `tab_configs/agents.toml` | Dormant legacy agents tab (Claude only), tab title "agents" | Modifying the legacy agents layout |
 | `themes/elysian.yaml`     | Warp-native port of the active Omarchy Elysian Kitty palette | Modifying Warp colors or readability |
 
 ## Elysian theme: shipped and activated
@@ -25,7 +25,8 @@ Normal CachyOS user-app setup calls `configureKitty()` and does not invoke
 
 ## Dormant agent tab configs
 
-Haki is the two-pane Meta+A layout: Claude above a fresh Codex pane below.
+Haki is a dormant legacy two-pane layout: Claude above a fresh Codex pane below.
+Omarchy no longer binds it to `Meta+A`.
 `tab_configs/agents.toml` remains the separate Claude-only contract.
 
 These files are no longer deployed or launched by normal setup. The active
