@@ -54,7 +54,7 @@ describe("haoshoku-special-workspace", () => {
 				monitor: "DP-2",
 				followsFocus: false,
 			},
-			music: { workspace: "music", monitor: "DP-1", followsFocus: false },
+			music: { workspace: "music", monitor: "DP-1", followsFocus: true },
 			"1password": {
 				workspace: "1password",
 				monitor: "DP-1",
@@ -389,6 +389,19 @@ esac
 		return argv;
 	}
 
+	it("opens music on the focused monitor without leaving its special workspace", async () => {
+		const result = await run(["music"], {
+			clients: JSON.stringify([{ class: "Spotify" }]),
+			focusedMonitor: "HDMI-A-1",
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(dispatchCalls()).toEqual([
+			"dispatch focusmonitor HDMI-A-1",
+			"dispatch togglespecialworkspace music",
+		]);
+	});
+
 	function installClaudeArgumentRecorder() {
 		fs.writeFileSync(
 			path.join(directory, "claude"),
@@ -501,8 +514,10 @@ fi
 			env: { HOME: unusualHome, STRICT_V4_DISPATCH: "true" },
 		});
 		const [focusExpression, execExpression] = rawDispatchExpressions();
-		const focusValue = focusExpression
-			.slice('hl.dsp.focus({ workspace = '.length, -' })'.length);
+		const focusValue = focusExpression.slice(
+			"hl.dsp.focus({ workspace = ".length,
+			-" })".length,
+		);
 		const execValue = execExpression.slice("hl.dsp.exec_cmd(".length, -1);
 
 		expect(result.exitCode).toBe(0);

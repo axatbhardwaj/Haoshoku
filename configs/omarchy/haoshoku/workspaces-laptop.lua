@@ -106,7 +106,6 @@ o.bind(
   hl.dsp.workspace.toggle_special("scratchpad")
 )
 
-o.bind("SUPER + A", "Show/focus/hide Haki session", "haoshoku-special-workspace haki")
 o.bind("SUPER + I", "Show/focus/hide AI assistants workspace", "haoshoku-special-workspace assistants")
 o.bind("SUPER + T", "T3 Code", o.launch_sole("^t3code$", "t3code"))
 o.bind("SUPER + SHIFT + T", "Show/focus/hide Twitch workspace", "haoshoku-special-workspace twitch")

@@ -61,7 +61,6 @@ describe("Omarchy Lua workspace behavior", () => {
 
 	it("retains exact application bindings in both device profiles", () => {
 		const commands = [
-			'o.bind("SUPER + A", "Show/focus/hide Haki session", "haoshoku-special-workspace haki")',
 			'o.bind("SUPER + I", "Show/focus/hide AI assistants workspace", "haoshoku-special-workspace assistants")',
 			'o.bind("SUPER + T", "T3 Code", o.launch_sole("^t3code$", "t3code"))',
 			'o.bind("SUPER + B", "Toggle Flux Brave Origin workspace", "haoshoku-special-workspace browser-toggle flux")',
@@ -69,8 +68,10 @@ describe("Omarchy Lua workspace behavior", () => {
 			'o.bind("SUPER + SHIFT + G", "Toggle gaming workspace", "haoshoku-gaming-workspace toggle")',
 		];
 
-		for (const overlay of [pc, laptop])
+		for (const overlay of [pc, laptop]) {
 			for (const command of commands) expect(overlay).toContain(command);
+			expect(overlay).not.toContain('o.bind("SUPER + A"');
+		}
 	});
 
 	it("starts login services and routes the owned Kitty workspace exactly", () => {

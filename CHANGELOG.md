@@ -5,6 +5,8 @@
 - Start T3 Code once at Omarchy login from both device workspace overlays.
   Leave it on whichever workspace it opens or is moved to, and make `Super+T`
   focus the existing window instead of forcing workspace 1.
+- Remove the Haoshoku `Super+A` Haki binding, and make `Super+M` reveal the
+  `special:music` workspace on the currently focused monitor.
 
 ## 11.2.1 - 2026-08-26
 

@@ -226,7 +226,7 @@ else
   case "$recipe" in
     haki) workspace=haki; monitor=DP-2 ;;
     agents) workspace=agents; monitor=DP-2 ;;
-    music) workspace=music; monitor=DP-1 ;;
+    music) workspace=music; monitor=DP-1; follows_focus=true ;;
     1password) workspace=1password; monitor=DP-1 ;;
     communication) workspace=communication; monitor=HDMI-A-1 ;;
     stash) workspace=stash; monitor=DP-1 ;;
