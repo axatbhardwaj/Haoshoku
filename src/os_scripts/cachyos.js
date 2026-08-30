@@ -662,7 +662,7 @@ export async function runCachyOSSetup({
 		await configureUserAppsImpl();
 		if (isOmarchy) {
 			try {
-				await configureBraveManagedPolicies();
+				await configureBraveManagedPolicies({ nonInteractiveSudo: true });
 			} catch (err) {
 				log.warning(
 					`Brave managed-policy configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,

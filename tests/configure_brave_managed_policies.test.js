@@ -105,7 +105,7 @@ function makePolicyEnvironment() {
 	function applyPrivilegedCommand(command) {
 		commands.push(command);
 		for (const operation of command.split(" && ")) {
-			let match = operation.match(/^sudo -n bash -c .* _ '([^']+)'$/);
+			let match = operation.match(/^sudo(?: -n)? bash -c .* _ '([^']+)'$/);
 			if (match) {
 				const target = match[1];
 				assertTemporaryTarget(target);
@@ -136,7 +136,9 @@ function makePolicyEnvironment() {
 				continue;
 			}
 
-			match = operation.match(/^sudo -n chown ([^: ]+):([^ ]+) -- '([^']+)'$/);
+			match = operation.match(
+				/^sudo(?: -n)? chown ([^: ]+):([^ ]+) -- '([^']+)'$/,
+			);
 			if (match) {
 				const [, owner, group, target] = match;
 				const unquote = (value) =>
@@ -315,8 +317,7 @@ describe("configureBraveManagedPolicies", () => {
 		});
 		const repairScript =
 			'set -e; if [ -L "$1" ]; then rm -f -- "$1"; elif [ -e "$1" ]; then if [ ! -d "$1" ]; then rm -f -- "$1"; fi; fi; install -d -o root -g root -m 0755 -- "$1"';
-		const repair = (target) =>
-			`sudo -n bash -c '${repairScript}' _ '${target}'`;
+		const repair = (target) => `sudo bash -c '${repairScript}' _ '${target}'`;
 		const braveDirectories = [
 			path.join(environment.root, "etc", "brave"),
 			path.join(environment.root, "etc", "brave", "policies"),
@@ -333,10 +334,26 @@ describe("configureBraveManagedPolicies", () => {
 		expect(environment.commands).toEqual([
 			[
 				...braveDirectories.map(repair),
-				`sudo -n chown '${TEST_UID}':'${TEST_GID}' -- '${environment.policyDirectory}'`,
+				`sudo chown '${TEST_UID}':'${TEST_GID}' -- '${environment.policyDirectory}'`,
 			].join(" && "),
 			chromiumDirectories.map(repair).join(" && "),
 		]);
+	});
+
+	it("keeps full-setup policy repairs non-interactive", async () => {
+		const environment = makePolicyEnvironment();
+		await configureBraveManagedPolicies(
+			configureOptions(environment, { nonInteractiveSudo: true }),
+		);
+
+		expect(environment.commands.length).toBeGreaterThan(0);
+		expect(
+			environment.commands.every((command) =>
+				command
+					.split(" && ")
+					.every((operation) => operation.startsWith("sudo -n ")),
+			),
+		).toBe(true);
 	});
 
 	it("offers a standalone --brave-managed-policies CLI mode without sudo when Brave is absent", () => {

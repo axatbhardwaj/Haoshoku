@@ -68,7 +68,7 @@ function policyTreeDirectories(policyDirectory) {
 	];
 }
 
-function policyTreeRepairOperations(policyDirectory, fsImpl) {
+function policyTreeRepairOperations(policyDirectory, fsImpl, sudoCommand) {
 	const directories = policyTreeDirectories(policyDirectory);
 	if (
 		!directories.some((directory) => needsRootOwnedMode755(directory, fsImpl))
@@ -81,11 +81,17 @@ function policyTreeRepairOperations(policyDirectory, fsImpl) {
 	// attacker-controlled symlink from redirecting install/chmod to its referent.
 	return directories.map(
 		(directory) =>
-			`sudo -n bash -c ${shellEscape(ROOT_DIRECTORY_REPAIR_SCRIPT)} _ ${shellEscape(directory)}`,
+			`${sudoCommand} bash -c ${shellEscape(ROOT_DIRECTORY_REPAIR_SCRIPT)} _ ${shellEscape(directory)}`,
 	);
 }
 
-function bravePolicyTreeRepairOperations(policyDirectory, uid, gid, fsImpl) {
+function bravePolicyTreeRepairOperations(
+	policyDirectory,
+	uid,
+	gid,
+	fsImpl,
+	sudoCommand,
+) {
 	const directories = policyTreeDirectories(policyDirectory);
 	const parents = directories.slice(0, -1);
 	const leaf = directories.at(-1);
@@ -99,7 +105,7 @@ function bravePolicyTreeRepairOperations(policyDirectory, uid, gid, fsImpl) {
 	const operations = parentsNeedRepair
 		? parents.map(
 				(directory) =>
-					`sudo -n bash -c ${shellEscape(ROOT_DIRECTORY_REPAIR_SCRIPT)} _ ${shellEscape(directory)}`,
+					`${sudoCommand} bash -c ${shellEscape(ROOT_DIRECTORY_REPAIR_SCRIPT)} _ ${shellEscape(directory)}`,
 			)
 		: [];
 
@@ -116,10 +122,10 @@ function bravePolicyTreeRepairOperations(policyDirectory, uid, gid, fsImpl) {
 		// machine would also user-own /etc/brave and /etc/brave/policies. Stabilize
 		// the root-owned parents first, then change ownership of only the leaf.
 		operations.push(
-			`sudo -n bash -c ${shellEscape(ROOT_DIRECTORY_REPAIR_SCRIPT)} _ ${shellEscape(leaf)}`,
+			`${sudoCommand} bash -c ${shellEscape(ROOT_DIRECTORY_REPAIR_SCRIPT)} _ ${shellEscape(leaf)}`,
 		);
 		operations.push(
-			`sudo -n chown ${shellEscape(uid)}:${shellEscape(gid)} -- ${shellEscape(leaf)}`,
+			`${sudoCommand} chown ${shellEscape(uid)}:${shellEscape(gid)} -- ${shellEscape(leaf)}`,
 		);
 	}
 
@@ -184,6 +190,7 @@ export async function configureBraveManagedPolicies({
 	fsImpl = fs,
 	commandExistsImpl = commandExists,
 	runCommandImpl = runCommand,
+	nonInteractiveSudo = false,
 } = {}) {
 	if (!(await commandExistsImpl("brave-origin"))) {
 		log.info("Brave Origin not found. Skipping managed-policy configuration.");
@@ -194,11 +201,13 @@ export async function configureBraveManagedPolicies({
 		{ filename: ANTI_HIJACK_POLICY_FILE, content: ANTI_HIJACK_POLICY },
 		{ filename: COLOR_POLICY_FILE, content: colorPolicy(themeFile, fsImpl) },
 	];
+	const sudoCommand = nonInteractiveSudo ? "sudo -n" : "sudo";
 	const braveOperations = bravePolicyTreeRepairOperations(
 		policyDirectory,
 		uid,
 		gid,
 		fsImpl,
+		sudoCommand,
 	);
 	if (
 		braveOperations.length > 0 &&
@@ -224,7 +233,7 @@ export async function configureBraveManagedPolicies({
 	log.success("Brave managed browser policies installed.");
 
 	const chromiumOperations = lstatOrNull(chromiumPolicyDirectory, fsImpl)
-		? policyTreeRepairOperations(chromiumPolicyDirectory, fsImpl)
+		? policyTreeRepairOperations(chromiumPolicyDirectory, fsImpl, sudoCommand)
 		: [];
 	if (
 		chromiumOperations.length > 0 &&

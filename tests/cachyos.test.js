@@ -823,7 +823,11 @@ describe("Arch package-manager preflight", () => {
 				installFlatpakAppsImpl: record("flatpaks"),
 				promptDeviceTypeImpl: record("device-type"),
 				configureUserAppsImpl: record("user-apps"),
-				configureBraveManagedPoliciesImpl: record("brave-policies", true),
+				configureBraveManagedPoliciesImpl: async (options) => {
+					expect(options).toEqual({ nonInteractiveSudo: true });
+					events.push("brave-policies");
+					return true;
+				},
 				configureHyprmoncfgImpl: record("hyprmoncfg"),
 				configureOmarchyWorkspacesImpl: record("workspaces"),
 				configureOmarchyPluginsImpl: record("plugins"),
