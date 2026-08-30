@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 11.2.3 - 2026-08-30
 
 - Route the Arch setup's full system upgrade through `omarchy update -y` when
   Omarchy is installed, preserving Omarchy's snapshots, migrations, hooks, and
