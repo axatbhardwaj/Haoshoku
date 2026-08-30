@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Route the Arch setup's full system upgrade through `omarchy update -y` when
+  Omarchy is installed, preserving Omarchy's snapshots, migrations, hooks, and
+  restart checks instead of triggering its direct-Pacman transaction guard.
+
 ## 11.2.2 - 2026-08-30
 
 - Start T3 Code once at Omarchy login from both device workspace overlays.

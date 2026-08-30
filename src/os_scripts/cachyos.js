@@ -312,14 +312,18 @@ async function installPackagesFromFile(filePath, installerCmd) {
 // --- Installation Functions ---
 
 export async function prepareArchPackageManager({
+	isOmarchy = false,
 	runCommandImpl = runCommand,
 } = {}) {
 	log.info(
 		"Refreshing package databases and performing a full system upgrade...",
 	);
-	if (!(await runCommandImpl("sudo pacman -Syu --noconfirm"))) {
+	const updateCommand = isOmarchy
+		? "omarchy update -y"
+		: "sudo pacman -Syu --noconfirm";
+	if (!(await runCommandImpl(updateCommand))) {
 		log.error(
-			"Pacman refresh and full upgrade failed. Aborting Arch setup before package installation.",
+			"System refresh and full upgrade failed. Aborting Arch setup before package installation.",
 		);
 		return false;
 	}
@@ -651,12 +655,12 @@ export async function runCachyOSSetup({
 	const configureOmarchyAppearance = configureOmarchyAppearanceImpl;
 
 	await promptDeviceTypeImpl();
-	if (!(await prepareArchPackageManagerImpl())) return false;
+	const isOmarchy = await commandExistsImpl("omarchy");
+	if (!(await prepareArchPackageManagerImpl({ isOmarchy }))) return false;
 	await ensureRustToolchainImpl();
 	const aurHelper = await ensureAurHelperImpl();
 	await installDevToolsImpl();
 
-	const isOmarchy = await commandExistsImpl("omarchy");
 	await installSystemPackagesImpl(aurHelper, isOmarchy);
 	await installFlatpakAppsImpl();
 	await configureUserAppsImpl();
