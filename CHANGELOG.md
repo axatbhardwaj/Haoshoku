@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 11.2.2 - 2026-08-30
 
 - Start T3 Code once at Omarchy login from both device workspace overlays.
   Leave it on whichever workspace it opens or is moved to, and make `Super+T`
