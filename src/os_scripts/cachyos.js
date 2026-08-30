@@ -8,6 +8,7 @@ import {
 	promptUser,
 	runCommand,
 	safeCopyFile,
+	startSudoSession,
 } from "../common/utils.js";
 import { configureAudio } from "../helpers/configure_audio.js";
 import { configureBash } from "../helpers/configure_bash.js";
@@ -86,7 +87,7 @@ export async function resolveAurHelper(commandExistsImpl = commandExists) {
 
 export function selectArchInstallCommand(pkg, inRepository, aurHelper) {
 	if (inRepository) {
-		return `sudo pacman -S --needed --noconfirm ${pkg}`;
+		return `sudo -n pacman -S --needed --noconfirm ${pkg}`;
 	}
 	return aurHelper ? `${aurHelper} -S --needed --noconfirm ${pkg}` : null;
 }
@@ -115,7 +116,7 @@ export async function installGamingPackages({
 	runCommandImpl = runCommand,
 } = {}) {
 	const repositoryOk = await runCommandImpl(
-		"sudo pacman -S --needed --noconfirm steam gamemode lib32-gamemode gamescope mangohud lib32-mangohud",
+		"sudo -n pacman -S --needed --noconfirm steam gamemode lib32-gamemode gamescope mangohud lib32-mangohud",
 	);
 	const protonOk = aurHelper
 		? await runCommandImpl(
@@ -133,11 +134,6 @@ export async function installGamingPackages({
 		log.info("Skipping GPU-specific 32-bit packages outside Omarchy.");
 	}
 	return Boolean(repositoryOk && protonOk && gpuOk);
-}
-
-async function refreshSudo() {
-	log.info("Checking sudo access. You may be prompted for your password.");
-	return await runCommand("sudo -v");
 }
 
 /**
@@ -227,8 +223,8 @@ export async function installArchPackageBatch(packages, options = {}) {
 
 	await installBatchWithFallback({
 		packages: repositoryPackages,
-		batchCommand: `sudo pacman -S --needed --noconfirm ${repositoryPackages.join(" ")}`,
-		individualCommand: (pkg) => `sudo pacman -S --needed --noconfirm ${pkg}`,
+		batchCommand: `sudo -n pacman -S --needed --noconfirm ${repositoryPackages.join(" ")}`,
+		individualCommand: (pkg) => `sudo -n pacman -S --needed --noconfirm ${pkg}`,
 		status,
 		getInstalledPackagesImpl,
 		runCommandImpl,
@@ -320,7 +316,7 @@ export async function prepareArchPackageManager({
 	);
 	const updateCommand = isOmarchy
 		? "omarchy update -y"
-		: "sudo pacman -Syu --noconfirm";
+		: "sudo -n pacman -Syu --noconfirm";
 	if (!(await runCommandImpl(updateCommand))) {
 		log.error(
 			"System refresh and full upgrade failed. Aborting Arch setup before package installation.",
@@ -333,7 +329,7 @@ export async function prepareArchPackageManager({
 	);
 	if (
 		!(await runCommandImpl(
-			"sudo pacman -S --needed --noconfirm base-devel git",
+			"sudo -n pacman -S --needed --noconfirm base-devel git",
 		))
 	) {
 		log.error(
@@ -432,7 +428,7 @@ async function setupFlatpakRemotes() {
 async function enableServices() {
 	if (await promptUser("Enable Bluetooth?", false)) {
 		log.info("Enabling Bluetooth service...");
-		await runCommand("sudo systemctl enable --now bluetooth");
+		await runCommand("sudo -n systemctl enable --now bluetooth");
 	}
 
 	if (
@@ -440,10 +436,10 @@ async function enableServices() {
 		(await promptUser("Enable Docker?", true))
 	) {
 		log.info("Enabling and starting Docker service...");
-		await runCommand("sudo systemctl enable --now docker");
+		await runCommand("sudo -n systemctl enable --now docker");
 		const user = process.env.USER;
 		if (user) {
-			await runCommand(`sudo usermod -aG docker ${user}`);
+			await runCommand(`sudo -n usermod -aG docker ${user}`);
 			log.warning(
 				`User ${user} added to docker group. Please log out and back in.`,
 			);
@@ -476,7 +472,6 @@ export async function installSystemPackages(
 	aurHelper,
 	isOmarchy,
 	{
-		refreshSudoImpl = refreshSudo,
 		installArchPackageBatchImpl = installArchPackageBatch,
 		readFileImpl = fs.readFileSync,
 		runCommandImpl = runCommand,
@@ -484,13 +479,6 @@ export async function installSystemPackages(
 	} = {},
 ) {
 	log.info("Preparing for package installation...");
-	if (!(await refreshSudoImpl())) {
-		log.error(
-			"Sudo authentication failed. Skipping sudo-dependent installations.",
-		);
-		return;
-	}
-
 	log.info("Installing packages from file lists...");
 	const content = readFileImpl(PARU_APPLIST_PATH, "utf8");
 	const requested = content
@@ -512,7 +500,7 @@ export async function installSystemPackages(
 
 	log.info("Installing Nerd Fonts...");
 	await runCommandImpl(
-		"sudo pacman -S --needed --noconfirm ttf-jetbrains-mono-nerd",
+		"sudo -n pacman -S --needed --noconfirm ttf-jetbrains-mono-nerd",
 	);
 
 	if (await promptUserImpl("Enable gaming configuration?", false)) {
@@ -523,7 +511,7 @@ export async function installSystemPackages(
 async function installFlatpakApps() {
 	if (!(await commandExists("flatpak"))) {
 		log.info("Installing Flatpak...");
-		await runCommand("sudo pacman -S flatpak --noconfirm");
+		await runCommand("sudo -n pacman -S flatpak --noconfirm");
 	}
 	await setupFlatpakRemotes();
 	await installPackagesFromFile(
@@ -645,6 +633,7 @@ export async function runCachyOSSetup({
 	configureOmarchyBarImpl = configureOmarchyBar,
 	configureOmazedImpl = configureOmazed,
 	configureOmarchyAppearanceImpl = configureOmarchyAppearance,
+	startSudoSessionImpl = startSudoSession,
 } = {}) {
 	const configureBraveManagedPolicies = configureBraveManagedPoliciesImpl;
 	const configureHyprmoncfg = configureHyprmoncfgImpl;
@@ -655,71 +644,83 @@ export async function runCachyOSSetup({
 	const configureOmarchyAppearance = configureOmarchyAppearanceImpl;
 
 	await promptDeviceTypeImpl();
-	const isOmarchy = await commandExistsImpl("omarchy");
-	if (!(await prepareArchPackageManagerImpl({ isOmarchy }))) return false;
-	await ensureRustToolchainImpl();
-	const aurHelper = await ensureAurHelperImpl();
-	await installDevToolsImpl();
-
-	await installSystemPackagesImpl(aurHelper, isOmarchy);
-	await installFlatpakAppsImpl();
-	await configureUserAppsImpl();
-	if (isOmarchy) {
-		try {
-			await configureBraveManagedPolicies();
-		} catch (err) {
-			log.warning(
-				`Brave managed-policy configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
-			);
-		}
-	}
-	if (isOmarchy) {
-		try {
-			await configureHyprmoncfg();
-		} catch (err) {
-			log.warning(
-				`Hyprmoncfg configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
-			);
-		}
-	}
-	if (isOmarchy) {
-		try {
-			await configureOmarchyWorkspaces();
-		} catch (err) {
-			log.warning(
-				`Omarchy workspace configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
-			);
-		}
-	}
-	if (isOmarchy) {
-		try {
-			await configureOmarchyPlugins();
-		} catch (err) {
-			log.warning(
-				`Omarchy plugin configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
-			);
-		}
-	}
-	if (isOmarchy) {
-		try {
-			await configureOmarchyBar();
-		} catch (err) {
-			log.warning(
-				`Omarchy bar configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
-			);
-		}
-	}
-	if (isOmarchy) await configureOmazed();
-	if (isOmarchy) {
-		try {
-			await configureOmarchyAppearance();
-		} catch (err) {
-			log.warning(
-				`Omarchy appearance configuration failed (${err?.message ?? err}) — continuing with remaining setup.`,
-			);
-		}
+	const stopSudoSession = await startSudoSessionImpl();
+	if (!stopSudoSession) {
+		log.error("Sudo authentication failed. Aborting Arch setup.");
+		return false;
 	}
 
-	log.success("Arch setup finished. Please restart your terminal or log out.");
-	return true;
+	try {
+		const isOmarchy = await commandExistsImpl("omarchy");
+		if (!(await prepareArchPackageManagerImpl({ isOmarchy }))) return false;
+		await ensureRustToolchainImpl();
+		const aurHelper = await ensureAurHelperImpl();
+		await installDevToolsImpl();
+
+		await installSystemPackagesImpl(aurHelper, isOmarchy);
+		await installFlatpakAppsImpl();
+		await configureUserAppsImpl();
+		if (isOmarchy) {
+			try {
+				await configureBraveManagedPolicies({ nonInteractiveSudo: true });
+			} catch (err) {
+				log.warning(
+					`Brave managed-policy configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
+				);
+			}
+		}
+		if (isOmarchy) {
+			try {
+				await configureHyprmoncfg();
+			} catch (err) {
+				log.warning(
+					`Hyprmoncfg configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
+				);
+			}
+		}
+		if (isOmarchy) {
+			try {
+				await configureOmarchyWorkspaces();
+			} catch (err) {
+				log.warning(
+					`Omarchy workspace configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
+				);
+			}
+		}
+		if (isOmarchy) {
+			try {
+				await configureOmarchyPlugins();
+			} catch (err) {
+				log.warning(
+					`Omarchy plugin configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
+				);
+			}
+		}
+		if (isOmarchy) {
+			try {
+				await configureOmarchyBar();
+			} catch (err) {
+				log.warning(
+					`Omarchy bar configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
+				);
+			}
+		}
+		if (isOmarchy) await configureOmazed();
+		if (isOmarchy) {
+			try {
+				await configureOmarchyAppearance();
+			} catch (err) {
+				log.warning(
+					`Omarchy appearance configuration failed (${err?.message ?? err}) — continuing with remaining setup.`,
+				);
+			}
+		}
+
+		log.success(
+			"Arch setup finished. Please restart your terminal or log out.",
+		);
+		return true;
+	} finally {
+		stopSudoSession();
+	}
 }

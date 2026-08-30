@@ -138,6 +138,7 @@ function runArchDefaultPath() {
 			} = await import(${JSON.stringify(modulePath)});
 			await runCachyOSSetup({
 				promptDeviceTypeImpl: record("deviceType"),
+				startSudoSessionImpl: record("sudoSession", () => calls.push("sudoStop")),
 				prepareArchPackageManagerImpl: record("packageManager", true),
 				ensureRustToolchainImpl: record("rust"),
 				ensureAurHelperImpl: record("aur", "paru"),
@@ -270,6 +271,7 @@ function defaultSetupOverrides({
 	configureUserAppsImpl = async () => {},
 }) {
 	return {
+		startSudoSessionImpl: async () => () => {},
 		prepareArchPackageManagerImpl: async () => true,
 		ensureRustToolchainImpl: async () => {},
 		ensureAurHelperImpl: async () => "paru",

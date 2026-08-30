@@ -25,10 +25,12 @@ const EXPECTED_OPTIONS = [
 	"configureOmarchyBarImpl",
 	"configureOmazedImpl",
 	"configureOmarchyAppearanceImpl",
+	"startSudoSessionImpl",
 ];
 
 const EXPECTED_AWAITED_STEPS = [
 	"promptDeviceTypeImpl",
+	"startSudoSessionImpl",
 	"commandExistsImpl",
 	"prepareArchPackageManagerImpl",
 	"ensureRustToolchainImpl",
@@ -215,6 +217,7 @@ it("keeps the default Omarchy run behind explicit injectable side-effect seams",
 	const startedAt = performance.now();
 	const result = await runCachyOSSetup({
 		promptDeviceTypeImpl: record("deviceType"),
+		startSudoSessionImpl: record("sudoSession", () => calls.push("sudoStop")),
 		prepareArchPackageManagerImpl: record("packageManager", true),
 		ensureRustToolchainImpl: record("rust"),
 		ensureAurHelperImpl: record("aurHelper", "paru"),
@@ -236,6 +239,7 @@ it("keeps the default Omarchy run behind explicit injectable side-effect seams",
 	expect(performance.now() - startedAt).toBeLessThan(250);
 	expect(calls).toEqual([
 		"deviceType",
+		"sudoSession",
 		"commandExists",
 		"packageManager",
 		"rust",
@@ -251,6 +255,7 @@ it("keeps the default Omarchy run behind explicit injectable side-effect seams",
 		"bar",
 		"omazed",
 		"appearance",
+		"sudoStop",
 	]);
 });
 

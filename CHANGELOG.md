@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Authenticate sudo once before the Arch setup, keep its timestamp alive with
+  silent, non-interactive refreshes while setup runs, keep all later Haoshoku
+  sudo calls non-interactive, and always stop the refresh timer when setup
+  completes or aborts.
+
 ## 11.2.3 - 2026-08-30
 
 - Route the Arch setup's full system upgrade through `omarchy update -y` when

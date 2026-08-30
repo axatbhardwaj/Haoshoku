@@ -12,7 +12,7 @@ export const log = {
 };
 
 export async function runCommand(command, options = { check: true }) {
-	log.dim(`Executing: ${command}`);
+	if (options.log !== false) log.dim(`Executing: ${command}`);
 
 	// Auto-detect shell usage if not explicitly set
 	const useShell =
@@ -32,9 +32,9 @@ export async function runCommand(command, options = { check: true }) {
 				: command.split(" "),
 			{
 				cwd: options.cwd,
-				stdin: "inherit",
-				stdout: "inherit",
-				stderr: "inherit",
+				stdin: options.stdin ?? "inherit",
+				stdout: options.stdout ?? "inherit",
+				stderr: options.stderr ?? "inherit",
 			},
 		);
 
@@ -53,6 +53,27 @@ export async function runCommand(command, options = { check: true }) {
 		if (options.returnExitCode) return 127;
 		return false;
 	}
+}
+
+export async function startSudoSession({
+	runCommandImpl = runCommand,
+	setIntervalImpl = setInterval,
+	clearIntervalImpl = clearInterval,
+} = {}) {
+	log.info("Authenticating sudo once for the Arch setup...");
+	if (!(await runCommandImpl("sudo -v"))) return null;
+
+	const refresh = () =>
+		runCommandImpl("sudo -n -v", {
+			check: false,
+			log: false,
+			stdin: "ignore",
+			stdout: "ignore",
+			stderr: "ignore",
+		});
+	const timer = setIntervalImpl(refresh, 60_000);
+	timer.unref?.();
+	return () => clearIntervalImpl(timer);
 }
 
 /** Run a command with piped output while preserving its exact stdout bytes. */
