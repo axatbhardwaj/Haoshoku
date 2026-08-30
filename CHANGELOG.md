@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 11.2.4 - 2026-08-31
 
 - Authenticate sudo once before the Arch setup, keep its timestamp alive with
   silent, non-interactive refreshes while setup runs, keep all later Haoshoku
