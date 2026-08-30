@@ -27,6 +27,8 @@ haoshoku --os arch
 
 The Arch setup:
 
+- authenticates sudo once up front and keeps that authorization alive with
+  non-interactive refreshes until setup finishes or aborts;
 - performs a full system upgrade before package installation through
   `omarchy update -y` on Omarchy or `pacman -Syu` on other Arch-family
   systems, aborting setup if that preflight fails;

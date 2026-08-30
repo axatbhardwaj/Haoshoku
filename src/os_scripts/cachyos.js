@@ -8,6 +8,7 @@ import {
 	promptUser,
 	runCommand,
 	safeCopyFile,
+	startSudoSession,
 } from "../common/utils.js";
 import { configureAudio } from "../helpers/configure_audio.js";
 import { configureBash } from "../helpers/configure_bash.js";
@@ -645,6 +646,7 @@ export async function runCachyOSSetup({
 	configureOmarchyBarImpl = configureOmarchyBar,
 	configureOmazedImpl = configureOmazed,
 	configureOmarchyAppearanceImpl = configureOmarchyAppearance,
+	startSudoSessionImpl = startSudoSession,
 } = {}) {
 	const configureBraveManagedPolicies = configureBraveManagedPoliciesImpl;
 	const configureHyprmoncfg = configureHyprmoncfgImpl;
@@ -655,71 +657,83 @@ export async function runCachyOSSetup({
 	const configureOmarchyAppearance = configureOmarchyAppearanceImpl;
 
 	await promptDeviceTypeImpl();
-	const isOmarchy = await commandExistsImpl("omarchy");
-	if (!(await prepareArchPackageManagerImpl({ isOmarchy }))) return false;
-	await ensureRustToolchainImpl();
-	const aurHelper = await ensureAurHelperImpl();
-	await installDevToolsImpl();
-
-	await installSystemPackagesImpl(aurHelper, isOmarchy);
-	await installFlatpakAppsImpl();
-	await configureUserAppsImpl();
-	if (isOmarchy) {
-		try {
-			await configureBraveManagedPolicies();
-		} catch (err) {
-			log.warning(
-				`Brave managed-policy configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
-			);
-		}
-	}
-	if (isOmarchy) {
-		try {
-			await configureHyprmoncfg();
-		} catch (err) {
-			log.warning(
-				`Hyprmoncfg configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
-			);
-		}
-	}
-	if (isOmarchy) {
-		try {
-			await configureOmarchyWorkspaces();
-		} catch (err) {
-			log.warning(
-				`Omarchy workspace configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
-			);
-		}
-	}
-	if (isOmarchy) {
-		try {
-			await configureOmarchyPlugins();
-		} catch (err) {
-			log.warning(
-				`Omarchy plugin configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
-			);
-		}
-	}
-	if (isOmarchy) {
-		try {
-			await configureOmarchyBar();
-		} catch (err) {
-			log.warning(
-				`Omarchy bar configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
-			);
-		}
-	}
-	if (isOmarchy) await configureOmazed();
-	if (isOmarchy) {
-		try {
-			await configureOmarchyAppearance();
-		} catch (err) {
-			log.warning(
-				`Omarchy appearance configuration failed (${err?.message ?? err}) — continuing with remaining setup.`,
-			);
-		}
+	const stopSudoSession = await startSudoSessionImpl();
+	if (!stopSudoSession) {
+		log.error("Sudo authentication failed. Aborting Arch setup.");
+		return false;
 	}
 
-	log.success("Arch setup finished. Please restart your terminal or log out.");
-	return true;
+	try {
+		const isOmarchy = await commandExistsImpl("omarchy");
+		if (!(await prepareArchPackageManagerImpl({ isOmarchy }))) return false;
+		await ensureRustToolchainImpl();
+		const aurHelper = await ensureAurHelperImpl();
+		await installDevToolsImpl();
+
+		await installSystemPackagesImpl(aurHelper, isOmarchy);
+		await installFlatpakAppsImpl();
+		await configureUserAppsImpl();
+		if (isOmarchy) {
+			try {
+				await configureBraveManagedPolicies();
+			} catch (err) {
+				log.warning(
+					`Brave managed-policy configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
+				);
+			}
+		}
+		if (isOmarchy) {
+			try {
+				await configureHyprmoncfg();
+			} catch (err) {
+				log.warning(
+					`Hyprmoncfg configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
+				);
+			}
+		}
+		if (isOmarchy) {
+			try {
+				await configureOmarchyWorkspaces();
+			} catch (err) {
+				log.warning(
+					`Omarchy workspace configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
+				);
+			}
+		}
+		if (isOmarchy) {
+			try {
+				await configureOmarchyPlugins();
+			} catch (err) {
+				log.warning(
+					`Omarchy plugin configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
+				);
+			}
+		}
+		if (isOmarchy) {
+			try {
+				await configureOmarchyBar();
+			} catch (err) {
+				log.warning(
+					`Omarchy bar configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
+				);
+			}
+		}
+		if (isOmarchy) await configureOmazed();
+		if (isOmarchy) {
+			try {
+				await configureOmarchyAppearance();
+			} catch (err) {
+				log.warning(
+					`Omarchy appearance configuration failed (${err?.message ?? err}) — continuing with remaining setup.`,
+				);
+			}
+		}
+
+		log.success(
+			"Arch setup finished. Please restart your terminal or log out.",
+		);
+		return true;
+	} finally {
+		stopSudoSession();
+	}
 }

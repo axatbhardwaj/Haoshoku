@@ -549,6 +549,90 @@ describe("portable gaming setup", () => {
 });
 
 describe("Arch package-manager preflight", () => {
+	it("stops before package setup when sudo authentication fails", async () => {
+		const events = [];
+		const unreachable = async () => {
+			throw new Error("setup continued without an authenticated sudo session");
+		};
+		const result = await runCachyOSSetup({
+			promptDeviceTypeImpl: async () => events.push("device-type"),
+			startSudoSessionImpl: async () => {
+				events.push("sudo-start");
+				return null;
+			},
+			prepareArchPackageManagerImpl: async () => {
+				events.push("unexpected-prepare");
+				return false;
+			},
+			ensureRustToolchainImpl: unreachable,
+			ensureAurHelperImpl: unreachable,
+			installDevToolsImpl: unreachable,
+			commandExistsImpl: async () => {
+				events.push("unexpected-detect-omarchy");
+				return true;
+			},
+			installSystemPackagesImpl: unreachable,
+			installFlatpakAppsImpl: unreachable,
+			configureUserAppsImpl: unreachable,
+			configureBraveManagedPoliciesImpl: unreachable,
+			configureHyprmoncfgImpl: unreachable,
+			configureOmarchyWorkspacesImpl: unreachable,
+			configureOmarchyPluginsImpl: unreachable,
+			configureOmarchyBarImpl: unreachable,
+			configureOmazedImpl: unreachable,
+			configureOmarchyAppearanceImpl: unreachable,
+		});
+
+		expect(result).toBe(false);
+		expect(events).toEqual(["device-type", "sudo-start"]);
+	});
+
+	it("stops the sudo keepalive when package-manager setup aborts", async () => {
+		const events = [];
+		const unreachable = async () => {
+			throw new Error(
+				"setup continued after package-manager preparation failed",
+			);
+		};
+		const result = await runCachyOSSetup({
+			promptDeviceTypeImpl: async () => events.push("device-type"),
+			startSudoSessionImpl: async () => {
+				events.push("sudo-start");
+				return () => events.push("sudo-stop");
+			},
+			commandExistsImpl: async () => {
+				events.push("detect-omarchy");
+				return true;
+			},
+			prepareArchPackageManagerImpl: async () => {
+				events.push("prepare");
+				return false;
+			},
+			ensureRustToolchainImpl: unreachable,
+			ensureAurHelperImpl: unreachable,
+			installDevToolsImpl: unreachable,
+			installSystemPackagesImpl: unreachable,
+			installFlatpakAppsImpl: unreachable,
+			configureUserAppsImpl: unreachable,
+			configureBraveManagedPoliciesImpl: unreachable,
+			configureHyprmoncfgImpl: unreachable,
+			configureOmarchyWorkspacesImpl: unreachable,
+			configureOmarchyPluginsImpl: unreachable,
+			configureOmarchyBarImpl: unreachable,
+			configureOmazedImpl: unreachable,
+			configureOmarchyAppearanceImpl: unreachable,
+		});
+
+		expect(result).toBe(false);
+		expect(events).toEqual([
+			"device-type",
+			"sudo-start",
+			"detect-omarchy",
+			"prepare",
+			"sudo-stop",
+		]);
+	});
+
 	it("uses pacman outside Omarchy before installing build dependencies", async () => {
 		const commands = [];
 		const result = await prepareArchPackageManager({
@@ -617,6 +701,7 @@ describe("Arch package-manager preflight", () => {
 		};
 		const result = await runCachyOSSetup({
 			promptDeviceTypeImpl: async () => events.push("device-type"),
+			startSudoSessionImpl: async () => () => {},
 			commandExistsImpl: async () => {
 				events.push("detect-omarchy");
 				return false;
@@ -653,6 +738,7 @@ describe("Arch package-manager preflight", () => {
 		};
 		const result = await runCachyOSSetup({
 			promptDeviceTypeImpl: async () => events.push("device-type"),
+			startSudoSessionImpl: async () => () => {},
 			commandExistsImpl: async (command) => {
 				expect(command).toBe("omarchy");
 				events.push("detect-omarchy");
@@ -689,6 +775,7 @@ describe("Arch package-manager preflight", () => {
 				return result;
 			};
 			const result = await runCachyOSSetup({
+				startSudoSessionImpl: async () => () => {},
 				prepareArchPackageManagerImpl: record("prepare", true),
 				ensureRustToolchainImpl: record("rust", true),
 				ensureAurHelperImpl: record("aur", "paru"),
@@ -756,6 +843,7 @@ describe("Arch package-manager preflight", () => {
 
 		await runCachyOSSetup({
 			promptDeviceTypeImpl: async () => {},
+			startSudoSessionImpl: async () => () => {},
 			prepareArchPackageManagerImpl: async () => true,
 			ensureRustToolchainImpl: async () => {},
 			ensureAurHelperImpl: async () => "paru",
@@ -788,6 +876,7 @@ describe("Arch package-manager preflight", () => {
 			let result;
 			try {
 				result = await runCachyOSSetup({
+					startSudoSessionImpl: async () => () => {},
 					prepareArchPackageManagerImpl: async () => true,
 					ensureRustToolchainImpl: async () => {},
 					ensureAurHelperImpl: async () => "paru",
@@ -846,6 +935,7 @@ describe("Arch package-manager preflight", () => {
 					}
 				};
 				const result = await runCachyOSSetup({
+					startSudoSessionImpl: async () => () => {},
 					prepareArchPackageManagerImpl: async () => true,
 					ensureRustToolchainImpl: async () => {},
 					ensureAurHelperImpl: async () => "paru",
