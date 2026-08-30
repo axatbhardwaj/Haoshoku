@@ -32,9 +32,9 @@ export async function runCommand(command, options = { check: true }) {
 				: command.split(" "),
 			{
 				cwd: options.cwd,
-				stdin: "inherit",
-				stdout: "inherit",
-				stderr: "inherit",
+				stdin: options.stdin ?? "inherit",
+				stdout: options.stdout ?? "inherit",
+				stderr: options.stderr ?? "inherit",
 			},
 		);
 
@@ -56,15 +56,22 @@ export async function runCommand(command, options = { check: true }) {
 }
 
 export async function startSudoSession({
-	authenticateImpl = () => runCommand("sudo -v"),
-	refreshImpl = () => runCommand("sudo -n true", { check: false, log: false }),
+	runCommandImpl = runCommand,
 	setIntervalImpl = setInterval,
 	clearIntervalImpl = clearInterval,
 } = {}) {
 	log.info("Authenticating sudo once for the Arch setup...");
-	if (!(await authenticateImpl())) return null;
+	if (!(await runCommandImpl("sudo -v"))) return null;
 
-	const timer = setIntervalImpl(refreshImpl, 60_000);
+	const refresh = () =>
+		runCommandImpl("sudo -n -v", {
+			check: false,
+			log: false,
+			stdin: "ignore",
+			stdout: "ignore",
+			stderr: "ignore",
+		});
+	const timer = setIntervalImpl(refresh, 60_000);
 	timer.unref?.();
 	return () => clearIntervalImpl(timer);
 }

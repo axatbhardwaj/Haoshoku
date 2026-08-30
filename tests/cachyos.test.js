@@ -127,7 +127,7 @@ describe("Arch package routing", () => {
 
 	it("uses pacman for repository packages and the selected helper for AUR", () => {
 		expect(selectArchInstallCommand("fish", true, "yay")).toBe(
-			"sudo pacman -S --needed --noconfirm fish",
+			"sudo -n pacman -S --needed --noconfirm fish",
 		);
 		expect(selectArchInstallCommand("protonup-rs-bin", false, "yay")).toBe(
 			"yay -S --needed --noconfirm protonup-rs-bin",
@@ -210,7 +210,9 @@ describe("batched Arch package installation", () => {
 		);
 
 		expect(metadataQueries).toEqual(["repo-one"]);
-		expect(commands).toEqual(["sudo pacman -S --needed --noconfirm repo-one"]);
+		expect(commands).toEqual([
+			"sudo -n pacman -S --needed --noconfirm repo-one",
+		]);
 		expect(result.invalid).toEqual(["--help", ".hidden"]);
 	});
 
@@ -231,7 +233,7 @@ describe("batched Arch package installation", () => {
 		);
 
 		expect(commands).toEqual([
-			"sudo pacman -S --needed --noconfirm repo-one repo-two",
+			"sudo -n pacman -S --needed --noconfirm repo-one repo-two",
 			"yay -S --needed --noconfirm --batchinstall aur-one aur-two",
 		]);
 		expect(result).toEqual({
@@ -265,7 +267,7 @@ describe("batched Arch package installation", () => {
 
 		expect(metadataQueries).toEqual(["aur-good", "aur-missing"]);
 		expect(commands).toEqual([
-			"sudo pacman -S --needed --noconfirm repo-one",
+			"sudo -n pacman -S --needed --noconfirm repo-one",
 			"paru -S --needed --noconfirm --batchinstall aur-good",
 		]);
 		expect(result.missing).toEqual(["aur-missing"]);
@@ -282,13 +284,13 @@ describe("batched Arch package installation", () => {
 			packageInAurImpl: async () => false,
 			runCommandImpl: async (command) => {
 				commands.push(command);
-				return command === "sudo pacman -S --needed --noconfirm repo-two";
+				return command === "sudo -n pacman -S --needed --noconfirm repo-two";
 			},
 		});
 
 		expect(commands).toEqual([
-			"sudo pacman -S --needed --noconfirm repo-one repo-two",
-			"sudo pacman -S --needed --noconfirm repo-two",
+			"sudo -n pacman -S --needed --noconfirm repo-one repo-two",
+			"sudo -n pacman -S --needed --noconfirm repo-two",
 		]);
 		expect(result.installed).toEqual(["repo-one", "repo-two"]);
 		expect(result.failed).toEqual([]);
@@ -365,7 +367,9 @@ describe("batched Arch package installation", () => {
 			},
 		});
 
-		expect(commands).toEqual(["sudo pacman -S --needed --noconfirm repo-one"]);
+		expect(commands).toEqual([
+			"sudo -n pacman -S --needed --noconfirm repo-one",
+		]);
 		expect(aurMetadataQueries).toBe(0);
 		expect(result).toEqual({
 			installed: ["repo-one"],
@@ -454,7 +458,6 @@ describe("system package installation orchestration", () => {
 		const events = [];
 
 		await installSystemPackages("yay", false, {
-			refreshSudoImpl: async () => true,
 			readFileImpl: () =>
 				"# Applications\n chromium \n\nvisual-studio-code-bin\n",
 			installArchPackageBatchImpl: async (packages, options) => {
@@ -483,32 +486,33 @@ describe("system package installation orchestration", () => {
 			},
 		]);
 		expect(commands).toEqual([
-			"sudo pacman -S --needed --noconfirm ttf-jetbrains-mono-nerd",
+			"sudo -n pacman -S --needed --noconfirm ttf-jetbrains-mono-nerd",
 		]);
 		expect(events).toEqual(["batch", "font"]);
 	});
 
-	it("does not batch packages when sudo validation fails", async () => {
-		let batchCalls = 0;
-
+	it("does not perform a second interactive sudo authentication", async () => {
+		const commands = [];
 		await installSystemPackages("paru", false, {
-			refreshSudoImpl: async () => false,
 			readFileImpl: () => "chromium\n",
-			installArchPackageBatchImpl: async () => {
-				batchCalls += 1;
-				return {
-					installed: [],
-					failed: [],
-					missing: [],
-					invalid: [],
-					skipped: [],
-				};
+			installArchPackageBatchImpl: async () => ({
+				installed: ["chromium"],
+				failed: [],
+				missing: [],
+				invalid: [],
+				skipped: [],
+			}),
+			runCommandImpl: async (command) => {
+				commands.push(command);
+				return true;
 			},
-			runCommandImpl: async () => true,
 			promptUserImpl: async () => false,
 		});
 
-		expect(batchCalls).toBe(0);
+		expect(commands).not.toContain("sudo -v");
+		expect(commands.every((command) => command.startsWith("sudo -n "))).toBe(
+			true,
+		);
 	});
 });
 
@@ -527,7 +531,7 @@ describe("portable gaming setup", () => {
 		});
 
 		expect(commands).toEqual([
-			"sudo pacman -S --needed --noconfirm steam gamemode lib32-gamemode gamescope mangohud lib32-mangohud",
+			"sudo -n pacman -S --needed --noconfirm steam gamemode lib32-gamemode gamescope mangohud lib32-mangohud",
 			"yay -S --needed --noconfirm protonup-rs-bin",
 			"omarchy-install-gaming-gpu-lib32",
 		]);
@@ -633,6 +637,37 @@ describe("Arch package-manager preflight", () => {
 		]);
 	});
 
+	it("stops the sudo keepalive when setup throws", async () => {
+		const events = [];
+		const unreachable = async () => {
+			throw new Error("setup continued after injected failure");
+		};
+		const setup = runCachyOSSetup({
+			promptDeviceTypeImpl: async () => {},
+			startSudoSessionImpl: async () => () => events.push("sudo-stop"),
+			commandExistsImpl: async () => false,
+			prepareArchPackageManagerImpl: async () => true,
+			ensureRustToolchainImpl: async () => {
+				throw new Error("injected setup failure");
+			},
+			ensureAurHelperImpl: unreachable,
+			installDevToolsImpl: unreachable,
+			installSystemPackagesImpl: unreachable,
+			installFlatpakAppsImpl: unreachable,
+			configureUserAppsImpl: unreachable,
+			configureBraveManagedPoliciesImpl: unreachable,
+			configureHyprmoncfgImpl: unreachable,
+			configureOmarchyWorkspacesImpl: unreachable,
+			configureOmarchyPluginsImpl: unreachable,
+			configureOmarchyBarImpl: unreachable,
+			configureOmazedImpl: unreachable,
+			configureOmarchyAppearanceImpl: unreachable,
+		});
+
+		await expect(setup).rejects.toThrow("injected setup failure");
+		expect(events).toEqual(["sudo-stop"]);
+	});
+
 	it("uses pacman outside Omarchy before installing build dependencies", async () => {
 		const commands = [];
 		const result = await prepareArchPackageManager({
@@ -645,8 +680,8 @@ describe("Arch package-manager preflight", () => {
 
 		expect(result).toBe(true);
 		expect(commands).toEqual([
-			"sudo pacman -Syu --noconfirm",
-			"sudo pacman -S --needed --noconfirm base-devel git",
+			"sudo -n pacman -Syu --noconfirm",
+			"sudo -n pacman -S --needed --noconfirm base-devel git",
 		]);
 	});
 
@@ -663,7 +698,7 @@ describe("Arch package-manager preflight", () => {
 		expect(result).toBe(true);
 		expect(commands).toEqual([
 			"omarchy update -y",
-			"sudo pacman -S --needed --noconfirm base-devel git",
+			"sudo -n pacman -S --needed --noconfirm base-devel git",
 		]);
 	});
 
@@ -677,7 +712,7 @@ describe("Arch package-manager preflight", () => {
 		});
 
 		expect(result).toBe(false);
-		expect(commands).toEqual(["sudo pacman -Syu --noconfirm"]);
+		expect(commands).toEqual(["sudo -n pacman -Syu --noconfirm"]);
 	});
 
 	it("reports failure when essential dependencies cannot be installed", async () => {

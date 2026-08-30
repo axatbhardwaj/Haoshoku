@@ -81,7 +81,7 @@ function policyTreeRepairOperations(policyDirectory, fsImpl) {
 	// attacker-controlled symlink from redirecting install/chmod to its referent.
 	return directories.map(
 		(directory) =>
-			`sudo bash -c ${shellEscape(ROOT_DIRECTORY_REPAIR_SCRIPT)} _ ${shellEscape(directory)}`,
+			`sudo -n bash -c ${shellEscape(ROOT_DIRECTORY_REPAIR_SCRIPT)} _ ${shellEscape(directory)}`,
 	);
 }
 
@@ -99,7 +99,7 @@ function bravePolicyTreeRepairOperations(policyDirectory, uid, gid, fsImpl) {
 	const operations = parentsNeedRepair
 		? parents.map(
 				(directory) =>
-					`sudo bash -c ${shellEscape(ROOT_DIRECTORY_REPAIR_SCRIPT)} _ ${shellEscape(directory)}`,
+					`sudo -n bash -c ${shellEscape(ROOT_DIRECTORY_REPAIR_SCRIPT)} _ ${shellEscape(directory)}`,
 			)
 		: [];
 
@@ -116,10 +116,10 @@ function bravePolicyTreeRepairOperations(policyDirectory, uid, gid, fsImpl) {
 		// machine would also user-own /etc/brave and /etc/brave/policies. Stabilize
 		// the root-owned parents first, then change ownership of only the leaf.
 		operations.push(
-			`sudo bash -c ${shellEscape(ROOT_DIRECTORY_REPAIR_SCRIPT)} _ ${shellEscape(leaf)}`,
+			`sudo -n bash -c ${shellEscape(ROOT_DIRECTORY_REPAIR_SCRIPT)} _ ${shellEscape(leaf)}`,
 		);
 		operations.push(
-			`sudo chown ${shellEscape(uid)}:${shellEscape(gid)} -- ${shellEscape(leaf)}`,
+			`sudo -n chown ${shellEscape(uid)}:${shellEscape(gid)} -- ${shellEscape(leaf)}`,
 		);
 	}
 
