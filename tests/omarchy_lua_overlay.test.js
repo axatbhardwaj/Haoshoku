@@ -462,11 +462,13 @@ describe("Omarchy v4 Lua overlay", () => {
 	});
 
 	it("leaves GDK scaling to the monitor profile in both workspace overlays", () => {
-		const offenders = overlayPaths.slice(1).flatMap((file) =>
-			fs.readFileSync(file, "utf8").includes("GDK_SCALE")
-				? [path.relative(repoRoot, file)]
-				: [],
-		);
+		const offenders = overlayPaths
+			.slice(1)
+			.flatMap((file) =>
+				fs.readFileSync(file, "utf8").includes("GDK_SCALE")
+					? [path.relative(repoRoot, file)]
+					: [],
+			);
 
 		expect(
 			offenders,
@@ -501,7 +503,7 @@ describe("Omarchy v4 Lua overlay", () => {
 			"workspaces-pc.lua": {
 				unbind: 4,
 				bind: 24,
-				window: 25,
+				window: 24,
 				workspace: 0,
 				execOnStart: 3,
 				env: 0,
@@ -509,7 +511,7 @@ describe("Omarchy v4 Lua overlay", () => {
 			"workspaces-laptop.lua": {
 				unbind: 4,
 				bind: 24,
-				window: 25,
+				window: 24,
 				workspace: 10,
 				execOnStart: 3,
 				env: 0,

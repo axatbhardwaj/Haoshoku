@@ -3,6 +3,8 @@
 ## Unreleased
 
 - Start T3 Code once at Omarchy login from both device workspace overlays.
+  Leave it on whichever workspace it opens or is moved to, and make `Super+T`
+  focus the existing window instead of forcing workspace 1.
 
 ## 11.2.1 - 2026-08-26
 

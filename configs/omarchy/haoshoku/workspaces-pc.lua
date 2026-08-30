@@ -27,7 +27,6 @@ o.window("^brave-reanime\\.to__home-Default$", { workspace = "special:reanime" }
 o.window("^brave-www\\.twitch\\.tv__-Default$", { workspace = "special:twitch" })
 o.window("^chatgpt$", { workspace = "special:assistants silent" })
 o.window("^com\\.anthropic\\.Claude$", { workspace = "special:assistants silent" })
-o.window("^t3code$", { workspace = "1 silent" })
 o.window("^haoshoku-haki$", { workspace = "special:haki" })
 o.window("^haoshoku-agents$", { workspace = "special:agents" })
 o.window("^[Ss]potify$", { workspace = "special:music" })
@@ -100,7 +99,7 @@ o.bind(
 
 o.bind("SUPER + A", "Show/focus/hide Haki session", "haoshoku-special-workspace haki")
 o.bind("SUPER + I", "Show/focus/hide AI assistants workspace", "haoshoku-special-workspace assistants")
-o.bind("SUPER + T", "Workspace 1 and T3 Code", "haoshoku-special-workspace numbered 1 t3code")
+o.bind("SUPER + T", "T3 Code", o.launch_sole("^t3code$", "t3code"))
 o.bind("SUPER + SHIFT + T", "Show/focus/hide Twitch workspace", "haoshoku-special-workspace twitch")
 o.bind("SUPER + M", "Show/focus/hide music workspace", "haoshoku-special-workspace music")
 o.bind("SUPER + O", "Show/focus/hide 1Password workspace", "haoshoku-special-workspace 1password")
