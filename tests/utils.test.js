@@ -20,6 +20,57 @@ const SAFE_COPY_RACE_WORKER = path.join(
 );
 
 describe("Utils", () => {
+	it("keeps one authenticated sudo session alive until stopped", async () => {
+		const events = [];
+		let refresh;
+		const timer = {
+			unref: () => events.push("unref"),
+		};
+		const stop = await utils.startSudoSession?.({
+			authenticateImpl: async () => {
+				events.push("authenticate");
+				return true;
+			},
+			refreshImpl: async () => events.push("refresh"),
+			setIntervalImpl: (callback, intervalMs) => {
+				events.push(`schedule-${intervalMs}`);
+				refresh = callback;
+				return timer;
+			},
+			clearIntervalImpl: (value) => {
+				expect(value).toBe(timer);
+				events.push("stop");
+			},
+		});
+
+		expect(typeof stop).toBe("function");
+		expect(events).toEqual(["authenticate", "schedule-60000", "unref"]);
+
+		await refresh();
+		expect(events).toEqual([
+			"authenticate",
+			"schedule-60000",
+			"unref",
+			"refresh",
+		]);
+
+		stop();
+		expect(events.at(-1)).toBe("stop");
+	});
+
+	it("does not start a sudo keepalive when authentication fails", async () => {
+		let timerCalls = 0;
+		const stop = await utils.startSudoSession?.({
+			authenticateImpl: async () => false,
+			setIntervalImpl: () => {
+				timerCalls += 1;
+			},
+		});
+
+		expect(stop).toBeNull();
+		expect(timerCalls).toBe(0);
+	});
+
 	it("commandExists returns true for existing command", async () => {
 		// We assume 'ls' exists on linux/unix
 		const exists = await commandExists("ls");
