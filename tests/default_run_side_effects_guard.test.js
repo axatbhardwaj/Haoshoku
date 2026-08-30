@@ -29,11 +29,11 @@ const EXPECTED_OPTIONS = [
 
 const EXPECTED_AWAITED_STEPS = [
 	"promptDeviceTypeImpl",
+	"commandExistsImpl",
 	"prepareArchPackageManagerImpl",
 	"ensureRustToolchainImpl",
 	"ensureAurHelperImpl",
 	"installDevToolsImpl",
-	"commandExistsImpl",
 	"installSystemPackagesImpl",
 	"installFlatpakAppsImpl",
 	"configureUserAppsImpl",
@@ -236,11 +236,11 @@ it("keeps the default Omarchy run behind explicit injectable side-effect seams",
 	expect(performance.now() - startedAt).toBeLessThan(250);
 	expect(calls).toEqual([
 		"deviceType",
+		"commandExists",
 		"packageManager",
 		"rust",
 		"aurHelper",
 		"devTools",
-		"commandExists",
 		"systemPackages",
 		"flatpaks",
 		"userApps",

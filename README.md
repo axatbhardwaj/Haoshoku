@@ -27,8 +27,9 @@ haoshoku --os arch
 
 The Arch setup:
 
-- refreshes pacman repositories and performs a full system upgrade before any
-  package installation, aborting setup if that preflight fails;
+- performs a full system upgrade before package installation through
+  `omarchy update -y` on Omarchy or `pacman -Syu` on other Arch-family
+  systems, aborting setup if that preflight fails;
 - prefers Omarchy's `yay`, falls back to `paru`, and bootstraps an AUR helper
   only when neither is available;
 - uses `pacman` for repository packages and the AUR helper only for AUR

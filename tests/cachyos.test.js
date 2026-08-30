@@ -549,9 +549,10 @@ describe("portable gaming setup", () => {
 });
 
 describe("Arch package-manager preflight", () => {
-	it("fully upgrades before installing essential build dependencies", async () => {
+	it("uses pacman outside Omarchy before installing build dependencies", async () => {
 		const commands = [];
 		const result = await prepareArchPackageManager({
+			isOmarchy: false,
 			runCommandImpl: async (command) => {
 				commands.push(command);
 				return true;
@@ -561,6 +562,23 @@ describe("Arch package-manager preflight", () => {
 		expect(result).toBe(true);
 		expect(commands).toEqual([
 			"sudo pacman -Syu --noconfirm",
+			"sudo pacman -S --needed --noconfirm base-devel git",
+		]);
+	});
+
+	it("uses the Omarchy updater before installing build dependencies", async () => {
+		const commands = [];
+		const result = await prepareArchPackageManager({
+			isOmarchy: true,
+			runCommandImpl: async (command) => {
+				commands.push(command);
+				return true;
+			},
+		});
+
+		expect(result).toBe(true);
+		expect(commands).toEqual([
+			"omarchy update -y",
 			"sudo pacman -S --needed --noconfirm base-devel git",
 		]);
 	});
@@ -599,6 +617,10 @@ describe("Arch package-manager preflight", () => {
 		};
 		const result = await runCachyOSSetup({
 			promptDeviceTypeImpl: async () => events.push("device-type"),
+			commandExistsImpl: async () => {
+				events.push("detect-omarchy");
+				return false;
+			},
 			prepareArchPackageManagerImpl: async () => {
 				events.push("prepare");
 				return false;
@@ -606,7 +628,6 @@ describe("Arch package-manager preflight", () => {
 			ensureRustToolchainImpl: unreachable,
 			ensureAurHelperImpl: unreachable,
 			installDevToolsImpl: unreachable,
-			commandExistsImpl: unreachable,
 			installSystemPackagesImpl: unreachable,
 			installFlatpakAppsImpl: unreachable,
 			configureUserAppsImpl: unreachable,
@@ -620,7 +641,44 @@ describe("Arch package-manager preflight", () => {
 		});
 
 		expect(result).toBe(false);
-		expect(events).toEqual(["device-type", "prepare"]);
+		expect(events).toEqual(["device-type", "detect-omarchy", "prepare"]);
+	});
+
+	it("detects Omarchy before selecting the package-manager preflight", async () => {
+		const events = [];
+		const unreachable = async () => {
+			throw new Error(
+				"setup continued after package-manager preparation failed",
+			);
+		};
+		const result = await runCachyOSSetup({
+			promptDeviceTypeImpl: async () => events.push("device-type"),
+			commandExistsImpl: async (command) => {
+				expect(command).toBe("omarchy");
+				events.push("detect-omarchy");
+				return true;
+			},
+			prepareArchPackageManagerImpl: async ({ isOmarchy } = {}) => {
+				events.push(`prepare-${isOmarchy}`);
+				return false;
+			},
+			ensureRustToolchainImpl: unreachable,
+			ensureAurHelperImpl: unreachable,
+			installDevToolsImpl: unreachable,
+			installSystemPackagesImpl: unreachable,
+			installFlatpakAppsImpl: unreachable,
+			configureUserAppsImpl: unreachable,
+			configureBraveManagedPoliciesImpl: unreachable,
+			configureHyprmoncfgImpl: unreachable,
+			configureOmarchyWorkspacesImpl: unreachable,
+			configureOmarchyPluginsImpl: unreachable,
+			configureOmarchyBarImpl: unreachable,
+			configureOmazedImpl: unreachable,
+			configureOmarchyAppearanceImpl: unreachable,
+		});
+
+		expect(result).toBe(false);
+		expect(events).toEqual(["device-type", "detect-omarchy", "prepare-true"]);
 	});
 
 	it("runs Brave policy provisioning only for Omarchy in the plain setup flow", async () => {
