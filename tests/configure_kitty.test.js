@@ -54,12 +54,12 @@ describe("configureKitty", () => {
 		);
 	});
 
-	it("lets the active Omarchy theme own Kitty opacity", async () => {
+	it("keeps Kitty background opacity in the base config", async () => {
 		const themeDir = path.join(home, ".config", "omarchy", "current", "theme");
 		fs.mkdirSync(themeDir, { recursive: true });
 		fs.writeFileSync(
 			path.join(themeDir, "kitty.conf"),
-			"background_opacity 0.77\nforeground #fdfffd\nbackground #010401\n",
+			"foreground #fdfffd\nbackground #010401\n",
 		);
 		const deployedConfigPath = path.join(
 			home,
@@ -75,21 +75,15 @@ describe("configureKitty", () => {
 			projectRoot: path.join(import.meta.dir, ".."),
 		});
 
-		const themeConfig = fs.readFileSync(
-			path.join(themeDir, "kitty.conf"),
-			"utf8",
-		);
-		const themeOpacity = themeConfig.match(
-			/^background_opacity[ \t]+(\S+)[ \t]*$/m,
-		);
-		expect(themeOpacity).not.toBeNull();
-		expect(themeOpacity[1]).toBe("0.77");
-
 		const deployedConfig = fs.readFileSync(deployedConfigPath, "utf8");
 		expect(deployedConfig).toMatch(
 			/^include[ \t]+~\/\.local\/state\/omarchy\/current\/theme\/kitty\.conf[ \t]*$/m,
 		);
-		expect(deployedConfig.match(/^background_opacity(?:[ \t]|$)/m)).toBeNull();
+		const opacity = deployedConfig.match(
+			/^background_opacity[ \t]+(\S+)[ \t]*$/m,
+		);
+		expect(opacity).not.toBeNull();
+		expect(opacity[1]).toBe("0.70");
 	});
 
 	it("guards the fish OSC fallback behind the active Omarchy theme", () => {
