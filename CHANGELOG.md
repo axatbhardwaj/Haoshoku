@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Pin Elysian to size-24 / 4-pass blur, 0.80 window glass, and 0.90 browser
+  opacity. Copy the theme's Omarchy 4 `hyprland.lua.tpl` into the user themed
+  overlay so cloned-theme Lua dropping does not skip the glass, and keep
+  Kitty background opacity in the base config.
+
 ## 11.2.4 - 2026-08-31
 
 - Authenticate sudo once before the Arch setup, keep its timestamp alive with
