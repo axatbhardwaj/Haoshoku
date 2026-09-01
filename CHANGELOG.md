@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 11.2.5 - 2026-09-01
 
 - Pin Elysian to size-24 / 4-pass blur, 0.80 window glass, and 0.90 browser
   opacity. Copy the theme's Omarchy 4 `hyprland.lua.tpl` into the user themed
