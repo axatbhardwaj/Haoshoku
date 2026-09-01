@@ -310,6 +310,17 @@ export async function configureOmarchyAppearance({
 		logImpl.warning(`Theme background is missing: ${backgroundPath}`);
 		return { status: "background-missing", installed, themePath };
 	}
+
+	const themeHyprlandTpl = path.join(themePath, "themed", "hyprland.lua.tpl");
+	if (fs.existsSync(themeHyprlandTpl)) {
+		const userThemedDir = path.join(home, ".config", "omarchy", "themed");
+		fs.mkdirSync(userThemedDir, { recursive: true });
+		fs.copyFileSync(
+			themeHyprlandTpl,
+			path.join(userThemedDir, "hyprland.lua.tpl"),
+		);
+	}
+
 	const commands = [
 		["omarchy", "theme", "set", name],
 		["omarchy", "theme", "bg", "set", backgroundPath],
