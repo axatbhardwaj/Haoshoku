@@ -27,8 +27,9 @@ made different, equally defensible choices about an inert knob.
 ## Theme precedence
 
 `kitty.conf` includes `~/.local/state/omarchy/current/theme/kitty.conf`, so Kitty
-follows every Omarchy theme switch. The theme file owns colours and opacity;
-the base config owns font, padding, blur, decorations, and keybinds.
+follows every Omarchy theme switch. The theme file owns colours. Cloned Omarchy
+4 themes drop `kitty.conf`, so the base config owns background opacity, font,
+padding, blur, decorations, and keybinds.
 
 `~/.config/fish/config.fish` and both split sessions apply
 `~/.local/state/caelestia/sequences.txt` only when the active Omarchy Kitty theme

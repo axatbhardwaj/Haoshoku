@@ -5,8 +5,10 @@ import path from "node:path";
 
 import { configureOmarchyAppearance } from "../src/helpers/configure_omarchy_appearance.js";
 
-const REVISION = "29356fb68d2070d847a259de0f310b055df55823";
+const REVISION = "e7600f5e2bf248ee976059f9a11a13c4856f7138";
 const LEGACY_REVISION = "42845dc048632425bc566b993f25145f05e840f1";
+const PRIOR_REVISION = "29356fb68d2070d847a259de0f310b055df55823";
+const GLASS_REVISION = "3836bba29cf33c28fcca2f49aa1a098b2eb94662";
 const REPOSITORY = "https://github.com/axatbhardwaj/omarchy-elysian-theme.git";
 const MANIFEST = {
 	schemaVersion: 1,
@@ -14,7 +16,7 @@ const MANIFEST = {
 		name: "elysian",
 		repository: REPOSITORY,
 		revision: REVISION,
-		legacyRevisions: [LEGACY_REVISION],
+		legacyRevisions: [LEGACY_REVISION, PRIOR_REVISION, GLASS_REVISION],
 	},
 	background: "1-verdant-mountain.jpg",
 	font: "JetBrainsMono Nerd Font",
@@ -74,7 +76,11 @@ describe("Omarchy appearance configurator", () => {
 			),
 		);
 		expect(shippedManifest.theme.revision).toBe(REVISION);
-		expect(shippedManifest.theme.legacyRevisions).toEqual([LEGACY_REVISION]);
+		expect(shippedManifest.theme.legacyRevisions).toEqual([
+			LEGACY_REVISION,
+			PRIOR_REVISION,
+			GLASS_REVISION,
+		]);
 	});
 
 	it("installs the pinned theme and applies its background and font", async () => {
@@ -91,9 +97,14 @@ describe("Omarchy appearance configurator", () => {
 					const clonePath = argv.at(-1);
 					fs.mkdirSync(path.join(clonePath, ".git"), { recursive: true });
 					fs.mkdirSync(path.join(clonePath, "backgrounds"));
+					fs.mkdirSync(path.join(clonePath, "themed"));
 					fs.writeFileSync(
 						path.join(clonePath, "backgrounds", MANIFEST.background),
 						"wallpaper",
+					);
+					fs.writeFileSync(
+						path.join(clonePath, "themed", "hyprland.lua.tpl"),
+						"size = 24\n",
 					);
 				}
 				return { exitCode: 0, stdout: "", stderr: "" };
@@ -130,6 +141,12 @@ describe("Omarchy appearance configurator", () => {
 			"set",
 			MANIFEST.font,
 		]);
+		expect(
+			fs.readFileSync(
+				path.join(home, ".config", "omarchy", "themed", "hyprland.lua.tpl"),
+				"utf8",
+			),
+		).toBe("size = 24\n");
 		const checkout = calls.find(({ argv }) => argv[1] === "checkout");
 		expect(checkout.argv).toEqual(["git", "checkout", "--detach", REVISION]);
 		expect(checkout.cwd).toContain(".haoshoku-elysian-");
