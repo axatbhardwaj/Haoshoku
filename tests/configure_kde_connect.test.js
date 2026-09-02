@@ -58,22 +58,152 @@ function silentLog() {
 	return { success() {}, warning() {} };
 }
 
+function hasCommandsModel() {
+	return (
+		fs.existsSync("/usr/bin/qml6") &&
+		fs.existsSync(
+			"/usr/lib/qt6/qml/org/kde/kdeconnect/libkdeconnectdeclarativeplugin.so",
+		)
+	);
+}
+
+function seedKdeIdentity(home) {
+	const configDir = path.join(home, ".config", "kdeconnect");
+	const privateKey = path.join(configDir, "privateKey.pem");
+	const certificate = path.join(configDir, "certificate.pem");
+	fs.writeFileSync(
+		path.join(configDir, "config"),
+		"[General]\nkeyAlgorithm=EC\n",
+	);
+	const opensslEnv = { ...process.env, OPENSSL_CONF: "/etc/ssl/openssl.cnf" };
+	const key = Bun.spawnSync(
+		[
+			"openssl",
+			"ecparam",
+			"-genkey",
+			"-name",
+			"prime256v1",
+			"-noout",
+			"-out",
+			privateKey,
+		],
+		{ env: opensslEnv },
+	);
+	expect(key.exitCode, key.stderr.toString()).toBe(0);
+	const cert = Bun.spawnSync(
+		[
+			"openssl",
+			"req",
+			"-new",
+			"-x509",
+			"-key",
+			privateKey,
+			"-out",
+			certificate,
+			"-days",
+			"2",
+			"-subj",
+			"/CN=0123456789abcdef0123456789abcdef",
+		],
+		{ env: opensslEnv },
+	);
+	expect(cert.exitCode, cert.stderr.toString()).toBe(0);
+	fs.chmodSync(privateKey, 0o600);
+	fs.chmodSync(certificate, 0o600);
+}
+
 describe("KDE Connect commands", () => {
-	it("merges Screens Off without replacing existing commands and enables the plugin", async () => {
+	it("delegates command mutation without rewriting the device plugin config", async () => {
 		const home = makeHome();
 		const target = seedDevice(home, {
 			commands:
 				'[General]\ncommands="@ByteArray({\\"{lock-id}\\":{\\"name\\":\\"Lock\\",\\"command\\":\\"omarchy system lock\\"}})"\n',
 		});
-		const reloads = [];
+		const deviceConfigBefore = fs.readFileSync(target.device, "utf8");
+		const updates = [];
 
 		const result = await configureKdeConnectCommands({
 			home,
 			logImpl: silentLog(),
-			reloadDeviceImpl: async (id) => {
-				reloads.push(id);
-				return true;
+			updateCommandsImpl: async ({ deviceId, name, command }) => {
+				updates.push({ deviceId, name, command });
+				const nativeCommands = {
+					"{lock-id}": {
+						command: "omarchy system lock",
+						name: "Lock",
+					},
+					"native-id": { command, name },
+				};
+				fs.writeFileSync(
+					target.commands,
+					`[General]\ncommands=${JSON.stringify(`@ByteArray(${JSON.stringify(nativeCommands)})`)}\n`,
+				);
+				return { changed: true };
 			},
+		});
+
+		expect(updates).toEqual([
+			{
+				deviceId: "phone123",
+				name: "Screens Off",
+				command:
+					"/usr/bin/hyprctl dispatch 'hl.dsp.dpms({ action = \"disable\" })'",
+			},
+		]);
+		expect(fs.readFileSync(target.device, "utf8")).toBe(deviceConfigBefore);
+		expect(result).toEqual({
+			configured: ["phone123"],
+			unchanged: [],
+			failed: [],
+		});
+	});
+
+	it("rejects a symlinked device directory before invoking the native writer", async () => {
+		const home = makeHome();
+		const target = paths(home);
+		const outsideDevice = path.join(home, "outside-device");
+		const outsideCommands = path.join(
+			outsideDevice,
+			"kdeconnect_runcommand",
+			"config",
+		);
+		fs.mkdirSync(path.dirname(outsideCommands), { recursive: true });
+		fs.mkdirSync(target.base, { recursive: true });
+		fs.writeFileSync(
+			target.trusted,
+			"[phone123]\nname=Phone\nprotocolVersion=8\n",
+		);
+		fs.writeFileSync(outsideCommands, "[General]\n");
+		fs.symlinkSync(outsideDevice, path.join(target.base, "phone123"));
+		let updates = 0;
+
+		const result = await configureKdeConnectCommands({
+			home,
+			logImpl: silentLog(),
+			updateCommandsImpl: async () => {
+				updates += 1;
+				return { changed: true };
+			},
+		});
+
+		expect(result.failed).toEqual(["phone123"]);
+		expect(updates).toBe(0);
+		expect(fs.readFileSync(outsideCommands, "utf8")).toBe("[General]\n");
+	});
+
+	it("merges Screens Off without replacing existing commands", async () => {
+		if (!hasCommandsModel()) return;
+		const home = makeHome();
+		const target = seedDevice(home, {
+			commands:
+				'[General]\ncommands="@ByteArray({\\"{lock-id}\\":{\\"name\\":\\"Lock\\",\\"command\\":\\"omarchy system lock\\"}})"\n',
+		});
+		seedKdeIdentity(home);
+		const deviceConfigBefore = fs.readFileSync(target.device, "utf8");
+
+		const result = await configureKdeConnectCommands({
+			home,
+			logImpl: silentLog(),
 		});
 
 		const commands = parseCommandsConfig(
@@ -83,37 +213,34 @@ describe("KDE Connect commands", () => {
 			name: "Lock",
 			command: "omarchy system lock",
 		});
-		expect(commands[SCREENS_OFF_COMMAND.id]).toEqual({
+		expect(
+			Object.values(commands).find(
+				(entry) => entry.name === SCREENS_OFF_COMMAND.name,
+			),
+		).toEqual({
 			name: SCREENS_OFF_COMMAND.name,
 			command: SCREENS_OFF_COMMAND.command,
 		});
-		expect(fs.readFileSync(target.device, "utf8")).toContain(
-			"[Plugins]\nkdeconnect_pingEnabled=true\nkdeconnect_runcommandEnabled=true\n",
-		);
+		expect(fs.readFileSync(target.device, "utf8")).toBe(deviceConfigBefore);
 		expect(fs.statSync(target.commands).mode & 0o777).toBe(0o644);
-		expect(reloads).toEqual(["phone123"]);
 		expect(result).toEqual({
 			configured: ["phone123"],
 			unchanged: [],
 			failed: [],
-			reloadPending: [],
 		});
 	});
 
 	it("updates an existing named command in place and is idempotent", async () => {
+		if (!hasCommandsModel()) return;
 		const home = makeHome();
 		const target = seedDevice(home, {
 			commands:
-				'[General]\ncommands=@ByteArray({"{custom-id}":{"name":"Screens Off","command":"old-command"}})\n',
+				'[General]\ncommands="@ByteArray({\\"{custom-id}\\":{\\"name\\":\\"Screens Off\\",\\"command\\":\\"old-command\\"}})"\n',
 		});
-		const reloads = [];
+		seedKdeIdentity(home);
 		const options = {
 			home,
 			logImpl: silentLog(),
-			reloadDeviceImpl: async (id) => {
-				reloads.push(id);
-				return true;
-			},
 		};
 
 		await configureKdeConnectCommands(options);
@@ -122,9 +249,7 @@ describe("KDE Connect commands", () => {
 
 		const commands = parseCommandsConfig(first);
 		expect(commands["{custom-id}"].command).toBe(SCREENS_OFF_COMMAND.command);
-		expect(commands[SCREENS_OFF_COMMAND.id]).toBeUndefined();
 		expect(fs.readFileSync(target.commands, "utf8")).toBe(first);
-		expect(reloads).toEqual(["phone123", "phone123"]);
 		expect(secondResult.unchanged).toEqual(["phone123"]);
 	});
 
@@ -132,15 +257,10 @@ describe("KDE Connect commands", () => {
 		const home = makeHome();
 		const malformed = "[General]\ncommands=not-json\n";
 		const target = seedDevice(home, { commands: malformed });
-		let reloads = 0;
 
 		const result = await configureKdeConnectCommands({
 			home,
 			logImpl: silentLog(),
-			reloadDeviceImpl: async () => {
-				reloads += 1;
-				return true;
-			},
 		});
 
 		expect(result.failed).toEqual(["phone123"]);
@@ -148,27 +268,6 @@ describe("KDE Connect commands", () => {
 		expect(fs.readFileSync(target.device, "utf8")).not.toContain(
 			"kdeconnect_runcommandEnabled",
 		);
-		expect(reloads).toBe(0);
-	});
-
-	it("reports a pending refresh while keeping the persistent configuration", async () => {
-		const home = makeHome();
-		const target = seedDevice(home);
-
-		const result = await configureKdeConnectCommands({
-			home,
-			logImpl: silentLog(),
-			reloadDeviceImpl: async () => false,
-		});
-
-		expect(result.configured).toEqual(["phone123"]);
-		expect(result.reloadPending).toEqual(["phone123"]);
-		expect(
-			parseCommandsConfig(fs.readFileSync(target.commands, "utf8"))[
-				SCREENS_OFF_COMMAND.id
-			],
-		).toBeDefined();
-		expect(fs.statSync(target.commands).mode & 0o777).toBe(0o600);
 	});
 
 	it("does nothing before a phone has been paired", async () => {
@@ -182,27 +281,19 @@ describe("KDE Connect commands", () => {
 			configured: [],
 			unchanged: [],
 			failed: [],
-			reloadPending: [],
 		});
 		expect(fs.existsSync(path.join(home, ".config", "kdeconnect"))).toBe(false);
 	});
 
 	it("writes the QByteArray encoding consumed by KDE Connect's CommandsModel", async () => {
-		if (
-			!fs.existsSync("/usr/bin/qml6") ||
-			!fs.existsSync(
-				"/usr/lib/qt6/qml/org/kde/kdeconnect/libkdeconnectdeclarativeplugin.so",
-			)
-		) {
-			return;
-		}
+		if (!hasCommandsModel()) return;
 
 		const home = makeHome();
 		seedDevice(home);
+		seedKdeIdentity(home);
 		await configureKdeConnectCommands({
 			home,
 			logImpl: silentLog(),
-			reloadDeviceImpl: async () => true,
 		});
 
 		const probe = Bun.spawnSync(["qml6", COMMANDS_MODEL_PROBE], {
