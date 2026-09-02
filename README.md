@@ -92,6 +92,10 @@ The Arch setup:
 - installs packaged Omazed and safely points Zed at its generated theme so Zed
   follows the active Omarchy palette. Haoshoku never runs Omazed's manual
   installer or deletes unrelated Zed themes;
+- adds a non-locking `Screens Off` command to every paired KDE Connect device.
+  It turns off all Hyprland displays through DPMS; keyboard or mouse input, or
+  an existing phone-side Wake command, turns them back on. Pair new phones
+  first, then run `haoshoku --kde-connect-commands` to add the command;
 - continues after individual optional application failures and reports them.
 
 Haoshoku deliberately does not configure Fish, KDE Plasma, KWin, SDDM, or
@@ -258,6 +262,7 @@ haoshoku --codex
 haoshoku --codex-backup
 haoshoku --server-t3-code
 haoshoku --device-type laptop
+haoshoku --kde-connect-commands
 haoshoku --audio
 haoshoku --audio-backup
 haoshoku --mimeapps
