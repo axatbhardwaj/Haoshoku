@@ -104,6 +104,16 @@ Browser web-app rules use the classes derived from Brave Origin, including
 `brave-web.whatsapp.com__-Default`; do not revert them to the old Chromium-derived
 prefix.
 
+Workspace 2 is the gaming workspace. Steam and Omakade both match exact classes
+(`steam` / `Steam`, and `io.github.tsouth89.Omakade`) and land on `2 silent`.
+Steam also sets `tile = true` so it overrides Omarchy's stock `float = true`
+in `$OMARCHY_PATH/default/hypr/apps/steam.lua`; do not drop that effect or
+Steam reopens as a centered float. The exact-class match leaves `steam_app_*`
+game windows to Omarchy. Login uses `numbered-login 2 steam` and
+`numbered-login 2 omakade`; `SUPER+2` uses `numbered 2 omakade`. Do not bind
+`numbered 2 steam` to the workspace switch; `SUPER+SHIFT+G` remains the toggle
+that ensures Steam.
+
 Workspace 7 uses the `haoshoku-special-workspace numbered 7 kitty` recipe. The
 exact `haoshoku-ws7` class identifies its owned window; the startup call and the
 post-reload helper use `numbered-login 7 kitty`. Haki and agents use their own
