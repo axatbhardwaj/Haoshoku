@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 11.2.7 - 2026-09-02
 
 - Install Omakade from the Arch application list. Steam and Omakade now start
   silently on gaming workspace 2 at login, and `SUPER+2` focuses that workspace
