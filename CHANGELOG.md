@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Install Omakade from the Arch application list. Steam and Omakade now start
+  silently on gaming workspace 2 at login, and `SUPER+2` focuses that workspace
+  and launches Omakade when it is missing. `SUPER+SHIFT+G` still toggles the
+  workspace and ensures Steam. Steam's overlay window rule tiles the client so
+  Omarchy's stock `float = true` does not reopen it as a centered float.
+
 ## 11.2.6 - 2026-09-02
 
 - Add a non-locking KDE Connect `Screens Off` command for paired phones. The

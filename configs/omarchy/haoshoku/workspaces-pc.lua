@@ -9,12 +9,19 @@ o.launch_on_start("t3code")
 -- /etc/xdg/autostart/org.kde.kdeconnect.daemon.desktop never fires. Start explicitly
 -- instead of relying on incidental D-Bus activation for phone sync after login.
 o.exec_on_start("/usr/bin/kdeconnectd")
+-- Steam stays in the background on 2; Omakade is the library you open with SUPER+2.
+o.exec_on_start("haoshoku-special-workspace numbered-login 2 steam")
+o.exec_on_start("haoshoku-special-workspace numbered-login 2 omakade")
 
--- Steam joins the games on 2 so alt-tabbing between a game and the Steam window keeps
--- working -- cyclenext is workspace-local, so they have to share a workspace to cycle.
--- Workspace 2 is a normal persistent workspace pinned to DP-1 by the hyprmoncfg PC
--- profile. Disappear-on-close ephemerality was deliberately traded away.
-o.window("^[Ss]team$", { workspace = "2 silent" })
+-- Steam and Omakade join the games on 2 so alt-tabbing between a game, the library,
+-- and the Steam window keeps working -- cyclenext is workspace-local, so they have to
+-- share a workspace to cycle. Workspace 2 is a normal persistent workspace pinned to
+-- DP-1 by the hyprmoncfg PC profile. Disappear-on-close ephemerality was deliberately
+-- traded away.
+-- Omarchy's stock steam.lua floats every Steam window. tile must come after that
+-- default (this overlay loads later) so the library opens tiled on workspace 2.
+o.window("^[Ss]team$", { workspace = "2 silent", tile = true })
+o.window("^io\\.github\\.tsouth89\\.Omakade$", { workspace = "2 silent" })
 o.window("^(discord|vesktop)$", { workspace = "4 silent" })
 o.window("^(teams-for-linux|TelegramDesktop|org\\.telegram\\.desktop)$", { workspace = "5 silent" })
 o.window("^haoshoku-ws7$", { workspace = "7 silent" })
@@ -57,10 +64,15 @@ o.window("^xdg-desktop-portal-gtk$", { pin = true })
 o.window("^xdg-desktop-portal-gtk$", { center = true })
 
 -- These are additive supersets of Omarchy's stock Super+number workspace binds.
--- Workspace 2 is the gaming workspace, and Steam's window rule targets it. Stock
--- SUPER+2 switches straight to it. There is deliberately no `numbered 2 steam` bind:
--- 2 is always present, and a plain workspace switch must not launch Steam.
--- SUPER+SHIFT+G remains the toggle that ensures Steam.
+-- Workspace 2 is the gaming workspace. Steam starts silently at login; SUPER+2
+-- focuses 2 and ensures Omakade. There is deliberately no `numbered 2 steam` bind:
+-- a plain workspace switch must not launch Steam. SUPER+SHIFT+G remains the toggle
+-- that ensures Steam.
+o.bind(
+  "SUPER + code:11",
+  "Workspace 2 and Omakade",
+  "haoshoku-special-workspace numbered 2 omakade"
+)
 o.bind(
   "SUPER + code:13",
   "Workspace 4 and Discord",

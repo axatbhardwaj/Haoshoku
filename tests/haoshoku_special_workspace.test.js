@@ -293,6 +293,12 @@ printf 't3code\n' >> "$CALL_LOG"
 `,
 		);
 		fs.writeFileSync(
+			path.join(directory, "omakade"),
+			`#!/usr/bin/env bash
+printf 'omakade\n' >> "$CALL_LOG"
+`,
+		);
+		fs.writeFileSync(
 			helper,
 			`#!/usr/bin/env bash
 case "$1" in
@@ -310,6 +316,7 @@ esac
 		fs.chmodSync(codexDesktop, 0o755);
 		fs.chmodSync(path.join(directory, "kitty"), 0o755);
 		fs.chmodSync(t3Code, 0o755);
+		fs.chmodSync(path.join(directory, "omakade"), 0o755);
 		fs.chmodSync(chromium, 0o755);
 		fs.chmodSync(helper, 0o755);
 		fs.chmodSync(path.join(directory, "systemctl"), 0o755);
@@ -1174,6 +1181,54 @@ exit 17
 
 		expect(result.exitCode).toBe(0);
 		expect(dispatchCalls()).toEqual(["dispatch workspace 1"]);
+	});
+
+	it("focuses workspace 2 and launches Omakade when it is missing", async () => {
+		const result = await run(["numbered", "2", "omakade"]);
+
+		expect(result.exitCode).toBe(0);
+		expect(dispatchCalls()).toEqual([
+			"dispatch workspace 2",
+			"dispatch exec [workspace 2 silent] uwsm-app -- omakade ",
+			"omakade",
+		]);
+	});
+
+	it("does not relaunch Omakade when its client already exists", async () => {
+		const result = await run(["numbered", "2", "omakade"], {
+			clients: JSON.stringify([{ class: "io.github.tsouth89.Omakade" }]),
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(dispatchCalls()).toEqual(["dispatch workspace 2"]);
+	});
+
+	it("starts Omakade silently at login without focusing workspace 2", async () => {
+		const result = await run(["numbered-login", "2", "omakade"]);
+
+		expect(result.exitCode).toBe(0);
+		expect(dispatchCalls()).toEqual([
+			"dispatch exec [workspace 2 silent] uwsm-app -- omakade ",
+			"omakade",
+		]);
+	});
+
+	it("starts Steam silently at login without focusing workspace 2", async () => {
+		fs.writeFileSync(
+			path.join(directory, "steam"),
+			`#!/usr/bin/env bash
+printf 'steam\n' >> "$CALL_LOG"
+`,
+		);
+		fs.chmodSync(path.join(directory, "steam"), 0o755);
+
+		const result = await run(["numbered-login", "2", "steam"]);
+
+		expect(result.exitCode).toBe(0);
+		expect(dispatchCalls()).toEqual([
+			"dispatch exec [workspace 2 silent] uwsm-app -- steam ",
+			"steam",
+		]);
 	});
 
 	it("rejects the retired bare T3 Code recipe", async () => {
