@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Add a non-locking KDE Connect `Screens Off` command for paired phones. The
+  command turns off all Hyprland displays through DPMS, preserves existing
+  remote commands, and is available through `--kde-connect-commands` as well
+  as the full Omarchy setup.
+
 ## 11.2.5 - 2026-09-01
 
 - Pin Elysian to size-24 / 4-pass blur, 0.80 window glass, and 0.90 browser

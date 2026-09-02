@@ -78,6 +78,10 @@ const DELIBERATE_OMISSIONS = {
 		["--workspaces", "Hyprland workspaces do not exist on a headless server."],
 		["--monitors", "Hyprland monitor routing requires a desktop display."],
 		[
+			"--kde-connect-commands",
+			"KDE Connect display commands require an Omarchy desktop session.",
+		],
+		[
 			"--omarchy-plugins",
 			"Omarchy plugins require the Omarchy desktop environment.",
 		],
@@ -173,6 +177,7 @@ function runArchDefaultPath() {
 				configureHyprmoncfgImpl: record("monitors"),
 				configureOmarchyWorkspacesImpl: record("workspaces"),
 				configureOmarchyPluginsImpl: record("omarchyPlugins"),
+				configureKdeConnectCommandsImpl: record("kdeConnectCommands"),
 				configureOmarchyBarImpl: record("omarchyBar"),
 				configureOmazedImpl: record("omazed"),
 				configureOmarchyAppearanceImpl: record("omarchyAppearance"),
@@ -288,6 +293,7 @@ function defaultSetupOverrides({
 		configureHyprmoncfgImpl: async () => {},
 		configureOmarchyWorkspacesImpl: async () => {},
 		configureOmarchyPluginsImpl: async () => {},
+		configureKdeConnectCommandsImpl: async () => {},
 		configureOmarchyBarImpl: async () => {},
 		configureOmazedImpl: async () => {},
 		configureOmarchyAppearanceImpl: async () => {},

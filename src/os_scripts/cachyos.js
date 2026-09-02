@@ -21,6 +21,7 @@ import { configureCodex } from "../helpers/configure_codex.js";
 import { configureSkills } from "../helpers/configure_skills.js";
 import { configureKitty } from "../helpers/configure_kitty.js";
 import { installGhStack } from "../helpers/configure_gh_stack.js";
+import { configureKdeConnectCommands } from "../helpers/configure_kde_connect.js";
 import { configureHyprmoncfg } from "../helpers/configure_hyprmoncfg.js";
 import { promptDeviceType } from "../common/device_type.js";
 import { configureMimeapps } from "../helpers/configure_mimeapps.js";
@@ -630,6 +631,7 @@ export async function runCachyOSSetup({
 	configureHyprmoncfgImpl = configureHyprmoncfg,
 	configureOmarchyWorkspacesImpl = configureOmarchyWorkspaces,
 	configureOmarchyPluginsImpl = configureOmarchyPlugins,
+	configureKdeConnectCommandsImpl = configureKdeConnectCommands,
 	configureOmarchyBarImpl = configureOmarchyBar,
 	configureOmazedImpl = configureOmazed,
 	configureOmarchyAppearanceImpl = configureOmarchyAppearance,
@@ -639,6 +641,7 @@ export async function runCachyOSSetup({
 	const configureHyprmoncfg = configureHyprmoncfgImpl;
 	const configureOmarchyWorkspaces = configureOmarchyWorkspacesImpl;
 	const configureOmarchyPlugins = configureOmarchyPluginsImpl;
+	const configureKdeConnectCommands = configureKdeConnectCommandsImpl;
 	const configureOmarchyBar = configureOmarchyBarImpl;
 	const configureOmazed = configureOmazedImpl;
 	const configureOmarchyAppearance = configureOmarchyAppearanceImpl;
@@ -693,6 +696,15 @@ export async function runCachyOSSetup({
 			} catch (err) {
 				log.warning(
 					`Omarchy plugin configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
+				);
+			}
+		}
+		if (isOmarchy) {
+			try {
+				await configureKdeConnectCommands();
+			} catch (err) {
+				log.warning(
+					`KDE Connect command configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
 				);
 			}
 		}

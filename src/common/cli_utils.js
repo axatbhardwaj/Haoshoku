@@ -37,6 +37,7 @@ export const MODE_FLAGS = [
 	"monitors",
 	"hyprmoncfgBackup",
 	"omarchyPlugins",
+	"kdeConnectCommands",
 	"omarchyBar",
 	"omarchyBarBackup",
 	"omarchyAppearance",

@@ -13,6 +13,10 @@ const pluginsHelper = path.join(
 	projectRoot,
 	"src/helpers/configure_omarchy_plugins.js",
 );
+const kdeConnectHelper = path.join(
+	projectRoot,
+	"src/helpers/configure_kde_connect.js",
+);
 const appearanceHelper = path.join(
 	projectRoot,
 	"src/helpers/configure_omarchy_appearance.js",
@@ -35,16 +39,18 @@ function runCliMode({
 			? ["configureHyprmoncfg", "backupHyprmoncfg"]
 			: helperPath === pluginsHelper
 				? ["configureOmarchyPlugins"]
-				: helperPath === appearanceHelper
-					? ["configureOmarchyAppearance"]
-					: ["migrateOmarchy3To4"];
+				: helperPath === kdeConnectHelper
+					? ["configureKdeConnectCommands"]
+					: helperPath === appearanceHelper
+						? ["configureOmarchyAppearance"]
+						: ["migrateOmarchy3To4"];
 	const childScript = `
 		import { mock } from "bun:test";
 		mock.module(${JSON.stringify(helperPath)}, () => ({
 			${helperExports
 				.map(
 					(exportName) =>
-						`${exportName}: async () => { ${exportName === helperExport ? `console.log(${JSON.stringify(marker)}); ${exportName === "migrateOmarchy3To4" ? `return ${JSON.stringify(migrationResult ?? { status: migrationStatus })};` : exportName === "configureOmarchyAppearance" ? 'return { status: "configured" };' : ""}` : ""} }`,
+						`${exportName}: async () => { ${exportName === helperExport ? `console.log(${JSON.stringify(marker)}); ${exportName === "migrateOmarchy3To4" ? `return ${JSON.stringify(migrationResult ?? { status: migrationStatus })};` : exportName === "configureOmarchyAppearance" ? 'return { status: "configured" };' : exportName === "configureKdeConnectCommands" ? "return { failed: [] };" : ""}` : ""} }`,
 				)
 				.join(",\n\t\t\t")}
 		}));
@@ -88,6 +94,12 @@ describe("Omarchy one-shot CLI modes", () => {
 				helperPath: pluginsHelper,
 				helperExport: "configureOmarchyPlugins",
 				marker: "OMARCHY_PLUGINS_CONFIGURED",
+			},
+			{
+				flag: "--kde-connect-commands",
+				helperPath: kdeConnectHelper,
+				helperExport: "configureKdeConnectCommands",
+				marker: "KDE_CONNECT_COMMANDS_CONFIGURED",
 			},
 			{
 				flag: "--omarchy-appearance",
@@ -186,6 +198,9 @@ describe("Omarchy one-shot CLI modes", () => {
 		);
 		expect(help).toContain(
 			"--omarchy-plugins Configure the Omarchy plugins declared in common/omarchy-plugins.json",
+		);
+		expect(help).toContain(
+			"--kde-connect-commands Add Haoshoku remote commands to every paired KDE Connect device",
 		);
 		expect(help).toContain(
 			"--omarchy-appearance Apply the pinned Omarchy theme, background, and font from configs/omarchy/appearance.json",

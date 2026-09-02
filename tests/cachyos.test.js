@@ -582,6 +582,7 @@ describe("Arch package-manager preflight", () => {
 			configureHyprmoncfgImpl: unreachable,
 			configureOmarchyWorkspacesImpl: unreachable,
 			configureOmarchyPluginsImpl: unreachable,
+			configureKdeConnectCommandsImpl: unreachable,
 			configureOmarchyBarImpl: unreachable,
 			configureOmazedImpl: unreachable,
 			configureOmarchyAppearanceImpl: unreachable,
@@ -622,6 +623,7 @@ describe("Arch package-manager preflight", () => {
 			configureHyprmoncfgImpl: unreachable,
 			configureOmarchyWorkspacesImpl: unreachable,
 			configureOmarchyPluginsImpl: unreachable,
+			configureKdeConnectCommandsImpl: unreachable,
 			configureOmarchyBarImpl: unreachable,
 			configureOmazedImpl: unreachable,
 			configureOmarchyAppearanceImpl: unreachable,
@@ -659,6 +661,7 @@ describe("Arch package-manager preflight", () => {
 			configureHyprmoncfgImpl: unreachable,
 			configureOmarchyWorkspacesImpl: unreachable,
 			configureOmarchyPluginsImpl: unreachable,
+			configureKdeConnectCommandsImpl: unreachable,
 			configureOmarchyBarImpl: unreachable,
 			configureOmazedImpl: unreachable,
 			configureOmarchyAppearanceImpl: unreachable,
@@ -755,6 +758,7 @@ describe("Arch package-manager preflight", () => {
 			configureHyprmoncfgImpl: unreachable,
 			configureOmarchyWorkspacesImpl: unreachable,
 			configureOmarchyPluginsImpl: unreachable,
+			configureKdeConnectCommandsImpl: unreachable,
 			configureOmarchyBarImpl: unreachable,
 			configureOmazedImpl: unreachable,
 			configureOmarchyAppearanceImpl: unreachable,
@@ -793,6 +797,7 @@ describe("Arch package-manager preflight", () => {
 			configureHyprmoncfgImpl: unreachable,
 			configureOmarchyWorkspacesImpl: unreachable,
 			configureOmarchyPluginsImpl: unreachable,
+			configureKdeConnectCommandsImpl: unreachable,
 			configureOmarchyBarImpl: unreachable,
 			configureOmazedImpl: unreachable,
 			configureOmarchyAppearanceImpl: unreachable,
@@ -831,6 +836,7 @@ describe("Arch package-manager preflight", () => {
 				configureHyprmoncfgImpl: record("hyprmoncfg"),
 				configureOmarchyWorkspacesImpl: record("workspaces"),
 				configureOmarchyPluginsImpl: record("plugins"),
+				configureKdeConnectCommandsImpl: record("kde-connect-commands"),
 				configureOmarchyBarImpl: record("bar"),
 				configureOmazedImpl: record("omazed"),
 				configureOmarchyAppearanceImpl: record("appearance"),
@@ -853,6 +859,7 @@ describe("Arch package-manager preflight", () => {
 				"hyprmoncfg",
 				"workspaces",
 				"plugins",
+				"kde-connect-commands",
 				"bar",
 				"omazed",
 				"appearance",
@@ -895,13 +902,20 @@ describe("Arch package-manager preflight", () => {
 			configureHyprmoncfgImpl: async () => {},
 			configureOmarchyWorkspacesImpl: async () => {},
 			configureOmarchyPluginsImpl: record("plugins"),
+			configureKdeConnectCommandsImpl: record("kde-connect-commands"),
 			configureOmarchyBarImpl: record("bar"),
 			configureOmazedImpl: record("omazed"),
 			configureOmarchyAppearanceImpl: record("appearance"),
 		});
 
 		expect(events.indexOf("bar")).toBeGreaterThan(events.indexOf("plugins"));
-		expect(events).toEqual(["plugins", "bar", "omazed", "appearance"]);
+		expect(events).toEqual([
+			"plugins",
+			"kde-connect-commands",
+			"bar",
+			"omazed",
+			"appearance",
+		]);
 	});
 
 	it("continues Omarchy setup when Brave policy provisioning throws", async () => {
@@ -932,6 +946,8 @@ describe("Arch package-manager preflight", () => {
 					configureHyprmoncfgImpl: async () => events.push("hyprmoncfg"),
 					configureOmarchyWorkspacesImpl: async () => events.push("workspaces"),
 					configureOmarchyPluginsImpl: async () => events.push("plugins"),
+					configureKdeConnectCommandsImpl: async () =>
+						events.push("kde-connect-commands"),
 					configureOmarchyBarImpl: async () => events.push("bar"),
 					configureOmazedImpl: async () => events.push("omazed"),
 					configureOmarchyAppearanceImpl: async () => events.push("appearance"),
@@ -945,6 +961,7 @@ describe("Arch package-manager preflight", () => {
 				"hyprmoncfg",
 				"workspaces",
 				"plugins",
+				"kde-connect-commands",
 				"bar",
 				"omazed",
 				"appearance",
@@ -988,6 +1005,7 @@ describe("Arch package-manager preflight", () => {
 					configureHyprmoncfgImpl: step("hyprmoncfg"),
 					configureOmarchyWorkspacesImpl: step("workspaces"),
 					configureOmarchyPluginsImpl: step("plugins"),
+					configureKdeConnectCommandsImpl: step("kde-connect-commands"),
 					configureOmarchyBarImpl: step("bar"),
 					configureOmazedImpl: step("omazed"),
 					configureOmarchyAppearanceImpl: step("appearance"),
@@ -998,6 +1016,7 @@ describe("Arch package-manager preflight", () => {
 					"hyprmoncfg",
 					"workspaces",
 					"plugins",
+					"kde-connect-commands",
 					"bar",
 					"omazed",
 					"appearance",

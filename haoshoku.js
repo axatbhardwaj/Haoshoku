@@ -28,6 +28,7 @@ import {
 	syncCodexConfig,
 } from "./src/helpers/configure_codex.js";
 import { installGhStack } from "./src/helpers/configure_gh_stack.js";
+import { configureKdeConnectCommands } from "./src/helpers/configure_kde_connect.js";
 import {
 	backupHyprmoncfg,
 	configureHyprmoncfg,
@@ -154,6 +155,10 @@ program
 	.option(
 		"--omarchy-plugins",
 		"Configure the Omarchy plugins declared in common/omarchy-plugins.json",
+	)
+	.option(
+		"--kde-connect-commands",
+		"Add Haoshoku remote commands to every paired KDE Connect device",
 	)
 	.option(
 		"--omarchy-bar",
@@ -347,6 +352,12 @@ async function runAction(options) {
 
 	if (options.omarchyPlugins) {
 		await configureOmarchyPlugins();
+		return;
+	}
+
+	if (options.kdeConnectCommands) {
+		const result = await configureKdeConnectCommands();
+		if (result.failed.length > 0) process.exitCode = 1;
 		return;
 	}
 
