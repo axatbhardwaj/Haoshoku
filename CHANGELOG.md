@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 11.2.6 - 2026-09-02
 
 - Add a non-locking KDE Connect `Screens Off` command for paired phones. The
   command turns off all Hyprland displays through DPMS, preserves existing
