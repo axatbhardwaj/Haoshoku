@@ -120,6 +120,46 @@ async function updateCommandsWithKde({ deviceId, name, command, home }) {
 	);
 }
 
+async function callDeviceMethod(deviceId, method, args = []) {
+	const child = Bun.spawn(
+		[
+			"gdbus",
+			"call",
+			"--session",
+			"--dest",
+			"org.kde.kdeconnect",
+			"--object-path",
+			`/modules/kdeconnect/devices/${deviceId}`,
+			"--method",
+			`org.kde.kdeconnect.device.${method}`,
+			...args,
+		],
+		{ stdout: "pipe", stderr: "pipe" },
+	);
+	const [exitCode, stdout, stderr] = await Promise.all([
+		child.exited,
+		new Response(child.stdout).text(),
+		new Response(child.stderr).text(),
+	]);
+	return { exitCode, stdout, stderr };
+}
+
+async function enableRunCommandPlugin(deviceId) {
+	try {
+		const enabled = await callDeviceMethod(deviceId, "setPluginEnabled", [
+			"kdeconnect_runcommand",
+			"true",
+		]);
+		if (enabled.exitCode !== 0) return false;
+		const verified = await callDeviceMethod(deviceId, "isPluginEnabled", [
+			"kdeconnect_runcommand",
+		]);
+		return verified.exitCode === 0 && /\btrue\b/.test(verified.stdout);
+	} catch {
+		return false;
+	}
+}
+
 function readCommands(file, fsImpl) {
 	try {
 		return parseCommandsConfig(fsImpl.readFileSync(file, "utf8"));
@@ -139,6 +179,7 @@ export async function configureKdeConnectCommands({
 	fsImpl = fs,
 	logImpl = log,
 	updateCommandsImpl = updateCommandsWithKde,
+	enablePluginImpl = enableRunCommandPlugin,
 } = {}) {
 	const kdeConnectDir = path.join(home, ".config", "kdeconnect");
 	const trustedDevicesFile = path.join(kdeConnectDir, "trusted_devices");
@@ -163,6 +204,8 @@ export async function configureKdeConnectCommands({
 
 	const result = { configured: [], unchanged: [], failed: [] };
 	for (const deviceId of deviceIds) {
+		let commandReady = false;
+		let mutationAttempted = false;
 		try {
 			const commandsFile = assertSafeDevicePaths(
 				kdeConnectDir,
@@ -174,34 +217,46 @@ export async function configureKdeConnectCommands({
 			if (existing.length > 1) {
 				throw new Error("multiple commands are named Screens Off");
 			}
+			let changed = false;
 			if (existing[0]?.command === SCREENS_OFF_COMMAND.command) {
-				result.unchanged.push(deviceId);
-				logImpl.success(
-					`KDE Connect Screens Off is already configured for ${deviceId}.`,
-				);
-				continue;
+				commandReady = true;
+			} else {
+				mutationAttempted = true;
+				const update = await updateCommandsImpl({
+					deviceId,
+					name: SCREENS_OFF_COMMAND.name,
+					command: SCREENS_OFF_COMMAND.command,
+					home,
+				});
+				const after = readCommands(commandsFile, fsImpl);
+				const configured = matchingCommands(after, SCREENS_OFF_COMMAND.name);
+				if (
+					configured.length !== 1 ||
+					configured[0].command !== SCREENS_OFF_COMMAND.command
+				) {
+					throw new Error("KDE CommandsModel did not persist Screens Off");
+				}
+				commandReady = true;
+				changed = update.changed;
 			}
-
-			const update = await updateCommandsImpl({
-				deviceId,
-				name: SCREENS_OFF_COMMAND.name,
-				command: SCREENS_OFF_COMMAND.command,
-				home,
-			});
-			const after = readCommands(commandsFile, fsImpl);
-			const configured = matchingCommands(after, SCREENS_OFF_COMMAND.name);
-			if (
-				configured.length !== 1 ||
-				configured[0].command !== SCREENS_OFF_COMMAND.command
-			) {
-				throw new Error("KDE CommandsModel did not persist Screens Off");
+			if (!(await enablePluginImpl(deviceId))) {
+				throw new Error("run-command plugin enablement could not be verified");
 			}
-			(update.changed ? result.configured : result.unchanged).push(deviceId);
-			logImpl.success(`Configured KDE Connect Screens Off for ${deviceId}.`);
+			(changed ? result.configured : result.unchanged).push(deviceId);
+			logImpl.success(
+				changed
+					? `Configured KDE Connect Screens Off for ${deviceId}.`
+					: `KDE Connect Screens Off is already configured for ${deviceId}.`,
+			);
 		} catch (error) {
 			result.failed.push(deviceId);
+			const recovery = commandReady
+				? "Screens Off is stored, but plugin enablement is not confirmed."
+				: mutationAttempted
+					? "The command update may be partial; inspect the KDE Connect command list."
+					: "Existing command config was left untouched.";
 			logImpl.warning(
-				`KDE Connect command setup failed for ${deviceId} (${error?.message ?? error}); existing config was left untouched.`,
+				`KDE Connect command setup failed for ${deviceId} (${error?.message ?? error}). ${recovery}`,
 			);
 		}
 	}

@@ -140,6 +140,7 @@ describe("KDE Connect commands", () => {
 				);
 				return { changed: true };
 			},
+			enablePluginImpl: async () => true,
 		});
 
 		expect(updates).toEqual([
@@ -154,6 +155,45 @@ describe("KDE Connect commands", () => {
 		expect(result).toEqual({
 			configured: ["phone123"],
 			unchanged: [],
+			failed: [],
+		});
+	});
+
+	it("enables a disabled run-command plugin through the device daemon", async () => {
+		const home = makeHome();
+		const exactCommands = { "native-id": SCREENS_OFF_COMMAND };
+		const target = seedDevice(home, {
+			commands: `[General]\ncommands=${JSON.stringify(`@ByteArray(${JSON.stringify(exactCommands)})`)}\n`,
+		});
+		fs.writeFileSync(
+			target.device,
+			"[Plugins]\nkdeconnect_runcommandEnabled=false\n",
+		);
+		const enabled = [];
+
+		const result = await configureKdeConnectCommands({
+			home,
+			logImpl: silentLog(),
+			updateCommandsImpl: async () => {
+				throw new Error("unchanged command must not be rewritten");
+			},
+			enablePluginImpl: async (deviceId) => {
+				enabled.push(deviceId);
+				fs.writeFileSync(
+					target.device,
+					"[Plugins]\nkdeconnect_runcommandEnabled=true\n",
+				);
+				return true;
+			},
+		});
+
+		expect(enabled).toEqual(["phone123"]);
+		expect(fs.readFileSync(target.device, "utf8")).toContain(
+			"kdeconnect_runcommandEnabled=true",
+		);
+		expect(result).toEqual({
+			configured: [],
+			unchanged: ["phone123"],
 			failed: [],
 		});
 	});
@@ -204,6 +244,7 @@ describe("KDE Connect commands", () => {
 		const result = await configureKdeConnectCommands({
 			home,
 			logImpl: silentLog(),
+			enablePluginImpl: async () => true,
 		});
 
 		const commands = parseCommandsConfig(
@@ -241,6 +282,7 @@ describe("KDE Connect commands", () => {
 		const options = {
 			home,
 			logImpl: silentLog(),
+			enablePluginImpl: async () => true,
 		};
 
 		await configureKdeConnectCommands(options);
@@ -294,6 +336,7 @@ describe("KDE Connect commands", () => {
 		await configureKdeConnectCommands({
 			home,
 			logImpl: silentLog(),
+			enablePluginImpl: async () => true,
 		});
 
 		const probe = Bun.spawnSync(["qml6", COMMANDS_MODEL_PROBE], {
