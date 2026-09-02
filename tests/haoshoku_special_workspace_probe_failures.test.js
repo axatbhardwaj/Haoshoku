@@ -482,6 +482,7 @@ fi
 
 		for (const { name, args } of [
 			{ name: "numbered steam", args: ["numbered", "1", "steam"] },
+			{ name: "numbered omakade", args: ["numbered", "2", "omakade"] },
 			{ name: "numbered discord", args: ["numbered", "2", "discord"] },
 			{
 				name: "numbered communication",

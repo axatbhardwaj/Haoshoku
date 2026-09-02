@@ -1044,6 +1044,17 @@ describe("Omarchy-owned defaults", () => {
 		expect(packages).toContain("openai-codex-desktop");
 	});
 
+	it("provisions Omakade from the application list", () => {
+		const packages = fs
+			.readFileSync(
+				path.resolve(import.meta.dir, "..", "common", "paru_applist.txt"),
+				"utf8",
+			)
+			.split(/\r?\n/);
+
+		expect(packages).toContain("omakade");
+	});
+
 	it("keeps KDE, Fish, and appearance packages out of the application list", () => {
 		const packages = fs.readFileSync(
 			path.resolve(import.meta.dir, "..", "common", "paru_applist.txt"),

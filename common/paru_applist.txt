@@ -39,6 +39,7 @@ mission-center
 ghostty
 zed
 omazed
+omakade
 starship
 httpie
 thefuck

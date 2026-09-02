@@ -67,10 +67,19 @@ describe("Omarchy Lua workspace behavior", () => {
 			'o.bind("SUPER + D", "Toggle DeFi Brave Origin workspace", "haoshoku-special-workspace browser-toggle defi")',
 			'o.bind("SUPER + SHIFT + G", "Toggle gaming workspace", "haoshoku-gaming-workspace toggle")',
 		];
+		const numberedOmakade = `o.bind(
+  "SUPER + code:11",
+  "Workspace 2 and Omakade",
+  "haoshoku-special-workspace numbered 2 omakade"
+)`;
 
 		for (const overlay of [pc, laptop]) {
 			for (const command of commands) expect(overlay).toContain(command);
+			expect(overlay).toContain(numberedOmakade);
 			expect(overlay).not.toContain('o.bind("SUPER + A"');
+			expect(overlay).not.toContain(
+				"haoshoku-special-workspace numbered 2 steam",
+			);
 		}
 	});
 
@@ -84,7 +93,16 @@ describe("Omarchy Lua workspace behavior", () => {
 				'o.exec_on_start("haoshoku-special-workspace numbered-login 7 kitty")',
 			);
 			expect(overlay).toContain(
+				'o.exec_on_start("haoshoku-special-workspace numbered-login 2 steam")',
+			);
+			expect(overlay).toContain(
+				'o.exec_on_start("haoshoku-special-workspace numbered-login 2 omakade")',
+			);
+			expect(overlay).toContain(
 				'o.window("^haoshoku-ws7$", { workspace = "7 silent" })',
+			);
+			expect(overlay).toContain(
+				'o.window("^io\\\\.github\\\\.tsouth89\\\\.Omakade$", { workspace = "2 silent" })',
 			);
 			expect(overlay).toContain(
 				'o.window("^haoshoku-haki$", { workspace = "special:haki" })',

@@ -42,9 +42,33 @@ describe("gaming workspace configuration", () => {
 		expect(laptopConfig).not.toMatch(gamingSpecificWorkspaceRule);
 	});
 
-	it("routes Steam windows silently to workspace 2", () => {
+	it("routes Steam windows silently to workspace 2 and tiles them", () => {
 		expect(workspacesConfig).toContain(
-			'o.window("^[Ss]team$", { workspace = "2 silent" })',
+			'o.window("^[Ss]team$", { workspace = "2 silent", tile = true })',
+		);
+	});
+
+	it("routes Omakade windows silently to workspace 2", () => {
+		expect(workspacesConfig).toContain(
+			'o.window("^io\\\\.github\\\\.tsouth89\\\\.Omakade$", { workspace = "2 silent" })',
+		);
+	});
+
+	it("starts Steam and Omakade silently on workspace 2 at login", () => {
+		expect(workspacesConfig).toContain(
+			'o.exec_on_start("haoshoku-special-workspace numbered-login 2 steam")',
+		);
+		expect(workspacesConfig).toContain(
+			'o.exec_on_start("haoshoku-special-workspace numbered-login 2 omakade")',
+		);
+	});
+
+	it("binds SUPER+2 to Omakade rather than Steam", () => {
+		expect(workspacesConfig).toContain(
+			"haoshoku-special-workspace numbered 2 omakade",
+		);
+		expect(workspacesConfig).not.toContain(
+			"haoshoku-special-workspace numbered 2 steam",
 		);
 	});
 
@@ -67,10 +91,16 @@ describe("gaming workspace configuration", () => {
 		);
 
 		expect(laptopConfig).toContain(
-			'o.window("^[Ss]team$", { workspace = "2 silent" })',
+			'o.window("^[Ss]team$", { workspace = "2 silent", tile = true })',
+		);
+		expect(laptopConfig).toContain(
+			'o.window("^io\\\\.github\\\\.tsouth89\\\\.Omakade$", { workspace = "2 silent" })',
 		);
 		expect(laptopConfig).toContain(
 			'o.bind("SUPER + SHIFT + G", "Toggle gaming workspace", "haoshoku-gaming-workspace toggle")',
+		);
+		expect(laptopConfig).toContain(
+			"haoshoku-special-workspace numbered 2 omakade",
 		);
 		expect(laptopConfig).not.toContain(
 			"haoshoku-special-workspace numbered 2 steam",

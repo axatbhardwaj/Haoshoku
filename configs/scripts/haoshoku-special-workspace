@@ -151,6 +151,7 @@ if [[ "$recipe" == numbered || "$recipe" == numbered-login ]]; then
   fi
   case "$app" in
     steam) launch_if_missing "$workspace" '^[Ss]team$' steam ;;
+    omakade) launch_if_missing "$workspace" '^io\.github\.tsouth89\.Omakade$' omakade ;;
     discord) launch_if_missing "$workspace" '^(discord|vesktop)$' discord ;;
     t3code) launch_if_missing "$workspace" '^t3code$' t3code ;;
     communication-numbered)
