@@ -19,6 +19,7 @@ import { installGhStack } from "../helpers/configure_gh_stack.js";
 import { configureGit } from "../helpers/configure_git.js";
 import { configurePrWatch } from "../helpers/configure_pr_watch.js";
 import { configureT3CodeServer } from "../helpers/configure_t3_code_server.js";
+import { configureHerdr } from "../helpers/configure_herdr.js";
 import { configureSshd } from "../helpers/configure_sshd.js";
 import { configureTailscale } from "../helpers/configure_tailscale.js";
 import { syncWorktreeCleanup } from "../helpers/configure_worktree_cleanup.js";
@@ -284,7 +285,19 @@ export async function runDebianServerSetup() {
 	await configureFail2ban();
 	await configureTailscale({ osId: "debian-server" });
 	await configureSshd({ osId: "debian-server" });
-	const t3CodeConfigured = await configureT3CodeServer();
+	await configureHerdr();
+
+	// herdr is the session layer now. T3 Code stays installable as a backup
+	// during the overlap period; a skipped T3 no longer fails the run.
+	let t3CodeConfigured = true;
+	if (
+		await promptUser(
+			"Configure the T3 Code headless service? (legacy backup; herdr is the session layer)",
+			false,
+		)
+	) {
+		t3CodeConfigured = await configureT3CodeServer();
+	}
 
 	// Debian Server deliberately receives only portable/headless developer tools.
 	// Device type is not asked because it routes audio and Hyprland/Omarchy

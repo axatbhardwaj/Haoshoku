@@ -49,6 +49,7 @@ import {
 	syncPrWatch,
 } from "./src/helpers/configure_pr_watch.js";
 import { configureT3CodeServer } from "./src/helpers/configure_t3_code_server.js";
+import { configureHerdr } from "./src/helpers/configure_herdr.js";
 import { configureSshd } from "./src/helpers/configure_sshd.js";
 import { configureTailscale } from "./src/helpers/configure_tailscale.js";
 import {
@@ -103,6 +104,10 @@ program
 	.option(
 		"--tailscale",
 		"Install Tailscale, enable tailscaled, and join the tailnet (interactive login)",
+	)
+	.option(
+		"--herdr",
+		"Install herdr (agent session layer) if missing, pin the stable channel, and enable systemd lingering",
 	)
 	.option(
 		"--sshd",
@@ -247,6 +252,11 @@ async function runAction(options) {
 			return;
 		}
 		if (!(await configureT3CodeServer())) process.exitCode = 1;
+		return;
+	}
+
+	if (options.herdr) {
+		if ((await configureHerdr()) !== "configured") process.exitCode = 1;
 		return;
 	}
 

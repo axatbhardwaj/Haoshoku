@@ -17,6 +17,7 @@ Standalone setup scripts for specific tools.
 | `configure_gh_stack.js` | Idempotent `github/gh-stack` extension install | Adding or debugging stacked-PR tooling setup |
 | `configure_pr_watch.js` | pr-watch PR watcher sync/backup | Adding or debugging the PR watcher deploy |
 | `configure_tailscale.js` | Tailscale install, tailscaled enable, interactive tailnet join | Adding or debugging mesh networking / tailnet membership |
+| `configure_herdr.js` | herdr install-if-missing, stable channel, systemd lingering | Adding or debugging the agent session layer |
 | `configure_sshd.js` | Key-only sshd drop-in, machine key, authorized_keys merge, mesh ~/.ssh/config, tailnet-only UFW gate | Adding or debugging SSH access between mesh machines |
 | `configure_t3_code_server.js` | Debian T3 Code service plus idempotent T3 Connect lifecycle | Adding or debugging T3 Connect authorization, provisioning, or service verification |
 | `configure_git.js`    | Git user and signing setup             | Modifying automated git configuration         |

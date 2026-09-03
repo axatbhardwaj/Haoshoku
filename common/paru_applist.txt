@@ -58,7 +58,6 @@ azd-cli
 bottles
 claude-desktop
 openai-codex-desktop
-t3code-bin
 kiro-ide-bin
 obs-backgroundremoval
 obs-composite-blur

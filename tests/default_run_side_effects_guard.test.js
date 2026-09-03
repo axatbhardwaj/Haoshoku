@@ -74,6 +74,7 @@ const TEST_CALLER_CONTRACTS = new Map([
 			"configureSkillsImpl",
 			"configureTailscaleImpl",
 			"configureSshdImpl",
+			"configureHerdrImpl",
 		],
 	],
 	[

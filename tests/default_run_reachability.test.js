@@ -174,6 +174,7 @@ function runArchDefaultPath() {
 					configureSkillsImpl: record("skills", true),
 					configureTailscaleImpl: record("tailscale"),
 					configureSshdImpl: record("sshd"),
+					configureHerdrImpl: record("herdr"),
 				}),
 				configureBraveManagedPoliciesImpl: record("braveManagedPolicies", true),
 				configureHyprmoncfgImpl: record("monitors"),
@@ -260,6 +261,9 @@ function runDebianDefaultPath() {
 			mock.module(${JSON.stringify(helperPath("configure_sshd.js"))}, () => ({
 				configureSshd: record("sshd", true),
 			}));
+			mock.module(${JSON.stringify(helperPath("configure_herdr.js"))}, () => ({
+				configureHerdr: record("herdr", "configured"),
+			}));
 			const { runDebianServerSetup } = await import(${JSON.stringify(modulePath)});
 			await runDebianServerSetup();
 			console.log("DEFAULT_CALLS=" + JSON.stringify(calls));
@@ -328,6 +332,7 @@ function userAppDoubles(overrides = {}) {
 		configureSkillsImpl: async () => true,
 		configureTailscaleImpl: async () => {},
 		configureSshdImpl: async () => {},
+		configureHerdrImpl: async () => "configured",
 		...overrides,
 	};
 }

@@ -26,6 +26,7 @@ function userAppDoubles(overrides = {}) {
 		configureSkillsImpl: async () => true,
 		configureTailscaleImpl: async () => {},
 		configureSshdImpl: async () => {},
+		configureHerdrImpl: async () => "configured",
 		...overrides,
 	};
 }

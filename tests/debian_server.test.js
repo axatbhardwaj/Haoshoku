@@ -50,6 +50,7 @@ function runDefaultSetupWithSafeDoubles() {
 			"Enable Claude stay-awake service?",
 			"Install Claude Remote Control services with all permission checks bypassed? This permanently sets bypassPermissionsModeAccepted: true in ~/.claude.json for every Claude Code session on this machine, not only these services. To undo it, edit ~/.claude.json and remove the flag or set it to false.",
 			"Enable automatic git worktree cleanup? This enables a persistent weekly timer that runs cleanup-worktrees.sh --apply and deletes eligible worktrees.",
+			"Configure the T3 Code headless service? (legacy backup; herdr is the session layer)",
 		]);
 		const writeFileSync = actualFs.writeFileSync.bind(actualFs);
 		actualFs.writeFileSync = (target, ...args) => {
@@ -87,6 +88,7 @@ function runDefaultSetupWithSafeDoubles() {
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_t3_code_server.js"))}, () => ({ configureT3CodeServer: record("t3-code-server", true) }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_tailscale.js"))}, () => ({ configureTailscale: record("tailscale") }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_sshd.js"))}, () => ({ configureSshd: record("sshd", true) }));
+		mock.module(${JSON.stringify(modulePath("src/helpers/configure_herdr.js"))}, () => ({ configureHerdr: record("herdr", "configured") }));
 		const { runDebianServerSetup } = await import(${JSON.stringify(debianModule)} + "?default-path-test");
 		await runDebianServerSetup();
 		console.log("DEBIAN_EVENTS=" + JSON.stringify(events));
@@ -204,6 +206,11 @@ describe("Debian default path", () => {
 		});
 		expect(prompts).toContainEqual({
 			type: "prompt",
+			message: expect.stringContaining("T3 Code headless service"),
+			initial: false,
+		});
+		expect(prompts).toContainEqual({
+			type: "prompt",
 			message: expect.stringContaining("Claude Remote Control"),
 			initial: false,
 		});
@@ -218,6 +225,7 @@ describe("Debian default path", () => {
 		expect(helpers).toEqual([
 			"tailscale",
 			"sshd",
+			"herdr",
 			"t3-code-server",
 			"git",
 			"claude",

@@ -44,6 +44,7 @@ describe("user app configuration", () => {
 			configureSkillsImpl: record("skills"),
 			configureTailscaleImpl: record("tailscale"),
 			configureSshdImpl: record("sshd"),
+			configureHerdrImpl: record("herdr"),
 		});
 
 		expect(events).toEqual([
@@ -56,6 +57,7 @@ describe("user app configuration", () => {
 			"services",
 			"tailscale",
 			"sshd",
+			"herdr",
 			"claude",
 			"gh-stack",
 			"stay-awake",
