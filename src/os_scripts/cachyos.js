@@ -16,6 +16,7 @@ import { configureBraveManagedPolicies } from "../helpers/configure_brave_manage
 import { configureChromiumProfiles } from "../helpers/configure_chromium_profiles.js";
 import { configureClaude } from "../helpers/configure_claude.js";
 import { configureClaudeRemoteControl } from "../helpers/configure_claude_remote_control.js";
+import { configureTailscale } from "../helpers/configure_tailscale.js";
 import { configureClaudeStayAwake } from "../helpers/configure_claude_stay_awake.js";
 import { configureCodex } from "../helpers/configure_codex.js";
 import { configureSkills } from "../helpers/configure_skills.js";
@@ -549,6 +550,7 @@ export async function configureUserApps({
 	syncWorktreeCleanupImpl = syncWorktreeCleanup,
 	configureCodexImpl = configureCodex,
 	configureSkillsImpl = configureSkills,
+	configureTailscaleImpl = configureTailscale,
 } = {}) {
 	if (await promptUserImpl("Configure git?", true)) {
 		const configureGit =
@@ -574,6 +576,7 @@ export async function configureUserApps({
 	await runCommandImpl(`curl -fsSL ${UOSC_INSTALL_URL} | bash`);
 
 	await enableServicesImpl();
+	await configureTailscaleImpl({ osId: "arch" });
 	await configureClaudeImpl();
 	try {
 		await installGhStackImpl();

@@ -24,6 +24,7 @@ function userAppDoubles(overrides = {}) {
 		syncWorktreeCleanupImpl: async () => {},
 		configureCodexImpl: async () => {},
 		configureSkillsImpl: async () => true,
+		configureTailscaleImpl: async () => {},
 		...overrides,
 	};
 }
@@ -62,6 +63,7 @@ describe("CachyOS browser integration", () => {
 				configurePrWatchImpl: record("pr-watch"),
 				configureCodexImpl: record("codex"),
 				configureSkillsImpl: record("skills"),
+				configureTailscaleImpl: record("tailscale"),
 			}),
 		);
 
@@ -91,6 +93,7 @@ describe("CachyOS browser integration", () => {
 				configurePrWatchImpl: record("pr-watch"),
 				configureCodexImpl: record("codex"),
 				configureSkillsImpl: record("skills"),
+				configureTailscaleImpl: record("tailscale"),
 			}),
 		);
 

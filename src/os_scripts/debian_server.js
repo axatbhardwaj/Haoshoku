@@ -19,6 +19,7 @@ import { installGhStack } from "../helpers/configure_gh_stack.js";
 import { configureGit } from "../helpers/configure_git.js";
 import { configurePrWatch } from "../helpers/configure_pr_watch.js";
 import { configureT3CodeServer } from "../helpers/configure_t3_code_server.js";
+import { configureTailscale } from "../helpers/configure_tailscale.js";
 import { syncWorktreeCleanup } from "../helpers/configure_worktree_cleanup.js";
 
 // --- Constants ---
@@ -304,6 +305,7 @@ export async function runDebianServerSetup() {
 	await installDocker();
 	await setupFirewall();
 	await configureFail2ban();
+	await configureTailscale({ osId: "debian-server" });
 	const t3CodeConfigured = await configureT3CodeServer();
 
 	// Debian Server deliberately receives only portable/headless developer tools.

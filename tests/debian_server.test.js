@@ -85,6 +85,7 @@ function runDefaultSetupWithSafeDoubles() {
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_codex.js"))}, () => ({ configureCodex: record("codex") }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_skills.js"))}, () => ({ configureSkills: record("skills", true) }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_t3_code_server.js"))}, () => ({ configureT3CodeServer: record("t3-code-server", true) }));
+		mock.module(${JSON.stringify(modulePath("src/helpers/configure_tailscale.js"))}, () => ({ configureTailscale: record("tailscale") }));
 		const { runDebianServerSetup } = await import(${JSON.stringify(debianModule)} + "?default-path-test");
 		await runDebianServerSetup();
 		console.log("DEBIAN_EVENTS=" + JSON.stringify(events));
@@ -214,6 +215,7 @@ describe("Debian default path", () => {
 			false,
 		);
 		expect(helpers).toEqual([
+			"tailscale",
 			"t3-code-server",
 			"git",
 			"claude",

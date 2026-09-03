@@ -172,6 +172,7 @@ function runArchDefaultPath() {
 					syncWorktreeCleanupImpl: record("worktreeCleanup"),
 					configureCodexImpl: record("codex"),
 					configureSkillsImpl: record("skills", true),
+					configureTailscaleImpl: record("tailscale"),
 				}),
 				configureBraveManagedPoliciesImpl: record("braveManagedPolicies", true),
 				configureHyprmoncfgImpl: record("monitors"),
@@ -252,6 +253,9 @@ function runDebianDefaultPath() {
 			mock.module(${JSON.stringify(helperPath("configure_t3_code_server.js"))}, () => ({
 				configureT3CodeServer: record("serverT3Code", true),
 			}));
+			mock.module(${JSON.stringify(helperPath("configure_tailscale.js"))}, () => ({
+				configureTailscale: record("tailscale"),
+			}));
 			const { runDebianServerSetup } = await import(${JSON.stringify(modulePath)});
 			await runDebianServerSetup();
 			console.log("DEFAULT_CALLS=" + JSON.stringify(calls));
@@ -318,6 +322,7 @@ function userAppDoubles(overrides = {}) {
 		syncWorktreeCleanupImpl: async () => {},
 		configureCodexImpl: async () => {},
 		configureSkillsImpl: async () => true,
+		configureTailscaleImpl: async () => {},
 		...overrides,
 	};
 }
