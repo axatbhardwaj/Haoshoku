@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 11.3.0 - 2026-09-03
 
 - Add `--tailscale`: install Tailscale, enable `tailscaled`, and join the
   tailnet with an interactive login only when the node is not already
