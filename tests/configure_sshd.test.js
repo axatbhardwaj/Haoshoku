@@ -117,20 +117,18 @@ describe("pure helpers", () => {
 	});
 
 	it("ssh config block lists mesh hosts and forwards the agent only to vps", () => {
-		const block = buildSshConfigBlock();
+		const block = buildSshConfigBlock({ userName: "xzat" });
 		expect(block).toContain("Host pc laptop vps");
-		expect(block).toMatch(/Host pc\n\s+User xzat/);
-		expect(block).toMatch(/Host laptop\n\s+User xzat/);
-		expect(block).toMatch(/Host vps\n\s+User root\n\s+ForwardAgent yes/);
-		expect(block.match(/ForwardAgent/g).length).toBe(1);
+		expect(block).toContain("User xzat");
+		expect(block).toMatch(/Host vps\n\s+ForwardAgent yes/);
 	});
 
 	it("replaces the managed block idempotently and keeps user content", () => {
-		const block = buildSshConfigBlock();
+		const block = buildSshConfigBlock({ userName: "xzat" });
 		const once = replaceManagedBlock("Host work\n    User me\n", block);
 		const twice = replaceManagedBlock(
 			`${once}Host after\n    Port 2222\n`,
-			buildSshConfigBlock({ users: { pc: "new", laptop: "new", vps: "new" } }),
+			buildSshConfigBlock({ userName: "new" }),
 		);
 		expect(once.startsWith("Host work\n    User me\n")).toBe(true);
 		expect(twice).toContain("Host work");

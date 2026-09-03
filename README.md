@@ -248,8 +248,7 @@ MagicDNS matches the SSH config below. The free personal plan covers this.
 private key up in 1Password; it never leaves the machine), merges every key
 in `configs/ssh/authorized_keys` into `~/.ssh/authorized_keys` without
 removing existing keys, and writes a managed `pc` / `laptop` / `vps` block
-into `~/.ssh/config` (login user `xzat` on the desktops, `root` on the VPS;
-agent forwarding to `vps` only). Once at least one key
+into `~/.ssh/config` (agent forwarding to `vps` only). Once at least one key
 is authorized it applies a key-only sshd drop-in and, when UFW is present,
 allows port 22 on `tailscale0`. On Debian it then removes the public SSH rule,
 but only behind a lockout gate — Tailscale must be Running and keys must be
