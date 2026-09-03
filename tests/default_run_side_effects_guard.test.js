@@ -72,6 +72,9 @@ const TEST_CALLER_CONTRACTS = new Map([
 			"syncWorktreeCleanupImpl",
 			"configureCodexImpl",
 			"configureSkillsImpl",
+			"configureTailscaleImpl",
+			"configureSshdImpl",
+			"configureHerdrImpl",
 		],
 	],
 	[

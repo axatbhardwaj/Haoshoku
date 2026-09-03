@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+- Add `--tailscale`: install Tailscale, enable `tailscaled`, and join the
+  tailnet with an interactive login only when the node is not already
+  Running. Runs on both the Arch and Debian paths.
+- Add `--sshd`: key-only sshd drop-in, per-machine ed25519 key, union merge of
+  `configs/ssh/authorized_keys` into `~/.ssh/authorized_keys`, managed
+  `pc`/`laptop`/`vps` block in `~/.ssh/config`, and UFW SSH restricted to
+  `tailscale0`. On Debian the public SSH rule is removed only behind a lockout
+  gate (Tailscale Running + keys present) and a confirmation prompt. This
+  reverses the old Debian "keep password login" policy and supersedes its
+  `setupSsh` step.
+- Add `--herdr`: install herdr as the agent session layer when missing, pin the
+  stable channel, and enable systemd lingering. Never upgrades an existing
+  install.
+- Make the Debian T3 Code server step opt-in (default no); a skipped T3 no
+  longer fails the run. Drop `t3code-bin` from the Arch package list.
+  `--server-t3-code` is unchanged.
+
 ## 11.2.8 - 2026-09-03
 
 - Recover `HYPRLAND_INSTANCE_SIGNATURE` in the default-browser router when

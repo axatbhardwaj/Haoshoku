@@ -64,7 +64,11 @@ describe("haoshoku CLI help", () => {
 		expect(help).toContain("Debian");
 		expect(help).toContain("headless");
 		expect(normalizedHelp).toContain("T3 Connect");
-		expect(help).not.toContain("Tailscale");
+		const t3Option = normalizedHelp.slice(
+			normalizedHelp.indexOf("--server-t3-code"),
+			normalizedHelp.indexOf("--skills"),
+		);
+		expect(t3Option).not.toContain("Tailscale");
 	});
 
 	it("documents T3 Connect instead of mandatory Tailscale server access", () => {
