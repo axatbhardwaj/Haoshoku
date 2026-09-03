@@ -42,9 +42,6 @@ describe("user app configuration", () => {
 			syncWorktreeCleanupImpl: record("worktree-cleanup"),
 			configureCodexImpl: record("codex"),
 			configureSkillsImpl: record("skills"),
-			configureTailscaleImpl: record("tailscale"),
-			configureSshdImpl: record("sshd"),
-			configureHerdrImpl: record("herdr"),
 		});
 
 		expect(events).toEqual([
@@ -55,9 +52,6 @@ describe("user app configuration", () => {
 			"kitty",
 			"uosc",
 			"services",
-			"tailscale",
-			"sshd",
-			"herdr",
 			"claude",
 			"gh-stack",
 			"stay-awake",
