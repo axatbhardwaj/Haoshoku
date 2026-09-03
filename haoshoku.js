@@ -49,6 +49,7 @@ import {
 	syncPrWatch,
 } from "./src/helpers/configure_pr_watch.js";
 import { configureT3CodeServer } from "./src/helpers/configure_t3_code_server.js";
+import { configureSshd } from "./src/helpers/configure_sshd.js";
 import { configureTailscale } from "./src/helpers/configure_tailscale.js";
 import {
 	backupWorktreeCleanup,
@@ -102,6 +103,10 @@ program
 	.option(
 		"--tailscale",
 		"Install Tailscale, enable tailscaled, and join the tailnet (interactive login)",
+	)
+	.option(
+		"--sshd",
+		"Enable key-only sshd, provision the machine key, merge configs/ssh/authorized_keys, write mesh ~/.ssh/config, and restrict UFW SSH to the tailnet",
 	)
 	.option("--audio", "Sync audio config from configs/audio/ to ~/.config/")
 	.option(
@@ -242,6 +247,11 @@ async function runAction(options) {
 			return;
 		}
 		if (!(await configureT3CodeServer())) process.exitCode = 1;
+		return;
+	}
+
+	if (options.sshd) {
+		if (!(await configureSshd())) process.exitCode = 1;
 		return;
 	}
 

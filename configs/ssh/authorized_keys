@@ -1,0 +1,3 @@
+# Public keys merged into ~/.ssh/authorized_keys on every Haoshoku machine.
+# One key per line, trailing comment = device name. Private keys live in
+# ~/.ssh on their own machine (backed up to 1Password), never here.

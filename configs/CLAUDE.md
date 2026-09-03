@@ -22,6 +22,7 @@ Template configuration files copied to user's `~/.config/` during setup.
 | `vencord/`      | Vencord Discord theme               | Modifying Discord appearance              |
 | `claude/`       | Claude Code compact personal policy (copied) | Modifying policy backup/restore       |
 | `claude-remote-control/` | Claude Remote Control tmux supervisor + systemd user-unit template | Modifying persistent Claude sessions, restart behavior, or attach lifecycle |
+| `ssh/` | Public keys merged into every machine's authorized_keys | Adding a device to the SSH mesh |
 | `claude-stay-awake/` | Claude CLI sleep-inhibitor watcher and systemd user unit | Modifying suspend blocking or session detection |
 | `codex/`        | Codex compact personal policy | Modifying deployed Codex agent guidance   |
 | `hyprmoncfg/`   | Authored monitor/workspace profile JSON consumed by hyprmoncfg; Haoshoku NEVER writes generated `monitors.lua` | Modifying monitor layouts or monitor-bound workspace rules without crossing the hyprmoncfg ownership boundary |

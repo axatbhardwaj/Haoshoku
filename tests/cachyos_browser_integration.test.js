@@ -25,6 +25,7 @@ function userAppDoubles(overrides = {}) {
 		configureCodexImpl: async () => {},
 		configureSkillsImpl: async () => true,
 		configureTailscaleImpl: async () => {},
+		configureSshdImpl: async () => {},
 		...overrides,
 	};
 }
@@ -64,6 +65,7 @@ describe("CachyOS browser integration", () => {
 				configureCodexImpl: record("codex"),
 				configureSkillsImpl: record("skills"),
 				configureTailscaleImpl: record("tailscale"),
+				configureSshdImpl: record("sshd"),
 			}),
 		);
 
@@ -94,6 +96,7 @@ describe("CachyOS browser integration", () => {
 				configureCodexImpl: record("codex"),
 				configureSkillsImpl: record("skills"),
 				configureTailscaleImpl: record("tailscale"),
+				configureSshdImpl: record("sshd"),
 			}),
 		);
 

@@ -19,6 +19,7 @@ import { installGhStack } from "../helpers/configure_gh_stack.js";
 import { configureGit } from "../helpers/configure_git.js";
 import { configurePrWatch } from "../helpers/configure_pr_watch.js";
 import { configureT3CodeServer } from "../helpers/configure_t3_code_server.js";
+import { configureSshd } from "../helpers/configure_sshd.js";
 import { configureTailscale } from "../helpers/configure_tailscale.js";
 import { syncWorktreeCleanup } from "../helpers/configure_worktree_cleanup.js";
 
@@ -90,29 +91,6 @@ async function installEssentials() {
 			"Could not install software-properties-common. Some PPAs might not work.",
 		);
 	}
-}
-
-async function setupSsh() {
-	log.info("Setting up SSH...");
-	// User requested NOT to disable SSH login, so we just ensure keys are added.
-	const sshDir = path.join(HOME, ".ssh");
-	if (!fs.existsSync(sshDir)) {
-		fs.mkdirSync(sshDir, { mode: 0o700 });
-	}
-
-	const authorizedKeysPath = path.join(sshDir, "authorized_keys");
-	if (!fs.existsSync(authorizedKeysPath)) {
-		fs.writeFileSync(authorizedKeysPath, "", { mode: 0o600 });
-	}
-
-	// We could prompt to add a key here, or just leave it for manual addition.
-	// For now, we'll just ensure the service is enabled.
-	await runCommand("sudo systemctl enable ssh");
-	await runCommand("sudo systemctl start ssh");
-
-	log.info(
-		"SSH setup complete. Remember to add your public key to ~/.ssh/authorized_keys",
-	);
 }
 
 async function configureFishShell() {
@@ -300,12 +278,12 @@ export async function runDebianServerSetup() {
 	}
 
 	await installEssentials();
-	await setupSsh();
 	await configureFishShell();
 	await installDocker();
 	await setupFirewall();
 	await configureFail2ban();
 	await configureTailscale({ osId: "debian-server" });
+	await configureSshd({ osId: "debian-server" });
 	const t3CodeConfigured = await configureT3CodeServer();
 
 	// Debian Server deliberately receives only portable/headless developer tools.
