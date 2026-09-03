@@ -3,3 +3,4 @@
 # ~/.ssh on their own machine (backed up to 1Password), never here.
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKx5baiXFVo3NUXV94S20pGpb1EXRNxxYl9sxJcsgQxq pc
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKA9bNlT1FGwvD7VUbz45QODMxh0a6fpTPrMFrKADhdI phone
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILLXO3V5ztyN27O1tXimTXbYJitO21/m0uV4c18JJZxl vps

@@ -19,6 +19,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT_DEFAULT = path.resolve(__dirname, "..", "..");
 
 export const MESH_HOSTS = Object.freeze(["pc", "laptop", "vps"]);
+/** Login user per mesh host; the VPS runs as root, desktops as xzat. */
+export const MESH_USERS = Object.freeze({
+	pc: "xzat",
+	laptop: "xzat",
+	vps: "root",
+});
 export const SSHD_SERVICE = Object.freeze({
 	arch: "sshd",
 	"debian-server": "ssh",
@@ -69,15 +75,20 @@ export function countAuthorizedKeys(content) {
 		.filter((l) => l.trim() && !l.trim().startsWith("#")).length;
 }
 
-/** `~/.ssh/config` block for the mesh hosts; agent forwarding to vps only. */
-export function buildSshConfigBlock({ userName }) {
+/**
+ * `~/.ssh/config` block for the mesh hosts: shared identity, per-host login
+ * user, agent forwarding to vps only.
+ */
+export function buildSshConfigBlock({ users = MESH_USERS } = {}) {
+	const perHost = MESH_HOSTS.map(
+		(host) =>
+			`Host ${host}\n    User ${users[host]}${host === "vps" ? "\n    ForwardAgent yes" : ""}`,
+	).join("\n");
 	return `${BLOCK_START}
 Host ${MESH_HOSTS.join(" ")}
-    User ${userName}
     IdentityFile ~/.ssh/id_ed25519
     IdentitiesOnly yes
-Host vps
-    ForwardAgent yes
+${perHost}
 ${BLOCK_END}
 `;
 }
@@ -188,7 +199,7 @@ export async function configureSshd({
 		: "";
 	fs.writeFileSync(
 		configPath,
-		replaceManagedBlock(existingConfig, buildSshConfigBlock({ userName })),
+		replaceManagedBlock(existingConfig, buildSshConfigBlock()),
 		{ mode: 0o600 },
 	);
 
