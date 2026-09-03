@@ -49,9 +49,6 @@ import {
 	syncPrWatch,
 } from "./src/helpers/configure_pr_watch.js";
 import { configureT3CodeServer } from "./src/helpers/configure_t3_code_server.js";
-import { configureHerdr } from "./src/helpers/configure_herdr.js";
-import { configureSshd } from "./src/helpers/configure_sshd.js";
-import { configureTailscale } from "./src/helpers/configure_tailscale.js";
 import {
 	backupWorktreeCleanup,
 	syncWorktreeCleanup,
@@ -100,18 +97,6 @@ program
 	.option(
 		"--gh-stack",
 		"Install GitHub's gh-stack extension for stacked pull requests",
-	)
-	.option(
-		"--tailscale",
-		"Install Tailscale, enable tailscaled, and join the tailnet (interactive login)",
-	)
-	.option(
-		"--herdr",
-		"Install herdr (agent session layer) if missing, pin the stable channel, and enable systemd lingering",
-	)
-	.option(
-		"--sshd",
-		"Enable key-only sshd, provision the machine key, merge configs/ssh/authorized_keys, write mesh ~/.ssh/config, and restrict UFW SSH to the tailnet",
 	)
 	.option("--audio", "Sync audio config from configs/audio/ to ~/.config/")
 	.option(
@@ -252,24 +237,6 @@ async function runAction(options) {
 			return;
 		}
 		if (!(await configureT3CodeServer())) process.exitCode = 1;
-		return;
-	}
-
-	if (options.herdr) {
-		if ((await configureHerdr()) !== "configured") process.exitCode = 1;
-		return;
-	}
-
-	if (options.sshd) {
-		if (!(await configureSshd())) process.exitCode = 1;
-		return;
-	}
-
-	if (options.tailscale) {
-		const result = await configureTailscale();
-		if (result !== "joined" && result !== "already-joined") {
-			process.exitCode = 1;
-		}
 		return;
 	}
 

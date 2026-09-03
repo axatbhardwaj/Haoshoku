@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Revert the 11.3.0 mesh-access feature set (`--tailscale`, `--sshd`,
+  `--herdr`, `configs/ssh/authorized_keys`, per-host mesh users). T3 Code is
+  the phone path again: the Debian T3 server step is mandatory as before,
+  `t3code-bin` is back in the Arch package list, and the Debian path keeps its
+  original public-SSH policy. The 11.3.0 tag stays as history.
+
 ## 11.3.0 - 2026-09-03
 
 - Add `--tailscale`: install Tailscale, enable `tailscaled`, and join the
