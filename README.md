@@ -230,6 +230,49 @@ haoshoku --claude-remote-control
 haoshoku --claude-remote-control-backup
 ```
 
+## Mesh access: Tailscale, sshd, herdr
+
+Every machine Haoshoku provisions (Omarchy desktops and the Debian server)
+joins one personal tailnet and runs herdr as the agent session layer, so any
+machine — or Termius on the phone — can SSH into any other by name and land in
+a persistent herdr session. Both OS paths run these three steps in order;
+each is also a standalone flag.
+
+**`--tailscale`** installs Tailscale (pacman on Arch, the official installer on
+Debian), enables `tailscaled`, and runs an interactive `tailscale up` only when
+the node is not already Running. Approve the printed URL once per machine. In
+the Tailscale admin console, name the machines `pc`, `laptop`, and `vps` so
+MagicDNS matches the SSH config below. The free personal plan covers this.
+
+**`--sshd`** enables sshd, generates `~/.ssh/id_ed25519` when missing (back the
+private key up in 1Password; it never leaves the machine), merges every key
+in `configs/ssh/authorized_keys` into `~/.ssh/authorized_keys` without
+removing existing keys, and writes a managed `pc` / `laptop` / `vps` block
+into `~/.ssh/config` (agent forwarding to `vps` only). Once at least one key
+is authorized it applies a key-only sshd drop-in and, when UFW is present,
+allows port 22 on `tailscale0`. On Debian it then removes the public SSH rule,
+but only behind a lockout gate — Tailscale must be Running and keys must be
+present — and a confirmation prompt. The provider console is the break-glass.
+Adding a device to the mesh is one line in `configs/ssh/authorized_keys`
+followed by a re-run on each machine.
+
+**`--herdr`** installs herdr only when the binary is missing, pins the stable
+channel, and enables systemd lingering so the herdr server survives SSH
+logout. Haoshoku never upgrades herdr: pre-1.0 protocol bumps restart the
+server and kill running agent panes, so upgrade by hand with `herdr update`
+when no agents are running.
+
+Convention: the PC is the primary agent machine, the VPS is the fallback when
+the PC is down, the laptop is best-effort.
+
+### Termius (Android)
+
+Manual, one time. Generate a key in the Termius keychain, add its public half
+to `configs/ssh/authorized_keys`, and re-run `haoshoku --sshd` on each
+machine. Add three hosts with addresses `pc`, `laptop`, and `vps`, the Termius
+key, and `herdr` as the startup command so connecting reattaches the session.
+Enable the extra-keys bar for `ctrl+b` chords. The free tier is enough.
+
 ## Gaming
 
 Accepting the gaming prompt installs a portable Arch gaming base:
@@ -273,6 +316,9 @@ haoshoku --skills
 haoshoku --skills-update
 haoshoku --skills-list
 haoshoku --gh-stack
+haoshoku --tailscale
+haoshoku --sshd
+haoshoku --herdr
 haoshoku --claude-stay-awake
 haoshoku --pr-watch
 haoshoku --worktree-cleanup
@@ -306,10 +352,16 @@ haoshoku --os debian-server
 ```
 
 The Debian path remains deliberately headless. In addition to its server
-hardening, it installs the portable Claude, Codex, Matt Pocock skills, and PR-watch
-configuration and configures T3 Code's upstream-managed background service. It
-ensures Node.js satisfies T3 Code's current runtime range before running
-`npx --yes t3@latest service install` and verifying the service.
+hardening, it joins the tailnet, locks sshd to keys over Tailscale, installs
+herdr (see "Mesh access" above), and installs the portable Claude, Codex, Matt
+Pocock skills, and PR-watch configuration. SSH password login is disabled and
+port 22 is closed to the public internet once keys are in place; this reverses
+the earlier "keep password login" policy. Fail2ban stays installed.
+
+T3 Code is now an opt-in backup (prompt defaults to no; herdr is the session
+layer). When accepted, Haoshoku ensures Node.js satisfies T3 Code's current
+runtime range before running `npx --yes t3@latest service install` and
+verifying the service.
 
 Haoshoku then inspects T3 Connect's machine-readable status. An existing
 provisioned link is left running without reauthorization or restart. Otherwise,
