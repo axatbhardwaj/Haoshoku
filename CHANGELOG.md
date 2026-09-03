@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 11.4.0 - 2026-09-03
 
 - Give each mesh host its own login user in the managed `~/.ssh/config` block
   (`xzat` for `pc`/`laptop`, `root` for `vps`) instead of the local username,
