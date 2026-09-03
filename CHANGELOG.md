@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Recover `HYPRLAND_INSTANCE_SIGNATURE` in the default-browser router when
+  xdg-open callers spawn outside the compositor session (portals, systemd
+  units, remote shells), so links keep opening in the most recently focused
+  Brave Origin profile instead of silently falling back to the default one.
+
 ## 11.2.7 - 2026-09-02
 
 - Install Omakade from the Arch application list. Steam and Omakade now start
