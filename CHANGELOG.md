@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Give each mesh host its own login user in the managed `~/.ssh/config` block
+  (`xzat` for `pc`/`laptop`, `root` for `vps`) instead of the local username,
+  so cross-machine SSH works when usernames differ.
+
 ## 11.3.0 - 2026-09-03
 
 - Add `--tailscale`: install Tailscale, enable `tailscaled`, and join the
