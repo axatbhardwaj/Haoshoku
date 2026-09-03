@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Revert the mesh-access feature set shipped in 11.3.0 and still present in
+  11.4.0 (`--tailscale`, `--sshd`, `--herdr`, `configs/ssh/authorized_keys`,
+  per-host mesh users). T3 Code is the phone path again: the Debian T3 server
+  step is mandatory as before, `t3code-bin` is back in the Arch package list,
+  and the Debian path keeps its original public-SSH policy.
+
 ## 11.4.0 - 2026-09-03
 
 - Give each mesh host its own login user in the managed `~/.ssh/config` block
