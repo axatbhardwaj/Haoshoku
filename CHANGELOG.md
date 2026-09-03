@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 11.2.8 - 2026-09-03
 
 - Recover `HYPRLAND_INSTANCE_SIGNATURE` in the default-browser router when
   xdg-open callers spawn outside the compositor session (portals, systemd
