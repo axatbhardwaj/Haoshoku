@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 11.5.0 - 2026-09-03
 
 - Revert the mesh-access feature set shipped in 11.3.0 and still present in
   11.4.0 (`--tailscale`, `--sshd`, `--herdr`, `configs/ssh/authorized_keys`,
