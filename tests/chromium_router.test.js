@@ -24,6 +24,9 @@ describe("haoshoku-browser default-browser routing", () => {
 		fs.writeFileSync(
 			hyprctl,
 			`#!/usr/bin/env bash
+if [[ "\${HYPR_REQUIRE_SIGNATURE:-}" == 1 && -z "\${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
+  exit 1
+fi
 if [[ "$1 $2" == "clients -j" ]]; then
   printf '%s\\n' "$HYPR_CLIENTS"
 fi
@@ -41,21 +44,30 @@ printf '%s\\0' "$@" > "$ROUTER_CALL"
 
 	afterEach(() => fs.rmSync(directory, { recursive: true, force: true }));
 
-	async function run(clients, urls, { chromiumProfiles } = {}) {
+	async function run(
+		clients,
+		urls,
+		{ chromiumProfiles, env: extraEnv = {}, dropEnv = [] } = {},
+	) {
 		if (chromiumProfiles !== undefined) {
 			fs.writeFileSync(
 				path.join(directory, ".haoshoku.json"),
 				JSON.stringify({ chromiumProfiles }),
 			);
 		}
+		const env = {
+			...process.env,
+			HOME: directory,
+			HYPR_CLIENTS: clients,
+			PATH: `${directory}:${process.env.PATH}`,
+			ROUTER_CALL: call,
+			...extraEnv,
+		};
+		for (const key of dropEnv) {
+			delete env[key];
+		}
 		const proc = Bun.spawn(["bash", browserRouter, ...urls], {
-			env: {
-				...process.env,
-				HOME: directory,
-				HYPR_CLIENTS: clients,
-				PATH: `${directory}:${process.env.PATH}`,
-				ROUTER_CALL: call,
-			},
+			env,
 			stdout: "pipe",
 			stderr: "pipe",
 		});
@@ -311,6 +323,31 @@ printf '%s\\0' "$@" > "$ROUTER_CALL"
 			"browser",
 			"flux",
 			"https://safe.example/malformed-json",
+		]);
+	});
+
+	// Mutation caught: skipping signature recovery makes hyprctl fail for callers
+	// spawned outside the compositor session, demoting every default-browser URL
+	// to the default profile instead of the focused one.
+	it("recovers the Hyprland signature from the runtime dir when unset", async () => {
+		fs.mkdirSync(path.join(directory, "hypr", "abc123"), { recursive: true });
+		const result = await run(
+			JSON.stringify([
+				{ class: "chromium-flux", focusHistoryID: 5 },
+				{ class: "chromium-defi", focusHistoryID: 1 },
+			]),
+			["https://recovered.example/"],
+			{
+				env: { HYPR_REQUIRE_SIGNATURE: "1", XDG_RUNTIME_DIR: directory },
+				dropEnv: ["HYPRLAND_INSTANCE_SIGNATURE"],
+			},
+		);
+
+		expect(result.exitCode).toBe(0);
+		expect(forwardedArguments()).toEqual([
+			"browser",
+			"defi",
+			"https://recovered.example/",
 		]);
 	});
 

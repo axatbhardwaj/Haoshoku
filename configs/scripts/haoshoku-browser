@@ -1,6 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ -z "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
+	# xdg-open callers spawned outside the compositor session (portals, systemd
+	# units, remote shells) lack the signature, which silently breaks hyprctl
+	# and demotes every URL to the default profile instead of the focused one.
+	runtime_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+	HYPRLAND_INSTANCE_SIGNATURE="$(ls -t -- "$runtime_dir/hypr" 2>/dev/null | head -n 1 || true)"
+	if [[ -n "$HYPRLAND_INSTANCE_SIGNATURE" ]]; then
+		export HYPRLAND_INSTANCE_SIGNATURE
+	fi
+fi
+
 profiles_helper="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/haoshoku-chromium-profiles"
 [[ -x "$profiles_helper" ]] || { echo "missing haoshoku-chromium-profiles helper" >&2; exit 1; }
 
