@@ -15,6 +15,7 @@ Derived from [approved spec r2](https://github.com/axatbhardwaj/Haoshoku/issues/
 | I09 | Install followed by uninstall | Outside bytes/mode preserved; only owned block/separation removed | T1 |
 | I10 | Concurrent instruction edit before commit | Detect conflict; preserve external edit | T1 |
 | I11 | Failure during combined skill/profile/instruction write | Rollback this attempt; explicit incomplete recovery if restoration fails | T1 |
+| I12 | Legacy unmarked routing prose outside owned block | Report conflict without deleting unowned text | T1 |
 | H01 | Fresh disposable Arch/Debian home with mocked installers | Only agreed tools/dependencies and Axstack setup requested | T2 |
 | H02 | Wrong digest, failed download or Axstack setup failure | Non-success; no destructive legacy retirement | T2 |
 | H03 | Newer/user-managed installation or conflicting manifest | Preserve; report actionable condition, no silent downgrade | T2 |
@@ -24,6 +25,7 @@ Derived from [approved spec r2](https://github.com/axatbhardwaj/Haoshoku/issues/
 | H07 | Package content inspection | No old skills/policy/automation payload shipped | T3/T4 |
 | H08 | Mixed desktop/editor files | Only approved AI entries changed; general settings retained | T3 |
 | H09 | Profiles written but runtime reload deferred | Deferred activation reported distinctly from usable runtime | T2/T4 |
+| H10 | Setup/update with independent specialist/native Paseo skills, credentials and sessions | Preserve protected bytes, existence and discovery; no whole-root cleanup | T3/T4 |
 | M01 | Known retired role with matching shipped bytes | Eligible only after replacement and consumer checks | T4/T5/T6 |
 | M02 | Matching name/marker but unknown ownership | Preserve and record incomplete retirement | T4/T5/T6 |
 | M03 | Mapped schedule has changed purpose/dependencies | Preserve/hold; mapping alone does not cause deletion | T4/T6 |
