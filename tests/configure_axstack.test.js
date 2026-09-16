@@ -65,10 +65,14 @@ afterEach(() => {
 describe("configureAxstack", () => {
 	it("rejects a checksum mismatch before writing the release or shim", async () => {
 		const home = makeHome();
-		const target = paths(home);
-		const shimPath = path.join(target.binDir, "axstack");
+		const target = releasePaths(home, "0.7.0");
+		const shimPath = target.shim;
 		fs.mkdirSync(target.binDir, { recursive: true });
-		fs.writeFileSync(shimPath, "#!/bin/sh\nexit 7\n", { mode: 0o755 });
+		fs.writeFileSync(
+			shimPath,
+			`#!/bin/sh\nexec bun ${JSON.stringify(target.cli)} "$@"\n`,
+			{ mode: 0o755 },
+		);
 		const shimBefore = fs.readFileSync(shimPath);
 		const result = await configureAxstack({
 			...target,
@@ -169,6 +173,105 @@ describe("configureAxstack", () => {
 		expect(result.release).toEqual({ action: "kept-newer", version: "0.9.0" });
 		expect(downloaded).toBe(false);
 		expect(ran).toBe(false);
+		expect(fs.readFileSync(target.shim)).toEqual(before);
+	});
+
+	it("keeps a newer suffixed shim target without downloading", async () => {
+		const home = makeHome();
+		const target = releasePaths(home, "0.8.1-abc123");
+		fs.mkdirSync(path.dirname(target.cli), { recursive: true });
+		fs.mkdirSync(target.binDir, { recursive: true });
+		fs.writeFileSync(
+			path.join(target.release, "package.json"),
+			JSON.stringify({ version: "0.8.1-abc123" }),
+		);
+		fs.writeFileSync(
+			target.shim,
+			`#!/bin/sh\nexec bun ${JSON.stringify(target.cli)} "$@"\n`,
+		);
+		const before = fs.readFileSync(target.shim);
+		let downloaded = false;
+		const result = await configureAxstack({
+			...target,
+			fetcher: async () => {
+				downloaded = true;
+			},
+			home,
+		});
+
+		expect(result.release).toEqual({
+			action: "kept-newer",
+			version: "0.8.1-abc123",
+		});
+		expect(downloaded).toBe(false);
+		expect(fs.readFileSync(target.shim)).toEqual(before);
+	});
+
+	it("keeps a same-base suffixed build and reruns both harness installs", async () => {
+		const home = makeHome();
+		const target = releasePaths(home, "0.8.0-abc123");
+		fs.mkdirSync(path.dirname(target.cli), { recursive: true });
+		fs.mkdirSync(target.binDir, { recursive: true });
+		fs.writeFileSync(target.cli, "user-managed cli");
+		fs.writeFileSync(
+			path.join(target.release, "package.json"),
+			JSON.stringify({ version: "0.8.0-abc123" }),
+		);
+		fs.writeFileSync(
+			target.shim,
+			`#!/bin/sh\nexec bun ${JSON.stringify(target.cli)} "$@"\n`,
+		);
+		const before = fs.readFileSync(target.shim);
+		const invocations = [];
+		const result = await configureAxstack({
+			...target,
+			fetcher: async () => {
+				throw new Error("must not download");
+			},
+			home,
+			runner: async (_executable, args) => {
+				invocations.push(args);
+				return { exitCode: 0, stderr: "", stdout: "installed" };
+			},
+		});
+
+		expect(result.release).toEqual({
+			action: "kept-user-managed",
+			version: "0.8.0-abc123",
+		});
+		expect(invocations).toHaveLength(2);
+		expect(invocations[0]).toContain(target.cli);
+		expect(invocations[0]).toContain(target.release);
+		expect(fs.readFileSync(target.shim)).toEqual(before);
+	});
+
+	it("keeps an unparsable existing shim and reports a failure", async () => {
+		const home = makeHome();
+		const target = releasePaths(home, "development");
+		fs.mkdirSync(path.dirname(target.cli), { recursive: true });
+		fs.mkdirSync(target.binDir, { recursive: true });
+		fs.writeFileSync(
+			path.join(target.release, "package.json"),
+			JSON.stringify({ version: "development" }),
+		);
+		fs.writeFileSync(
+			target.shim,
+			`#!/bin/sh\nexec bun ${JSON.stringify(target.cli)} "$@"\n`,
+		);
+		const before = fs.readFileSync(target.shim);
+		let downloaded = false;
+		const result = await configureAxstack({
+			...target,
+			fetcher: async () => {
+				downloaded = true;
+			},
+			home,
+		});
+
+		expect(result.ok).toBe(false);
+		expect(result.release.action).toBe("kept");
+		expect(result.harnesses.claude.reason).toContain("unparsable");
+		expect(downloaded).toBe(false);
 		expect(fs.readFileSync(target.shim)).toEqual(before);
 	});
 

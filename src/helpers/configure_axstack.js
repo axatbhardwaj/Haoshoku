@@ -43,32 +43,48 @@ async function defaultExtractor(archivePath, destination) {
 	}
 }
 
-function releaseVersionFromShim(shimPath) {
+function releaseFromShim(shimPath) {
+	if (!fs.existsSync(shimPath)) {
+		return { cliPath: null, status: "missing", version: null };
+	}
 	try {
 		const content = fs.readFileSync(shimPath, "utf8");
-		const pathVersion = content.match(
-			/\/releases\/([^/]+)\/package\/bin\/axstack\.js/,
-		)?.[1];
-		if (/^\d+(?:\.\d+)+$/.test(pathVersion ?? "")) return pathVersion;
 		const cliPath = content.match(
 			/["']?(\/[^"'\n]*\/package\/bin\/axstack\.js)["']?/,
 		)?.[1];
-		if (!cliPath) return null;
+		if (!cliPath) {
+			return { cliPath: null, status: "unparsable", version: null };
+		}
+		const pathVersion = cliPath.match(
+			/\/releases\/([^/]+)\/package\/bin\/axstack\.js$/,
+		)?.[1];
+		if (/^\d+\.\d+\.\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?$/.test(pathVersion ?? "")) {
+			return { cliPath, status: "resolved", version: pathVersion };
+		}
 		const packageJson = path.join(
 			path.dirname(path.dirname(cliPath)),
 			"package.json",
 		);
-		return JSON.parse(fs.readFileSync(packageJson, "utf8")).version ?? null;
+		const version = JSON.parse(fs.readFileSync(packageJson, "utf8")).version;
+		if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?$/.test(version ?? "")) {
+			return { cliPath, status: "unparsable", version: version ?? null };
+		}
+		return { cliPath, status: "resolved", version };
 	} catch {
-		return null;
+		return { cliPath: null, status: "unparsable", version: null };
 	}
 }
 
 function compareVersions(left, right) {
-	const a = left.split(".").map(Number);
-	const b = right.split(".").map(Number);
-	for (let i = 0; i < Math.max(a.length, b.length); i += 1) {
-		const difference = (a[i] ?? 0) - (b[i] ?? 0);
+	const numericParts = (version) =>
+		version
+			.split("-", 1)[0]
+			.split(".")
+			.map((part) => Number.parseInt(part, 10));
+	const a = numericParts(left);
+	const b = numericParts(right);
+	for (let i = 0; i < 3; i += 1) {
+		const difference = a[i] - b[i];
 		if (difference !== 0) return Math.sign(difference);
 	}
 	return 0;
@@ -93,14 +109,14 @@ function atomicWriteShim(shimPath, content) {
 	}
 }
 
-function failedResult(reason, action = "kept") {
+function failedResult(reason, action = "kept", version = AXSTACK_VERSION) {
 	return {
 		harnesses: {
 			claude: { ok: false, reason },
 			codex: { ok: false, reason },
 		},
 		ok: false,
-		release: { action, version: AXSTACK_VERSION },
+		release: { action, version },
 	};
 }
 
@@ -114,7 +130,14 @@ export async function configureAxstack(options = {}) {
 	const expectedSha256 = options.sha256 ?? AXSTACK_SHA256;
 	const bunPath = options.bunPath ?? Bun.which("bun") ?? process.execPath;
 	const shimPath = path.join(binDir, "axstack");
-	const installedVersion = releaseVersionFromShim(shimPath);
+	const installed = releaseFromShim(shimPath);
+	const installedVersion = installed.version;
+
+	if (installed.status === "unparsable") {
+		const reason = "existing Axstack shim or version is unparsable";
+		log.warning(`Axstack: ${reason}; keeping it unchanged.`);
+		return failedResult(reason, "kept", installedVersion ?? "unresolved");
+	}
 
 	if (
 		installedVersion &&
@@ -134,7 +157,17 @@ export async function configureAxstack(options = {}) {
 
 	const releaseRoot = path.join(dataDir, "releases", AXSTACK_VERSION);
 	let releaseAction = "kept";
-	if (!fs.existsSync(path.join(releaseRoot, "package"))) {
+	let cliPath = path.join(releaseRoot, "package", "bin", "axstack.js");
+	let releasePackage = path.join(releaseRoot, "package");
+	const keepUserManaged =
+		installedVersion?.includes("-") &&
+		compareVersions(installedVersion, AXSTACK_VERSION) === 0;
+	if (keepUserManaged) {
+		releaseAction = "kept-user-managed";
+		cliPath = installed.cliPath;
+		releasePackage = path.dirname(path.dirname(cliPath));
+		log.info(`Axstack: kept user-managed ${installedVersion}.`);
+	} else if (!fs.existsSync(releasePackage)) {
 		const downloadDir = fs.mkdtempSync(
 			path.join(options.tempDir ?? tmpdir(), "haoshoku-axstack-"),
 		);
@@ -180,16 +213,17 @@ export async function configureAxstack(options = {}) {
 		}
 	}
 
-	const cliPath = path.join(releaseRoot, "package", "bin", "axstack.js");
-	try {
-		atomicWriteShim(
-			shimPath,
-			`#!/bin/sh\nexec ${shellQuote(bunPath)} ${shellQuote(cliPath)} "$@"\n`,
-		);
-	} catch (error) {
-		const reason = `shim installation failed: ${error?.message ?? error}`;
-		log.error(`Axstack setup failed: ${reason}`);
-		return failedResult(reason, releaseAction);
+	if (!keepUserManaged) {
+		try {
+			atomicWriteShim(
+				shimPath,
+				`#!/bin/sh\nexec ${shellQuote(bunPath)} ${shellQuote(cliPath)} "$@"\n`,
+			);
+		} catch (error) {
+			const reason = `shim installation failed: ${error?.message ?? error}`;
+			log.error(`Axstack setup failed: ${reason}`);
+			return failedResult(reason, releaseAction);
+		}
 	}
 	const harnesses = {};
 	for (const harness of ["claude", "codex"]) {
@@ -199,7 +233,7 @@ export async function configureAxstack(options = {}) {
 			"--preset",
 			"mixed",
 			"--bundle",
-			path.join(releaseRoot, "package"),
+			releasePackage,
 			"--harness",
 			harness,
 			"--yes",
@@ -231,7 +265,10 @@ export async function configureAxstack(options = {}) {
 	return {
 		harnesses,
 		ok,
-		release: { action: releaseAction, version: AXSTACK_VERSION },
+		release: {
+			action: releaseAction,
+			version: keepUserManaged ? installedVersion : AXSTACK_VERSION,
+		},
 	};
 }
 
@@ -241,7 +278,7 @@ export async function checkAxstack(options = {}) {
 	const binDir = options.binDir ?? path.join(home, ".local/bin");
 	const runner = options.runner ?? defaultRunner;
 	const shimPath = path.join(binDir, "axstack");
-	const resolvedVersion = releaseVersionFromShim(shimPath);
+	const resolvedVersion = releaseFromShim(shimPath).version;
 	const releasePackage = resolvedVersion
 		? path.join(dataDir, "releases", resolvedVersion, "package")
 		: null;
