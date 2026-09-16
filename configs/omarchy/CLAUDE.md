@@ -63,7 +63,7 @@ writes, `shell.json` has NO exclusive owner. Omarchy's own shell process co-writ
 it whenever a plugin is enabled or disabled through Omarchy's UI. For bar
 widgets, that enablement state lives in `bar.layout`; only non-bar plugins use
 the top-level plugin lists. Haoshoku intentionally claims the `bar` key within
-`~/.config/omarchy/shell.json` wholesale, including bar-widget enablement, so
+`~/.config/omarchy/shell.json` wholesale (sourced from `bar.json` here), including bar-widget enablement, so
 disabling a bar widget through Omarchy's UI is reverted on the next deploy. It
 preserves every other top-level key, including `idle`, `plugins`,
 `disabledPlugins`, `version`, and unknown keys.
