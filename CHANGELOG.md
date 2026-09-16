@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Replace the Discord client with Vesktop in the package list, Discord URI
+  handler, Omarchy workspace-4 launcher and window rules, and KDE activity/output
+  placement. Retire the old managed Discord KWin rule on redeploy.
+- Add regression coverage for Vesktop launch-if-missing, duplicate prevention,
+  workspace and MIME settings, and idempotent KDE rule migration.
+
 ## 11.9.0 - 2026-09-16
 
 - Add `--axstack` and `--axstack-check`. `--axstack` downloads the pinned

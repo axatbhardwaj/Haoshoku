@@ -22,7 +22,7 @@ o.exec_on_start("haoshoku-special-workspace numbered-login 2 steam")
 -- default (this overlay loads later) so the library opens tiled on workspace 2.
 o.window("^[Ss]team$", { workspace = "2 silent", tile = true })
 o.window("^io\\.github\\.tsouth89\\.Omakade$", { workspace = "2 silent" })
-o.window("^(discord|vesktop)$", { workspace = "4 silent" })
+o.window("^vesktop$", { workspace = "4 silent" })
 o.window("^(teams-for-linux|TelegramDesktop|org\\.telegram\\.desktop)$", { workspace = "5 silent" })
 o.window("^haoshoku-ws7$", { workspace = "7 silent" })
 o.window("^brave-www\\.notion\\.so__-Default$", { workspace = "10 silent" })
@@ -75,8 +75,8 @@ o.bind(
 )
 o.bind(
   "SUPER + code:13",
-  "Workspace 4 and Discord",
-  "haoshoku-special-workspace numbered 4 discord"
+  "Workspace 4 and Vesktop",
+  "haoshoku-special-workspace numbered 4 vesktop"
 )
 o.bind(
   "SUPER + code:14",

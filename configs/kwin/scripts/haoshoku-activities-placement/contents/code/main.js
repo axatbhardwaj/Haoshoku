@@ -10,7 +10,7 @@ const outputByClass = {
 	"brave-flux": "DP-1",
 	"brave-defi": "DP-1",
 	steam: "DP-1",
-	discord: "HDMI-A-1",
+	vesktop: "HDMI-A-1",
 	"brave-hnpfjngllnobngcgfapefoaidbinmjnm-Default": "HDMI-A-1",
 	"org.telegram.desktop": "HDMI-A-1",
 	signal: "HDMI-A-1",

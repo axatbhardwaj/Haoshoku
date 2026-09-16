@@ -1,6 +1,6 @@
 [Default Applications]
 x-scheme-handler/claude-cli=claude-code-url-handler.desktop
-x-scheme-handler/discord=discord.desktop
+x-scheme-handler/discord=vesktop.desktop
 inode/directory=org.gnome.Nautilus.desktop
 image/avif=swayimg.desktop
 image/bmp=swayimg.desktop

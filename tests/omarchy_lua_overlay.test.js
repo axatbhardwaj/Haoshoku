@@ -519,6 +519,29 @@ describe("Omarchy v4 Lua overlay", () => {
 		});
 	});
 
+	it("uses Vesktop consistently for installation, Discord links, and workspace 4", () => {
+		const packages = fs
+			.readFileSync(path.join(repoRoot, "common/paru_applist.txt"), "utf8")
+			.split("\n");
+		expect(packages).toContain("vesktop");
+		expect(packages).not.toContain("discord");
+		const mimeapps = fs.readFileSync(
+			path.join(repoRoot, "configs/mimeapps/mimeapps.list"),
+			"utf8",
+		);
+		expect(mimeapps).toContain("x-scheme-handler/discord=vesktop.desktop");
+		for (const file of overlayPaths.slice(1)) {
+			const source = fs.readFileSync(file, "utf8");
+			expect(source).toContain(
+				'o.window("^vesktop$", { workspace = "4 silent" })',
+			);
+			expect(source).toContain('"Workspace 4 and Vesktop"');
+			expect(source).toContain(
+				'"haoshoku-special-workspace numbered 4 vesktop"',
+			);
+		}
+	});
+
 	it("treats exit-zero hyprctl dispatch diagnostics as failures", () => {
 		const directory = fs.mkdtempSync(
 			path.join(os.tmpdir(), "haoshoku-dispatch-failure-"),
@@ -540,7 +563,7 @@ fi
 		fs.chmodSync(hyprctl, 0o755);
 
 		const result = Bun.spawnSync(
-			["bash", specialWorkspacePath, "numbered", "4", "discord"],
+			["bash", specialWorkspacePath, "numbered", "4", "vesktop"],
 			{
 				env: { ...process.env, PATH: `${directory}:${process.env.PATH}` },
 				stdout: "pipe",

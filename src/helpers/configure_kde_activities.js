@@ -30,7 +30,7 @@ const WINDOW_CLASSES = {
 	// Measured live because steam.desktop declares no StartupWMClass. Exact
 	// wmclassmatch=1 deliberately excludes steam_app_* game windows.
 	steam: "steam",
-	discord: "discord",
+	vesktop: "vesktop",
 	whatsapp: "brave-hnpfjngllnobngcgfapefoaidbinmjnm-Default",
 	telegram: "org.telegram.desktop",
 	signal: "signal",
@@ -43,7 +43,7 @@ const RULES = [
 	["haoshoku-spotify", "spotify", "all", "Spotify"],
 	["haoshoku-brave-flux", "braveFlux", "flux", "Brave Flux"],
 	["haoshoku-steam", "steam", "flux", "Steam"],
-	["haoshoku-discord", "discord", "flux", "Discord"],
+	["haoshoku-vesktop", "vesktop", "flux", "Vesktop"],
 	["haoshoku-whatsapp", "whatsapp", "flux", "WhatsApp"],
 	["haoshoku-telegram", "telegram", "flux", "Telegram"],
 	["haoshoku-signal", "signal", "flux", "Signal"],
@@ -52,6 +52,7 @@ const RULES = [
 ];
 
 const RETIRED_RULE_IDS = new Set([
+	"haoshoku-discord",
 	"haoshoku-brave",
 	"haoshoku-brave-work",
 	"haoshoku-agents",

@@ -185,17 +185,17 @@ esac
 		chromiumLog = "",
 		failedProbeCall = "",
 		failedDispatch = "",
-			failedDispatchCall = "",
-			visibleMonitor = "DP-1",
-			dispatchExitCode = "0",
+		failedDispatchCall = "",
+		visibleMonitor = "DP-1",
+		dispatchExitCode = "0",
 	) {
 		const proc = Bun.spawn([script, ...args], {
 			env: {
 				...process.env,
 				HOME: directory,
 				CLIENTS_JSON: clientsJson,
-					DISPATCH_DIAGNOSTIC: dispatchDiagnostic,
-					DISPATCH_EXIT_CODE: dispatchExitCode,
+				DISPATCH_DIAGNOSTIC: dispatchDiagnostic,
+				DISPATCH_EXIT_CODE: dispatchExitCode,
 				DISPATCH_CALL_COUNT: path.join(directory, "dispatch-call-count"),
 				CHROMIUM_LOG: chromiumLog,
 				DISPATCH_LOG: log,
@@ -224,6 +224,28 @@ esac
 			stderr: await new Response(proc.stderr).text(),
 		};
 	}
+
+	it("launches Vesktop on workspace 4 when absent", async () => {
+		const result = await run(["numbered", "4", "vesktop"], "", "");
+		expect(result.exitCode).toBe(0);
+		expect(result.dispatches).toEqual([
+			"dispatch workspace 4",
+			"dispatch exec [workspace 4 silent] uwsm-app -- vesktop",
+		]);
+	});
+
+	it("does not launch another Vesktop when its window exists", async () => {
+		const result = await run(
+			["numbered", "4", "vesktop"],
+			"",
+			"",
+			"",
+			"",
+			JSON.stringify([{ class: "vesktop", workspace: { name: "4" } }]),
+		);
+		expect(result.exitCode).toBe(0);
+		expect(result.dispatches).toEqual(["dispatch workspace 4"]);
+	});
 
 	it("treats exit-zero dispatch diagnostics as failures", async () => {
 		const diagnostic = "hyprctl dispatch rejected test request";
@@ -462,10 +484,10 @@ esac
 		});
 	}
 
-		it("aborts every recipe when Hyprland dispatch is unavailable", async () => {
-			fs.writeFileSync(
-				path.join(commandDirectory, "hyprctl"),
-				`#!/usr/bin/env bash
+	it("aborts every recipe when Hyprland dispatch is unavailable", async () => {
+		fs.writeFileSync(
+			path.join(commandDirectory, "hyprctl"),
+			`#!/usr/bin/env bash
 if [[ "$1 $2" == "clients -j" ]]; then
   printf '[]\\n'
 elif [[ "$1 $2" == "monitors -j" ]]; then
@@ -483,7 +505,7 @@ fi
 		for (const { name, args } of [
 			{ name: "numbered steam", args: ["numbered", "1", "steam"] },
 			{ name: "numbered omakade", args: ["numbered", "2", "omakade"] },
-			{ name: "numbered discord", args: ["numbered", "2", "discord"] },
+			{ name: "numbered vesktop", args: ["numbered", "4", "vesktop"] },
 			{
 				name: "numbered communication",
 				args: ["numbered", "3", "communication-numbered"],
@@ -507,8 +529,8 @@ fi
 			{ name: "reanime", args: ["reanime"] },
 		]) {
 			const result = await run(args, "", "non-zero-exit");
-				expect(result.exitCode, name).not.toBe(0);
-				expect(result.stderr, name).toContain("dispatch unavailable");
-			}
-		});
+			expect(result.exitCode, name).not.toBe(0);
+			expect(result.stderr, name).toContain("dispatch unavailable");
+		}
+	});
 });

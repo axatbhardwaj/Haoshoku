@@ -28,7 +28,7 @@ nvtop
 wmctrl
 fastfetch
 expect
-discord
+vesktop
 solaar
 slack-desktop-wayland
 mpv

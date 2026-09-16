@@ -29,7 +29,7 @@ const CLASSES = {
 	spotify: "Spotify",
 	braveFlux: "brave-flux",
 	steam: "steam",
-	discord: "discord",
+	vesktop: "vesktop",
 	whatsapp: "brave-hnpfjngllnobngcgfapefoaidbinmjnm-Default",
 	telegram: "org.telegram.desktop",
 	signal: "signal",
@@ -194,7 +194,7 @@ describe("updateKwinRulesContent", () => {
 			"haoshoku-spotify",
 			"haoshoku-brave-flux",
 			"haoshoku-steam",
-			"haoshoku-discord",
+			"haoshoku-vesktop",
 			"haoshoku-whatsapp",
 			"haoshoku-telegram",
 			"haoshoku-signal",
@@ -213,7 +213,7 @@ describe("updateKwinRulesContent", () => {
 			"haoshoku-spotify": [CLASSES.spotify, allActivities],
 			"haoshoku-brave-flux": [CLASSES.braveFlux, IDS.flux],
 			"haoshoku-steam": [CLASSES.steam, IDS.flux],
-			"haoshoku-discord": [CLASSES.discord, IDS.flux],
+			"haoshoku-vesktop": [CLASSES.vesktop, IDS.flux],
 			"haoshoku-whatsapp": [CLASSES.whatsapp, IDS.flux],
 			"haoshoku-telegram": [CLASSES.telegram, IDS.flux],
 			"haoshoku-signal": [CLASSES.signal, IDS.flux],
@@ -230,6 +230,19 @@ describe("updateKwinRulesContent", () => {
 			expect(block).toMatch(/^Description=Haoshoku /m);
 		}
 		expect(section(result, "haoshoku-agents")).toBeUndefined();
+	});
+
+	it("replaces the retired Discord rule with Vesktop idempotently", async () => {
+		const { updateKwinRulesContent } = await activitiesModule();
+		const original =
+			"[General]\nrules=haoshoku-discord\ncount=1\n\n[haoshoku-discord]\nwmclass=discord\n";
+		const result = updateKwinRulesContent(original, IDS, CLASSES);
+		expect(result).not.toContain("haoshoku-discord");
+		expect(section(result, "haoshoku-vesktop")).toContain("wmclass=vesktop\n");
+		expect(section(result, "haoshoku-vesktop")).toContain(
+			`activity=${IDS.flux}\n`,
+		);
+		expect(updateKwinRulesContent(result, IDS, CLASSES)).toBe(result);
 	});
 
 	it("pins only Steam's exact measured class to flux", async () => {
@@ -367,7 +380,7 @@ describe("KWin activities placement asset", () => {
 	});
 
 	it("the activity-read guard throws when its activities property is read", () => {
-		const fake = guarded({ resourceClass: "discord" });
+		const fake = guarded({ resourceClass: "vesktop" });
 		expect(() => fake.activities).toThrow("activities must not be read");
 	});
 
@@ -404,7 +417,7 @@ describe("KWin activities placement asset", () => {
 			[CLASSES.braveFlux]: "DP-1",
 			[CLASSES.steam]: "DP-1",
 			[CLASSES.braveDefi]: "DP-1",
-			[CLASSES.discord]: "HDMI-A-1",
+			[CLASSES.vesktop]: "HDMI-A-1",
 			[CLASSES.whatsapp]: "HDMI-A-1",
 			[CLASSES.telegram]: "HDMI-A-1",
 			[CLASSES.signal]: "HDMI-A-1",
@@ -531,7 +544,7 @@ describe("KWin activities placement asset", () => {
 		const window = new Proxy(
 			{
 				normalWindow: true,
-				resourceClass: CLASSES.discord,
+				resourceClass: CLASSES.vesktop,
 				output: null,
 				frameGeometry: { x: 0, y: 0, width: 800, height: 600 },
 			},
@@ -571,7 +584,7 @@ describe("syncKdeActivities", () => {
 			"haoshoku-spotify": "Spotify",
 			"haoshoku-brave-flux": "brave-flux",
 			"haoshoku-steam": "steam",
-			"haoshoku-discord": "discord",
+			"haoshoku-vesktop": "vesktop",
 			"haoshoku-whatsapp": "brave-hnpfjngllnobngcgfapefoaidbinmjnm-Default",
 			"haoshoku-telegram": "org.telegram.desktop",
 			"haoshoku-signal": "signal",
