@@ -1,9 +1,12 @@
 import { describe, expect, it } from "bun:test";
 import {
 	buildExecutorComposeFile,
+	chooseHttpsPort,
 	executorBaseUrlFromTailnetName,
+	isExecutorReachable,
 	parseTailnetDnsName,
 	tailscaleServeCommand,
+	waitForExecutor,
 } from "../src/helpers/configure_executor.js";
 
 // Real `tailscale status --json` shape, trimmed to the fields we read. Self is
@@ -110,5 +113,121 @@ describe("tailscale serve command", () => {
 		for (const port of [null, 0, -1, 70000, "4788"]) {
 			expect(() => tailscaleServeCommand(port)).toThrow();
 		}
+	});
+});
+
+// --- Regression: first real VPS run, 2026-09-16 -----------------------------
+// The host already ran nginx on 0.0.0.0:443, which covers the Tailscale IP, so
+// `tailscale serve --https=443` silently lost the port and the MagicDNS name
+// answered with the wrong certificate. The helper still reported success
+// because the serve COMMAND exited 0. Both halves are pinned here.
+
+describe("HTTPS port selection", () => {
+	it("prefers 443 when nothing else holds it", () => {
+		expect(chooseHttpsPort({ portInUse: () => false })).toBe(443);
+	});
+
+	it("falls back to 8443 when 443 is already bound", () => {
+		expect(chooseHttpsPort({ portInUse: (port) => port === 443 })).toBe(8443);
+	});
+
+	it("throws when neither port is available rather than guessing", () => {
+		expect(() => chooseHttpsPort({ portInUse: () => true })).toThrow();
+	});
+});
+
+describe("base URL carries a non-default HTTPS port", () => {
+	it("omits the port for 443", () => {
+		expect(executorBaseUrlFromTailnetName("vps.ts.net", 443)).toBe(
+			"https://vps.ts.net",
+		);
+	});
+
+	it("includes the port when serve is not on 443", () => {
+		expect(executorBaseUrlFromTailnetName("vps.ts.net", 8443)).toBe(
+			"https://vps.ts.net:8443",
+		);
+	});
+
+	it("still defaults to 443 when no port is given", () => {
+		expect(executorBaseUrlFromTailnetName("vps.ts.net")).toBe(
+			"https://vps.ts.net",
+		);
+	});
+});
+
+describe("serve command targets the chosen HTTPS port", () => {
+	it("uses the selected port, not a hardcoded 443", () => {
+		expect(tailscaleServeCommand(4788, 8443)).toBe(
+			"sudo tailscale serve --bg --https=8443 http://127.0.0.1:4788",
+		);
+	});
+});
+
+describe("reachability verification", () => {
+	// The bug was reporting success on a command exit code. Success now requires
+	// the endpoint to actually answer.
+	it("accepts a 2xx or 4xx answer (4xx still proves Executor is serving)", async () => {
+		expect(
+			await isExecutorReachable("https://vps.ts.net", {
+				fetchImpl: async () => ({ status: 200 }),
+			}),
+		).toBe(true);
+		expect(
+			await isExecutorReachable("https://vps.ts.net", {
+				fetchImpl: async () => ({ status: 401 }),
+			}),
+		).toBe(true);
+	});
+
+	it("reports unreachable when TLS or connection fails", async () => {
+		expect(
+			await isExecutorReachable("https://vps.ts.net", {
+				fetchImpl: async () => {
+					throw new Error("unable to verify the first certificate");
+				},
+			}),
+		).toBe(false);
+	});
+
+	it("reports unreachable on a 5xx", async () => {
+		expect(
+			await isExecutorReachable("https://vps.ts.net", {
+				fetchImpl: async () => ({ status: 502 }),
+			}),
+		).toBe(false);
+	});
+});
+
+describe("waiting for readiness", () => {
+	// Third defect from the same VPS run: the probe fired while the container was
+	// still `health: starting`, so a working deploy reported failure. Readiness
+	// is a poll, not a single shot.
+	it("succeeds once a later attempt answers", async () => {
+		let calls = 0;
+		const ok = await waitForExecutor("https://vps.ts.net", {
+			attempts: 5,
+			delayMs: 0,
+			isReachableImpl: async () => {
+				calls += 1;
+				return calls >= 3;
+			},
+		});
+		expect(ok).toBe(true);
+		expect(calls).toBe(3);
+	});
+
+	it("gives up after the attempt budget instead of hanging", async () => {
+		let calls = 0;
+		const ok = await waitForExecutor("https://vps.ts.net", {
+			attempts: 4,
+			delayMs: 0,
+			isReachableImpl: async () => {
+				calls += 1;
+				return false;
+			},
+		});
+		expect(ok).toBe(false);
+		expect(calls).toBe(4);
 	});
 });

@@ -20,6 +20,8 @@ import { log, promptUser, runCommand } from "../common/utils.js";
 const EXECUTOR_IMAGE = "ghcr.io/rhyssullivan/executor-selfhost:latest";
 const EXECUTOR_PORT = 4788;
 const DEFAULT_DATA_DIR = "/srv/executor";
+const DEFAULT_HTTPS_PORT = 443;
+const FALLBACK_HTTPS_PORT = 8443;
 const COMPOSE_FILENAME = "docker-compose.yml";
 
 /**
@@ -52,7 +54,10 @@ export function parseTailnetDnsName(statusOutput) {
  * `tailscale serve` terminates on 443; no trailing slash, because Better Auth
  * compares the Origin header literally.
  */
-export function executorBaseUrlFromTailnetName(name) {
+export function executorBaseUrlFromTailnetName(
+	name,
+	httpsPort = DEFAULT_HTTPS_PORT,
+) {
 	if (typeof name !== "string") {
 		throw new TypeError("Tailnet DNS name must be a string.");
 	}
@@ -65,7 +70,9 @@ export function executorBaseUrlFromTailnetName(name) {
 			`Expected a bare tailnet DNS name, got a URL: ${trimmed}. Pass the MagicDNS name only.`,
 		);
 	}
-	return `https://${trimmed}`;
+	return httpsPort === DEFAULT_HTTPS_PORT
+		? `https://${trimmed}`
+		: `https://${trimmed}:${httpsPort}`;
 }
 
 /**
@@ -99,11 +106,14 @@ services:
 }
 
 /** The command that puts Executor on the tailnet over HTTPS. */
-export function tailscaleServeCommand(port) {
+export function tailscaleServeCommand(port, httpsPort = DEFAULT_HTTPS_PORT) {
 	if (!Number.isInteger(port) || port < 1 || port > 65535) {
 		throw new Error(`Invalid port for tailscale serve: ${port}`);
 	}
-	return `sudo tailscale serve --bg --https=443 http://127.0.0.1:${port}`;
+	if (!Number.isInteger(httpsPort) || httpsPort < 1 || httpsPort > 65535) {
+		throw new Error(`Invalid HTTPS port for tailscale serve: ${httpsPort}`);
+	}
+	return `sudo tailscale serve --bg --https=${httpsPort} http://127.0.0.1:${port}`;
 }
 
 /** Read the live MagicDNS name, or null when Tailscale is absent or logged out. */
@@ -122,6 +132,8 @@ export async function configureExecutor({
 	readDnsNameImpl = readTailnetDnsName,
 	runCommandImpl = runCommand,
 	promptUserImpl = promptUser,
+	chooseHttpsPortImpl = chooseHttpsPort,
+	waitForExecutorImpl = waitForExecutor,
 } = {}) {
 	const dnsName = readDnsNameImpl();
 	if (!dnsName) {
@@ -131,7 +143,20 @@ export async function configureExecutor({
 		return false;
 	}
 
-	const baseUrl = executorBaseUrlFromTailnetName(dnsName);
+	let httpsPort;
+	try {
+		httpsPort = chooseHttpsPortImpl();
+	} catch (err) {
+		logger.error(err?.message ?? String(err));
+		return false;
+	}
+	if (httpsPort !== DEFAULT_HTTPS_PORT) {
+		logger.warning(
+			`Port ${DEFAULT_HTTPS_PORT} is already in use on this host, so Executor will be served on ${httpsPort} instead.`,
+		);
+	}
+
+	const baseUrl = executorBaseUrlFromTailnetName(dnsName, httpsPort);
 	logger.info(`Executor will be served at ${baseUrl} (tailnet only).`);
 
 	if (!(await promptUserImpl(`Install Executor at ${baseUrl}?`, true))) {
@@ -161,9 +186,18 @@ export async function configureExecutor({
 		return false;
 	}
 
-	if (!(await runCommandImpl(tailscaleServeCommand(EXECUTOR_PORT)))) {
+	if (
+		!(await runCommandImpl(tailscaleServeCommand(EXECUTOR_PORT, httpsPort)))
+	) {
 		logger.error(
 			"Executor is running but `tailscale serve` failed — it is currently reachable only from the host itself.",
+		);
+		return false;
+	}
+
+	if (!(await waitForExecutorImpl(baseUrl))) {
+		logger.error(
+			`Executor's container is running but ${baseUrl} never answered. Check for another listener on port ${httpsPort} (\`ss -tlnp | grep :${httpsPort}\`) — a process bound to 0.0.0.0 also covers the Tailscale address and will take the port from \`tailscale serve\`.`,
 		);
 		return false;
 	}
@@ -173,4 +207,66 @@ export async function configureExecutor({
 		`Next: open ${baseUrl} from a device on this tailnet to create the owner account and connect your accounts. Point agents at ${baseUrl}/mcp.`,
 	);
 	return true;
+}
+
+/**
+ * Pick the HTTPS port `tailscale serve` should terminate on.
+ *
+ * Found the hard way on the first real VPS run: an existing nginx bound to
+ * 0.0.0.0:443 also covers the Tailscale IP, so serve silently loses 443 and the
+ * MagicDNS name answers with that other vhost's certificate. Anything already
+ * holding 443 sends us to 8443 rather than producing a broken endpoint.
+ */
+export function chooseHttpsPort({ portInUse = isPortInUse } = {}) {
+	if (!portInUse(DEFAULT_HTTPS_PORT)) return DEFAULT_HTTPS_PORT;
+	if (!portInUse(FALLBACK_HTTPS_PORT)) return FALLBACK_HTTPS_PORT;
+	throw new Error(
+		`Both ${DEFAULT_HTTPS_PORT} and ${FALLBACK_HTTPS_PORT} are already in use — free one or configure Executor's HTTPS port explicitly.`,
+	);
+}
+
+/** True when any process already listens on `port`. */
+export function isPortInUse(port, { spawnSyncImpl = Bun.spawnSync } = {}) {
+	const result = spawnSyncImpl(["ss", "-tln"], {
+		stderr: "ignore",
+		stdout: "pipe",
+	});
+	if (!result || result.exitCode !== 0) return false;
+	const output = new TextDecoder().decode(result.stdout);
+	return new RegExp(`:${port}\\s`, "m").test(output);
+}
+
+/**
+ * Prove the endpoint actually answers. A command exit code is not evidence:
+ * the first real run reported success while TLS was serving a foreign
+ * certificate. A 4xx counts — Executor's own auth wall is a working Executor.
+ */
+export async function isExecutorReachable(baseUrl, { fetchImpl = fetch } = {}) {
+	try {
+		const response = await fetchImpl(baseUrl, { redirect: "manual" });
+		return response.status >= 200 && response.status < 500;
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * Poll until Executor answers or the budget runs out. The container reports
+ * `health: starting` for a few seconds after `compose up`, and a single probe
+ * in that window fails a deploy that is actually fine.
+ */
+export async function waitForExecutor(
+	baseUrl,
+	{
+		attempts = 20,
+		delayMs = 1500,
+		isReachableImpl = isExecutorReachable,
+		sleepImpl = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+	} = {},
+) {
+	for (let attempt = 1; attempt <= attempts; attempt += 1) {
+		if (await isReachableImpl(baseUrl)) return true;
+		if (attempt < attempts) await sleepImpl(delayMs);
+	}
+	return false;
 }
