@@ -202,7 +202,6 @@ export async function configureAxstack(options = {}) {
 			path.join(releaseRoot, "package"),
 			"--harness",
 			harness,
-			"--no-claude-settings",
 			"--yes",
 		];
 		let result;

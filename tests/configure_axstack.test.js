@@ -139,8 +139,8 @@ describe("configureAxstack", () => {
 			"--harness",
 		];
 		expect(invocations).toEqual([
-			[...common, "claude", "--no-claude-settings", "--yes"],
-			[...common, "codex", "--no-claude-settings", "--yes"],
+			[...common, "claude", "--yes"],
+			[...common, "codex", "--yes"],
 		]);
 	});
 
