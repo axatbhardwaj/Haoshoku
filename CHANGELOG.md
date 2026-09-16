@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+- Add `--axstack` and `--axstack-check`. `--axstack` downloads the pinned
+  Axstack v0.8.0 release tarball, verifies its SHA-256 before any write,
+  installs it under `~/.local/share/axstack/releases/<version>/package` with the
+  `~/.local/bin/axstack` shim, never downgrades a newer or user-managed
+  (suffixed) build, and then runs `axstack install --harness claude|codex` so
+  Axstack owns its skills and instruction routing block. `--axstack-check`
+  reports the shim, `axstack --version`, and per-harness check state
+  separately. CachyOS and Debian default setups run the Axstack step after the
+  Claude/Codex CLI installs; failures are reported, not fatal.
+- Return truthful results from `installClaude`/`installCodex`; config sync is
+  skipped and a warning is logged when the CLI install fails.
+
 ## 11.8.5 - 2026-09-13
 
 - Stop auto-launching Omakade on workspace 2 at login; Steam keeps starting
