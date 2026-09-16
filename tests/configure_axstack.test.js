@@ -148,6 +148,28 @@ describe("configureAxstack", () => {
 		]);
 	});
 
+	it("removes stale staging directories and makes the release traversable", async () => {
+		const home = makeHome();
+		const target = releasePaths(home);
+		const releasesDir = path.dirname(path.dirname(target.release));
+		const stale = path.join(releasesDir, `.${AXSTACK_VERSION}-stale`);
+		fs.mkdirSync(stale, { recursive: true });
+		fs.writeFileSync(path.join(stale, "partial"), "interrupted");
+		const downloaded = fixture();
+		const result = await configureAxstack({
+			...target,
+			extractor: makeExtractor([]),
+			fetcher: async () => new Response(downloaded.archive),
+			home,
+			runner: async () => ({ exitCode: 0, stderr: "", stdout: "installed" }),
+			sha256: downloaded.sha256,
+		});
+
+		expect(result.ok).toBe(true);
+		expect(fs.existsSync(stale)).toBe(false);
+		expect(fs.statSync(path.dirname(target.release)).mode & 0o777).toBe(0o755);
+	});
+
 	it("keeps a newer shim target without downloading or extracting", async () => {
 		const home = makeHome();
 		const target = releasePaths(home, "0.9.0");

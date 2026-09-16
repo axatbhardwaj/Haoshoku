@@ -188,9 +188,19 @@ export async function configureAxstack(options = {}) {
 
 			const archivePath = path.join(downloadDir, "axstack.tgz");
 			fs.writeFileSync(archivePath, archive);
-			fs.mkdirSync(path.dirname(releaseRoot), { recursive: true });
+			const releasesDir = path.dirname(releaseRoot);
+			const stagingPrefix = `.${AXSTACK_VERSION}-`;
+			fs.mkdirSync(releasesDir, { recursive: true });
+			for (const entry of fs.readdirSync(releasesDir, { withFileTypes: true })) {
+				if (entry.isDirectory() && entry.name.startsWith(stagingPrefix)) {
+					fs.rmSync(path.join(releasesDir, entry.name), {
+						force: true,
+						recursive: true,
+					});
+				}
+			}
 			const staging = fs.mkdtempSync(
-				path.join(path.dirname(releaseRoot), `.${AXSTACK_VERSION}-`),
+				path.join(releasesDir, stagingPrefix),
 			);
 			try {
 				await extractor(archivePath, staging);
@@ -200,6 +210,7 @@ export async function configureAxstack(options = {}) {
 					throw new Error("archive is missing package/bin/axstack.js");
 				}
 				fs.renameSync(staging, releaseRoot);
+				fs.chmodSync(releaseRoot, 0o755);
 				releaseAction = "installed";
 			} finally {
 				fs.rmSync(staging, { force: true, recursive: true });
