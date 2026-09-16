@@ -69,6 +69,50 @@ describe("user app configuration", () => {
 			"paseo-profiles",
 		]);
 	});
+
+	it("warns when Claude or Codex installation fails", async () => {
+		const warnings = [];
+		const originalWarning = log.warning;
+		log.warning = (message) => warnings.push(message);
+		const noop = async () => {};
+
+		try {
+			await configureUserApps({
+				promptUserImpl: async () => false,
+				configureBrowserIntegrationImpl: noop,
+				configureAudioImpl: noop,
+				configureBashImpl: noop,
+				configureFastfetchImpl: noop,
+				configureKittyImpl: noop,
+				runCommandImpl: noop,
+				enableServicesImpl: noop,
+				configureClaudeImpl: async () => ({
+					ok: false,
+					reason: "install command failed",
+				}),
+				installGhStackImpl: noop,
+				configureClaudeStayAwakeImpl: noop,
+				configurePrWatchImpl: noop,
+				configureCodexImpl: async () => ({
+					ok: false,
+					reason: "registry unavailable",
+				}),
+				configureAxstackImpl: async () => ({ ok: true }),
+				configureSkillsImpl: async () => true,
+				syncAgentSkillsImpl: async () => true,
+				syncPaseoProfilesImpl: async () => true,
+			});
+
+			expect(warnings).toContainEqual(
+				expect.stringContaining("Claude CLI installation failed: install command failed"),
+			);
+			expect(warnings).toContainEqual(
+				expect.stringContaining("Codex CLI installation failed: registry unavailable"),
+			);
+		} finally {
+			log.warning = originalWarning;
+		}
+	});
 });
 
 describe("Rust toolchain preparation", () => {

@@ -580,7 +580,12 @@ export async function configureUserApps({
 	await runCommandImpl(`curl -fsSL ${UOSC_INSTALL_URL} | bash`);
 
 	await enableServicesImpl();
-	await configureClaudeImpl();
+	const claudeResult = await configureClaudeImpl();
+	if (claudeResult?.ok === false) {
+		log.warning(
+			`Claude CLI installation failed: ${claudeResult.reason} — continuing without syncing Claude config.`,
+		);
+	}
 	try {
 		await installGhStackImpl();
 	} catch (err) {
@@ -615,7 +620,12 @@ export async function configureUserApps({
 			);
 		}
 	}
-	await configureCodexImpl();
+	const codexResult = await configureCodexImpl();
+	if (codexResult?.ok === false) {
+		log.warning(
+			`Codex CLI installation failed: ${codexResult.reason} — continuing without syncing Codex config.`,
+		);
+	}
 	let axstackResult = { ok: false };
 	try {
 		axstackResult = await configureAxstackImpl();
@@ -642,6 +652,7 @@ export async function configureUserApps({
 			"Axstack setup was not completed — continuing. Retry with: haoshoku --axstack",
 		);
 	}
+	return { claude: claudeResult, codex: codexResult };
 }
 
 export async function runCachyOSSetup({
@@ -689,7 +700,7 @@ export async function runCachyOSSetup({
 
 		await installSystemPackagesImpl(aurHelper, isOmarchy);
 		await installFlatpakAppsImpl();
-		await configureUserAppsImpl();
+		const userAppsResult = await configureUserAppsImpl();
 		if (isOmarchy) {
 			try {
 				await configureBraveManagedPolicies({ nonInteractiveSudo: true });
@@ -755,6 +766,17 @@ export async function runCachyOSSetup({
 			}
 		}
 
+		const cliFailures = [
+			["Claude", userAppsResult?.claude],
+			["Codex", userAppsResult?.codex],
+		]
+			.filter(([, result]) => result?.ok === false)
+			.map(([name, result]) => `${name} (${result.reason})`);
+		if (cliFailures.length > 0) {
+			log.warning(
+				`Arch setup finished with developer CLI warnings: ${cliFailures.join("; ")}.`,
+			);
+		}
 		log.success(
 			"Arch setup finished. Please restart your terminal or log out.",
 		);

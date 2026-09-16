@@ -293,6 +293,8 @@ async function configureFail2ban() {
 
 export async function runDebianServerSetup({
 	configureAxstackImpl = configureAxstack,
+	configureClaudeImpl = configureClaude,
+	configureCodexImpl = configureCodex,
 } = {}) {
 	// SUDO PREFLIGHT: nearly every step shells out via `sudo`. Without a valid
 	// sudo session each one fails individually yet the run still reports
@@ -317,7 +319,12 @@ export async function runDebianServerSetup({
 	// desktop variants only. Browser/MIME, Brave policy, user-script, audio,
 	// monitor, workspace, and Omazed configuration therefore remain Arch-only.
 	if (await promptUser("Configure git?", true)) await configureGit();
-	await configureClaude();
+	const claudeResult = await configureClaudeImpl();
+	if (claudeResult?.ok === false) {
+		log.warning(
+			`Claude CLI installation failed: ${claudeResult.reason} — continuing without syncing Claude config.`,
+		);
+	}
 	try {
 		await installGhStack();
 	} catch (err) {
@@ -351,7 +358,12 @@ export async function runDebianServerSetup({
 			);
 		}
 	}
-	await configureCodex();
+	const codexResult = await configureCodexImpl();
+	if (codexResult?.ok === false) {
+		log.warning(
+			`Codex CLI installation failed: ${codexResult.reason} — continuing without syncing Codex config.`,
+		);
+	}
 	if (!(await configureSkills())) {
 		log.warning(
 			"External skills were not fully installed — continuing. Retry with: haoshoku --skills",
@@ -404,6 +416,17 @@ export async function runDebianServerSetup({
 	if (!axstackConfigured) {
 		log.warning(
 			"Debian Server setup finished, but Axstack setup is incomplete. Retry with: haoshoku --axstack",
+		);
+	}
+	const cliFailures = [
+		["Claude", claudeResult],
+		["Codex", codexResult],
+	]
+		.filter(([, result]) => result?.ok === false)
+		.map(([name, result]) => `${name} (${result.reason})`);
+	if (cliFailures.length > 0) {
+		log.warning(
+			`Debian Server setup finished with developer CLI warnings: ${cliFailures.join("; ")}.`,
 		);
 	}
 
