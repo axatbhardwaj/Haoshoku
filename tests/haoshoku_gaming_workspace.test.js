@@ -54,11 +54,13 @@ describe("gaming workspace configuration", () => {
 		);
 	});
 
-	it("starts Steam and Omakade silently on workspace 2 at login", () => {
+	it("starts Steam silently on workspace 2 at login while Omakade stays on-demand", () => {
 		expect(workspacesConfig).toContain(
 			'o.exec_on_start("haoshoku-special-workspace numbered-login 2 steam")',
 		);
-		expect(workspacesConfig).toContain(
+		// Omakade autostart is opt-in via --gaming-omakade-autostart; SUPER+2
+		// remains the on-demand library key.
+		expect(workspacesConfig).not.toContain(
 			'o.exec_on_start("haoshoku-special-workspace numbered-login 2 omakade")',
 		);
 	});

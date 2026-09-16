@@ -92,9 +92,12 @@ The Arch setup:
   S stash, and `Super+Shift+X` X (`Super+Shift+S` stashes the focused window);
   see the canonical swaps JSON above for every Omarchy default relocated or
   superseded to make room;
-- starts Steam and Omakade silently on gaming workspace 2 at login, binds
-  `Super+2` to Omakade, and keeps `Super+Shift+G` as the gaming-workspace
-  toggle that ensures Steam. Use
+- starts Steam silently on gaming workspace 2 at login and binds `Super+2` to
+  Omakade on demand, keeping `Super+Shift+G` as the gaming-workspace toggle
+  that ensures Steam. Workspace-2 login autostart is configurable
+  (`~/.config/haoshoku/gaming.json` defaults to Steam on, Omakade off):
+  `haoshoku --gaming-steam-autostart enabled|disabled` and
+  `haoshoku --gaming-omakade-autostart enabled|disabled`. Use
   `haoshoku-gaming-workspace place -- %command%` as a Steam launch option to
   move the launched game's process-tree windows there;
 - starts Flux, DeFi, WhatsApp, and Notion with empty Brave Origin profiles
@@ -451,6 +454,9 @@ haoshoku --claude-stay-awake
 haoshoku --pr-watch
 haoshoku --worktree-cleanup
 haoshoku --workspaces
+haoshoku --gaming
+haoshoku --gaming-steam-autostart disabled
+haoshoku --gaming-omakade-autostart enabled
 haoshoku --monitors
 haoshoku --hyprmoncfg-backup
 haoshoku --omarchy-plugins

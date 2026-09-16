@@ -20,7 +20,6 @@ o.launch_on_start("/usr/bin/paseo")
 o.exec_on_start("/usr/bin/kdeconnectd")
 -- Steam stays in the background on 2; Omakade is the library you open with SUPER+2.
 o.exec_on_start("haoshoku-special-workspace numbered-login 2 steam")
-o.exec_on_start("haoshoku-special-workspace numbered-login 2 omakade")
 
 -- Steam and Omakade join the games on 2 so alt-tabbing between a game, the library,
 -- and the Steam window keeps working -- cyclenext is workspace-local, so they have to

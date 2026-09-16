@@ -45,6 +45,12 @@ function deployModeFeaturesFromCli() {
 		"--paseo-tasks-enabled",
 		"--paseo-task-cleanup",
 		"--paseo-task-renaming",
+		// The workspaces deploy ensures the gaming autostart defaults. These
+		// flags only create or override that preference outside the default
+		// setup path.
+		"--gaming",
+		"--gaming-steam-autostart",
+		"--gaming-omakade-autostart",
 		// Schedule ownership and mutation are always explicit, host-local modes.
 		// Normal setup must never connect to or modify the schedule API.
 		"--paseo-schedules",

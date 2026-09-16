@@ -8,6 +8,10 @@ import {
 	runCommand,
 	runCommandCapture,
 } from "../common/utils.js";
+import {
+	ensureGamingConfig,
+	syncDeployedGamingAutostart,
+} from "./configure_gaming.js";
 
 const ROOT = path.resolve(import.meta.dir, "..", "..");
 const BINDINGS_REQUIRE = 'require("hypr.haoshoku.bindings")';
@@ -111,6 +115,7 @@ export async function configureOmarchyWorkspaces({
 			message: gate.message,
 			bindingsChanged: false,
 			overlayChanged: false,
+			gamingChanged: false,
 			scriptChanged: false,
 			sourceChanged: false,
 			reloaded: false,
@@ -128,6 +133,7 @@ export async function configureOmarchyWorkspaces({
 			message,
 			bindingsChanged: false,
 			overlayChanged: false,
+			gamingChanged: false,
 			scriptChanged: false,
 			sourceChanged: false,
 			reloaded: false,
@@ -164,6 +170,19 @@ export async function configureOmarchyWorkspaces({
 		workspacesDestination,
 		now,
 	);
+
+	// The shipped overlay carries the default gaming autostart (Steam only).
+	// Reconcile the deployed copy with the persisted gaming policy so a redeploy
+	// never reverts an explicit `--gaming-*-autostart` choice.
+	let gamingChanged = false;
+	if (ensureGamingConfig({ home, fsImpl, logger: logImpl })) {
+		gamingChanged = syncDeployedGamingAutostart({
+			home,
+			fsImpl,
+			logger: logImpl,
+			now,
+		}).changed;
+	}
 
 	const scriptChanged = deployFile(
 		fsImpl,
@@ -203,6 +222,7 @@ export async function configureOmarchyWorkspaces({
 	return {
 		bindingsChanged,
 		overlayChanged,
+		gamingChanged,
 		scriptChanged,
 		sourceChanged: requires.changed,
 		reloaded,

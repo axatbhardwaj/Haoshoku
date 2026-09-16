@@ -16,7 +16,9 @@ function output(args) {
 describe("haoshoku CLI help", () => {
 	it("documents Arch/Omarchy as the desktop target", () => {
 		const help = output(["--help"]);
-		expect(help).toContain("arch, debian-server");
+		// Normalize whitespace: commander rewraps descriptions to the longest
+		// flag term, so longer flags can split "(arch, debian-server)".
+		expect(help.replace(/\s+/g, " ")).toContain("arch, debian-server");
 		expect(help).toContain("Arch / Omarchy");
 	});
 

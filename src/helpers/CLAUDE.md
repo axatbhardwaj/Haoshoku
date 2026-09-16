@@ -36,6 +36,7 @@ Standalone setup scripts for specific tools.
 | `configure_omarchy_appearance.js` | Conflict-safe pinned Omarchy theme/background/font reconciliation | Modifying the portable appearance manifest or its Omarchy command handoff |
 | `configure_omarchy_plugins.js` | Manifest-driven Omarchy plugin install/enable reconciliation plus one-shot `disableOnInstall`; per-plugin failures are non-fatal | Modifying the default plugin set, idempotency, stock-widget displacement, or manual-auth reporting |
 | `configure_omarchy_workspaces.js` | Omarchy 4 device-specific Lua overlay deploy plus two `hyprland.lua` require lines | Modifying workspace/binding overlays, require wiring, or reload behavior |
+| `configure_gaming.js` | Workspace-2 Steam/Omakade login-autostart policy (`~/.config/haoshoku/gaming.json`) plus deployed-overlay reconciliation | Modifying gaming autostart defaults, flags, or the Lua patch boundary |
 | `configure_omazed.js` | Omazed setup, Zed theme selection/hook deploy, and legacy theme retirement | Modifying Omarchy-managed Zed theming |
 | `configure_warp.js` | Dormant Warp tab/theme deploy and idempotent settings activation | Reviewing or modifying the retained Warp setup |
 | `configure_worktree_cleanup.js` | Worktree cleanup script/timer sync, backup, and user-timer enablement | Modifying cleanup deployment, backup, or scheduling |

@@ -98,9 +98,9 @@ describe("Omarchy Lua workspace behavior", () => {
 			expect(overlay).toContain(
 				'o.exec_on_start("haoshoku-special-workspace numbered-login 2 steam")',
 			);
-			expect(overlay).toContain(
-				'o.exec_on_start("haoshoku-special-workspace numbered-login 2 omakade")',
-			);
+			// Omakade autostart is opt-in via --gaming-omakade-autostart; the
+			// shipped overlay keeps Steam only so SUPER+2 stays the library key.
+			expect(overlay).not.toContain("numbered-login 2 omakade");
 			expect(overlay).toContain(
 				'o.window("^haoshoku-ws7$", { workspace = "7 silent" })',
 			);

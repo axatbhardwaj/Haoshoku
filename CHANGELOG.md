@@ -1,5 +1,15 @@
 # Changelog
 
+## 11.8.5 - 2026-09-13
+
+- Stop auto-launching Omakade on workspace 2 at login; Steam keeps starting
+  silently there and `Super+2` remains the on-demand Omakade key.
+- Add a configurable workspace-2 gaming autostart policy in
+  `~/.config/haoshoku/gaming.json` (Steam on, Omakade off by default) with
+  `haoshoku --gaming`, `--gaming-steam-autostart enabled|disabled`, and
+  `--gaming-omakade-autostart enabled|disabled`. `--workspaces` redeploys
+  reconcile the live overlay with the saved policy instead of reverting it.
+
 ## 11.8.4 - 2026-09-12
 
 - Add native `--paseo-schedules`, `--paseo-schedules-check`, and

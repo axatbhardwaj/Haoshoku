@@ -5,7 +5,7 @@ import prompts from "prompts";
 import { detectOS, findActiveModeFlags } from "./src/common/cli_utils.js";
 import { promptDeviceType } from "./src/common/device_type.js";
 import { getBanner, showBanner } from "./src/common/ui.js";
-import { log, promptUser } from "./src/common/utils.js";
+import { log, promptUser, runCommand } from "./src/common/utils.js";
 import {
 	backupAgentSkills,
 	syncAgentSkills,
@@ -35,6 +35,11 @@ import {
 	backupCodexConfig,
 	syncCodexConfig,
 } from "./src/helpers/configure_codex.js";
+import {
+	ensureGamingConfig,
+	setGamingConfig,
+	syncDeployedGamingAutostart,
+} from "./src/helpers/configure_gaming.js";
 import { installGhStack } from "./src/helpers/configure_gh_stack.js";
 import { configureHermesRelay } from "./src/helpers/configure_hermes_relay.js";
 import {
@@ -92,7 +97,7 @@ function parseEnabledState(value) {
 program
 	.name("haoshoku")
 	.description("Haoshoku: portable setup for Arch / Omarchy and Debian Server.")
-	.version("11.8.4")
+	.version("11.8.5")
 	.addHelpText("before", getBanner());
 
 program
@@ -218,6 +223,18 @@ program
 	.option(
 		"--workspaces",
 		"Deploy the two Lua overlay modules under ~/.config/hypr/haoshoku/, install the helper script, and register the two requires in ~/.config/hypr/hyprland.lua",
+	)
+	.option(
+		"--gaming",
+		"Ensure the gaming autostart defaults (Steam on, Omakade off) in ~/.config/haoshoku/gaming.json",
+	)
+	.option(
+		"--gaming-steam-autostart <state>",
+		"Set Steam login autostart on workspace 2 (enabled or disabled)",
+	)
+	.option(
+		"--gaming-omakade-autostart <state>",
+		"Set Omakade login autostart on workspace 2 (enabled or disabled)",
 	)
 	.option(
 		"--monitors",
@@ -518,6 +535,43 @@ async function runAction(options) {
 
 	if (options.workspaces) {
 		await configureOmarchyWorkspaces();
+		return;
+	}
+
+	if (options.gaming) {
+		if (!ensureGamingConfig()) process.exitCode = 1;
+		return;
+	}
+
+	if (options.gamingSteamAutostart !== undefined) {
+		const steamAutostart = parseEnabledState(options.gamingSteamAutostart);
+		if (steamAutostart === null || !setGamingConfig({ steamAutostart })) {
+			if (steamAutostart === null) {
+				log.error("Steam autostart must be enabled or disabled.");
+			}
+			process.exitCode = 1;
+			return;
+		}
+		syncDeployedGamingAutostart();
+		if (process.env.HYPRLAND_INSTANCE_SIGNATURE) {
+			await runCommand("hyprctl reload");
+		}
+		return;
+	}
+
+	if (options.gamingOmakadeAutostart !== undefined) {
+		const omakadeAutostart = parseEnabledState(options.gamingOmakadeAutostart);
+		if (omakadeAutostart === null || !setGamingConfig({ omakadeAutostart })) {
+			if (omakadeAutostart === null) {
+				log.error("Omakade autostart must be enabled or disabled.");
+			}
+			process.exitCode = 1;
+			return;
+		}
+		syncDeployedGamingAutostart();
+		if (process.env.HYPRLAND_INSTANCE_SIGNATURE) {
+			await runCommand("hyprctl reload");
+		}
 		return;
 	}
 
