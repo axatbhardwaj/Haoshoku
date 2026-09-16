@@ -7,6 +7,7 @@ Template configuration files copied to user's `~/.config/` during setup.
 | File                  | What                          | When to read                              |
 | --------------------- | ----------------------------- | ----------------------------------------- |
 | `kde_shortcuts.kksrc` | KDE keyboard shortcuts        | Modifying KDE shortcuts                   |
+| `README.md`           | Copy-vs-symlink rationale and Claude bundle boundary | Understanding the deployment model |
 
 ## Subdirectories
 

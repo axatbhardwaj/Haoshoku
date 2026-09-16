@@ -43,6 +43,7 @@ The project is built using modern JavaScript (ES Modules) and runs on Bun.
 - **`haoshoku.js`**: Main entry point. Handles OS detection and routing.
 - **`src/os_scripts/`**: Contains the setup logic for each supported OS (e.g., `cachyos.js`, `debian_server.js`).
 - **`src/common/utils.js`**: Shared utilities for running shell commands, logging, and checking for file/command existence.
+- **`src/common/cli_utils.js`**: The `MODE_FLAGS` registry and OS detection; every one-shot flag is registered there and exactly one may run per invocation.
 - **`src/helpers/`**: Standalone helper scripts (e.g., `configure_git.js`).
 
 ### Local Paseo schedule configuration

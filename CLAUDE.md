@@ -12,6 +12,9 @@ Multi-distro Linux setup and configuration toolkit (JavaScript/Bun).
 | `CHANGELOG.md`  | Version history                   | Checking release notes                          |
 | `info.txt`      | Theme names and resource links    | Reference for KDE theme components              |
 | `bun.lock`      | Dependency lockfile (Bun)         | Checking exact dependency versions              |
+| `AGENTS.md`     | Codex copy of this file; keep both in sync | Editing repo guidance for either harness |
+| `biome.json`    | Lint/format config and fixture excludes | Changing lint rules or excluded fixtures |
+| `BRANCH-NOTES.md` | Dated log of branch outcomes and test counts | Checking what a past branch delivered |
 
 ## Subdirectories
 
@@ -25,6 +28,7 @@ Multi-distro Linux setup and configuration toolkit (JavaScript/Bun).
 | `docs/`     | Additional documentation          | Understanding project details                   |
 | `deskback/` | Wallpaper assets                  | Adding wallpapers                               |
 | `icons/`    | Icon assets                       | Adding icons                                    |
+| `video/`    | Remotion project for the README intro animation | Regenerating `icons/haoshoku-readme.gif`       |
 
 ## Install
 

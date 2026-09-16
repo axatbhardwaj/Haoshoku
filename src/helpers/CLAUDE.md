@@ -12,6 +12,7 @@ Standalone setup scripts for specific tools.
 | `configure_claude.js` | Claude config sync, backup, update     | Adding Claude config features, debugging sync |
 | `configure_claude_stay_awake.js` | claude-stay-awake sleep inhibitor deploy/enable/backup | Adding or debugging the Claude sleep inhibitor |
 | `configure_claude_remote_control.js` | Claude Remote Control trust/disclaimer seed, supervisor + user-unit deploy/enable/backup | Adding or debugging persistent Claude Remote Control sessions |
+| `configure_axstack.js` | Pinned, SHA-256-verified Axstack release install under `~/.local/share/axstack/releases/<version>` with the `~/.local/bin/axstack` shim, no silent downgrade, then `axstack install --harness claude\|codex`; `checkAxstack` reports shim/version/harness state | Bumping the Axstack pin, changing install verification, or debugging `--axstack`/`--axstack-check` |
 | `configure_codex.js` | Codex CLI plus personal config sync/backup | Adding Codex setup features or debugging config sync |
 | `configure_skills.js` | Matt Pocock and Paseo skill installation through the upstream Skills CLI | Updating the shared Claude/Codex skill sources |
 | `configure_agent_skills.js` | Owned and pinned-upstream skill sync, owned-only backup, safe retirement, and shared agent links | Adding or debugging managed routing skills |
@@ -21,11 +22,15 @@ Standalone setup scripts for specific tools.
 | `configure_paseo_server.js` | Native Paseo CLI, loopback config, and persistent user-service setup for Debian servers | Adding or debugging headless Paseo lifecycle and pairing |
 | `configure_hermes_relay.js` | Pinned Hermes bootstrap plus VPS-only relay deploy, private config, validation, activation, and host marker | Adding or debugging Hermes review-relay setup |
 | `configure_paseo_profiles.js` | Whitelist-only Paseo profile/provider policy sync, backup, and safe live reload | Adding or debugging managed orchestration policy |
+| `configure_paseo_schedules.js` | Explicit `--paseo-schedules` / `-check` / `-apply` role-to-schedule mapping in `~/.config/haoshoku/paseo-schedules.json`; never creates, deletes, pauses, or runs schedules | Changing schedule role defaults, identity checks, or apply semantics |
+| `paseo_schedule_client.js` | Scoped local Paseo client (`PASEO_HOME`/`PASEO_HOST` ignored) for schedule readback | Changing how schedules are read from the local Paseo daemon |
 | `configure_paseo_tasks.js` | Validated future-task lifecycle preference with enabled naming and archive defaults | Changing Paseo task metadata or cleanup configuration |
 | `configure_t3_code_server.js` | Debian T3 Code service plus idempotent T3 Connect lifecycle | Adding or debugging T3 Connect authorization, provisioning, or service verification |
 | `configure_git.js`    | Git user and signing setup             | Modifying automated git configuration         |
 | `configure_hyprmoncfg.js` | Profile JSON sync/backup plus hyprmoncfg package and `hyprmoncfgd.service` setup; never writes `monitors.lua` | Modifying monitor-profile deployment or the hyprmoncfg ownership boundary |
 | `configure_kde_activities.js` | KDE Activity provisioning plus Haoshoku KWin activity/output rules | Modifying activity creation, window routing, or KWin script deployment |
+| `configure_kde_connect.js` | Adds the non-locking `Screens Off` remote command to every paired KDE Connect device via the QML writer | Changing the remote command or device-config parsing |
+| `kde_connect_commands_writer.qml` | `qml`-run writer that appends one command to a device's KDE Connect `commands` byte-array | Changing how commands are persisted through the KDE Connect API |
 | `configure_kde_plasma.js` | KDE Plasma launchers, shortcut unbindings, and Activities opt-in | Modifying Plasma launchers or conflicting shortcuts |
 | `configure_kde_theme.js` | KDE Ocean theme backup/sync/activate | Adding KDE theme features, debugging deploy |
 | `configure_kitty.js` | Kitty config/session deploy plus XDG terminal preference | Modifying Kitty setup, split sessions, or terminal default |
