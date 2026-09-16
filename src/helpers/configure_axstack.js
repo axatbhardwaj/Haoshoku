@@ -274,21 +274,23 @@ export async function configureAxstack(options = {}) {
 
 export async function checkAxstack(options = {}) {
 	const home = options.home ?? homedir();
-	const dataDir = options.dataDir ?? path.join(home, ".local/share/axstack");
 	const binDir = options.binDir ?? path.join(home, ".local/bin");
 	const runner = options.runner ?? defaultRunner;
 	const shimPath = path.join(binDir, "axstack");
-	const resolvedVersion = releaseFromShim(shimPath).version;
-	const releasePackage = resolvedVersion
-		? path.join(dataDir, "releases", resolvedVersion, "package")
+	const resolvedRelease = releaseFromShim(shimPath);
+	const resolvedVersion = resolvedRelease.version;
+	const releasePackage = resolvedRelease.cliPath
+		? path.dirname(path.dirname(resolvedRelease.cliPath))
 		: null;
 	const shim = {
 		path: shimPath,
-		present: fs.existsSync(shimPath),
+		present: resolvedRelease.status !== "missing",
 		version: resolvedVersion,
 	};
 	const run = async (args) => {
-		if (!shim.present) return { ok: false, reason: "shim missing" };
+		if (resolvedRelease.status !== "resolved") {
+			return { ok: false, reason: `shim ${resolvedRelease.status}` };
+		}
 		let result;
 		try {
 			result = await runner(shimPath, args, {
@@ -311,7 +313,7 @@ export async function checkAxstack(options = {}) {
 		harnesses[harness] = await run([
 			"check",
 			"--bundle",
-			releasePackage ?? dataDir,
+			releasePackage,
 			"--harness",
 			harness,
 		]);

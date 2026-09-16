@@ -340,6 +340,65 @@ describe("configureAxstack", () => {
 });
 
 describe("checkAxstack", () => {
+	it("checks harnesses against the bundle targeted by the shim", async () => {
+		const home = makeHome();
+		const target = paths(home);
+		const release = path.join(home, "custom-axstack", "releases", "0.8.0", "package");
+		const cli = path.join(release, "bin", "axstack.js");
+		const shim = path.join(target.binDir, "axstack");
+		fs.mkdirSync(target.binDir, { recursive: true });
+		fs.writeFileSync(shim, `exec bun ${JSON.stringify(cli)} "$@"\n`);
+		const calls = [];
+		await checkAxstack({
+			...target,
+			home,
+			runner: async (_executable, args) => {
+				calls.push(args);
+				return { exitCode: 0, stderr: "", stdout: "ok" };
+			},
+		});
+
+		expect(calls).toHaveLength(3);
+		expect(calls[1]).toContain(release);
+		expect(calls[2]).toContain(release);
+	});
+
+	it("skips every command when the shim is missing", async () => {
+		const home = makeHome();
+		let ran = false;
+		const report = await checkAxstack({
+			...paths(home),
+			home,
+			runner: async () => {
+				ran = true;
+			},
+		});
+
+		expect(ran).toBe(false);
+		expect(report.version.reason).toBe("shim missing");
+		expect(report.harnesses.claude.reason).toBe("shim missing");
+	});
+
+	it("skips every command when the shim is unparsable", async () => {
+		const home = makeHome();
+		const target = paths(home);
+		const shim = path.join(target.binDir, "axstack");
+		fs.mkdirSync(target.binDir, { recursive: true });
+		fs.writeFileSync(shim, "#!/bin/sh\nexit 7\n");
+		let ran = false;
+		const report = await checkAxstack({
+			...target,
+			home,
+			runner: async () => {
+				ran = true;
+			},
+		});
+
+		expect(ran).toBe(false);
+		expect(report.version.reason).toBe("shim unparsable");
+		expect(report.harnesses.codex.reason).toBe("shim unparsable");
+	});
+
 	it("reports shim, version, harness, and profile readback independently", async () => {
 		const home = makeHome();
 		const target = releasePaths(home);
