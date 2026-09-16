@@ -35,6 +35,7 @@ import {
 	backupCodexConfig,
 	syncCodexConfig,
 } from "./src/helpers/configure_codex.js";
+import { configureExecutor } from "./src/helpers/configure_executor.js";
 import {
 	ensureGamingConfig,
 	setGamingConfig,
@@ -126,6 +127,10 @@ program
 	.option(
 		"--server-t3-code",
 		"Configure the T3 Code headless service and T3 Connect on Debian",
+	)
+	.option(
+		"--server-executor",
+		"Configure the self-hosted Executor integration layer on Debian (tailnet-only)",
 	)
 	.option(
 		"--server-paseo",
@@ -329,6 +334,16 @@ async function runAction(options) {
 
 	if (options.axstackCheck) {
 		if (!(await checkAxstack()).ok) process.exitCode = 1;
+		return;
+	}
+
+	if (options.serverExecutor) {
+		if (detectOS() !== "debian-server") {
+			log.error("--server-executor requires a Debian-family host.");
+			process.exitCode = 2;
+			return;
+		}
+		if (!(await configureExecutor())) process.exitCode = 1;
 		return;
 	}
 

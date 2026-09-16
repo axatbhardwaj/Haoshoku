@@ -98,6 +98,10 @@ const DELIBERATE_OMISSIONS = {
 			"--server-hermes-relay",
 			"Hermes relay transport is enabled only on an explicitly configured Debian server.",
 		],
+		[
+			"--server-executor",
+			"Executor's self-hosted container is provisioned only on Debian-family servers.",
+		],
 	]),
 	"debian-server": new Map([
 		["--audio", "WirePlumber routing depends on desktop device profiles."],
@@ -297,6 +301,9 @@ function runDebianDefaultPath() {
 			}));
 			mock.module(${JSON.stringify(helperPath("configure_paseo_server.js"))}, () => ({
 				configurePaseoServer: record("serverPaseo", true),
+			}));
+			mock.module(${JSON.stringify(helperPath("configure_executor.js"))}, () => ({
+				configureExecutor: record("serverExecutor", true),
 			}));
 			const { runDebianServerSetup } = await import(${JSON.stringify(modulePath)});
 			await runDebianServerSetup();
