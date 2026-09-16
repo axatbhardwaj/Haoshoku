@@ -32,6 +32,9 @@ function makeFakePrompt(value = true) {
 }
 
 function runDefaultSetupWithSafeDoubles({
+	axstackResult = true,
+	claudeResult = { ok: true, reason: "installed" },
+	codexResult = { ok: true, reason: "installed" },
 	paseoResult = true,
 	profileResult = true,
 	relayResult = true,
@@ -69,7 +72,7 @@ function runDefaultSetupWithSafeDoubles({
 		};
 		mock.module(${JSON.stringify(modulePath("src/common/utils.js"))}, () => ({
 			commandExists: async () => false,
-				log: { dim() {}, error(message) { events.push({ type: "error", message }); }, info() {}, success() {}, warning() {} },
+			log: { dim() {}, error(message) { events.push({ type: "error", message }); }, info() {}, success() {}, warning(message) { events.push({ type: "warning", message }); } },
 			promptUser: async (message, initial) => {
 				events.push({ type: "prompt", message, initial });
 				if (message === t3Prompt) return ${JSON.stringify(t3Answer)};
@@ -83,14 +86,15 @@ function runDefaultSetupWithSafeDoubles({
 		}));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_git.js"))}, () => ({ configureGit: record("git") }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_claude.js"))}, () => ({
-			configureClaude: record("claude"),
+			configureClaude: record("claude", ${JSON.stringify(claudeResult)}),
 		}));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_gh_stack.js"))}, () => ({ installGhStack: record("gh-stack") }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_claude_stay_awake.js"))}, () => ({ configureClaudeStayAwake: record("stay-awake") }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_claude_remote_control.js"))}, () => ({ configureClaudeRemoteControl: record("remote-control") }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_pr_watch.js"))}, () => ({ configurePrWatch: record("pr-watch") }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_worktree_cleanup.js"))}, () => ({ syncWorktreeCleanup: record("worktree-cleanup") }));
-		mock.module(${JSON.stringify(modulePath("src/helpers/configure_codex.js"))}, () => ({ configureCodex: record("codex") }));
+		mock.module(${JSON.stringify(modulePath("src/helpers/configure_codex.js"))}, () => ({ configureCodex: record("codex", ${JSON.stringify(codexResult)}) }));
+		mock.module(${JSON.stringify(modulePath("src/helpers/configure_axstack.js"))}, () => ({ configureAxstack: record("axstack", { ok: ${JSON.stringify(axstackResult)} }) }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_skills.js"))}, () => ({ configureSkills: record("skills", true) }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_agent_skills.js"))}, () => ({ syncAgentSkills: record("agent-skills", true) }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_paseo_profiles.js"))}, () => ({ syncPaseoProfiles: record("paseo-profiles", ${JSON.stringify(profileResult)}) }));
@@ -246,6 +250,7 @@ describe("Debian default path", () => {
 			"skills",
 			"agent-skills",
 			"paseo-server",
+			"axstack",
 			"paseo-profiles",
 			"hermes-relay",
 		]);
@@ -263,6 +268,45 @@ describe("Debian default path", () => {
 		expect(
 			events.findIndex(({ name }) => name === "paseo-server"),
 		).toBeLessThan(events.findIndex(({ name }) => name === "t3-code-server"));
+	});
+
+	it("reports Axstack failure without failing the remaining default setup", () => {
+		const { events, result } = runDefaultSetupWithSafeDoubles({
+			axstackResult: false,
+		});
+
+		expect(result).toBe(true);
+		expect(events).toContainEqual({
+			type: "warning",
+			message: expect.stringContaining("Axstack setup is incomplete"),
+		});
+	});
+
+	it("reports Claude and Codex install failures without failing setup", () => {
+		const { events, result } = runDefaultSetupWithSafeDoubles({
+			claudeResult: { ok: false, reason: "installer unavailable" },
+			codexResult: { ok: false, reason: "registry unavailable" },
+		});
+
+		expect(result).toBe(true);
+		expect(events).toContainEqual({
+			type: "warning",
+			message: expect.stringContaining(
+				"Claude CLI installation failed: installer unavailable",
+			),
+		});
+		expect(events).toContainEqual({
+			type: "warning",
+			message: expect.stringContaining(
+				"Codex CLI installation failed: registry unavailable",
+			),
+		});
+		expect(events).toContainEqual({
+			type: "warning",
+			message: expect.stringContaining(
+				"Claude (installer unavailable); Codex (registry unavailable)",
+			),
+		});
 	});
 
 	it("propagates a selected T3 Code setup failure", () => {

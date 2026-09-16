@@ -10,18 +10,19 @@ import {
 	runCommand,
 	safeCopyFile,
 } from "../common/utils.js";
-import { configureClaude } from "../helpers/configure_claude.js";
 import { syncAgentSkills } from "../helpers/configure_agent_skills.js";
+import { configureAxstack } from "../helpers/configure_axstack.js";
+import { configureClaude } from "../helpers/configure_claude.js";
 import { configureClaudeRemoteControl } from "../helpers/configure_claude_remote_control.js";
 import { configureClaudeStayAwake } from "../helpers/configure_claude_stay_awake.js";
 import { configureCodex } from "../helpers/configure_codex.js";
-import { configureSkills } from "../helpers/configure_skills.js";
 import { installGhStack } from "../helpers/configure_gh_stack.js";
 import { configureGit } from "../helpers/configure_git.js";
 import { configureHermesRelay } from "../helpers/configure_hermes_relay.js";
-import { configurePrWatch } from "../helpers/configure_pr_watch.js";
-import { configurePaseoServer } from "../helpers/configure_paseo_server.js";
 import { syncPaseoProfiles } from "../helpers/configure_paseo_profiles.js";
+import { configurePaseoServer } from "../helpers/configure_paseo_server.js";
+import { configurePrWatch } from "../helpers/configure_pr_watch.js";
+import { configureSkills } from "../helpers/configure_skills.js";
 import { configureT3CodeServer } from "../helpers/configure_t3_code_server.js";
 import { syncWorktreeCleanup } from "../helpers/configure_worktree_cleanup.js";
 
@@ -290,7 +291,11 @@ async function configureFail2ban() {
 	log.success("Fail2ban configured for SSH protection.");
 }
 
-export async function runDebianServerSetup() {
+export async function runDebianServerSetup({
+	configureAxstackImpl = configureAxstack,
+	configureClaudeImpl = configureClaude,
+	configureCodexImpl = configureCodex,
+} = {}) {
 	// SUDO PREFLIGHT: nearly every step shells out via `sudo`. Without a valid
 	// sudo session each one fails individually yet the run still reports
 	// "setup finished". Validate (and cache) credentials up front and bail
@@ -314,7 +319,12 @@ export async function runDebianServerSetup() {
 	// desktop variants only. Browser/MIME, Brave policy, user-script, audio,
 	// monitor, workspace, and Omazed configuration therefore remain Arch-only.
 	if (await promptUser("Configure git?", true)) await configureGit();
-	await configureClaude();
+	const claudeResult = await configureClaudeImpl();
+	if (claudeResult?.ok === false) {
+		log.warning(
+			`Claude CLI installation failed: ${claudeResult.reason} — continuing without syncing Claude config.`,
+		);
+	}
 	try {
 		await installGhStack();
 	} catch (err) {
@@ -348,7 +358,12 @@ export async function runDebianServerSetup() {
 			);
 		}
 	}
-	await configureCodex();
+	const codexResult = await configureCodexImpl();
+	if (codexResult?.ok === false) {
+		log.warning(
+			`Codex CLI installation failed: ${codexResult.reason} — continuing without syncing Codex config.`,
+		);
+	}
 	if (!(await configureSkills())) {
 		log.warning(
 			"External skills were not fully installed — continuing. Retry with: haoshoku --skills",
@@ -360,6 +375,12 @@ export async function runDebianServerSetup() {
 		);
 	}
 	const paseoConfigured = await configurePaseoServer();
+	let axstackConfigured = false;
+	try {
+		axstackConfigured = (await configureAxstackImpl()).ok;
+	} catch (error) {
+		log.warning(`Axstack setup failed (${error?.message ?? error}).`);
+	}
 	const paseoProfilesConfigured = paseoConfigured
 		? await syncPaseoProfiles()
 		: false;
@@ -391,6 +412,22 @@ export async function runDebianServerSetup() {
 	if (!t3CodeConfigured) {
 		log.error("Debian Server setup finished, but T3 Code was not configured.");
 		return false;
+	}
+	if (!axstackConfigured) {
+		log.warning(
+			"Debian Server setup finished, but Axstack setup is incomplete. Retry with: haoshoku --axstack",
+		);
+	}
+	const cliFailures = [
+		["Claude", claudeResult],
+		["Codex", codexResult],
+	]
+		.filter(([, result]) => result?.ok === false)
+		.map(([name, result]) => `${name} (${result.reason})`);
+	if (cliFailures.length > 0) {
+		log.warning(
+			`Debian Server setup finished with developer CLI warnings: ${cliFailures.join("; ")}.`,
+		);
 	}
 
 	log.success("Debian Server setup finished.");

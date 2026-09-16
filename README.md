@@ -23,6 +23,12 @@ haoshoku --os arch
 `bun haoshoku.js --os arch` works without creating a global link. The legacy
 `--os cachyos` spelling is accepted with a deprecation warning.
 
+Install the pinned, checksum-verified Axstack release and configure its Claude
+and Codex harness targets with `haoshoku --axstack`. Run
+`haoshoku --axstack-check` to report the shim/version, each harness check, and
+the Paseo profile-file readback separately.
+Claude and Codex setup skip config synchronization when their CLI installation fails.
+
 ## Arch and Omarchy behavior
 
 The Arch setup:

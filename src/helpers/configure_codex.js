@@ -35,11 +35,14 @@ export async function installCodex({
 } = {}) {
 	if (commandExists("codex")) {
 		log.info("Codex CLI already installed.");
-		return;
+		return { ok: true, reason: "already installed" };
 	}
 
 	log.info("Installing Codex CLI...");
-	await run(`bun install -g ${CODEX_NPM_PACKAGE}`);
+	if (!(await run(`bun install -g ${CODEX_NPM_PACKAGE}`))) {
+		return { ok: false, reason: "install command failed" };
+	}
+	return { ok: true, reason: "installed" };
 }
 
 /** Deploy personal config from the Haoshoku template to ~/.codex/. */
@@ -94,6 +97,8 @@ export async function backupCodexConfig(options = {}) {
 /** Install Codex CLI and deploy config (used by OS setup scripts). */
 export async function configureCodex(options = {}) {
 	const { installOptions, ...syncOptions } = options;
-	await installCodex(installOptions);
+	const result = await installCodex(installOptions);
+	if (!result.ok) return result;
 	await syncCodexConfig(syncOptions);
+	return result;
 }

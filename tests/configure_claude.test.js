@@ -10,6 +10,22 @@ import {
 	syncClaudeConfig,
 } from "../src/helpers/configure_claude.js";
 
+describe("Claude installation", () => {
+	it("returns truthful success and failure results", async () => {
+		const installed = await claudeConfig.installClaude({
+			commandExists: () => true,
+			run: async () => false,
+		});
+		const failed = await claudeConfig.installClaude({
+			commandExists: () => false,
+			run: async () => false,
+		});
+
+		expect(installed).toEqual({ ok: true, reason: "already installed" });
+		expect(failed).toEqual({ ok: false, reason: "install command failed" });
+	});
+});
+
 describe("PERSONAL_FILES manifest", () => {
 	it("includes statusline-command.sh (regression — must not be silently dropped)", () => {
 		const srcs = PERSONAL_FILES.map((f) => f.src);

@@ -41,6 +41,10 @@ describe("user app configuration", () => {
 			configurePrWatchImpl: record("pr-watch"),
 			syncWorktreeCleanupImpl: record("worktree-cleanup"),
 			configureCodexImpl: record("codex"),
+			configureAxstackImpl: async () => {
+				events.push("axstack");
+				return { ok: true };
+			},
 			configureSkillsImpl: record("skills"),
 			syncAgentSkillsImpl: record("agent-skills"),
 			syncPaseoProfilesImpl: record("paseo-profiles"),
@@ -59,10 +63,58 @@ describe("user app configuration", () => {
 			"stay-awake",
 			"pr-watch",
 			"codex",
+			"axstack",
 			"skills",
 			"agent-skills",
 			"paseo-profiles",
 		]);
+	});
+
+	it("warns when Claude or Codex installation fails", async () => {
+		const warnings = [];
+		const originalWarning = log.warning;
+		log.warning = (message) => warnings.push(message);
+		const noop = async () => {};
+
+		try {
+			await configureUserApps({
+				promptUserImpl: async () => false,
+				configureGitImpl: noop,
+				configureBrowserIntegrationImpl: noop,
+				configureAudioImpl: noop,
+				configureBashImpl: noop,
+				configureFastfetchImpl: noop,
+				configureKittyImpl: noop,
+				runCommandImpl: noop,
+				enableServicesImpl: noop,
+				configureClaudeImpl: async () => ({
+					ok: false,
+					reason: "install command failed",
+				}),
+				installGhStackImpl: noop,
+				configureClaudeStayAwakeImpl: noop,
+				configureClaudeRemoteControlImpl: noop,
+				configurePrWatchImpl: noop,
+				syncWorktreeCleanupImpl: noop,
+				configureCodexImpl: async () => ({
+					ok: false,
+					reason: "registry unavailable",
+				}),
+				configureAxstackImpl: async () => ({ ok: true }),
+				configureSkillsImpl: async () => true,
+				syncAgentSkillsImpl: async () => true,
+				syncPaseoProfilesImpl: async () => true,
+			});
+
+			expect(warnings).toContainEqual(
+				expect.stringContaining("Claude CLI installation failed: install command failed"),
+			);
+			expect(warnings).toContainEqual(
+				expect.stringContaining("Codex CLI installation failed: registry unavailable"),
+			);
+		} finally {
+			log.warning = originalWarning;
+		}
 	});
 });
 

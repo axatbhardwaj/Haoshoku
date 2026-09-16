@@ -74,20 +74,33 @@ describe("Codex config round trip", () => {
 describe("Codex installation", () => {
 	it("installs the package when codex is missing", async () => {
 		const commands = [];
-		await installCodex({
+		const result = await installCodex({
 			commandExists: () => false,
-			run: async (command) => commands.push(command),
+			run: async (command) => {
+				commands.push(command);
+				return true;
+			},
 		});
 		expect(commands).toEqual(["bun install -g @openai/codex"]);
+		expect(result).toEqual({ ok: true, reason: "installed" });
 	});
 
 	it("skips installation when codex already exists", async () => {
 		const commands = [];
-		await installCodex({
+		const result = await installCodex({
 			commandExists: () => true,
 			run: async (command) => commands.push(command),
 		});
 		expect(commands).toEqual([]);
+		expect(result).toEqual({ ok: true, reason: "already installed" });
+	});
+
+	it("reports a failed package installation truthfully", async () => {
+		const result = await installCodex({
+			commandExists: () => false,
+			run: async () => false,
+		});
+		expect(result).toEqual({ ok: false, reason: "install command failed" });
 	});
 
 	it("installs Codex before syncing AGENTS.md", async () => {
@@ -110,6 +123,7 @@ describe("Codex installation", () => {
 					run: async (command) => {
 						commands.push(command);
 						expect(fs.existsSync(path.join(codexDir, "AGENTS.md"))).toBe(false);
+						return true;
 					},
 				},
 			});

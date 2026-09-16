@@ -16,6 +16,8 @@ export const MODE_FLAGS = [
 	"claudeUpdate",
 	"codex",
 	"codexBackup",
+	"axstack",
+	"axstackCheck",
 	"serverT3Code",
 	"serverPaseo",
 	"serverHermesRelay",

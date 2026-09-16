@@ -50,6 +50,7 @@ function deployModeFeaturesFromCli() {
 		"--paseo-schedules",
 		"--paseo-schedules-check",
 		"--paseo-schedules-apply",
+		"--axstack-check",
 		"--skills",
 		"--skills-update",
 		"--3-4-migrate",
@@ -192,6 +193,7 @@ function runArchDefaultPath() {
 					configurePrWatchImpl: record("prWatch"),
 					syncWorktreeCleanupImpl: record("worktreeCleanup"),
 					configureCodexImpl: record("codex"),
+					configureAxstackImpl: record("axstack", { ok: true }),
 					configureSkillsImpl: record("skills", true),
 					syncAgentSkillsImpl: record("agentSkills", true),
 					syncPaseoProfilesImpl: record("paseoProfiles", true),
@@ -268,6 +270,9 @@ function runDebianDefaultPath() {
 			}));
 			mock.module(${JSON.stringify(helperPath("configure_codex.js"))}, () => ({
 				configureCodex: record("codex"),
+			}));
+			mock.module(${JSON.stringify(helperPath("configure_axstack.js"))}, () => ({
+				configureAxstack: record("axstack", { ok: true }),
 			}));
 			mock.module(${JSON.stringify(helperPath("configure_skills.js"))}, () => ({
 				configureSkills: record("skills", true),
@@ -352,6 +357,7 @@ function userAppDoubles(overrides = {}) {
 		configurePrWatchImpl: async () => {},
 		syncWorktreeCleanupImpl: async () => {},
 		configureCodexImpl: async () => {},
+		configureAxstackImpl: async () => ({ ok: true }),
 		configureSkillsImpl: async () => true,
 		syncAgentSkillsImpl: async () => true,
 		syncPaseoProfilesImpl: async () => true,
@@ -488,6 +494,7 @@ describe("default-run reachability", () => {
 						throw new Error("timer deployment failed");
 					},
 					configureCodexImpl: async () => events.push("codex"),
+					configureAxstackImpl: async () => ({ ok: true }),
 					configureSkillsImpl: async () => events.push("skills"),
 				}),
 			);
