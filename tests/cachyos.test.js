@@ -79,6 +79,7 @@ describe("user app configuration", () => {
 		try {
 			await configureUserApps({
 				promptUserImpl: async () => false,
+				configureGitImpl: noop,
 				configureBrowserIntegrationImpl: noop,
 				configureAudioImpl: noop,
 				configureBashImpl: noop,
@@ -92,7 +93,9 @@ describe("user app configuration", () => {
 				}),
 				installGhStackImpl: noop,
 				configureClaudeStayAwakeImpl: noop,
+				configureClaudeRemoteControlImpl: noop,
 				configurePrWatchImpl: noop,
+				syncWorktreeCleanupImpl: noop,
 				configureCodexImpl: async () => ({
 					ok: false,
 					reason: "registry unavailable",
