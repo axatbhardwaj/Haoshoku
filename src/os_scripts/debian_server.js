@@ -16,6 +16,7 @@ import { configureClaude } from "../helpers/configure_claude.js";
 import { configureClaudeRemoteControl } from "../helpers/configure_claude_remote_control.js";
 import { configureClaudeStayAwake } from "../helpers/configure_claude_stay_awake.js";
 import { configureCodex } from "../helpers/configure_codex.js";
+import { configureExecutor } from "../helpers/configure_executor.js";
 import { installGhStack } from "../helpers/configure_gh_stack.js";
 import { configureGit } from "../helpers/configure_git.js";
 import { configureHermesRelay } from "../helpers/configure_hermes_relay.js";
@@ -390,6 +391,20 @@ export async function runDebianServerSetup({
 	let t3CodeConfigured = true;
 	if (await promptUser("Also configure the T3 Code service?", false)) {
 		t3CodeConfigured = await configureT3CodeServer();
+	}
+	if (
+		await promptUser(
+			"Install Executor (self-hosted integration layer for AI agents)? It is served over the tailnet only and never published publicly.",
+			false,
+		)
+	) {
+		try {
+			await configureExecutor();
+		} catch (err) {
+			log.warning(
+				`Executor setup failed (${err?.message ?? err}) — continuing with remaining server setup.`,
+			);
+		}
 	}
 	if (!paseoConfigured) {
 		log.error(

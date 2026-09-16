@@ -11,6 +11,8 @@
 | `configure_visual_explainer.test.js` | Visual-explainer theme defaults, persistence, and invalid-config behavior | Changing explainer theme configuration |
 | `cli_explainer_theme.test.js` | End-to-end visual-explainer theme CLI behavior | Changing `--explainer-theme` |
 | `cli_paseo_tasks.test.js` | End-to-end Paseo task lifecycle defaults, controls, preservation, and fail-closed behavior | Changing Paseo task lifecycle CLI/configuration |
+| `cli_server_executor_flag.test.js` | Debian-only Executor CLI routing and failure propagation | Changing `--server-executor` |
+| `configure_executor.test.js` | MagicDNS parsing, base-URL derivation, loopback-only compose rendering, and serve command | Changing the Executor helper or its exposure boundary |
 | `cli_server_hermes_relay_flag.test.js` | Debian-only Hermes relay CLI routing and failure propagation | Changing `--server-hermes-relay` |
 | `configure_hermes_relay.test.js` | Hermes relay install, preservation, activation, and failure behavior | Changing the Hermes relay helper |
 | `configure_paseo_profiles.test.js` | Paseo whitelist merge, lifecycle-safe reload, and backup | Changing managed Paseo policy |
