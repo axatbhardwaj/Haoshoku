@@ -23,6 +23,7 @@ function userAppDoubles(overrides = {}) {
 		configurePrWatchImpl: async () => {},
 		syncWorktreeCleanupImpl: async () => {},
 		configureCodexImpl: async () => {},
+		configureAxstackImpl: async () => ({ ok: true }),
 		configureSkillsImpl: async () => true,
 		syncAgentSkillsImpl: async () => true,
 		syncPaseoProfilesImpl: async () => true,
@@ -129,6 +130,7 @@ describe("gh stack provisioning", () => {
 						},
 					}),
 				configureCodexImpl: async () => continued.push("codex"),
+				configureAxstackImpl: async () => ({ ok: true }),
 				configureSkillsImpl: async () => continued.push("skills"),
 			}),
 		);

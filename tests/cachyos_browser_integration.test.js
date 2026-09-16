@@ -23,6 +23,7 @@ function userAppDoubles(overrides = {}) {
 		configurePrWatchImpl: async () => {},
 		syncWorktreeCleanupImpl: async () => {},
 		configureCodexImpl: async () => {},
+		configureAxstackImpl: async () => ({ ok: true }),
 		configureSkillsImpl: async () => true,
 		syncAgentSkillsImpl: async () => true,
 		syncPaseoProfilesImpl: async () => true,
@@ -63,6 +64,7 @@ describe("CachyOS browser integration", () => {
 				configureClaudeStayAwakeImpl: record("stay-awake"),
 				configurePrWatchImpl: record("pr-watch"),
 				configureCodexImpl: record("codex"),
+				configureAxstackImpl: async () => ({ ok: true }),
 				configureSkillsImpl: record("skills"),
 			}),
 		);
@@ -92,6 +94,7 @@ describe("CachyOS browser integration", () => {
 				configureClaudeRemoteControlImpl: record("remote-control"),
 				configurePrWatchImpl: record("pr-watch"),
 				configureCodexImpl: record("codex"),
+				configureAxstackImpl: async () => ({ ok: true }),
 				configureSkillsImpl: record("skills"),
 			}),
 		);

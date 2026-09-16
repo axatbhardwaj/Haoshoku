@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
+import { promptDeviceType } from "../common/device_type.js";
 import { withSpinner } from "../common/ui.js";
 import {
 	commandExists,
@@ -10,8 +11,9 @@ import {
 	safeCopyFile,
 	startSudoSession,
 } from "../common/utils.js";
-import { configureAudio } from "../helpers/configure_audio.js";
 import { syncAgentSkills } from "../helpers/configure_agent_skills.js";
+import { configureAudio } from "../helpers/configure_audio.js";
+import { configureAxstack } from "../helpers/configure_axstack.js";
 import { configureBash } from "../helpers/configure_bash.js";
 import { configureBraveManagedPolicies } from "../helpers/configure_brave_managed_policies.js";
 import { configureChromiumProfiles } from "../helpers/configure_chromium_profiles.js";
@@ -19,20 +21,19 @@ import { configureClaude } from "../helpers/configure_claude.js";
 import { configureClaudeRemoteControl } from "../helpers/configure_claude_remote_control.js";
 import { configureClaudeStayAwake } from "../helpers/configure_claude_stay_awake.js";
 import { configureCodex } from "../helpers/configure_codex.js";
-import { configureSkills } from "../helpers/configure_skills.js";
-import { configureKitty } from "../helpers/configure_kitty.js";
 import { installGhStack } from "../helpers/configure_gh_stack.js";
-import { configureKdeConnectCommands } from "../helpers/configure_kde_connect.js";
 import { configureHyprmoncfg } from "../helpers/configure_hyprmoncfg.js";
-import { promptDeviceType } from "../common/device_type.js";
+import { configureKdeConnectCommands } from "../helpers/configure_kde_connect.js";
+import { configureKitty } from "../helpers/configure_kitty.js";
 import { configureMimeapps } from "../helpers/configure_mimeapps.js";
 import { configureOmarchyAppearance } from "../helpers/configure_omarchy_appearance.js";
 import { configureOmarchyBar } from "../helpers/configure_omarchy_bar.js";
 import { configureOmarchyPlugins } from "../helpers/configure_omarchy_plugins.js";
 import { configureOmarchyWorkspaces } from "../helpers/configure_omarchy_workspaces.js";
 import { configureOmazed } from "../helpers/configure_omazed.js";
-import { configurePrWatch } from "../helpers/configure_pr_watch.js";
 import { syncPaseoProfiles } from "../helpers/configure_paseo_profiles.js";
+import { configurePrWatch } from "../helpers/configure_pr_watch.js";
+import { configureSkills } from "../helpers/configure_skills.js";
 import { syncWorktreeCleanup } from "../helpers/configure_worktree_cleanup.js";
 import { installUserScripts } from "../helpers/install_user_scripts.js";
 
@@ -550,6 +551,7 @@ export async function configureUserApps({
 	configurePrWatchImpl = configurePrWatch,
 	syncWorktreeCleanupImpl = syncWorktreeCleanup,
 	configureCodexImpl = configureCodex,
+	configureAxstackImpl = configureAxstack,
 	configureSkillsImpl = configureSkills,
 	syncAgentSkillsImpl = syncAgentSkills,
 	syncPaseoProfilesImpl = syncPaseoProfiles,
@@ -614,6 +616,12 @@ export async function configureUserApps({
 		}
 	}
 	await configureCodexImpl();
+	let axstackResult = { ok: false };
+	try {
+		axstackResult = await configureAxstackImpl();
+	} catch (error) {
+		log.warning(`Axstack setup failed (${error?.message ?? error}).`);
+	}
 	if (!(await configureSkillsImpl())) {
 		log.warning(
 			"External skills were not fully installed — continuing. Retry with: haoshoku --skills",
@@ -627,6 +635,11 @@ export async function configureUserApps({
 	if (!(await syncPaseoProfilesImpl())) {
 		log.warning(
 			"Paseo orchestration policy was not fully synced — continuing. Retry with: haoshoku --paseo-profiles",
+		);
+	}
+	if (!axstackResult.ok) {
+		log.warning(
+			"Axstack setup was not completed — continuing. Retry with: haoshoku --axstack",
 		);
 	}
 }

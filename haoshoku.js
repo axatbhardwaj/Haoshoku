@@ -14,6 +14,10 @@ import {
 	backupAudioConfig,
 	syncAudioConfig,
 } from "./src/helpers/configure_audio.js";
+import {
+	checkAxstack,
+	configureAxstack,
+} from "./src/helpers/configure_axstack.js";
 import { configureBraveManagedPolicies } from "./src/helpers/configure_brave_managed_policies.js";
 import {
 	backupClaudeConfig,
@@ -112,6 +116,8 @@ program
 	.option("--claude-update", "Redeploy the packaged Claude Code config")
 	.option("--codex", "Deploy Codex config (AGENTS.md) to ~/.codex/")
 	.option("--codex-backup", "Backup ~/.codex/AGENTS.md to configs/codex/")
+	.option("--axstack", "Install or update the pinned Axstack release")
+	.option("--axstack-check", "Check Axstack release and harness setup")
 	.option(
 		"--server-t3-code",
 		"Configure the T3 Code headless service and T3 Connect on Debian",
@@ -296,6 +302,16 @@ async function runAction(options) {
 
 	if (options.codex) {
 		await syncCodexConfig();
+		return;
+	}
+
+	if (options.axstack) {
+		if (!(await configureAxstack()).ok) process.exitCode = 1;
+		return;
+	}
+
+	if (options.axstackCheck) {
+		if (!(await checkAxstack()).ok) process.exitCode = 1;
 		return;
 	}
 

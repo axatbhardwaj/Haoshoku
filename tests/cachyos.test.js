@@ -41,6 +41,10 @@ describe("user app configuration", () => {
 			configurePrWatchImpl: record("pr-watch"),
 			syncWorktreeCleanupImpl: record("worktree-cleanup"),
 			configureCodexImpl: record("codex"),
+			configureAxstackImpl: async () => {
+				events.push("axstack");
+				return { ok: true };
+			},
 			configureSkillsImpl: record("skills"),
 			syncAgentSkillsImpl: record("agent-skills"),
 			syncPaseoProfilesImpl: record("paseo-profiles"),
@@ -59,6 +63,7 @@ describe("user app configuration", () => {
 			"stay-awake",
 			"pr-watch",
 			"codex",
+			"axstack",
 			"skills",
 			"agent-skills",
 			"paseo-profiles",

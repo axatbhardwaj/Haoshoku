@@ -32,6 +32,7 @@ function makeFakePrompt(value = true) {
 }
 
 function runDefaultSetupWithSafeDoubles({
+	axstackResult = true,
 	paseoResult = true,
 	profileResult = true,
 	relayResult = true,
@@ -69,7 +70,7 @@ function runDefaultSetupWithSafeDoubles({
 		};
 		mock.module(${JSON.stringify(modulePath("src/common/utils.js"))}, () => ({
 			commandExists: async () => false,
-				log: { dim() {}, error(message) { events.push({ type: "error", message }); }, info() {}, success() {}, warning() {} },
+			log: { dim() {}, error(message) { events.push({ type: "error", message }); }, info() {}, success() {}, warning(message) { events.push({ type: "warning", message }); } },
 			promptUser: async (message, initial) => {
 				events.push({ type: "prompt", message, initial });
 				if (message === t3Prompt) return ${JSON.stringify(t3Answer)};
@@ -91,6 +92,7 @@ function runDefaultSetupWithSafeDoubles({
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_pr_watch.js"))}, () => ({ configurePrWatch: record("pr-watch") }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_worktree_cleanup.js"))}, () => ({ syncWorktreeCleanup: record("worktree-cleanup") }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_codex.js"))}, () => ({ configureCodex: record("codex") }));
+		mock.module(${JSON.stringify(modulePath("src/helpers/configure_axstack.js"))}, () => ({ configureAxstack: record("axstack", { ok: ${JSON.stringify(axstackResult)} }) }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_skills.js"))}, () => ({ configureSkills: record("skills", true) }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_agent_skills.js"))}, () => ({ syncAgentSkills: record("agent-skills", true) }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_paseo_profiles.js"))}, () => ({ syncPaseoProfiles: record("paseo-profiles", ${JSON.stringify(profileResult)}) }));
@@ -246,6 +248,7 @@ describe("Debian default path", () => {
 			"skills",
 			"agent-skills",
 			"paseo-server",
+			"axstack",
 			"paseo-profiles",
 			"hermes-relay",
 		]);
@@ -263,6 +266,18 @@ describe("Debian default path", () => {
 		expect(
 			events.findIndex(({ name }) => name === "paseo-server"),
 		).toBeLessThan(events.findIndex(({ name }) => name === "t3-code-server"));
+	});
+
+	it("reports Axstack failure without failing the remaining default setup", () => {
+		const { events, result } = runDefaultSetupWithSafeDoubles({
+			axstackResult: false,
+		});
+
+		expect(result).toBe(true);
+		expect(events).toContainEqual({
+			type: "warning",
+			message: expect.stringContaining("Axstack setup is incomplete"),
+		});
 	});
 
 	it("propagates a selected T3 Code setup failure", () => {
