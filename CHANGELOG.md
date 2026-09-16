@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 11.9.0 - 2026-09-16
 
 - Add `--axstack` and `--axstack-check`. `--axstack` downloads the pinned
   Axstack v0.8.0 release tarball, verifies its SHA-256 before any write,
