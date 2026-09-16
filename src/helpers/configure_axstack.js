@@ -49,7 +49,7 @@ function releaseVersionFromShim(shimPath) {
 		const pathVersion = content.match(
 			/\/releases\/([^/]+)\/package\/bin\/axstack\.js/,
 		)?.[1];
-		if (pathVersion) return pathVersion;
+		if (/^\d+(?:\.\d+)+$/.test(pathVersion ?? "")) return pathVersion;
 		const cliPath = content.match(
 			/["']?(\/[^"'\n]*\/package\/bin\/axstack\.js)["']?/,
 		)?.[1];
@@ -253,9 +253,14 @@ export async function checkAxstack(options = {}) {
 	};
 	const run = async (args) => {
 		if (!shim.present) return { ok: false, reason: "shim missing" };
-		const result = await runner(shimPath, args, {
-			env: { ...process.env, HOME: home },
-		});
+		let result;
+		try {
+			result = await runner(shimPath, args, {
+				env: { ...process.env, HOME: home },
+			});
+		} catch (error) {
+			return { ok: false, reason: error?.message ?? String(error) };
+		}
 		return {
 			ok: result.exitCode === 0,
 			reason:
