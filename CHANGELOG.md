@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 11.9.1 - 2026-09-17
 
 - Replace the Discord client with Vesktop in the package list, Discord URI
   handler, Omarchy workspace-4 launcher and window rules, and KDE activity/output
