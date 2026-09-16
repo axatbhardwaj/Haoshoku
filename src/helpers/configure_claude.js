@@ -104,14 +104,20 @@ function isTrackedByClaudeRepository(claudeDir, filePath) {
 }
 
 /** Install Claude Code CLI if not already present. */
-export async function installClaude() {
-	if (commandExists("claude")) {
+export async function installClaude({
+	commandExists: commandExistsImpl = commandExists,
+	run: runImpl = runCommand,
+} = {}) {
+	if (commandExistsImpl("claude")) {
 		log.info("Claude Code already installed.");
-		return;
+		return { ok: true, reason: "already installed" };
 	}
 
 	log.info("Installing Claude Code...");
-	await runCommand(`curl -fsSL ${CLAUDE_INSTALL_URL} | bash`);
+	if (!(await runImpl(`curl -fsSL ${CLAUDE_INSTALL_URL} | bash`))) {
+		return { ok: false, reason: "install command failed" };
+	}
+	return { ok: true, reason: "installed" };
 }
 
 /**
@@ -229,7 +235,10 @@ export async function backupClaudeConfig(options = {}) {
 }
 
 /** Install Claude Code CLI and deploy config (used by OS setup scripts). */
-export async function configureClaude() {
-	await installClaude();
-	await syncClaudeConfig();
+export async function configureClaude(options = {}) {
+	const { installOptions, ...syncOptions } = options;
+	const result = await installClaude(installOptions);
+	if (!result.ok) return result;
+	await syncClaudeConfig(syncOptions);
+	return result;
 }
