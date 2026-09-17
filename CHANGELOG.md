@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 11.10.0 - 2026-09-17
 
 - Add a single configurable shared agent profile in
   `configs/agent-profile/PROFILE.md`, deployed with `haoshoku --agents` to
