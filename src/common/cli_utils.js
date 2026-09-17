@@ -16,6 +16,8 @@ export const MODE_FLAGS = [
 	"claudeUpdate",
 	"codex",
 	"codexBackup",
+	"agents",
+	"agentsBackup",
 	"axstack",
 	"axstackCheck",
 	"serverT3Code",

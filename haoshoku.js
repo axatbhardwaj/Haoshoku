@@ -11,6 +11,10 @@ import {
 	syncAgentSkills,
 } from "./src/helpers/configure_agent_skills.js";
 import {
+	backupAgentsConfig,
+	syncAgentsConfig,
+} from "./src/helpers/configure_agents.js";
+import {
 	backupAudioConfig,
 	syncAudioConfig,
 } from "./src/helpers/configure_audio.js";
@@ -121,6 +125,14 @@ program
 	.option("--claude-update", "Redeploy the packaged Claude Code config")
 	.option("--codex", "Deploy Codex config (AGENTS.md) to ~/.codex/")
 	.option("--codex-backup", "Backup ~/.codex/AGENTS.md to configs/codex/")
+	.option(
+		"--agents",
+		"Deploy shared agent profile (PROFILE.md) to Claude, Codex, Opencode and Antigravity",
+	)
+	.option(
+		"--agents-backup",
+		"Backup live Claude profile to configs/agent-profile/PROFILE.md",
+	)
 	.option("--axstack", "Install or update the pinned Axstack release")
 	.option("--axstack-check", "Check Axstack release and harness setup")
 	.option(
@@ -319,6 +331,16 @@ async function runAction(options) {
 
 	if (options.codex) {
 		await syncCodexConfig();
+		return;
+	}
+
+	if (options.agentsBackup) {
+		await backupAgentsConfig();
+		return;
+	}
+
+	if (options.agents) {
+		await syncAgentsConfig();
 		return;
 	}
 

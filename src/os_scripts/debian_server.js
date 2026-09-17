@@ -11,6 +11,7 @@ import {
 	safeCopyFile,
 } from "../common/utils.js";
 import { syncAgentSkills } from "../helpers/configure_agent_skills.js";
+import { syncAgentsConfig } from "../helpers/configure_agents.js";
 import { configureAxstack } from "../helpers/configure_axstack.js";
 import { configureClaude } from "../helpers/configure_claude.js";
 import { configureClaudeRemoteControl } from "../helpers/configure_claude_remote_control.js";
@@ -295,6 +296,7 @@ export async function runDebianServerSetup({
 	configureAxstackImpl = configureAxstack,
 	configureClaudeImpl = configureClaude,
 	configureCodexImpl = configureCodex,
+	syncAgentsConfigImpl = syncAgentsConfig,
 } = {}) {
 	// SUDO PREFLIGHT: nearly every step shells out via `sudo`. Without a valid
 	// sudo session each one fails individually yet the run still reports
@@ -362,6 +364,13 @@ export async function runDebianServerSetup({
 	if (codexResult?.ok === false) {
 		log.warning(
 			`Codex CLI installation failed: ${codexResult.reason} — continuing without syncing Codex config.`,
+		);
+	}
+	try {
+		await syncAgentsConfigImpl();
+	} catch (error) {
+		log.warning(
+			`Shared agent profile sync failed (${error?.message ?? error}).`,
 		);
 	}
 	if (!(await configureSkills())) {

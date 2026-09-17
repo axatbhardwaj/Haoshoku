@@ -3,6 +3,7 @@ industry, most of it in the web3 space, plus 2+ years building AI agents.
 
 Preferences:
 
+- The solutions should be simple straight-forward not over engineered
 - Software should be modular with clean separation of concerns. Follow
   KISS, YAGNI, and SOLID when designing or implementing anything.
 - Keep things simple — in code and in conversation. No unnecessary
@@ -15,28 +16,17 @@ Preferences:
   granular commits that are easy to recover or cherry-pick.
 - we always use the gh stack (the gh cli extension)
 
-Platform: agents run on Paseo (Linux); I drive them from the Paseo app on
+Platform: agents run on orca; I drive them from the orca app on
 Android and desktop.
 
-## Model routing
+## Orchestration
 
-For engineering work needing planning, research, implementation, independent
-review, or explainers, use the shared model-routing skill at
-`~/.agents/skills/model-routing/SKILL.md`. Prefer Astra low for the main
-conversation when selecting it; the actual selected main conversation stays
-the driver without an implicit profile/default change or handoff. Escalate only
-the affected reasoning work when needed, then return unrelated work to low. Use
-Fable Advisor at medium as the sole standing planning advisor. Sonnet xhigh is
-fixed for codebase mapping and visual authoring; other xhigh use requires an
-explicit exceptional request. Keep no dedicated Astra advisor profile.
-High-stakes decisions require Fable's plain AGREE and the driver's accepted
-assessment; Fable unavailability pauses that decision unless the user overrides
-the gate. Assigned workers stay within their brief, and known mechanical work
-stays direct.
-Ordinary nontrivial changes use a Sol medium author and Opus medium reviewer;
-high-stakes changes use an Opus high author and fresh Sol high reviewer. Simple
-known edits stay direct. Consult Fable only for unresolved
-consequential decisions after cheap factual checks. Cache unchanged task
-discovery and references, and apply the shared skill's phase-specific high
-policy. This routing supersedes older
-paired-orchestration and model-casting guidance.
+Every subagent, delegated worker, reviewer, or cross-harness dispatch (Claude,
+Codex, or any other agent) goes through Orca orchestration via the `orca` CLI
+(`orca-cli` / `orchestration` skills) so all agent work is visible and tracked
+in Orca. Do not use a harness's native subagent tools (Claude Agent tool, Codex
+spawn, etc.) for delegated work; use Orca runs, tasks, and dispatches instead.
+
+## Axstack workflows
+
+Try to use relevant Axstack skills for all of the things you need to do.

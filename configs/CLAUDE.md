@@ -25,6 +25,7 @@ Template configuration files copied to user's `~/.config/` during setup.
 | `claude-remote-control/` | Claude Remote Control tmux supervisor + systemd user-unit template | Modifying persistent Claude sessions, restart behavior, or attach lifecycle |
 | `claude-stay-awake/` | Claude CLI sleep-inhibitor watcher and systemd user unit | Modifying suspend blocking or session detection |
 | `codex/`        | Codex compact personal policy | Modifying deployed Codex agent guidance   |
+| `agent-profile/` | Shared Orca profile (PROFILE.md) deployed to Claude, Codex, Opencode and Antigravity | Modifying the single configurable agent identity |
 | `agent-skills/` | Haoshoku-owned portable orchestration skills | Updating routing or review workflow policy |
 | `upstream-skills/` | Immutable third-party skill payloads with adjacent provenance and license records | Updating a pinned upstream skill revision without modifying vendor bytes |
 | `paseo/`        | Whitelist-only Paseo profile/provider policy | Updating managed orchestration profiles without credentials |

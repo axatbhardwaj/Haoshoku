@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- Add a single configurable shared agent profile in
+  `configs/agent-profile/PROFILE.md`, deployed with `haoshoku --agents` to
+  Claude (`~/.claude/CLAUDE.md`), Codex (`~/.codex/AGENTS.md`), Opencode
+  (`~/.config/opencode/AGENTS.md`), and Antigravity (`~/.gemini/GEMINI.md`),
+  with `haoshoku --agents-backup` for the reverse. Arch and Debian default
+  setups sync it after the Codex step. The Claude/Codex bundles now carry the
+  same Orca-based text.
+
 ## 11.9.1 - 2026-09-17
 
 - Replace the Discord client with Vesktop in the package list, Discord URI

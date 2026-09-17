@@ -12,6 +12,7 @@ import {
 	startSudoSession,
 } from "../common/utils.js";
 import { syncAgentSkills } from "../helpers/configure_agent_skills.js";
+import { syncAgentsConfig } from "../helpers/configure_agents.js";
 import { configureAudio } from "../helpers/configure_audio.js";
 import { configureAxstack } from "../helpers/configure_axstack.js";
 import { configureBash } from "../helpers/configure_bash.js";
@@ -551,6 +552,7 @@ export async function configureUserApps({
 	configurePrWatchImpl = configurePrWatch,
 	syncWorktreeCleanupImpl = syncWorktreeCleanup,
 	configureCodexImpl = configureCodex,
+	syncAgentsConfigImpl = syncAgentsConfig,
 	configureAxstackImpl = configureAxstack,
 	configureSkillsImpl = configureSkills,
 	syncAgentSkillsImpl = syncAgentSkills,
@@ -624,6 +626,13 @@ export async function configureUserApps({
 	if (codexResult?.ok === false) {
 		log.warning(
 			`Codex CLI installation failed: ${codexResult.reason} — continuing without syncing Codex config.`,
+		);
+	}
+	try {
+		await syncAgentsConfigImpl();
+	} catch (error) {
+		log.warning(
+			`Shared agent profile sync failed (${error?.message ?? error}).`,
 		);
 	}
 	let axstackResult = { ok: false };
