@@ -41,6 +41,7 @@ describe("user app configuration", () => {
 			configurePrWatchImpl: record("pr-watch"),
 			syncWorktreeCleanupImpl: record("worktree-cleanup"),
 			configureCodexImpl: record("codex"),
+			syncAgentsConfigImpl: record("agents"),
 			configureAxstackImpl: async () => {
 				events.push("axstack");
 				return { ok: true };
@@ -63,6 +64,7 @@ describe("user app configuration", () => {
 			"stay-awake",
 			"pr-watch",
 			"codex",
+			"agents",
 			"axstack",
 			"skills",
 			"agent-skills",
@@ -100,6 +102,7 @@ describe("user app configuration", () => {
 					ok: false,
 					reason: "registry unavailable",
 				}),
+				syncAgentsConfigImpl: noop,
 				configureAxstackImpl: async () => ({ ok: true }),
 				configureSkillsImpl: async () => true,
 				syncAgentSkillsImpl: async () => true,
@@ -107,10 +110,14 @@ describe("user app configuration", () => {
 			});
 
 			expect(warnings).toContainEqual(
-				expect.stringContaining("Claude CLI installation failed: install command failed"),
+				expect.stringContaining(
+					"Claude CLI installation failed: install command failed",
+				),
 			);
 			expect(warnings).toContainEqual(
-				expect.stringContaining("Codex CLI installation failed: registry unavailable"),
+				expect.stringContaining(
+					"Codex CLI installation failed: registry unavailable",
+				),
 			);
 		} finally {
 			log.warning = originalWarning;

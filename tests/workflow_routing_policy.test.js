@@ -93,16 +93,17 @@ describe("accepted workflow routing policy", () => {
 		expect(babysit).toContain("Watchdog | `pr-watchdog`");
 	});
 
-	it("keeps bundled global templates aligned with the shared pair contract", () => {
+	it("keeps bundled global templates aligned with the shared agent profile", () => {
+		const profile = compact(read("configs/agent-profile/PROFILE.md"));
 		for (const relativePath of [
 			"configs/codex/AGENTS.md",
 			"configs/claude/CLAUDE.md",
 		]) {
 			const template = compact(read(relativePath));
-			expect(template, relativePath).toContain("Sol medium author");
-			expect(template, relativePath).toContain("Opus medium reviewer");
-			expect(template, relativePath).toContain("Opus high author");
-			expect(template, relativePath).toContain("fresh Sol high reviewer");
+			expect(template, relativePath).toBe(profile);
+			expect(template, relativePath).toContain("Orca orchestration");
+			expect(template, relativePath).toContain("Axstack workflows");
+			expect(template, relativePath).toContain("gh stack");
 		}
 	});
 });

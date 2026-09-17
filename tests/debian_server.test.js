@@ -79,6 +79,7 @@ function runDefaultSetupWithSafeDoubles({
 				return promptAnswers.has(message);
 			},
 			runCommand: async () => true,
+			portabilizeHome: (content) => content,
 			safeCopyFile() {},
 		}));
 		mock.module(${JSON.stringify(modulePath("src/common/ui.js"))}, () => ({
@@ -94,6 +95,7 @@ function runDefaultSetupWithSafeDoubles({
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_pr_watch.js"))}, () => ({ configurePrWatch: record("pr-watch") }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_worktree_cleanup.js"))}, () => ({ syncWorktreeCleanup: record("worktree-cleanup") }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_codex.js"))}, () => ({ configureCodex: record("codex", ${JSON.stringify(codexResult)}) }));
+		mock.module(${JSON.stringify(modulePath("src/helpers/configure_agents.js"))}, () => ({ syncAgentsConfig: record("agents", true) }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_axstack.js"))}, () => ({ configureAxstack: record("axstack", { ok: ${JSON.stringify(axstackResult)} }) }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_skills.js"))}, () => ({ configureSkills: record("skills", true) }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_agent_skills.js"))}, () => ({ syncAgentSkills: record("agent-skills", true) }));
@@ -247,6 +249,7 @@ describe("Debian default path", () => {
 			"pr-watch",
 			"worktree-cleanup",
 			"codex",
+			"agents",
 			"skills",
 			"agent-skills",
 			"paseo-server",

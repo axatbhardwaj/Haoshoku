@@ -23,6 +23,7 @@ function userAppDoubles(overrides = {}) {
 		configurePrWatchImpl: async () => {},
 		syncWorktreeCleanupImpl: async () => {},
 		configureCodexImpl: async () => {},
+		syncAgentsConfigImpl: async () => {},
 		configureAxstackImpl: async () => ({ ok: true }),
 		configureSkillsImpl: async () => true,
 		syncAgentSkillsImpl: async () => true,

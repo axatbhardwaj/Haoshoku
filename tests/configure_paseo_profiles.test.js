@@ -892,21 +892,15 @@ describe("Paseo orchestration policy", () => {
 		for (const relativePath of [
 			"configs/codex/AGENTS.md",
 			"configs/claude/CLAUDE.md",
+			"configs/agent-profile/PROFILE.md",
 		]) {
 			const instructions = fs.readFileSync(
 				path.join(import.meta.dir, "..", relativePath),
 				"utf8",
 			);
-			expect(instructions).toContain("Prefer Astra low");
-			expect(instructions).toContain("sole standing planning advisor");
-			expect(instructions).toContain("Fable Advisor at medium");
-			expect(instructions).toContain("Sonnet xhigh is");
-			expect(instructions.replace(/\s+/g, " ")).toContain(
-				"other xhigh use requires an explicit exceptional request",
-			);
-			expect(instructions).toContain("Fable's plain AGREE");
-			expect(instructions).toContain("unless the user overrides");
-			expect(instructions).toContain("actual selected main conversation");
+			expect(instructions).toContain("Orca orchestration");
+			expect(instructions).toContain("Axstack workflows");
+			expect(instructions).toContain("gh stack");
 			expect(instructions).not.toContain("technical-advisor");
 		}
 		expect(readme).toContain("Fable's plain AGREE");

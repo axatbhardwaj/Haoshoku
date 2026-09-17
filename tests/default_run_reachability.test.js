@@ -199,6 +199,7 @@ function runArchDefaultPath() {
 					configurePrWatchImpl: record("prWatch"),
 					syncWorktreeCleanupImpl: record("worktreeCleanup"),
 					configureCodexImpl: record("codex"),
+					syncAgentsConfigImpl: record("agents", true),
 					configureAxstackImpl: record("axstack", { ok: true }),
 					configureSkillsImpl: record("skills", true),
 					syncAgentSkillsImpl: record("agentSkills", true),
@@ -276,6 +277,9 @@ function runDebianDefaultPath() {
 			}));
 			mock.module(${JSON.stringify(helperPath("configure_codex.js"))}, () => ({
 				configureCodex: record("codex"),
+			}));
+			mock.module(${JSON.stringify(helperPath("configure_agents.js"))}, () => ({
+				syncAgentsConfig: record("agents", true),
 			}));
 			mock.module(${JSON.stringify(helperPath("configure_axstack.js"))}, () => ({
 				configureAxstack: record("axstack", { ok: true }),
@@ -363,6 +367,7 @@ function userAppDoubles(overrides = {}) {
 		configurePrWatchImpl: async () => {},
 		syncWorktreeCleanupImpl: async () => {},
 		configureCodexImpl: async () => {},
+		syncAgentsConfigImpl: async () => {},
 		configureAxstackImpl: async () => ({ ok: true }),
 		configureSkillsImpl: async () => true,
 		syncAgentSkillsImpl: async () => true,
