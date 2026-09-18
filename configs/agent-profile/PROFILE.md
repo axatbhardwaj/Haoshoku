@@ -30,3 +30,13 @@ spawn, etc.) for delegated work; use Orca runs, tasks, and dispatches instead.
 ## Axstack workflows
 
 Try to use relevant Axstack skills for all of the things you need to do.
+
+## Notifications
+
+Standing instruction: when a run you drive (a) ends a turn parked on my
+decision, (b) reaches merge-ready for the next PR awaiting merge or is fully
+merged (at most two such messages per run), or (c) hits a serious-risk hold,
+send me one compact Telegram message through the `axstack-relay` skill
+(`hermes`, home channel). Never send progress or heartbeats. Record this as
+the run's Notification policy. Deduplicate through `axstack-relay`; act in
+Orca/GitHub; a failed or uncertain delivery preserves the hold.
