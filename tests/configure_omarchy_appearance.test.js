@@ -5,6 +5,7 @@ import path from "node:path";
 
 import { configureOmarchyAppearance } from "../src/helpers/configure_omarchy_appearance.js";
 
+const SHIPPED_REVISION = "85932710c7455cfa83b2ec4dea4179d7cf03bfc2";
 const REVISION = "e7600f5e2bf248ee976059f9a11a13c4856f7138";
 const LEGACY_REVISION = "42845dc048632425bc566b993f25145f05e840f1";
 const PRIOR_REVISION = "29356fb68d2070d847a259de0f310b055df55823";
@@ -75,12 +76,13 @@ describe("Omarchy appearance configurator", () => {
 				"utf8",
 			),
 		);
-		expect(shippedManifest.theme.revision).toBe(REVISION);
-		expect(shippedManifest.theme.legacyRevisions).toEqual([
-			LEGACY_REVISION,
-			PRIOR_REVISION,
-			GLASS_REVISION,
-		]);
+		expect(shippedManifest.theme.name).toBe("aurora");
+		expect(shippedManifest.theme.repository).toBe(
+			"https://github.com/axatbhardwaj/omarchy-aurora-theme.git",
+		);
+		expect(shippedManifest.theme.revision).toBe(SHIPPED_REVISION);
+		expect(shippedManifest.theme.legacyRevisions).toEqual([]);
+		expect(shippedManifest.background).toBe("0-aurora-lake.jpg");
 	});
 
 	it("installs the pinned theme and applies its background and font", async () => {
