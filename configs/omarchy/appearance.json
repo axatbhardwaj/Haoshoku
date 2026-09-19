@@ -3,7 +3,7 @@
 	"theme": {
 		"name": "aurora",
 		"repository": "https://github.com/axatbhardwaj/omarchy-aurora-theme.git",
-		"revision": "85932710c7455cfa83b2ec4dea4179d7cf03bfc2",
+		"revision": "03a74adc11c97e307f96396626327d7507c7b89c",
 		"legacyRevisions": []
 	},
 	"background": "0-aurora-lake.jpg",
