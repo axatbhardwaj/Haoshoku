@@ -102,7 +102,7 @@ describe("haoshoku-special-workspace", () => {
 	let chromium;
 	let claudeDesktop;
 	let codexDesktop;
-	let kittyCall;
+	let ghosttyCall;
 	let paseo;
 	let focusedMonitorState;
 	let specialMonitorState;
@@ -116,7 +116,7 @@ describe("haoshoku-special-workspace", () => {
 		chromium = path.join(directory, "brave-origin");
 		claudeDesktop = path.join(directory, ["claude", "desktop"].join("-"));
 		codexDesktop = path.join(directory, ["codex", "desktop"].join("-"));
-		kittyCall = path.join(directory, "kitty-call");
+		ghosttyCall = path.join(directory, "ghostty-call");
 		paseo = path.join(directory, "paseo");
 		focusedMonitorState = path.join(directory, "focused-monitor-state");
 		specialMonitorState = path.join(directory, "special-monitor-state");
@@ -266,9 +266,9 @@ exec "$@"
 `,
 		);
 		fs.writeFileSync(
-			path.join(directory, "kitty"),
+			path.join(directory, "ghostty"),
 			`#!/usr/bin/env bash
-printf '%s\\0' "$@" > "$KITTY_CALL"
+printf '%s\\0' "$@" > "$GHOSTTY_CALL"
 `,
 		);
 		fs.writeFileSync(
@@ -318,7 +318,7 @@ esac
 		fs.chmodSync(hyprctl, 0o755);
 		fs.chmodSync(claudeDesktop, 0o755);
 		fs.chmodSync(codexDesktop, 0o755);
-		fs.chmodSync(path.join(directory, "kitty"), 0o755);
+		fs.chmodSync(path.join(directory, "ghostty"), 0o755);
 		fs.chmodSync(paseo, 0o755);
 		fs.chmodSync(path.join(directory, "omakade"), 0o755);
 		fs.chmodSync(chromium, 0o755);
@@ -366,7 +366,7 @@ esac
 				BROWSER_CALL: browserCall,
 				CALL_LOG: log,
 				FOCUSED_MONITOR_STATE: focusedMonitorState,
-				KITTY_CALL: kittyCall,
+				GHOSTTY_CALL: ghosttyCall,
 				LIVE_MONITORS: liveMonitors.join(" "),
 				RAW_DISPATCH_LOG: rawDispatchLog,
 				SPECIAL_STATE: specialState,
@@ -393,11 +393,23 @@ esac
 			: [];
 	}
 
-	function kittyArguments() {
-		if (!fs.existsSync(kittyCall)) return null;
-		const argv = fs.readFileSync(kittyCall, "utf8").split("\0");
+	function ghosttyArguments() {
+		if (!fs.existsSync(ghosttyCall)) return null;
+		const argv = fs.readFileSync(ghosttyCall, "utf8").split("\0");
 		if (argv.at(-1) === "") argv.pop();
 		return argv;
+	}
+
+	function hakiTmuxScript() {
+		return `tmux kill-session -t haoshoku-haki 2>/dev/null; tmux new-session -s haoshoku-haki '${directory}/.local/bin/haoshoku-claude-local' \\; split-window -v 'codex' \\; select-pane -t 0`;
+	}
+
+	function agentsTmuxScript() {
+		return `tmux kill-session -t haoshoku-agents 2>/dev/null; tmux new-session -s haoshoku-agents 'claude -r io' \\; split-window -v 'codex' \\; select-pane -t 0`;
+	}
+
+	function splitTmuxScript(recipe) {
+		return recipe === "haki" ? hakiTmuxScript() : agentsTmuxScript();
 	}
 
 	it("opens music on the focused monitor without leaving its special workspace", async () => {
@@ -474,9 +486,9 @@ fi
 
 	const fluxClient = JSON.stringify([{ class: "chromium-flux" }]);
 	const hakiClient = JSON.stringify([
-		kittyClient("0xhaki", "special:haki", "haoshoku-haki"),
+		ghosttyClient("0xhaki", "special:haki", "haoshoku-haki"),
 	]);
-	function kittyClient(address, workspace, className) {
+	function ghosttyClient(address, workspace, className) {
 		return {
 			address,
 			class: className,
@@ -490,12 +502,12 @@ fi
 
 	it("uses Omarchy v4 Lua expressions for every dispatch family", async () => {
 		const strictDispatch = { env: { STRICT_V4_DISPATCH: "true" } };
-		const numbered = await run(["numbered", "7", "kitty"], strictDispatch);
+		const numbered = await run(["numbered", "7", "ghostty"], strictDispatch);
 		const assistants = await run(["assistants"], {
 			...strictDispatch,
 			clients: JSON.stringify([
-				kittyClient("0xcodex", "1", "chatgpt"),
-				kittyClient("0xclaude", "special:assistants", claudeClass),
+				ghosttyClient("0xcodex", "1", "chatgpt"),
+				ghosttyClient("0xclaude", "special:assistants", claudeClass),
 			]),
 		});
 		const stash = await run(["stash"], strictDispatch);
@@ -507,7 +519,7 @@ fi
 		expect(rawDispatchExpressions()).toEqual([
 			'hl.dsp.focus({ workspace = "7" })',
 			`hl.dsp.exec_cmd(${JSON.stringify(
-				`[workspace 7 silent] uwsm-app -- kitty --class haoshoku-ws7 -d ${directory} `,
+				`[workspace 7 silent] uwsm-app -- ghostty --class=haoshoku-ws7 --working-directory=${directory} `,
 			)})`,
 			'hl.dsp.workspace.toggle_special("assistants")',
 			'hl.dsp.window.move({ workspace = "special:assistants", window = "address:0xcodex", follow = false })',
@@ -521,7 +533,7 @@ fi
 		const unusualHome = path.join(directory, 'home"\\edge');
 		fs.mkdirSync(unusualHome);
 
-		const result = await run(["numbered", workspace, "kitty"], {
+		const result = await run(["numbered", workspace, "ghostty"], {
 			env: { HOME: unusualHome, STRICT_V4_DISPATCH: "true" },
 		});
 		const [focusExpression, execExpression] = rawDispatchExpressions();
@@ -534,7 +546,7 @@ fi
 		expect(result.exitCode).toBe(0);
 		expect(JSON.parse(focusValue)).toBe(workspace);
 		expect(JSON.parse(execValue)).toContain(
-			`[workspace ${workspace} silent] uwsm-app -- kitty --class`,
+			`[workspace ${workspace} silent] uwsm-app -- ghostty --class=`,
 		);
 		expect(JSON.parse(execValue)).toContain(
 			unusualHome.replace(/(["\\])/g, "\\$1"),
@@ -1889,147 +1901,141 @@ printf 'signal-desktop\\n' >> "$CALL_LOG"
 		expect(dispatchCalls()).toContain("signal-desktop");
 	});
 
-	// Exact class plus target workspace is Kitty's ownership contract. A matching
+	// Exact class plus target workspace is Ghostty's ownership contract. A matching
 	// client stays put; the same class elsewhere is reclaimed by its address.
-	it("keeps an owned Kitty in place and reclaims only its stranded address", async () => {
-		const owned = kittyClient("0xowned", "7", "haoshoku-ws7");
-		const inPlace = await run(["numbered", "7", "kitty"], {
+	it("keeps an owned Ghostty in place and reclaims only its stranded address", async () => {
+		const owned = ghosttyClient("0xowned", "7", "haoshoku-ws7");
+		const inPlace = await run(["numbered", "7", "ghostty"], {
 			clientsState: JSON.stringify([
 				owned,
-				kittyClient("0xother", "7", "kitty"),
+				ghosttyClient("0xother", "7", "ghostty"),
 			]),
 		});
 
 		expect(inPlace.exitCode).toBe(0);
-		expect(kittyArguments()).toBeNull();
+		expect(ghosttyArguments()).toBeNull();
 		expect(dispatchCalls()).toEqual(["dispatch workspace 7"]);
 
 		fs.rmSync(log, { force: true });
-		const stranded = await run(["numbered", "7", "kitty"], {
+		const stranded = await run(["numbered", "7", "ghostty"], {
 			clientsState: JSON.stringify([
 				{ ...owned, workspace: { name: "special:stash" } },
-				kittyClient("0xother", "7", "kitty"),
+				ghosttyClient("0xother", "7", "ghostty"),
 			]),
 		});
 
 		expect(stranded.exitCode).toBe(0);
-		expect(kittyArguments()).toBeNull();
+		expect(ghosttyArguments()).toBeNull();
 		expect(dispatchCalls()).toEqual([
 			"dispatch workspace 7",
 			"dispatch movetoworkspacesilent 7,address:0xowned",
 		]);
 	});
 
-	it("launches its owned numbered Kitty instead of adopting unrelated Kitty classes", async () => {
-		const result = await run(["numbered-login", "8", "kitty"], {
+	it("launches its owned numbered Ghostty instead of adopting unrelated Ghostty classes", async () => {
+		const result = await run(["numbered-login", "8", "ghostty"], {
 			clientsState: JSON.stringify([
-				kittyClient("0xplain", "8", "kitty"),
-				kittyClient("0xother-owner", "8", "haoshoku-ws7"),
-				kittyClient("0xelsewhere", "9", "kitty"),
+				ghosttyClient("0xplain", "8", "ghostty"),
+				ghosttyClient("0xother-owner", "8", "haoshoku-ws7"),
+				ghosttyClient("0xelsewhere", "9", "com.mitchellh.ghostty"),
 			]),
 		});
 
 		expect(result.exitCode).toBe(0);
-		expect(kittyArguments()).toEqual([
-			"--class",
-			"haoshoku-ws8",
-			"-d",
-			directory,
+		expect(ghosttyArguments()).toEqual([
+			"--class=haoshoku-ws8",
+			`--working-directory=${directory}`,
 		]);
 		expect(dispatchCalls()).toEqual([
-			`dispatch exec [workspace 8 silent] uwsm-app -- kitty --class haoshoku-ws8 -d ${directory}`,
+			`dispatch exec [workspace 8 silent] uwsm-app -- ghostty --class=haoshoku-ws8 --working-directory=${directory}`,
 		]);
 	});
 
-	it("does not treat multiple unrelated Kitty windows as owned", async () => {
-		const result = await run(["numbered-login", "8", "kitty"], {
+	it("does not treat multiple unrelated Ghostty windows as owned", async () => {
+		const result = await run(["numbered-login", "8", "ghostty"], {
 			clientsState: JSON.stringify([
-				kittyClient("0xplain-one", "8", "kitty"),
-				kittyClient("0xplain-two", "8", "kitty"),
+				ghosttyClient("0xplain-one", "8", "ghostty"),
+				ghosttyClient("0xplain-two", "8", "ghostty"),
 			]),
 		});
 
 		expect(result.exitCode).toBe(0);
-		expect(kittyArguments()).toEqual([
-			"--class",
-			"haoshoku-ws8",
-			"-d",
-			directory,
+		expect(ghosttyArguments()).toEqual([
+			"--class=haoshoku-ws8",
+			`--working-directory=${directory}`,
 		]);
 		expect(dispatchCalls()).toHaveLength(1);
 		expect(dispatchCalls()[0]).toContain(
-			"dispatch exec [workspace 8 silent] uwsm-app -- kitty --class haoshoku-ws8",
+			"dispatch exec [workspace 8 silent] uwsm-app -- ghostty --class=haoshoku-ws8",
 		);
 	});
 
-	it("launches a missing numbered Kitty once and is idempotent after it appears", async () => {
-		const first = await run(["numbered", "7", "kitty"], {
+	it("launches a missing numbered Ghostty once and is idempotent after it appears", async () => {
+		const first = await run(["numbered", "7", "ghostty"], {
 			clientsState: "[]",
 		});
 
 		expect(first.exitCode).toBe(0);
-		expect(kittyArguments()).toEqual([
-			"--class",
-			"haoshoku-ws7",
-			"-d",
-			directory,
+		expect(ghosttyArguments()).toEqual([
+			"--class=haoshoku-ws7",
+			`--working-directory=${directory}`,
 		]);
 		expect(dispatchCalls()).toEqual([
 			"dispatch workspace 7",
-			`dispatch exec [workspace 7 silent] uwsm-app -- kitty --class haoshoku-ws7 -d ${directory}`,
+			`dispatch exec [workspace 7 silent] uwsm-app -- ghostty --class=haoshoku-ws7 --working-directory=${directory}`,
 		]);
 
 		fs.rmSync(log, { force: true });
-		fs.rmSync(kittyCall, { force: true });
-		const repeated = await run(["numbered-login", "7", "kitty"], {
+		fs.rmSync(ghosttyCall, { force: true });
+		const repeated = await run(["numbered-login", "7", "ghostty"], {
 			clientsState: JSON.stringify([
-				kittyClient("0xowned", "7", "haoshoku-ws7"),
+				ghosttyClient("0xowned", "7", "haoshoku-ws7"),
 			]),
 		});
 
 		expect(repeated.exitCode).toBe(0);
-		expect(kittyArguments()).toBeNull();
+		expect(ghosttyArguments()).toBeNull();
 		expect(fs.existsSync(log)).toBe(false);
 	});
 
-	it("reclaims only the first same-class Kitty stray without launching", async () => {
-		const result = await run(["numbered-login", "7", "kitty"], {
+	it("reclaims only the first same-class Ghostty stray without launching", async () => {
+		const result = await run(["numbered-login", "7", "ghostty"], {
 			clientsState: JSON.stringify([
-				kittyClient("0xfirst", "special:stash", "haoshoku-ws7"),
-				kittyClient("0xsecond", "9", "haoshoku-ws7"),
+				ghosttyClient("0xfirst", "special:stash", "haoshoku-ws7"),
+				ghosttyClient("0xsecond", "9", "haoshoku-ws7"),
 			]),
 		});
 
 		expect(result.exitCode).toBe(0);
-		expect(kittyArguments()).toBeNull();
+		expect(ghosttyArguments()).toBeNull();
 		expect(dispatchCalls()).toEqual([
 			"dispatch movetoworkspacesilent 7,address:0xfirst",
 		]);
 	});
 
-	it("fails closed when the Kitty client probe is malformed", async () => {
-		const result = await run(["numbered-login", "7", "kitty"], {
+	it("fails closed when the Ghostty client probe is malformed", async () => {
+		const result = await run(["numbered-login", "7", "ghostty"], {
 			clientsState: "not json",
 		});
 
 		expect(result.exitCode).toBe(0);
-		expect(kittyArguments()).toBeNull();
+		expect(ghosttyArguments()).toBeNull();
 		expect(fs.existsSync(log)).toBe(false);
 	});
 
-	it("keeps Haki and agents ownership distinct by exact Kitty class", async () => {
+	it("keeps Haki and agents ownership distinct by exact Ghostty class", async () => {
 		const clients = JSON.stringify([
-			kittyClient("0xhaki", "special:haki", "haoshoku-haki"),
-			kittyClient("0xagents", "special:agents", "haoshoku-agents"),
+			ghosttyClient("0xhaki", "special:haki", "haoshoku-haki"),
+			ghosttyClient("0xagents", "special:agents", "haoshoku-agents"),
 		]);
 		for (const recipe of ["haki", "agents"]) {
 			fs.rmSync(log, { force: true });
-			fs.rmSync(kittyCall, { force: true });
+			fs.rmSync(ghosttyCall, { force: true });
 			fs.rmSync(specialState, { force: true });
 			const result = await run([recipe], { clients });
 
 			expect(result.exitCode, recipe).toBe(0);
-			expect(kittyArguments(), recipe).toBeNull();
+			expect(ghosttyArguments(), recipe).toBeNull();
 			expect(dispatchCalls(), recipe).toEqual([
 				"dispatch focusmonitor DP-2",
 				`dispatch togglespecialworkspace ${recipe}`,
@@ -2037,122 +2043,109 @@ printf 'signal-desktop\\n' >> "$CALL_LOG"
 		}
 	});
 
-	it("does not let a case-variant Kitty class suppress the Haki launch", async () => {
+	it("does not let a case-variant Ghostty class suppress the Haki launch", async () => {
 		const result = await run(["haki"], {
 			clientsState: JSON.stringify([
-				kittyClient("0xdecoy", "special:haki", "Haoshoku-Haki"),
+				ghosttyClient("0xdecoy", "special:haki", "Haoshoku-Haki"),
 			]),
 		});
 
 		expect(result.exitCode).toBe(0);
-		expect(kittyArguments()).toEqual([
-			"--class",
-			"haoshoku-haki",
-			"--title",
-			"haki",
-			"--session",
-			`${directory}/.config/kitty/haki.session`,
+		expect(ghosttyArguments()).toEqual([
+			"--class=haoshoku-haki",
+			"--title=haki",
+			"-e",
+			"sh",
+			"-c",
+			hakiTmuxScript(),
 		]);
 	});
 
-	it("does not claim a Kitty owned by another Haoshoku class", async () => {
-		const result = await run(["numbered-login", "7", "kitty"], {
+	it("does not claim a Ghostty owned by another Haoshoku class", async () => {
+		const result = await run(["numbered-login", "7", "ghostty"], {
 			clientsState: JSON.stringify([
-				kittyClient("0xforeign", "7", "haoshoku-agents"),
+				ghosttyClient("0xforeign", "7", "haoshoku-agents"),
 			]),
 		});
 
 		expect(result.exitCode).toBe(0);
-		expect(kittyArguments()).toEqual([
-			"--class",
-			"haoshoku-ws7",
-			"-d",
-			directory,
+		expect(ghosttyArguments()).toEqual([
+			"--class=haoshoku-ws7",
+			`--working-directory=${directory}`,
 		]);
 		expect(dispatchCalls()).toHaveLength(1);
 		expect(dispatchCalls()[0]).toContain(
-			"dispatch exec [workspace 7 silent] uwsm-app -- kitty --class haoshoku-ws7",
+			"dispatch exec [workspace 7 silent] uwsm-app -- ghostty --class=haoshoku-ws7",
 		);
 	});
 
-	it("uses distinct Haki and agents Kitty classes and sessions", async () => {
-		for (const { recipe, className, session } of [
-			{
-				recipe: "haki",
-				className: "haoshoku-haki",
-				session: "haki.session",
-			},
-			{
-				recipe: "agents",
-				className: "haoshoku-agents",
-				session: "agents.session",
-			},
+	it("uses distinct Haki and agents Ghostty classes and tmux splits", async () => {
+		for (const { recipe, className } of [
+			{ recipe: "haki", className: "haoshoku-haki" },
+			{ recipe: "agents", className: "haoshoku-agents" },
 		]) {
 			fs.rmSync(log, { force: true });
-			fs.rmSync(kittyCall, { force: true });
+			fs.rmSync(ghosttyCall, { force: true });
 			fs.rmSync(specialState, { force: true });
 			const result = await run([recipe], { clientsState: "[]" });
 
 			expect(result.exitCode, recipe).toBe(0);
-			expect(kittyArguments(), recipe).toEqual([
-				"--class",
-				className,
-				"--title",
-				recipe,
-				"--session",
-				`${directory}/.config/kitty/${session}`,
+			expect(ghosttyArguments(), recipe).toEqual([
+				`--class=${className}`,
+				`--title=${recipe}`,
+				"-e",
+				"sh",
+				"-c",
+				splitTmuxScript(recipe),
 			]);
-			expect(dispatchCalls(), recipe).toEqual([
+			const calls = dispatchCalls();
+			expect(calls.slice(0, 2), recipe).toEqual([
 				"dispatch focusmonitor DP-2",
 				`dispatch togglespecialworkspace ${recipe}`,
-				`dispatch exec [workspace special:${recipe} silent] uwsm-app -- kitty --class ${className} --title ${recipe} --session ${directory}/.config/kitty/${session}`,
 			]);
+			expect(calls, recipe).toHaveLength(3);
+			expect(calls[2], recipe).toContain("ghostty");
+			expect(calls[2], recipe).toContain(`--class=${className}`);
+			expect(calls[2], recipe).toContain("tmux");
+			expect(calls[2], recipe).toContain("new-session");
 		}
 	});
 
-	it("launches named Kitty sessions instead of adopting a plain Kitty", async () => {
-		for (const { recipe, className, session } of [
-			{
-				recipe: "haki",
-				className: "haoshoku-haki",
-				session: "haki.session",
-			},
-			{
-				recipe: "agents",
-				className: "haoshoku-agents",
-				session: "agents.session",
-			},
+	it("launches named Ghostty splits instead of adopting a plain Ghostty", async () => {
+		for (const { recipe, className } of [
+			{ recipe: "haki", className: "haoshoku-haki" },
+			{ recipe: "agents", className: "haoshoku-agents" },
 		]) {
 			fs.rmSync(log, { force: true });
-			fs.rmSync(kittyCall, { force: true });
+			fs.rmSync(ghosttyCall, { force: true });
 			fs.rmSync(specialState, { force: true });
 			const result = await run([recipe], {
 				clientsState: JSON.stringify([
-					kittyClient("0xplain", `special:${recipe}`, "kitty"),
+					ghosttyClient("0xplain", `special:${recipe}`, "com.mitchellh.ghostty"),
 				]),
 			});
 
 			expect(result.exitCode, recipe).toBe(0);
-			expect(kittyArguments(), recipe).toEqual([
-				"--class",
-				className,
-				"--title",
-				recipe,
-				"--session",
-				`${directory}/.config/kitty/${session}`,
+			expect(ghosttyArguments(), recipe).toEqual([
+				`--class=${className}`,
+				`--title=${recipe}`,
+				"-e",
+				"sh",
+				"-c",
+				splitTmuxScript(recipe),
 			]);
 		}
 	});
 
-	it("reclaims a restored Haki Kitty instead of launching a duplicate", async () => {
+	it("reclaims a restored Haki Ghostty instead of launching a duplicate", async () => {
 		const result = await run(["haki"], {
 			clientsState: JSON.stringify([
-				kittyClient("0xrestored", "special:stash", "haoshoku-haki"),
+				ghosttyClient("0xrestored", "special:stash", "haoshoku-haki"),
 			]),
 		});
 
 		expect(result.exitCode).toBe(0);
-		expect(kittyArguments()).toBeNull();
+		expect(ghosttyArguments()).toBeNull();
 		expect(dispatchCalls()).toEqual([
 			"dispatch focusmonitor DP-2",
 			"dispatch togglespecialworkspace haki",
@@ -2220,6 +2213,34 @@ printf 'signal-desktop\\n' >> "$CALL_LOG"
 				Boolean(testCase.diagnostic),
 			);
 			expect(fs.existsSync(marker), testCase.name).toBe(false);
+		}
+	});
+
+	it("launches the Haki and agents tmux splits directly for desktop entries", async () => {
+		for (const { terminalRecipe, sourceRecipe, className } of [
+			{
+				terminalRecipe: "haki-terminal",
+				sourceRecipe: "haki",
+				className: "haoshoku-haki",
+			},
+			{
+				terminalRecipe: "agents-terminal",
+				sourceRecipe: "agents",
+				className: "haoshoku-agents",
+			},
+		]) {
+			fs.rmSync(ghosttyCall, { force: true });
+			const result = await run([terminalRecipe]);
+
+			expect(result.exitCode, terminalRecipe).toBe(0);
+			expect(ghosttyArguments(), terminalRecipe).toEqual([
+				`--class=${className}`,
+				`--title=${sourceRecipe}`,
+				"-e",
+				"sh",
+				"-c",
+				splitTmuxScript(sourceRecipe),
+			]);
 		}
 	});
 });

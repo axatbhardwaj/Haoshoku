@@ -83,7 +83,7 @@ describe("Omarchy Lua workspace behavior", () => {
 		}
 	});
 
-	it("starts login services and routes the owned Kitty workspace exactly", () => {
+	it("starts login services and routes the owned Ghostty workspace exactly", () => {
 		for (const overlay of [pc, laptop]) {
 			expect(overlay).toContain(
 				'o.exec_on_start("haoshoku-default-browser")',
@@ -93,7 +93,7 @@ describe("Omarchy Lua workspace behavior", () => {
 			).toHaveLength(1);
 			expect(overlay).toContain('o.exec_on_start("/usr/bin/kdeconnectd")');
 			expect(overlay).toContain(
-				'o.exec_on_start("haoshoku-special-workspace numbered-login 7 kitty")',
+				'o.exec_on_start("haoshoku-special-workspace numbered-login 7 ghostty")',
 			);
 			expect(overlay).toContain(
 				'o.exec_on_start("haoshoku-special-workspace numbered-login 2 steam")',

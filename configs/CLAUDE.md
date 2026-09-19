@@ -14,8 +14,7 @@ Template configuration files copied to user's `~/.config/` during setup.
 | Directory       | What                                | When to read                              |
 | --------------- | ----------------------------------- | ----------------------------------------- |
 | `alacritty/`    | Alacritty terminal config           | Modifying Alacritty settings              |
-| `kitty/`        | Primary terminal config and Haki/agents split sessions | Modifying terminal settings or split sessions |
-| `ghostty/`      | Retained legacy Ghostty config; installed but no longer deployed or wired to keybinds | Reviewing the former Ghostty setup |
+| `ghostty/`      | Primary terminal config (`config` includes the generated Omarchy theme) | Modifying terminal settings, opacity, or keybinds |
 | `fastfetch/`    | Fastfetch system info config        | Modifying system info display             |
 | `fish/`         | Fish shell config                   | Modifying shell behavior, aliases         |
 | `bash/`         | Portable interactive Bash additions loaded after Omarchy defaults | Modifying Bash initializers, aliases, or PATH additions |
@@ -26,7 +25,7 @@ Template configuration files copied to user's `~/.config/` during setup.
 | `claude-remote-control/` | Claude Remote Control tmux supervisor + systemd user-unit template | Modifying persistent Claude sessions, restart behavior, or attach lifecycle |
 | `claude-stay-awake/` | Claude CLI sleep-inhibitor watcher and systemd user unit | Modifying suspend blocking or session detection |
 | `codex/`        | Codex compact personal policy | Modifying deployed Codex agent guidance   |
-| `agent-profile/` | Shared Orca profile (PROFILE.md) deployed to Claude, Codex, Opencode and Antigravity | Modifying the single configurable agent identity |
+| `agent-profile/` | Shared Orca profile (PROFILE.md) deployed to Claude, Codex, Opencode and Antigravity, plus harness-specific appendices (e.g. GEMINI.append.md) | Modifying the single configurable agent identity |
 | `agent-skills/` | Haoshoku-owned portable orchestration skills | Updating routing or review workflow policy |
 | `upstream-skills/` | Immutable third-party skill payloads with adjacent provenance and license records | Updating a pinned upstream skill revision without modifying vendor bytes |
 | `paseo/`        | Whitelist-only Paseo profile/provider policy | Updating managed orchestration profiles without credentials |

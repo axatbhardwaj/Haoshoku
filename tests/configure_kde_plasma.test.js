@@ -43,9 +43,9 @@ describe("syncKdePlasma", () => {
 			.map((file) => fs.readFileSync(path.join(applications, file), "utf8"))
 			.join("\n");
 		expect(content).toContain("X-KDE-Shortcuts=Meta+T");
-		expect(content).toContain("Exec=kitty");
+		expect(content).toContain("Exec=ghostty");
 		expect(content).toContain(
-			"Exec=kitty --class=haoshoku-agents --title=agents --session=~/.config/kitty/agents.session",
+			"Exec=haoshoku-special-workspace agents-terminal",
 		);
 		expect(content).not.toContain("warp-terminal");
 		expect(content).toContain("Exec=dolphin");

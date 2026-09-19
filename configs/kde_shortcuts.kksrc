@@ -348,7 +348,7 @@ _launch=Meta+G
 [services][chrome-gdfaincndogidkdcdkhapmbffkckdkhn-Profile_5.desktop]
 _launch=Meta+G
 
-[services][kitty.desktop]
+[services][com.mitchellh.ghostty.desktop]
 _launch=Meta+Return
 
 [services][cursor-cursor.desktop]
@@ -361,6 +361,9 @@ _launch=Meta+C
 _launch=none
 
 [services][org.kde.konsole.desktop]
+_launch=none
+
+[services][kitty.desktop]
 _launch=none
 
 [slack]

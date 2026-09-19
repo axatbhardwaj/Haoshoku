@@ -255,7 +255,7 @@ describe("configureOmarchyWorkspaces", () => {
 		);
 		expect(calls).toEqual([
 			"hyprctl reload",
-			`'${script.replaceAll("'", "'\\''")}' numbered-login 7 kitty`,
+			`'${script.replaceAll("'", "'\\''")}' numbered-login 7 ghostty`,
 		]);
 		expect(result).toEqual(
 			expect.objectContaining({ reloaded: true, replayed: true }),

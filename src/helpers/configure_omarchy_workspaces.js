@@ -210,7 +210,7 @@ export async function configureOmarchyWorkspaces({
 		reloaded = Boolean(await runCommandImpl("hyprctl reload"));
 		replayed = Boolean(
 			await runCommandImpl(
-				`${shellEscape(scriptDestination)} numbered-login 7 kitty`,
+				`${shellEscape(scriptDestination)} numbered-login 7 ghostty`,
 			),
 		);
 	} else {

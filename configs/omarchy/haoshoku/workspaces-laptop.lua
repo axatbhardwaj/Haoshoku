@@ -11,7 +11,7 @@ hl.workspace_rule({ workspace = "9", persistent = true })
 hl.workspace_rule({ workspace = "10", persistent = true })
 
 o.exec_on_start("haoshoku-default-browser")
-o.exec_on_start("haoshoku-special-workspace numbered-login 7 kitty")
+o.exec_on_start("haoshoku-special-workspace numbered-login 7 ghostty")
 o.exec_on_start("haoshoku-special-workspace assistants")
 o.launch_on_start("/usr/bin/paseo")
 -- Hyprland does not process XDG autostart, so
@@ -93,8 +93,8 @@ o.bind(
 )
 o.bind(
   "SUPER + code:16",
-  "Workspace 7 and Kitty",
-  "haoshoku-special-workspace numbered 7 kitty"
+  "Workspace 7 and Ghostty",
+  "haoshoku-special-workspace numbered 7 ghostty"
 )
 o.bind(
   "SUPER + code:19",

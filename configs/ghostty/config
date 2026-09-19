@@ -1,0 +1,26 @@
+# Ghostty — primary terminal. It includes the generated Omarchy theme
+# (`~/.local/state/omarchy/current/theme/ghostty.conf`, rendered from
+# colors.toml on every `omarchy theme set`), which owns colours. This base
+# config owns background opacity, font, padding, decorations, and keybinds.
+
+config-file = ?"~/.local/state/omarchy/current/theme/ghostty.conf"
+
+# Font (Omarchy `font set` keeps these lines in sync, as with kitty.conf).
+font-family = 0xProto Nerd Font Mono
+font-size = 11
+
+# The generated theme carries no opacity. 0.70 keeps Kitty parity: glyphs stay
+# fully opaque while Hyprland blurs through the terminal background.
+background-opacity = 0.70
+
+# Hyprland tiles this window; a client-side titlebar would only waste rows.
+window-decoration = none
+window-padding-x = 4
+window-padding-y = 4
+
+# Claude Code: shift+enter inserts a newline without submitting.
+keybind = shift+enter=text:\x1b\r
+
+# Ghostty asks before closing a surface with a running process; kitty does not,
+# and this is a tiling setup where windows get closed constantly.
+confirm-close-surface = false

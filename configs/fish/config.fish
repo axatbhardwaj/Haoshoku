@@ -55,7 +55,7 @@ if status is-interactive
     abbr la 'ls -a'
     abbr lla 'ls -la'
 
-    if not test -r ~/.local/state/omarchy/current/theme/kitty.conf
+    if not test -r ~/.local/state/omarchy/current/theme/ghostty.conf
         cat ~/.local/state/caelestia/sequences.txt 2>/dev/null
     end
 

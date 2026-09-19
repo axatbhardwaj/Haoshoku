@@ -116,11 +116,11 @@ the live copy with the saved policy instead of reverting it. `SUPER+2` uses
 `numbered 2 omakade`. Do not bind `numbered 2 steam` to the workspace switch;
 `SUPER+SHIFT+G` remains the toggle that ensures Steam.
 
-Workspace 7 uses the `haoshoku-special-workspace numbered 7 kitty` recipe. The
+Workspace 7 uses the `haoshoku-special-workspace numbered 7 ghostty` recipe. The
 exact `haoshoku-ws7` class identifies its owned window; the startup call and the
-post-reload helper use `numbered-login 7 kitty`. Haki and agents use their own
-exact Kitty classes and split sessions. `SUPER+Return` remains Omarchy's
-`xdg-terminal-exec` route, whose XDG default is Kitty; `SUPER+T` uses
+post-reload helper use `numbered-login 7 ghostty`. Haki and agents use their own
+exact Ghostty classes and tmux splits. `SUPER+Return` remains Omarchy's
+`xdg-terminal-exec` route, whose XDG default is Ghostty; `SUPER+T` uses
 `o.launch_sole("^Paseo$", "/usr/bin/paseo")`, focusing Paseo wherever it resides
 and launching the AUR desktop explicitly when absent, even if a user CLI shadows
 `paseo` in PATH. The assistants recipe runs

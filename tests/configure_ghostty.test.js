@@ -4,83 +4,70 @@ import os from "node:os";
 import path from "node:path";
 
 import {
-	configureKitty,
-	resolveKittyPaths,
-} from "../src/helpers/configure_kitty.js";
+	configureGhostty,
+	resolveGhosttyPaths,
+} from "../src/helpers/configure_ghostty.js";
 
-describe("configureKitty", () => {
+describe("configureGhostty", () => {
 	let home;
 
 	beforeEach(() => {
-		home = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-kitty-home-"));
+		home = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-ghostty-home-"));
 	});
 
 	afterEach(() => fs.rmSync(home, { recursive: true, force: true }));
 
 	it("honors XDG roots", () => {
 		expect(
-			resolveKittyPaths({
+			resolveGhosttyPaths({
 				home: "/h",
 				env: { XDG_CONFIG_HOME: "/x/config" },
 			}),
 		).toEqual({
-			configDir: "/x/config/kitty",
+			configDir: "/x/config/ghostty",
 			xdgTerminalPreference: "/x/config/xdg-terminals.list",
 		});
 	});
 
-	it("deploys Kitty config and both split sessions while selecting Kitty", async () => {
-		await configureKitty({
+	it("deploys the Ghostty config while selecting Ghostty", async () => {
+		await configureGhostty({
 			home,
 			env: {},
 			projectRoot: path.join(import.meta.dir, ".."),
 		});
 
-		const configDir = path.join(home, ".config", "kitty");
-		for (const filename of ["kitty.conf", "haki.session", "agents.session"]) {
-			expect(fs.readFileSync(path.join(configDir, filename), "utf8")).toBe(
-				fs.readFileSync(
-					path.join(import.meta.dir, "..", "configs", "kitty", filename),
-					"utf8",
-				),
-			);
-		}
+		const configDir = path.join(home, ".config", "ghostty");
+		expect(fs.readFileSync(path.join(configDir, "config"), "utf8")).toBe(
+			fs.readFileSync(
+				path.join(import.meta.dir, "..", "configs", "ghostty", "config"),
+				"utf8",
+			),
+		);
 		expect(
 			fs.readFileSync(path.join(home, ".config", "xdg-terminals.list"), "utf8"),
 		).toBe(
 			"# Terminal emulator preference order for xdg-terminal-exec\n" +
 				"# The first found and valid terminal will be used\n" +
-				"kitty.desktop\n",
+				"com.mitchellh.ghostty.desktop\n",
 		);
 	});
 
-	it("keeps Kitty background opacity in the base config", async () => {
-		const themeDir = path.join(home, ".config", "omarchy", "current", "theme");
-		fs.mkdirSync(themeDir, { recursive: true });
-		fs.writeFileSync(
-			path.join(themeDir, "kitty.conf"),
-			"foreground #fdfffd\nbackground #010401\n",
-		);
-		const deployedConfigPath = path.join(
-			home,
-			".config",
-			"kitty",
-			"kitty.conf",
-		);
-		expect(fs.existsSync(deployedConfigPath)).toBe(false);
-
-		await configureKitty({
+	it("follows the active Omarchy theme while owning background opacity", async () => {
+		await configureGhostty({
 			home,
 			env: {},
 			projectRoot: path.join(import.meta.dir, ".."),
 		});
 
-		const deployedConfig = fs.readFileSync(deployedConfigPath, "utf8");
+		const deployedConfig = fs.readFileSync(
+			path.join(home, ".config", "ghostty", "config"),
+			"utf8",
+		);
 		expect(deployedConfig).toMatch(
-			/^include[ \t]+~\/\.local\/state\/omarchy\/current\/theme\/kitty\.conf[ \t]*$/m,
+			/^config-file = \?"~\/\.local\/state\/omarchy\/current\/theme\/ghostty\.conf"[ \t]*$/m,
 		);
 		const opacity = deployedConfig.match(
-			/^background_opacity[ \t]+(\S+)[ \t]*$/m,
+			/^background-opacity[ \t]*=[ \t]*(\S+)[ \t]*$/m,
 		);
 		expect(opacity).not.toBeNull();
 		expect(opacity[1]).toBe("0.70");
@@ -92,7 +79,7 @@ describe("configureKitty", () => {
 			"utf8",
 		);
 		expect(source).toContain(
-			"if not test -r ~/.local/state/omarchy/current/theme/kitty.conf\n" +
+			"if not test -r ~/.local/state/omarchy/current/theme/ghostty.conf\n" +
 				"        cat ~/.local/state/caelestia/sequences.txt 2>/dev/null\n" +
 				"    end",
 		);
@@ -103,13 +90,13 @@ describe("configureKitty", () => {
 		fs.mkdirSync(path.dirname(preference), { recursive: true });
 		fs.writeFileSync(preference, "dev.warp.Warp.desktop\n");
 
-		await configureKitty({ home, env: {} });
+		await configureGhostty({ home, env: {} });
 		const first = fs.readFileSync(preference, "utf8");
 		expect(
 			fs.readFileSync(`${preference}.haoshoku-first-capture`, "utf8"),
 		).toBe("dev.warp.Warp.desktop\n");
 
-		await configureKitty({ home, env: {} });
+		await configureGhostty({ home, env: {} });
 		expect(fs.readFileSync(preference, "utf8")).toBe(first);
 		expect(fs.existsSync(`${preference}.tmp`)).toBe(false);
 	});

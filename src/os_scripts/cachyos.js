@@ -25,7 +25,7 @@ import { configureCodex } from "../helpers/configure_codex.js";
 import { installGhStack } from "../helpers/configure_gh_stack.js";
 import { configureHyprmoncfg } from "../helpers/configure_hyprmoncfg.js";
 import { configureKdeConnectCommands } from "../helpers/configure_kde_connect.js";
-import { configureKitty } from "../helpers/configure_kitty.js";
+import { configureGhostty } from "../helpers/configure_ghostty.js";
 import { configureMimeapps } from "../helpers/configure_mimeapps.js";
 import { configureOmarchyAppearance } from "../helpers/configure_omarchy_appearance.js";
 import { configureOmarchyBar } from "../helpers/configure_omarchy_bar.js";
@@ -542,7 +542,7 @@ export async function configureUserApps({
 	configureAudioImpl = configureAudio,
 	configureBashImpl = configureBash,
 	configureFastfetchImpl = configureFastfetch,
-	configureKittyImpl = configureKitty,
+	configureGhosttyImpl = configureGhostty,
 	runCommandImpl = runCommand,
 	enableServicesImpl = enableServices,
 	configureClaudeImpl = configureClaude,
@@ -576,7 +576,7 @@ export async function configureUserApps({
 
 	configureBashImpl();
 	await configureFastfetchImpl();
-	await configureKittyImpl();
+	await configureGhosttyImpl();
 
 	log.info("Installing uosc for MPV...");
 	await runCommandImpl(`curl -fsSL ${UOSC_INSTALL_URL} | bash`);

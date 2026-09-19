@@ -365,7 +365,7 @@ esac
 			});
 		});
 
-		it(`[${failure}] Haki client probe fails closed without Kitty ownership actions`, async () => {
+		it(`[${failure}] Haki client probe fails closed without Ghostty ownership actions`, async () => {
 			const result = await run(["haki"], "clients -j", failure);
 
 			expect(result.exitCode).toBe(0);
@@ -401,9 +401,9 @@ esac
 		});
 	}
 
-	it("rejects a multi-document client probe before launching Kitty", async () => {
+	it("rejects a multi-document client probe before launching Ghostty", async () => {
 		const result = await run(
-			["numbered-login", "7", "kitty"],
+			["numbered-login", "7", "ghostty"],
 			"",
 			"non-zero-exit",
 			"",
@@ -425,9 +425,9 @@ esac
 	});
 
 	for (const failure of ["invalid-json", "empty-output", "non-zero-exit"]) {
-		it(`[${failure}] numbered Kitty initial probe performs no ownership action`, async () => {
+		it(`[${failure}] numbered Ghostty initial probe performs no ownership action`, async () => {
 			const result = await run(
-				["numbered-login", "7", "kitty"],
+				["numbered-login", "7", "ghostty"],
 				"clients -j",
 				failure,
 			);
@@ -446,9 +446,9 @@ esac
 		});
 	}
 
-	it("launches a missing numbered Kitty without address polling", async () => {
+	it("launches a missing numbered Ghostty without address polling", async () => {
 		const result = await run(
-			["numbered-login", "7", "kitty"],
+			["numbered-login", "7", "ghostty"],
 			"",
 			"non-zero-exit",
 		);
@@ -510,7 +510,7 @@ fi
 				name: "numbered communication",
 				args: ["numbered", "3", "communication-numbered"],
 			},
-			{ name: "numbered Kitty", args: ["numbered", "7", "kitty"] },
+			{ name: "numbered Ghostty", args: ["numbered", "7", "ghostty"] },
 			{ name: "numbered notion", args: ["numbered", "4", "notion"] },
 			{ name: "browser", args: ["browser", "flux"] },
 			{ name: "browser-toggle", args: ["browser-toggle", "flux"] },

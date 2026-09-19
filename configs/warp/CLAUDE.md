@@ -1,7 +1,7 @@
 # configs/warp/
 
 Warp is retained as a dormant fallback. Its legacy configuration helper remains
-available for manual recovery, but normal setup and active launchers use Kitty.
+available for manual recovery, but normal setup and active launchers use Ghostty.
 
 ## Files
 
@@ -20,7 +20,7 @@ custom-theme object, and `override_opacity = 77`. The palette is a direct port o
 Omarchy Elysian Kitty roles and ANSI colors. Warp ignores shell OSC palette injection
 (`warpdotdev/warp#3108`), so a native custom theme is required.
 
-Normal CachyOS user-app setup calls `configureKitty()` and does not invoke
+Normal CachyOS user-app setup calls `configureGhostty()` and does not invoke
 `configureWarp()`.
 
 ## Dormant agent tab configs
@@ -30,4 +30,5 @@ Omarchy no longer binds it to `Meta+A`.
 `tab_configs/agents.toml` remains the separate Claude-only contract.
 
 These files are no longer deployed or launched by normal setup. The active
-equivalents are `configs/kitty/haki.session` and `agents.session`.
+equivalents are the `haki`/`agents` tmux splits in
+`configs/scripts/haoshoku-special-workspace`.

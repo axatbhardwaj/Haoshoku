@@ -33,7 +33,7 @@ Standalone setup scripts for specific tools.
 | `kde_connect_commands_writer.qml` | `qml`-run writer that appends one command to a device's KDE Connect `commands` byte-array | Changing how commands are persisted through the KDE Connect API |
 | `configure_kde_plasma.js` | KDE Plasma launchers, shortcut unbindings, and Activities opt-in | Modifying Plasma launchers or conflicting shortcuts |
 | `configure_kde_theme.js` | KDE Ocean theme backup/sync/activate | Adding KDE theme features, debugging deploy |
-| `configure_kitty.js` | Kitty config/session deploy plus XDG terminal preference | Modifying Kitty setup, split sessions, or terminal default |
+| `configure_ghostty.js` | Ghostty config deploy plus XDG terminal preference | Modifying Ghostty setup or terminal default |
 | `configure_zed.js`    | Zed config backup/sync (sanitized)     | Adding Zed config features, debugging sync    |
 | `configure_audio.js` | PipeWire/WirePlumber config sync/backup (portable pipewire drop-ins + device-routed wireplumber variant) | Adding audio config features, debugging sync |
 | `configure_mimeapps.js` | XDG mimeapps.list sync/backup — single portable file, no device routing | Adding mimeapps config features, debugging sync |

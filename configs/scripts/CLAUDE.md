@@ -12,10 +12,10 @@ binary acts as a PATH-shadow wrapper for that binary.
 | `haoshoku-browser` | Routes URLs to the most recently focused managed browser profile, falling back to the configured default. | Changing browser dispatch or focused-profile selection |
 | `haoshoku-chromium-flux` | Launches Brave Origin on the isolated Flux profile and preserves that profile through Omarchy web-app launch parsing. | Changing the Flux profile, wrapper name, or paired desktop entry |
 | `haoshoku-chromium-profiles` | Validates and queries the configured browser profile registry, with portable Flux and DeFi fallbacks. | Changing registry validation, defaults, or profile lookup |
-| `haoshoku-claude-local` | Resumes the `claudeSessionName` from `~/.haoshoku.json` (validated) or falls back to a fresh `claude`; used by the Haki Kitty/Warp session. | Changing the Haki Claude launch or session-name validation |
+| `haoshoku-claude-local` | Resumes the `claudeSessionName` from `~/.haoshoku.json` (validated) or falls back to a fresh `claude`; used by the Haki Ghostty/tmux split. | Changing the Haki Claude launch or session-name validation |
 | `haoshoku-default-browser` | Login-time repair that re-points `xdg-settings` and the http/https/html MIME handlers at `haoshoku-browser.desktop`. | Changing default-browser ownership or the repaired MIME set |
 | `haoshoku-gaming-workspace` | Toggles gaming workspace 2 and wraps Steam launches to place process-tree windows there. | Changing gaming workspace focus, process matching, placement, or launch wrapping |
-| `haoshoku-special-workspace` | Implements numbered-app launchers including absolute-path Paseo Desktop, Omakade on workspace 2, exact-class Kitty ownership for workspace 7/Haki/agents, native desktop assistant management, and focus/show/hide behavior for named app and browser special workspaces including Twitch. | Changing workspace recipes, placement, reclaim/launch-if-missing behavior, or browser toggles |
+| `haoshoku-special-workspace` | Implements numbered-app launchers including absolute-path Paseo Desktop, Omakade on workspace 2, exact-class Ghostty ownership for workspace 7/Haki/agents, native desktop assistant management, and focus/show/hide behavior for named app and browser special workspaces including Twitch. | Changing workspace recipes, placement, reclaim/launch-if-missing behavior, or browser toggles |
 | `haoshoku-zed-glass` | Post-processes Omazed's generated Zed theme with dotted `background.appearance`, alpha-adjusted surfaces, and neutral borders. | Changing Zed transparency, Omazed hooks, or protected theme surfaces |
 | `mic-toggle` | Toggles the default microphone through `wpctl` or `pactl` and reports the resulting state. | Changing microphone controls or notifications |
 | `omarchy-agent-usage-update` | Exposes Omarchy's packaged agent-usage collector at the user-owned path required by Agent Usage Plus. | Changing the managed agent-usage plugin or collector compatibility |
@@ -38,10 +38,11 @@ binary acts as a PATH-shadow wrapper for that binary.
   cleaned from `~/.local/bin/`; `Super+I` and the login-time invocation route
   ChatGPT and Claude Desktop through `haoshoku-special-workspace assistants`.
 - Retired standalone workspace-7 helpers are cleaned from `~/.local/bin/`.
-  Workspace 7 is owned by `haoshoku-special-workspace numbered 7 kitty`; its
+  Workspace 7 is owned by `haoshoku-special-workspace numbered 7 ghostty`; its
   dedicated `haoshoku-ws7` class lets the helper reclaim only that window if it
-  moves. The `haki` and `agents` recipes use their own Kitty classes and split
-  session files under `~/.config/kitty/`.
+  moves. The `haki` and `agents` recipes use their own Ghostty classes and tmux
+  splits (plus `haki-terminal`/`agents-terminal` direct-launch variants for
+  desktop entries).
 - A managed browser profile `.monitor` remains required for registry schema stability,
   but browser workspaces normally follow the focused monitor instead of that
   value. It is used only as a fallback when Hyprland transiently reports no

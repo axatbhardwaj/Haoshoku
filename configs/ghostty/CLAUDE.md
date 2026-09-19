@@ -1,13 +1,34 @@
 # configs/ghostty/
 
-Retained legacy Ghostty config. Ghostty remains installed, but this directory is
-not referenced by active terminal wiring or deployed by `configureTerminals()`.
+Ghostty is the primary terminal. `configureGhostty()` deploys `config` and
+selects `com.mitchellh.ghostty.desktop` for `xdg-terminal-exec`.
 
 ## Files
 
-| File             | What                                                                 | When to read                                    |
-| ---------------- | -------------------------------------------------------------------- | ----------------------------------------------- |
-| `config.ghostty` | Historical config retained on the same precedent as `configs/warp/`; it is no longer deployed. | Reviewing the former Ghostty setup |
+| File     | What                                                                 | When to read                                    |
+| -------- | -------------------------------------------------------------------- | ----------------------------------------------- |
+| `config` | Primary deployed terminal config. It includes the generated Omarchy Ghostty theme, which owns colours. | Changing terminal font, padding, theme integration, opacity, decorations, or keybinds |
 
-The terminal-agnostic OSC regeneration tool and its palette documentation moved
-to `configs/kitty/`, alongside the active primary-terminal config.
+## Theme precedence
+
+`config` includes `~/.local/state/omarchy/current/theme/ghostty.conf`
+(optionally, so first login before a theme set still starts), so Ghostty
+follows every Omarchy theme switch. The generated theme owns colours only, so
+the base config owns background opacity (0.70, matching the former Kitty
+setup), font, padding, decorations, and keybinds.
+
+`~/.config/fish/config.fish` applies `~/.local/state/caelestia/sequences.txt`
+only when the generated Omarchy Ghostty theme is unavailable. Those OSC
+sequences would otherwise overwrite the palette Ghostty loaded from the
+active theme.
+
+## Splits
+
+Ghostty has no Kitty-style session files. The Haki and agents top/bottom
+splits live in `configs/scripts/haoshoku-special-workspace` as tmux
+one-liners (`ensure_ghostty`), using the same `haoshoku-haki` and
+`haoshoku-agents` window classes and tmux session names.
+
+## Notes
+
+- `config` is deployed automatically by `configureGhostty()`.

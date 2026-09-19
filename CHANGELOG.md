@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+- Switch the primary terminal from Kitty to Ghostty.
+  Keep one dedicated home-rooted ghostty terminal on workspace 7.
+  `configs/ghostty/config` includes the generated Omarchy theme (which owns colours) and owns 0.70
+  background opacity, font, padding, and keybinds; `configureGhostty()` deploys
+  it and selects `com.mitchellh.ghostty.desktop` for `xdg-terminal-exec`.
+  Workspace 7, Haki, and agents launch owned Ghostty windows (exact
+  `haoshoku-*` classes), with the Haki/agents top/bottom splits as tmux
+  one-liners plus `haki-terminal`/`agents-terminal` direct-launch recipes for
+  the KDE Meta+A launcher. Kitty stays installed as a fallback but is no
+  longer deployed or referenced by active launchers.
+
 ## 11.10.0 - 2026-09-17
 
 - Add a single configurable shared agent profile in

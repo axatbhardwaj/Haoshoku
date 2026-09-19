@@ -161,8 +161,8 @@ that need manual setup afterwards (API tokens, OAuth, device pairing) are
 printed as a manual-auth checklist after installation.
 The Galaxy Buds plugin is installed from `aislandener/galaxy-buds-control` and
 reports Bluetooth pairing in that checklist; it requires no credentials.
-Agent Usage Plus replaces both Omarchy's stock `omarchy.agents` widget and the
-older `robzolkos.agent-usage` plugin. The full Arch setup deploys its required
+Pullbar (`io.github.ciryon.pullbar`) replaces both the former GitHub widget
+(`robzolkos.github`) and Agent Usage Plus on the right side of the bar. The full Arch setup deploys its required
 `~/.local/bin/omarchy-agent-usage-update` wrapper before installing plugins. If
 running only selected steps, run `haoshoku --scripts` before
 `haoshoku --omarchy-plugins`. That wrapper also scopes the Omarchy 4.0.0 Codex
@@ -178,7 +178,7 @@ The same commands deploy and back up Haoshoku's bundled `xzat.tray` plugin at
 notifier items with Galaxy Buds, hyprmoncfg, Display, and No Sleep controls.
 The full Arch setup restores the plugin and layout automatically; no separate
 clone step is needed. Feishin and Omarchy's generic MPRIS widget remain in the
-left section, while Agent Usage Plus stays visible on the right.
+left section, while Pullbar and the stock Agents widget stay visible on the right.
 Haoshoku claims the `bar` key of `~/.config/omarchy/shell.json` wholesale,
 including bar-widget enablement. Disabling a bar widget through Omarchy's UI is
 therefore reverted on the next deploy. Every other top-level key — including
@@ -354,8 +354,8 @@ the task and refreshed on relevant configuration or capability changes.
 The optional Claude Remote Control setup runs persistent Claude sessions from
 three fixed roots: `haki` at `$HOME`, `dev` at `$HOME/dev`, and `work` at
 `$HOME/Work`. Instances whose roots do not exist are skipped with a warning.
-On Omarchy, `haoshoku-special-workspace haki` opens the tagged Kitty `haki`
-session on its special workspace, with Claude above a fresh Codex pane below;
+On Omarchy, `haoshoku-special-workspace haki` opens the tagged Ghostty `haki`
+split on its special workspace, with Claude above a fresh Codex pane below;
 it has no default keybinding. KDE uses its own Warp `agents` route.
 Set `claudeSessionName` in
 `~/.haoshoku.json` only to resume a named Haki Claude session. A missing or null

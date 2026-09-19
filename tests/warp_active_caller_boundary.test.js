@@ -15,7 +15,7 @@ const activeTextRouteFiles = [
 	"configs/scripts/haoshoku-special-workspace",
 ];
 const retiredTerminalLauncher =
-	/\b(?:warp-terminal|foot|ghostty|alacritty|konsole|agents-toggle)\b/i;
+	/\b(?:warp-terminal|foot|kitty|alacritty|konsole|agents-toggle)\b/i;
 
 function activeRuntimeText(relativePath) {
 	return fs
@@ -43,7 +43,7 @@ function kdeServiceLaunches(kdeShortcuts) {
 }
 
 describe("active terminal caller boundary", () => {
-	it("keeps all active terminal command routes on Kitty while retaining Warp dormant", () => {
+	it("keeps all active terminal command routes on Ghostty while retaining Warp dormant", () => {
 		for (const relativePath of activeTextRouteFiles) {
 			const content = activeRuntimeText(relativePath);
 			expect(content, relativePath).not.toMatch(retiredTerminalLauncher);
@@ -53,25 +53,24 @@ describe("active terminal caller boundary", () => {
 			path.join(root, "common", "paru_applist.txt"),
 			"utf8",
 		);
+		expect(packages).toContain("ghostty");
 		expect(packages).toContain("kitty");
 		expect(packages).toContain("warp-terminal-bin");
-		expect(
-			fs.existsSync(path.join(root, "configs", "kitty", "kitty.conf")),
-		).toBe(true);
-		expect(
-			fs.existsSync(path.join(root, "configs", "ghostty", "config.ghostty")),
-		).toBe(true);
+		expect(fs.existsSync(path.join(root, "configs", "ghostty", "config"))).toBe(
+			true,
+		);
+		expect(fs.existsSync(path.join(root, "configs", "kitty"))).toBe(false);
 		expect(
 			fs.existsSync(path.join(root, "configs", "alacritty", "alacritty.toml")),
 		).toBe(true);
 		const changelog = fs.readFileSync(path.join(root, "CHANGELOG.md"), "utf8");
 		expect(changelog).toContain(
-			"Keep one dedicated home-rooted kitty terminal on workspace 7",
+			"Keep one dedicated home-rooted ghostty terminal on workspace 7",
 		);
 		expect(activeTextRouteFiles).not.toContain("CHANGELOG.md");
 	});
 
-	it("assigns KDE Meta+Return to Kitty and uses a terminal-neutral Fastfetch logo", () => {
+	it("assigns KDE Meta+Return to Ghostty and uses a terminal-neutral Fastfetch logo", () => {
 		const kdeShortcuts = fs.readFileSync(
 			path.join(root, "configs", "kde_shortcuts.kksrc"),
 			"utf8",
@@ -82,7 +81,10 @@ describe("active terminal caller boundary", () => {
 				expect(launch, desktopId).toBe("none");
 			}
 		}
-		expect(serviceLaunches.get("kitty.desktop")).toBe("Meta+Return");
+		expect(serviceLaunches.get("com.mitchellh.ghostty.desktop")).toBe(
+			"Meta+Return",
+		);
+		expect(serviceLaunches.get("kitty.desktop")).toBe("none");
 		expect(serviceLaunches.get("org.kde.konsole.desktop")).toBe("none");
 		expect(serviceLaunches.get("dev.warp.Warp.desktop")).toBe("none");
 

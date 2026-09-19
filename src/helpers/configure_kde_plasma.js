@@ -5,13 +5,13 @@ import path from "node:path";
 import { log, runCommand } from "../common/utils.js";
 
 const APP_SHORTCUTS = [
-	["terminal", "Terminal", "kitty", "Meta+T"],
+	["terminal", "Terminal", "ghostty", "Meta+T"],
 	["files", "Files", "dolphin", "Meta+E"],
 	["editor", "Editor", "zeditor", "Meta+C"],
 	[
 		"agents",
 		"Agents",
-		"kitty --class=haoshoku-agents --title=agents --session=~/.config/kitty/agents.session",
+		"haoshoku-special-workspace agents-terminal",
 		"Meta+A",
 	],
 	["claude", "Claude", "claude-desktop", "Meta+I"],

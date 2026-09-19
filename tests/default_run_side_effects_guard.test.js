@@ -61,7 +61,7 @@ const TEST_CALLER_CONTRACTS = new Map([
 			"configureAudioImpl",
 			"configureBashImpl",
 			"configureFastfetchImpl",
-			"configureKittyImpl",
+			"configureGhosttyImpl",
 			"runCommandImpl",
 			"enableServicesImpl",
 			"configureClaudeImpl",

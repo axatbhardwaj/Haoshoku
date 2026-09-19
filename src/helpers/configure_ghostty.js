@@ -9,15 +9,15 @@ const PROJECT_ROOT_DEFAULT = path.resolve(__dirname, "..", "..");
 const XDG_TERMINAL_PREFERENCE =
 	"# Terminal emulator preference order for xdg-terminal-exec\n" +
 	"# The first found and valid terminal will be used\n" +
-	"kitty.desktop\n";
+	"com.mitchellh.ghostty.desktop\n";
 
-export function resolveKittyPaths({
+export function resolveGhosttyPaths({
 	home = HOME_DEFAULT,
 	env = process.env,
 } = {}) {
 	const configRoot = env.XDG_CONFIG_HOME || path.join(home, ".config");
 	return {
-		configDir: path.join(configRoot, "kitty"),
+		configDir: path.join(configRoot, "ghostty"),
 		xdgTerminalPreference: path.join(configRoot, "xdg-terminals.list"),
 	};
 }
@@ -37,24 +37,24 @@ function configureXdgTerminalPreference(preferencePath) {
 	const temporary = `${preferencePath}.tmp`;
 	fs.writeFileSync(temporary, XDG_TERMINAL_PREFERENCE);
 	fs.renameSync(temporary, preferencePath);
-	log.success("Set Kitty as the XDG terminal default.");
+	log.success("Set Ghostty as the XDG terminal default.");
 }
 
-export async function configureKitty({
+export async function configureGhostty({
 	home = HOME_DEFAULT,
 	env = process.env,
 	projectRoot = PROJECT_ROOT_DEFAULT,
 } = {}) {
-	const { configDir, xdgTerminalPreference } = resolveKittyPaths({ home, env });
-	const sourceDir = path.join(projectRoot, "configs", "kitty");
-	fs.mkdirSync(configDir, { recursive: true });
-	for (const filename of ["kitty.conf", "haki.session", "agents.session"]) {
-		const source = path.join(sourceDir, filename);
-		if (!fs.existsSync(source)) {
-			throw new Error(`Kitty configuration source not found: ${source}`);
-		}
-		safeCopyFile(source, path.join(configDir, filename));
+	const { configDir, xdgTerminalPreference } = resolveGhosttyPaths({
+		home,
+		env,
+	});
+	const source = path.join(projectRoot, "configs", "ghostty", "config");
+	if (!fs.existsSync(source)) {
+		throw new Error(`Ghostty configuration source not found: ${source}`);
 	}
+	fs.mkdirSync(configDir, { recursive: true });
+	safeCopyFile(source, path.join(configDir, "config"));
 	configureXdgTerminalPreference(xdgTerminalPreference);
-	log.success("Configured Kitty and its split sessions.");
+	log.success("Configured Ghostty.");
 }
