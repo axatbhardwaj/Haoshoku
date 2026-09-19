@@ -53,7 +53,7 @@ The Arch setup:
 - keeps Bash as the account shell and adds portable aliases and tool
   initialization through `~/.config/haoshoku/bashrc`;
 - preserves Omarchy's `.bashrc`, lock screen, and core Quickshell/Hyprland
-  configuration. It asks Omarchy to apply the pinned Elysian theme, selected
+  configuration. It asks Omarchy to apply the pinned Aurora theme, selected
   background, and font from `configs/omarchy/appearance.json`; it does not
   copy generated `current/theme` state between machines. Displaced Omarchy
   keybindings are

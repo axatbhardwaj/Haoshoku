@@ -1,15 +1,11 @@
 {
 	"schemaVersion": 1,
 	"theme": {
-		"name": "elysian",
-		"repository": "https://github.com/axatbhardwaj/omarchy-elysian-theme.git",
-		"revision": "e7600f5e2bf248ee976059f9a11a13c4856f7138",
-		"legacyRevisions": [
-			"42845dc048632425bc566b993f25145f05e840f1",
-			"29356fb68d2070d847a259de0f310b055df55823",
-			"3836bba29cf33c28fcca2f49aa1a098b2eb94662"
-		]
+		"name": "aurora",
+		"repository": "https://github.com/axatbhardwaj/omarchy-aurora-theme.git",
+		"revision": "85932710c7455cfa83b2ec4dea4179d7cf03bfc2",
+		"legacyRevisions": []
 	},
-	"background": "1-verdant-mountain.jpg",
+	"background": "0-aurora-lake.jpg",
 	"font": "JetBrainsMono Nerd Font"
 }
