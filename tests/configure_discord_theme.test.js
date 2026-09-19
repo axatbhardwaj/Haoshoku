@@ -162,6 +162,8 @@ describe("Discord theme configurator", () => {
 			{ ...MANIFEST, source: "../outside.css" },
 			{ ...MANIFEST, source: "/absolute.css" },
 			{ ...MANIFEST, source: "" },
+			{ ...MANIFEST, source: "vencord/aurora.theme.txt" },
+			{ ...MANIFEST, source: "vencord/.hidden.css" },
 			{ ...MANIFEST, enabledThemes: "aurora.theme.css" },
 			{ ...MANIFEST, enabledThemes: ["../outside.css"] },
 			{ ...MANIFEST, enabledThemes: ["theme.txt"] },

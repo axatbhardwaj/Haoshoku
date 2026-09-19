@@ -32,6 +32,9 @@ function validateManifest(manifest) {
 	) {
 		return "source must be a relative path without `..`";
 	}
+	if (!CSS_BASENAME_PATTERN.test(path.basename(manifest.source))) {
+		return "source must end in a safe *.css filename";
+	}
 	if (
 		!Array.isArray(manifest?.enabledThemes) ||
 		manifest.enabledThemes.some(
@@ -152,7 +155,10 @@ export async function configureDiscordTheme({
 		clients.push(client.name);
 	}
 
-	if (clients.length === 0) return { status: "no-clients" };
+	if (clients.length === 0) {
+		logImpl.warning("No Vesktop or Vencord config directory found; nothing deployed.");
+		return { status: "no-clients" };
+	}
 	logImpl.success(
 		`Deployed the ${themeName} Discord theme to ${clients.join(" and ")}.`,
 	);
