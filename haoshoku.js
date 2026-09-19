@@ -39,6 +39,7 @@ import {
 	backupCodexConfig,
 	syncCodexConfig,
 } from "./src/helpers/configure_codex.js";
+import { configureDiscordTheme } from "./src/helpers/configure_discord_theme.js";
 import {
 	ensureGamingConfig,
 	setGamingConfig,
@@ -275,6 +276,10 @@ program
 	.option(
 		"--omarchy-appearance",
 		"Apply the pinned Omarchy theme, background, and font from configs/omarchy/appearance.json",
+	)
+	.option(
+		"--discord-theme",
+		"Deploy the Omarchy theme's Vencord CSS into Vesktop/Vencord from configs/discord/theme.json",
 	)
 	.option("--3-4-migrate", "Migrate an Omarchy 3 configuration to Omarchy 4")
 	.option(
@@ -630,6 +635,12 @@ async function runAction(options) {
 
 	if (options.omarchyAppearance) {
 		const result = await configureOmarchyAppearance();
+		if (result.status !== "configured") process.exitCode = 1;
+		return;
+	}
+
+	if (options.discordTheme) {
+		const result = await configureDiscordTheme();
 		if (result.status !== "configured") process.exitCode = 1;
 		return;
 	}

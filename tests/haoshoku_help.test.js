@@ -46,6 +46,7 @@ describe("haoshoku CLI help", () => {
 			"--audio",
 			"--mimeapps",
 			"--omarchy-appearance",
+			"--discord-theme",
 		]) {
 			expect(source).toContain(`"${flag}"`);
 		}

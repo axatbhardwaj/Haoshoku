@@ -21,6 +21,10 @@ const appearanceHelper = path.join(
 	projectRoot,
 	"src/helpers/configure_omarchy_appearance.js",
 );
+const discordHelper = path.join(
+	projectRoot,
+	"src/helpers/configure_discord_theme.js",
+);
 const migrationHelper = path.join(
 	projectRoot,
 	"src/helpers/migrate_omarchy_3_to_4.js",
@@ -43,14 +47,16 @@ function runCliMode({
 					? ["configureKdeConnectCommands"]
 					: helperPath === appearanceHelper
 						? ["configureOmarchyAppearance"]
-						: ["migrateOmarchy3To4"];
+						: helperPath === discordHelper
+							? ["configureDiscordTheme"]
+							: ["migrateOmarchy3To4"];
 	const childScript = `
 		import { mock } from "bun:test";
 		mock.module(${JSON.stringify(helperPath)}, () => ({
 			${helperExports
 				.map(
 					(exportName) =>
-						`${exportName}: async () => { ${exportName === helperExport ? `console.log(${JSON.stringify(marker)}); ${exportName === "migrateOmarchy3To4" ? `return ${JSON.stringify(migrationResult ?? { status: migrationStatus })};` : exportName === "configureOmarchyAppearance" ? 'return { status: "configured" };' : exportName === "configureKdeConnectCommands" ? "return { failed: [] };" : ""}` : ""} }`,
+						`${exportName}: async () => { ${exportName === helperExport ? `console.log(${JSON.stringify(marker)}); ${exportName === "migrateOmarchy3To4" ? `return ${JSON.stringify(migrationResult ?? { status: migrationStatus })};` : exportName === "configureOmarchyAppearance" || exportName === "configureDiscordTheme" ? 'return { status: "configured" };' : exportName === "configureKdeConnectCommands" ? "return { failed: [] };" : ""}` : ""} }`,
 				)
 				.join(",\n\t\t\t")}
 		}));
@@ -106,6 +112,12 @@ describe("Omarchy one-shot CLI modes", () => {
 				helperPath: appearanceHelper,
 				helperExport: "configureOmarchyAppearance",
 				marker: "OMARCHY_APPEARANCE_CONFIGURED",
+			},
+			{
+				flag: "--discord-theme",
+				helperPath: discordHelper,
+				helperExport: "configureDiscordTheme",
+				marker: "DISCORD_THEME_CONFIGURED",
 			},
 			{
 				flag: "--3-4-migrate",
@@ -204,6 +216,9 @@ describe("Omarchy one-shot CLI modes", () => {
 		);
 		expect(help).toContain(
 			"--omarchy-appearance Apply the pinned Omarchy theme, background, and font from configs/omarchy/appearance.json",
+		);
+		expect(help).toContain(
+			"--discord-theme Deploy the Omarchy theme's Vencord CSS into Vesktop/Vencord from configs/discord/theme.json",
 		);
 		expect(help).toContain(
 			"--3-4-migrate Migrate an Omarchy 3 configuration to Omarchy 4",

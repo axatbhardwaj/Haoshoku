@@ -62,6 +62,7 @@ export const MODE_FLAGS = [
 	"omarchyBar",
 	"omarchyBarBackup",
 	"omarchyAppearance",
+	"discordTheme",
 	"34Migrate",
 	"braveManagedPolicies",
 ];

@@ -123,7 +123,9 @@ public theme repository at an immutable Git commit, one background filename
 inside that theme, and the font family. Full Arch setup and
 `haoshoku --omarchy-appearance` reconcile the theme under
 `~/.config/omarchy/themes/`, then call Omarchy's own theme, background, and font
-commands.
+commands. `haoshoku --discord-theme` then deploys that theme's Vencord CSS from
+`configs/discord/theme.json` into Vesktop and Vencord, setting `enabledThemes`
+while preserving every other settings key.
 
 An existing checkout from another repository is never replaced. A matching
 checkout with local changes is preserved and applied as-is; a clean matching
@@ -463,6 +465,7 @@ haoshoku --omarchy-plugins
 haoshoku --omarchy-bar
 haoshoku --omarchy-bar-backup
 haoshoku --omarchy-appearance
+haoshoku --discord-theme
 haoshoku --3-4-migrate
 ```
 

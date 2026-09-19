@@ -1,0 +1,5 @@
+{
+	"schemaVersion": 1,
+	"source": "vencord/aurora.theme.css",
+	"enabledThemes": ["aurora.theme.css"]
+}
