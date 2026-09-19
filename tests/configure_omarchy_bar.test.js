@@ -507,12 +507,11 @@ it("places every manifest bar widget in the shipped bar layout", () => {
 	const expectedBarWidgetIds = new Set([
 		"crmne.hyprmoncfg",
 		"white.nights",
-		"robzolkos.github",
+		"io.github.ciryon.pullbar",
 		"omaconnect",
 		"io.github.thetrueferret.decent-workspaces",
 		"io.github.nag3sy.feishin",
 		"dizziee.system-stats",
-		"io.github.viganogabriele.agent-usage-plus",
 		"aislandener.galaxy-buds",
 	]);
 	const manifestIds = new Set(
@@ -547,16 +546,20 @@ it("ships Omarchy's generic media widget in the left bar section", () => {
 	);
 });
 
-it("replaces the stock Agents widget with Agent Usage Plus in the right bar section", () => {
+it("shows Pullbar and the stock Agents widget in the right bar section", () => {
 	const bar = JSON.parse(fs.readFileSync(SHIPPED_BAR, "utf8"));
 	const allIds = Object.values(bar.layout)
 		.flat()
 		.map(({ id }) => id);
 	const rightIds = bar.layout.right.map(({ id }) => id);
 
-	expect(allIds).not.toContain("omarchy.agents");
+	expect(allIds).not.toContain("robzolkos.github");
+	expect(allIds).not.toContain("io.github.viganogabriele.agent-usage-plus");
 	expect(allIds).not.toContain("robzolkos.agent-usage");
-	expect(rightIds.indexOf("io.github.viganogabriele.agent-usage-plus")).toBe(
+	expect(rightIds.indexOf("io.github.ciryon.pullbar")).toBe(
+		rightIds.indexOf("omarchy.bluetooth") - 2,
+	);
+	expect(rightIds.indexOf("omarchy.agents")).toBe(
 		rightIds.indexOf("omarchy.bluetooth") - 1,
 	);
 });

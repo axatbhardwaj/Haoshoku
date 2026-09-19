@@ -20,9 +20,9 @@ const MANIFEST = [
 		manualAuth: null,
 	},
 	{
-		id: "robzolkos.github",
-		url: "https://github.com/robzolkos/omarchy-github.git",
-		manualAuth: "GitHub token",
+		id: "io.github.ciryon.pullbar",
+		url: "https://github.com/ciryon/omarchy-pullbar.git",
+		manualAuth: "GitHub CLI auth (`gh auth login`)",
 	},
 	{
 		id: "io.github.treramey.raindrop-bookmarks",
@@ -46,12 +46,6 @@ const MANIFEST = [
 		manualAuth: null,
 	},
 	{
-		id: "io.github.viganogabriele.agent-usage-plus",
-		url: "https://github.com/viganogabriele/agent-usage-plus.git",
-		manualAuth: null,
-		disableOnInstall: ["omarchy.agents", "robzolkos.agent-usage"],
-	},
-	{
 		id: "aislandener.galaxy-buds",
 		url: "https://github.com/aislandener/galaxy-buds-control.git",
 		manualAuth: "Galaxy Buds Bluetooth pairing",
@@ -67,14 +61,11 @@ const DECENT_WORKSPACES = MANIFEST.find(
 	(plugin) => plugin.id === "io.github.thetrueferret.decent-workspaces",
 );
 
-const MISSING_WHEN_FIRST_8_PRESENT = [
-	"aislandener.galaxy-buds",
-	"io.github.nag3sy.feishin",
-];
+const MISSING_WHEN_FIRST_8_PRESENT = ["io.github.nag3sy.feishin"];
 
 const MANUAL_AUTH_IDS = [
 	"crmne.hyprmoncfg",
-	"robzolkos.github",
+	"io.github.ciryon.pullbar",
 	"io.github.treramey.raindrop-bookmarks",
 	"omaconnect",
 	"aislandener.galaxy-buds",
@@ -207,7 +198,7 @@ describe("Omarchy plugin installer", () => {
 		});
 
 		const addCalls = commandType(calls, "add");
-		expect(addCalls).toHaveLength(2);
+		expect(addCalls).toHaveLength(1);
 		for (const id of MISSING_WHEN_FIRST_8_PRESENT) {
 			const url = MANIFEST.find((plugin) => plugin.id === id).url;
 			expect(addCalls).toContainEqual([
@@ -232,7 +223,7 @@ describe("Omarchy plugin installer", () => {
 		const allIds = MANIFEST.map((plugin) => plugin.id);
 		const { calls, runner } = makeRunner({
 			installedJsonBody: installedJson(allIds, {
-				disabled: ["robzolkos.github"],
+				disabled: ["io.github.ciryon.pullbar"],
 			}),
 		});
 		const { logImpl } = makeLog();
@@ -248,11 +239,11 @@ describe("Omarchy plugin installer", () => {
 			"omarchy",
 			"plugin",
 			"enable",
-			"robzolkos.github",
+			"io.github.ciryon.pullbar",
 		]);
 		expect(result.installed).toEqual([]);
-		expect(result.enabled).toEqual(["robzolkos.github"]);
-		expect(result.alreadyReady).toHaveLength(9);
+		expect(result.enabled).toEqual(["io.github.ciryon.pullbar"]);
+		expect(result.alreadyReady).toHaveLength(8);
 		expect(result.failed).toEqual([]);
 	});
 
@@ -273,14 +264,13 @@ describe("Omarchy plugin installer", () => {
 			logImpl,
 		});
 
-		expect(commandType(calls, "add")).toHaveLength(6);
+		expect(commandType(calls, "add")).toHaveLength(5);
 		expect(commandType(calls, "remove")).toEqual([]);
 		expect(result.failed).toEqual(["dizziee.system-stats"]);
 		expect(result.configureFailed).toEqual([]);
 		expect(result.installed).toEqual([
 			"omaconnect",
 			"io.github.thetrueferret.decent-workspaces",
-			"io.github.viganogabriele.agent-usage-plus",
 			"aislandener.galaxy-buds",
 			"io.github.nag3sy.feishin",
 		]);
@@ -353,7 +343,7 @@ describe("Omarchy plugin installer", () => {
 					requirement:
 						"Needs the hyprmoncfg AUR package and daemon (installed separately; not handled by this installer)",
 				},
-				{ id: "robzolkos.github", requirement: "GitHub token" },
+				{ id: "io.github.ciryon.pullbar", requirement: "GitHub CLI auth (`gh auth login`)" },
 				{
 					id: "io.github.treramey.raindrop-bookmarks",
 					requirement: "Raindrop API token",
@@ -479,7 +469,7 @@ describe("Omarchy plugin installer", () => {
 		);
 	});
 
-	it("ships a manifest on disk with exactly the 10 expected plugins", () => {
+	it("ships a manifest on disk with exactly the 9 expected plugins", () => {
 		const EXPECTED_PLUGINS = [
 			{
 				id: "crmne.hyprmoncfg",
@@ -492,11 +482,11 @@ describe("Omarchy plugin installer", () => {
 				url: "https://github.com/nightdevil00/white.nights.git",
 				manualAuth: null,
 			},
-			{
-				id: "robzolkos.github",
-				url: "https://github.com/robzolkos/omarchy-github.git",
-				manualAuth: "GitHub token",
-			},
+		{
+			id: "io.github.ciryon.pullbar",
+			url: "https://github.com/ciryon/omarchy-pullbar.git",
+			manualAuth: "GitHub CLI auth (`gh auth login`)",
+		},
 			{
 				id: "io.github.treramey.raindrop-bookmarks",
 				url: "https://github.com/treramey/omarchy-raindrop-bookmarks.git",
@@ -518,14 +508,8 @@ describe("Omarchy plugin installer", () => {
 				url: "https://github.com/JJDizz1L/dizziee.system-stats.git",
 				manualAuth: null,
 			},
-			{
-				id: "io.github.viganogabriele.agent-usage-plus",
-				url: "https://github.com/viganogabriele/agent-usage-plus.git",
-				manualAuth: null,
-				disableOnInstall: ["omarchy.agents", "robzolkos.agent-usage"],
-			},
-			{
-				id: "aislandener.galaxy-buds",
+		{
+			id: "aislandener.galaxy-buds",
 				url: "https://github.com/aislandener/galaxy-buds-control.git",
 				manualAuth: "Galaxy Buds Bluetooth pairing",
 			},
