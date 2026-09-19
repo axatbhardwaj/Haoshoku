@@ -60,6 +60,9 @@ function deployModeFeaturesFromCli() {
 		"--skills",
 		"--skills-update",
 		"--3-4-migrate",
+		// Discord theming follows the Omarchy appearance checkout only when
+		// explicitly requested; normal setup leaves Vesktop/Vencord untouched.
+		"--discord-theme",
 	]);
 
 	return optionUsages
