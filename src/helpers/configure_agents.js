@@ -9,7 +9,8 @@ const AGENT_PROFILE_DIR = path.join(PROJECT_ROOT, "configs", "agent-profile");
 
 // Single configurable source (PROFILE.md) deployed to every harness.
 // Claude reads CLAUDE.md, Codex/Opencode read AGENTS.md, Antigravity reads
-// GEMINI.md as global rules. Exported for the manifest test.
+// GEMINI.md as global rules. A target with `append` also gets that bundle
+// file appended (harness-specific notes). Exported for the manifest test.
 export const AGENT_TARGETS = [
 	{ src: "PROFILE.md", destDir: ".claude", dest: "CLAUDE.md" },
 	{ src: "PROFILE.md", destDir: ".codex", dest: "AGENTS.md" },
@@ -18,8 +19,22 @@ export const AGENT_TARGETS = [
 		destDir: ".config/opencode",
 		dest: "AGENTS.md",
 	},
-	{ src: "PROFILE.md", destDir: ".gemini", dest: "GEMINI.md" },
+	{
+		src: "PROFILE.md",
+		destDir: ".gemini",
+		dest: "GEMINI.md",
+		append: "GEMINI.append.md",
+	},
 ];
+
+/** Build the exact bytes a target destination should hold. */
+function targetContent(srcDir, target) {
+	const profile = fs.readFileSync(path.join(srcDir, target.src), "utf8");
+	if (!target.append) return profile;
+	const appendPath = path.join(srcDir, target.append);
+	if (!fs.existsSync(appendPath)) return profile;
+	return `${profile.replace(/\s+$/, "")}\n\n${fs.readFileSync(appendPath, "utf8")}`;
+}
 
 /** Deploy the shared profile from the bundle to all four agent homes. */
 export async function syncAgentsConfig(options = {}) {
@@ -35,7 +50,19 @@ export async function syncAgentsConfig(options = {}) {
 	for (const target of AGENT_TARGETS) {
 		const destPath = path.join(home, target.destDir, target.dest);
 		fs.mkdirSync(path.dirname(destPath), { recursive: true });
-		safeCopyFile(srcPath, destPath);
+		if (!target.append) {
+			safeCopyFile(srcPath, destPath);
+		} else {
+			// Stage the composed bytes so safeCopyFile keeps its
+			// unchanged-skip and first-capture/backup semantics.
+			const tmpPath = `${destPath}.haoshoku-staging-${process.pid}`;
+			fs.writeFileSync(tmpPath, targetContent(srcDir, target));
+			try {
+				safeCopyFile(tmpPath, destPath);
+			} finally {
+				fs.rmSync(tmpPath, { force: true });
+			}
+		}
 		log.info(`Copied PROFILE.md to ${target.destDir}/${target.dest}`);
 	}
 

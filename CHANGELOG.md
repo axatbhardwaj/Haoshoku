@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Support harness-specific appendix files in the shared agent profile.
+  An agent target with `append` (e.g. Antigravity's `GEMINI.append.md` with
+  model-routing notes) gets that bundle file appended to the deployed profile
+  instead of a plain copy.
+- Swap Omarchy plugins: `robzolkos.github` becomes `io.github.ciryon.pullbar`
+  (GitHub CLI auth), and the bar drops Agent Usage Plus for the stock
+  `omarchy.agents` widget next to Pullbar.
 - Switch the primary terminal from Kitty to Ghostty.
   Keep one dedicated home-rooted ghostty terminal on workspace 7.
   `configs/ghostty/config` includes the generated Omarchy theme (which owns colours) and owns 0.70

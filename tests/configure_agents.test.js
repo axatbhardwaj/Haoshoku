@@ -18,7 +18,12 @@ describe("AGENT_TARGETS manifest", () => {
 				destDir: ".config/opencode",
 				dest: "AGENTS.md",
 			},
-			{ src: "PROFILE.md", destDir: ".gemini", dest: "GEMINI.md" },
+			{
+				src: "PROFILE.md",
+				destDir: ".gemini",
+				dest: "GEMINI.md",
+				append: "GEMINI.append.md",
+			},
 		]);
 	});
 });
@@ -37,14 +42,36 @@ describe("shared agent profile round trip", () => {
 
 	afterEach(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
 
-	it("deploys PROFILE.md to all four agent homes", async () => {
+	it("deploys PROFILE.md verbatim to claude, codex and opencode", async () => {
 		fs.writeFileSync(path.join(srcDir, "PROFILE.md"), "SHARED");
 		await syncAgentsConfig({ srcDir, home });
-		for (const target of AGENT_TARGETS) {
+		for (const target of AGENT_TARGETS.filter((t) => !t.append)) {
 			expect(
 				fs.readFileSync(path.join(home, target.destDir, target.dest), "utf-8"),
 			).toBe("SHARED");
 		}
+	});
+
+	it("appends the harness note only to the Antigravity profile", async () => {
+		fs.writeFileSync(path.join(srcDir, "PROFILE.md"), "SHARED");
+		fs.writeFileSync(path.join(srcDir, "GEMINI.append.md"), "ANTIGRAVITY-ONLY");
+		await syncAgentsConfig({ srcDir, home });
+		expect(
+			fs.readFileSync(path.join(home, ".gemini", "GEMINI.md"), "utf-8"),
+		).toBe("SHARED\n\nANTIGRAVITY-ONLY");
+		expect(
+			fs.readFileSync(path.join(home, ".claude", "CLAUDE.md"), "utf-8"),
+		).toBe("SHARED");
+	});
+
+	it("skips a second sync when every destination is already in sync", async () => {
+		fs.writeFileSync(path.join(srcDir, "PROFILE.md"), "SHARED");
+		fs.writeFileSync(path.join(srcDir, "GEMINI.append.md"), "ANTIGRAVITY-ONLY");
+		await syncAgentsConfig({ srcDir, home });
+		await syncAgentsConfig({ srcDir, home });
+		expect(fs.existsSync(path.join(home, ".gemini", "GEMINI.md.bak"))).toBe(
+			false,
+		);
 	});
 
 	it("backs up a differing live file before overwriting", async () => {
