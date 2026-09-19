@@ -20,6 +20,7 @@
 | `configure_axstack.test.js` | Axstack tarball verification, release layout, shim, no-downgrade, and harness install | Changing the Axstack pin or installer |
 | `cli_axstack_flags.test.js` | `--axstack` / `--axstack-check` routing and reporting | Changing the Axstack CLI surface |
 | `configure_gaming.test.js`, `cli_gaming.test.js` | Workspace-2 autostart policy defaults, flags, and overlay reconciliation | Changing `--gaming*` |
+| `configure_discord_theme.test.js` | Discord theme deploy across Vesktop/Vencord clients, manifest validation, and shipped-manifest validity | Changing `--discord-theme` |
 | `configure_kde_connect.test.js` | KDE Connect device config parsing and `Screens Off` command writes | Changing `--kde-connect-commands` |
 | `configure_paseo_schedules.test.js`, `cli_paseo_schedules.test.js`, `paseo_schedule_client.test.js` | Schedule role mapping, check/apply semantics, and scoped client env | Changing `--paseo-schedules*` |
 | `utils.test.js`    | Utility function tests        | Testing shell execution, logging          |

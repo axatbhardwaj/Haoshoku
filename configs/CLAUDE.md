@@ -21,6 +21,7 @@ Template configuration files copied to user's `~/.config/` during setup.
 | `bash/`         | Portable interactive Bash additions loaded after Omarchy defaults | Modifying Bash initializers, aliases, or PATH additions |
 | `warp/`         | Retained dormant Warp tab configs and shipped Elysian theme | Reviewing the former Warp setup |
 | `vencord/`      | Vencord Discord theme               | Modifying Discord appearance              |
+| `discord/`      | Discord theme manifest deploying the Omarchy theme's Vencord CSS into Vesktop/Vencord | Modifying which theme CSS or enabled themes Discord clients receive |
 | `claude/`       | Claude Code compact personal policy (copied) | Modifying policy backup/restore       |
 | `claude-remote-control/` | Claude Remote Control tmux supervisor + systemd user-unit template | Modifying persistent Claude sessions, restart behavior, or attach lifecycle |
 | `claude-stay-awake/` | Claude CLI sleep-inhibitor watcher and systemd user unit | Modifying suspend blocking or session detection |
