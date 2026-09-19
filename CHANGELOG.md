@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 11.11.0 - 2026-09-20
 
 - Support harness-specific appendix files in the shared agent profile.
   An agent target with `append` (e.g. Antigravity's `GEMINI.append.md` with
