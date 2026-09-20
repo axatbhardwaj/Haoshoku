@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 11.12.0 - 2026-09-20
 
 - Move the Steam client into its own `special:steam` workspace on `Super+S`
   (stash toggle moves to `Super+Alt+S`). Omakade stays on workspace 2 with the
