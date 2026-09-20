@@ -66,6 +66,7 @@ describe("Omarchy Lua workspace behavior", () => {
 			'o.bind("SUPER + B", "Toggle Flux Brave Origin workspace", "haoshoku-special-workspace browser-toggle flux")',
 			'o.bind("SUPER + D", "Toggle DeFi Brave Origin workspace", "haoshoku-special-workspace browser-toggle defi")',
 			'o.bind("SUPER + SHIFT + G", "Toggle gaming workspace", "haoshoku-gaming-workspace toggle")',
+			'o.bind("SUPER + S", "Show/focus/hide Steam workspace", "haoshoku-special-workspace steam")',
 		];
 		const numberedOmakade = `o.bind(
   "SUPER + code:11",
@@ -96,13 +97,16 @@ describe("Omarchy Lua workspace behavior", () => {
 				'o.exec_on_start("haoshoku-special-workspace numbered-login 7 ghostty")',
 			);
 			expect(overlay).toContain(
-				'o.exec_on_start("haoshoku-special-workspace numbered-login 2 steam")',
+				'o.exec_on_start("[workspace special:steam silent] uwsm-app -- steam")',
 			);
 			// Omakade autostart is opt-in via --gaming-omakade-autostart; the
 			// shipped overlay keeps Steam only so SUPER+2 stays the library key.
 			expect(overlay).not.toContain("numbered-login 2 omakade");
 			expect(overlay).toContain(
 				'o.window("^haoshoku-ws7$", { workspace = "7 silent" })',
+			);
+			expect(overlay).toContain(
+				'o.window("^[Ss]team$", { workspace = "special:steam silent", tile = true })',
 			);
 			expect(overlay).toContain(
 				'o.window("^io\\\\.github\\\\.tsouth89\\\\.Omakade$", { workspace = "2 silent" })',

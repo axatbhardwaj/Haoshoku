@@ -104,17 +104,21 @@ Browser web-app rules use the classes derived from Brave Origin, including
 `brave-web.whatsapp.com__-Default`; do not revert them to the old Chromium-derived
 prefix.
 
-Workspace 2 is the gaming workspace. Steam and Omakade both match exact classes
-(`steam` / `Steam`, and `io.github.tsouth89.Omakade`) and land on `2 silent`.
+Workspace 2 is the gaming workspace. Omakade matches the exact class
+`io.github.tsouth89.Omakade` and lands on `2 silent`; the Steam client matches
+exact classes (`steam` / `Steam`) and lands on `special:steam silent`, toggled
+with `SUPER+S` via the `steam` recipe in `haoshoku-special-workspace`.
 Steam also sets `tile = true` so it overrides Omarchy's stock `float = true`
 in `$OMARCHY_PATH/default/hypr/apps/steam.lua`; do not drop that effect or
 Steam reopens as a centered float. The exact-class match leaves `steam_app_*`
-game windows to Omarchy. Login autostart on workspace 2 is policy-driven:
+game windows to Omarchy. Games reach workspace 2 through the
+`haoshoku-gaming-workspace place` Steam launch-option wrapper (pid-tree
+watcher), not through window rules. Login autostart is policy-driven:
 `~/.config/haoshoku/gaming.json` defaults to Steam on and Omakade off, the
 shipped overlay carries that default, and `--workspaces` redeploys reconcile
 the live copy with the saved policy instead of reverting it. `SUPER+2` uses
 `numbered 2 omakade`. Do not bind `numbered 2 steam` to the workspace switch;
-`SUPER+SHIFT+G` remains the toggle that ensures Steam.
+`SUPER+SHIFT+G` remains the gaming toggle that focuses 2 and ensures Omakade.
 
 Workspace 7 uses the `haoshoku-special-workspace numbered 7 ghostty` recipe. The
 exact `haoshoku-ws7` class identifies its owned window; the startup call and the

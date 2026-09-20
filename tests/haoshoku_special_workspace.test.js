@@ -66,6 +66,7 @@ describe("haoshoku-special-workspace", () => {
 				followsFocus: false,
 			},
 			stash: { workspace: "stash", monitor: "DP-1", followsFocus: false },
+			steam: { workspace: "steam", monitor: "DP-1", followsFocus: false },
 			x: { workspace: "x", monitor: "DP-2", followsFocus: false },
 			youtube: { workspace: "youtube", monitor: "DP-1", followsFocus: true },
 			jiohotstar: {
@@ -1243,6 +1244,26 @@ printf 'steam\n' >> "$CALL_LOG"
 		expect(result.exitCode).toBe(0);
 		expect(dispatchCalls()).toEqual([
 			"dispatch exec [workspace 2 silent] uwsm-app -- steam ",
+			"steam",
+		]);
+	});
+
+	it("toggles the Steam special workspace and launches a missing client", async () => {
+		fs.writeFileSync(
+			path.join(directory, "steam"),
+			`#!/usr/bin/env bash
+printf 'steam\n' >> "$CALL_LOG"
+`,
+		);
+		fs.chmodSync(path.join(directory, "steam"), 0o755);
+
+		const result = await run(["steam"], { clients: "[]" });
+
+		expect(result.exitCode).toBe(0);
+		expect(dispatchCalls()).toEqual([
+			"dispatch focusmonitor DP-1",
+			"dispatch togglespecialworkspace steam",
+			"dispatch exec [workspace special:steam silent] uwsm-app -- steam ",
 			"steam",
 		]);
 	});

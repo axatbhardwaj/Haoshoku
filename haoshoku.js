@@ -243,7 +243,7 @@ program
 	)
 	.option(
 		"--gaming-steam-autostart <state>",
-		"Set Steam login autostart on workspace 2 (enabled or disabled)",
+		"Set Steam login autostart into special:steam (enabled or disabled)",
 	)
 	.option(
 		"--gaming-omakade-autostart <state>",

@@ -80,8 +80,8 @@ describe("gaming autostart CLI", () => {
 			overlayPath,
 			[
 				'o.exec_on_start("/usr/bin/kdeconnectd")',
-				"-- Steam stays in the background on 2; Omakade is the library you open with SUPER+2.",
-				'o.exec_on_start("haoshoku-special-workspace numbered-login 2 steam")',
+				"-- Steam lives in special:steam (Meta+S); Omakade is the library you open with SUPER+2.",
+				'o.exec_on_start("[workspace special:steam silent] uwsm-app -- steam")',
 				"",
 			].join("\n"),
 		);

@@ -255,6 +255,7 @@ else
     1password) workspace=1password; monitor=DP-1 ;;
     communication) workspace=communication; monitor=HDMI-A-1 ;;
     stash) workspace=stash; monitor=DP-1 ;;
+    steam) workspace=steam; monitor=DP-1 ;;
     x) workspace=x; monitor=DP-2 ;;
     youtube) workspace=youtube; monitor=DP-1; follows_focus=true ;;
     jiohotstar) workspace=jiohotstar; monitor=DP-1; follows_focus=true ;;
@@ -355,6 +356,7 @@ case "$recipe" in
     launch_if_missing "special:$workspace" '^brave-web\.whatsapp\.com__-Default$' brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/whatsapp" --app=https://web.whatsapp.com/
     ;;
   stash) ;;
+  steam) launch_if_missing "special:$workspace" '^[Ss]team$' steam ;;
   x) launch_if_missing "special:$workspace" '^brave-x\.com__-Default$' brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/flux" --class=chromium-flux --app=https://x.com/ ;;
   youtube) launch_if_missing "special:$workspace" '^brave-youtube\.com__-Default$' brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/flux" --class=chromium-flux --app=https://youtube.com/ ;;
   jiohotstar) launch_if_missing "special:$workspace" '^brave-www\.jiohotstar\.com__-Default$' brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/flux" --class=chromium-flux --app=https://www.jiohotstar.com/ ;;

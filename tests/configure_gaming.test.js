@@ -33,9 +33,9 @@ afterEach(() => fs.rmSync(home, { recursive: true, force: true }));
 const BASE_LUA = [
 	"-- Haoshoku workspace behavior for Omarchy.",
 	'o.exec_on_start("/usr/bin/kdeconnectd")',
-	"-- Steam stays in the background on 2; Omakade is the library you open with SUPER+2.",
-	'o.exec_on_start("haoshoku-special-workspace numbered-login 2 steam")',
-	'o.window("^[Ss]team$", { workspace = "2 silent", tile = true })',
+	"-- Steam lives in special:steam (Meta+S); Omakade is the library you open with SUPER+2.",
+	'o.exec_on_start("[workspace special:steam silent] uwsm-app -- steam")',
+	'o.window("^[Ss]team$", { workspace = "special:steam silent", tile = true })',
 	'o.window("^io\\\\.github\\\\.tsouth89\\\\.Omakade$", { workspace = "2 silent" })',
 	"",
 ].join("\n");
@@ -186,7 +186,7 @@ describe("applyGamingAutostartToText", () => {
 
 	it("anchors after kdeconnectd when the Steam comment is absent", () => {
 		const withoutComment = BASE_LUA.split("\n")
-			.filter((line) => !line.startsWith("-- Steam stays"))
+			.filter((line) => !line.startsWith("-- Steam lives"))
 			.join("\n");
 		const result = applyGamingAutostartToText(withoutComment, {
 			steamAutostart: true,

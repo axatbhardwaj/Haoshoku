@@ -42,9 +42,9 @@ describe("gaming workspace configuration", () => {
 		expect(laptopConfig).not.toMatch(gamingSpecificWorkspaceRule);
 	});
 
-	it("routes Steam windows silently to workspace 2 and tiles them", () => {
+	it("routes Steam windows silently to special:steam and tiles them", () => {
 		expect(workspacesConfig).toContain(
-			'o.window("^[Ss]team$", { workspace = "2 silent", tile = true })',
+			'o.window("^[Ss]team$", { workspace = "special:steam silent", tile = true })',
 		);
 	});
 
@@ -54,9 +54,9 @@ describe("gaming workspace configuration", () => {
 		);
 	});
 
-	it("starts Steam silently on workspace 2 at login while Omakade stays on-demand", () => {
+	it("starts Steam silently in special:steam at login while Omakade stays on-demand", () => {
 		expect(workspacesConfig).toContain(
-			'o.exec_on_start("haoshoku-special-workspace numbered-login 2 steam")',
+			'o.exec_on_start("[workspace special:steam silent] uwsm-app -- steam")',
 		);
 		// Omakade autostart is opt-in via --gaming-omakade-autostart; SUPER+2
 		// remains the on-demand library key.
@@ -93,7 +93,7 @@ describe("gaming workspace configuration", () => {
 		);
 
 		expect(laptopConfig).toContain(
-			'o.window("^[Ss]team$", { workspace = "2 silent", tile = true })',
+			'o.window("^[Ss]team$", { workspace = "special:steam silent", tile = true })',
 		);
 		expect(laptopConfig).toContain(
 			'o.window("^io\\\\.github\\\\.tsouth89\\\\.Omakade$", { workspace = "2 silent" })',
@@ -172,7 +172,7 @@ fi
 		return fs.readFileSync(log, "utf8").trim().split("\n");
 	}
 
-	it("launches missing Steam when toggling into workspace 2", async () => {
+	it("launches missing Omakade when toggling into workspace 2", async () => {
 		const result = await runToggle({ activeWorkspace: 3 });
 
 		expect(result).toEqual({ exitCode: 0, stderr: "" });
@@ -180,11 +180,11 @@ fi
 			"activeworkspace -j",
 			'dispatch hl.dsp.focus({ workspace = "2" })',
 			"clients -j",
-			'dispatch hl.dsp.exec_cmd("[workspace 2 silent] uwsm-app -- steam ")',
+			'dispatch hl.dsp.exec_cmd("[workspace 2 silent] uwsm-app -- omakade ")',
 		]);
 	});
 
-	it("ensures Steam when toggling out to the previous workspace", async () => {
+	it("ensures Omakade when toggling out to the previous workspace", async () => {
 		const result = await runToggle({ activeWorkspace: 2 });
 
 		expect(result).toEqual({ exitCode: 0, stderr: "" });
@@ -192,14 +192,14 @@ fi
 			"activeworkspace -j",
 			'dispatch hl.dsp.focus({ workspace = "previous" })',
 			"clients -j",
-			'dispatch hl.dsp.exec_cmd("[workspace 2 silent] uwsm-app -- steam ")',
+			'dispatch hl.dsp.exec_cmd("[workspace 2 silent] uwsm-app -- omakade ")',
 		]);
 	});
 
-	it("does not relaunch Steam when it is already present on an inbound toggle", async () => {
+	it("does not relaunch Omakade when it is already present on an inbound toggle", async () => {
 		const result = await runToggle({
 			activeWorkspace: 3,
-			clients: [{ class: "steam" }],
+			clients: [{ class: "io.github.tsouth89.Omakade" }],
 		});
 
 		expect(result).toEqual({ exitCode: 0, stderr: "" });

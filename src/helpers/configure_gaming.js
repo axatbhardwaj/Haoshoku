@@ -10,11 +10,11 @@ export const DEFAULT_GAMING_CONFIG = Object.freeze({
 });
 
 export const STEAM_AUTOSTART_LINE =
-	'o.exec_on_start("haoshoku-special-workspace numbered-login 2 steam")';
+	'o.exec_on_start("[workspace special:steam silent] uwsm-app -- steam")';
 export const OMAKADE_AUTOSTART_LINE =
 	'o.exec_on_start("haoshoku-special-workspace numbered-login 2 omakade")';
 
-const AUTOSTART_ANCHOR_COMMENT = "-- Steam stays in the background";
+const AUTOSTART_ANCHOR_COMMENT = "-- Steam lives in special:steam";
 const KDECONNECT_LINE = 'o.exec_on_start("/usr/bin/kdeconnectd")';
 
 function configPath(home) {
@@ -129,7 +129,7 @@ export function setGamingConfig(
 }
 
 /**
- * Reconcile the two workspace-2 login lines in a workspaces.lua text with the
+ * Reconcile the Steam/Omakade login lines in a workspaces.lua text with the
  * gaming autostart policy. Steam is inserted before Omakade when both are
  * enabled. Returns { changed, text } and never touches window rules or binds.
  */

@@ -10,17 +10,19 @@ o.launch_on_start("/usr/bin/paseo")
 -- /etc/xdg/autostart/org.kde.kdeconnect.daemon.desktop never fires. Start explicitly
 -- instead of relying on incidental D-Bus activation for phone sync after login.
 o.exec_on_start("/usr/bin/kdeconnectd")
--- Steam stays in the background on 2; Omakade is the library you open with SUPER+2.
-o.exec_on_start("haoshoku-special-workspace numbered-login 2 steam")
+-- Steam lives in special:steam (Meta+S) and autostarts silently there at login; Omakade is the library you open with SUPER+2.
+o.exec_on_start("[workspace special:steam silent] uwsm-app -- steam")
 
--- Steam and Omakade join the games on 2 so alt-tabbing between a game, the library,
--- and the Steam window keeps working -- cyclenext is workspace-local, so they have to
--- share a workspace to cycle. Workspace 2 is a normal persistent workspace pinned to
--- DP-1 by the hyprmoncfg PC profile. Disappear-on-close ephemerality was deliberately
--- traded away.
+-- Steam (client) goes to special:steam. Omakade stays on 2 with the games so
+-- alt-tabbing between a game, the library, and Omakade keeps working --
+-- cyclenext is workspace-local, so they have to share a workspace to cycle.
+-- Workspace 2 is a normal persistent workspace pinned to DP-1 by the
+-- hyprmoncfg PC profile. Disappear-on-close ephemerality was deliberately
+-- traded away. Games land on 2 via the `haoshoku-gaming-workspace place`
+-- Steam launch-option wrapper (pid-tree watcher), not by class.
 -- Omarchy's stock steam.lua floats every Steam window. tile must come after that
--- default (this overlay loads later) so the library opens tiled on workspace 2.
-o.window("^[Ss]team$", { workspace = "2 silent", tile = true })
+-- default (this overlay loads later) so Steam opens tiled in its special workspace.
+o.window("^[Ss]team$", { workspace = "special:steam silent", tile = true })
 o.window("^io\\.github\\.tsouth89\\.Omakade$", { workspace = "2 silent" })
 o.window("^vesktop$", { workspace = "4 silent" })
 o.window("^(teams-for-linux|TelegramDesktop|org\\.telegram\\.desktop)$", { workspace = "5 silent" })
@@ -64,10 +66,11 @@ o.window("^xdg-desktop-portal-gtk$", { pin = true })
 o.window("^xdg-desktop-portal-gtk$", { center = true })
 
 -- These are additive supersets of Omarchy's stock Super+number workspace binds.
--- Workspace 2 is the gaming workspace. Steam starts silently at login; SUPER+2
--- focuses 2 and ensures Omakade. There is deliberately no `numbered 2 steam` bind:
--- a plain workspace switch must not launch Steam. SUPER+SHIFT+G remains the toggle
--- that ensures Steam.
+-- Workspace 2 is the gaming workspace. Omakade starts silently at login; SUPER+2
+-- focuses 2 and ensures Omakade. SUPER+SHIFT+G remains the gaming toggle that
+-- focuses 2 and ensures Omakade (never Steam -- Steam lives in special:steam).
+-- SUPER+S toggles the Steam special workspace; the stash toggle moves to
+-- SUPER+ALT+S (SUPER+SHIFT+S still stashes the focused window).
 o.bind(
   "SUPER + code:11",
   "Workspace 2 and Omakade",
@@ -121,7 +124,8 @@ o.bind("SUPER + Y", "Show/focus/hide YouTube workspace", "haoshoku-special-works
 o.bind("SUPER + J", "Show/focus/hide JioHotstar workspace", "haoshoku-special-workspace jiohotstar")
 o.bind("SUPER + R", "Show/focus/hide Crunchyroll workspace", "haoshoku-special-workspace crunchyroll")
 o.bind("SUPER + F", "Show/focus/hide Re:ANIME workspace", "haoshoku-special-workspace reanime")
-o.bind("SUPER + S", "Toggle stash workspace", hl.dsp.workspace.toggle_special("stash"))
+o.bind("SUPER + S", "Show/focus/hide Steam workspace", "haoshoku-special-workspace steam")
+o.bind("SUPER + ALT + S", "Toggle stash workspace", hl.dsp.workspace.toggle_special("stash"))
 o.bind("SUPER + SHIFT + X", "Show/focus/hide X workspace", "haoshoku-special-workspace x")
 -- bindings.lua unbinds SUPER+SHIFT+G; this module deliberately reclaims it.
 -- hyprland.lua must require bindings before this workspace module so the later bind wins.

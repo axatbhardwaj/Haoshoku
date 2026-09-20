@@ -183,7 +183,7 @@ cmd_toggle() {
   fi
   target="$(toggle_target "$state")"
   dispatch_focus_workspace "$target"
-  haoshoku-special-workspace numbered-login "$WORKSPACE_ID" steam
+  haoshoku-special-workspace numbered-login "$WORKSPACE_ID" omakade
 }
 
 # Forward a signal to the launched process and everything under it, preserving the

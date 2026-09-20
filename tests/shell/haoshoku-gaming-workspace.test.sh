@@ -103,8 +103,8 @@ toggle_out_calls="$(
     cmd_toggle
   )
 )"
-is "toggling out still ensures Steam on workspace 2" \
-   $'focus hl.dsp.focus({ workspace = "previous" })\nlogin numbered-login 2 steam' \
+is "toggling out still ensures Omakade on workspace 2" \
+   $'focus hl.dsp.focus({ workspace = "previous" })\nlogin numbered-login 2 omakade' \
    "$toggle_out_calls"
 
 echo "collect_descendants"

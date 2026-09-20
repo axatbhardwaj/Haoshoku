@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Move the Steam client into its own `special:steam` workspace on `Super+S`
+  (stash toggle moves to `Super+Alt+S`). Omakade stays on workspace 2 with the
+  games, and `Super+Shift+G` now ensures Omakade instead of Steam. Games keep
+  landing on workspace 2 through the `haoshoku-gaming-workspace place`
+  Steam launch-option wrapper.
+
 ## 11.11.0 - 2026-09-20
 
 - Support harness-specific appendix files in the shared agent profile.
