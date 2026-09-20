@@ -7,6 +7,7 @@
   games, and `Super+Shift+G` now ensures Omakade instead of Steam. Games keep
   landing on workspace 2 through the `haoshoku-gaming-workspace place`
   Steam launch-option wrapper.
+- Order the left bar as menu, workspaces, media, Feishin.
 
 ## 11.11.0 - 2026-09-20
 

@@ -542,7 +542,7 @@ it("ships Omarchy's generic media widget in the left bar section", () => {
 
 	expect(leftIds).toContain("omarchy.media");
 	expect(leftIds.indexOf("omarchy.media")).toBe(
-		leftIds.indexOf("io.github.nag3sy.feishin") + 1,
+		leftIds.indexOf("io.github.nag3sy.feishin") - 1,
 	);
 });
 
