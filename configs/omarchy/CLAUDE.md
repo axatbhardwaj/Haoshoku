@@ -56,6 +56,12 @@ hyprmoncfg and the monitor profile. The overlays must not set scaling environmen
 variables: a global `GDK_SCALE` forces every GTK and XWayland client to one fixed
 factor regardless of per-monitor scale.
 
+The PC overlay has one narrow workspace-policy carve-out: Haoshoku owns the
+layout preference for numbered workspaces 6, 7, and 10, including its guarded
+`SUPER+L` behavior. hyprmoncfg retains sole ownership of monitor discovery,
+geometry, transforms, scaling, and workspace-to-monitor pinning; this carve-out
+must not add monitor selectors or topology reconciliation to the overlay.
+
 ## Shell ownership boundary
 
 Unlike `monitors.lua`, which has an exclusive external owner and Haoshoku never

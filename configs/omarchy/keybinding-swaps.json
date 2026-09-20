@@ -47,6 +47,15 @@
 			"reason": "superseded_by_workspace_toggle"
 		},
 		{
+			"config_file": "configs/omarchy/haoshoku/workspaces-pc.lua",
+			"key_combination_taken": "SUPER, L",
+			"hl_unbind": "hl.unbind(\"SUPER + L\")",
+			"previous_binding": "bindd = SUPER, L, Toggle workspace layout, exec, omarchy-hyprland-workspace-layout-toggle",
+			"moved_from_dispatcher": "exec",
+			"moved_from_arg": "omarchy-hyprland-workspace-layout-toggle",
+			"reason": "reclaimed_by_overlay"
+		},
+		{
 			"config_file": "configs/omarchy/haoshoku/bindings.lua",
 			"key_combination_taken": "SUPER, F",
 			"hl_unbind": "hl.unbind(\"SUPER + F\")",

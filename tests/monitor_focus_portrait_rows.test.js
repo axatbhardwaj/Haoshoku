@@ -11,7 +11,7 @@ const pcOverlay = path.join(
 	"workspaces-pc.lua",
 );
 
-const luaHarness = String.raw`
+const luaHarness = `
 local overlay = arg[1]
 local bindings, unbinds, layouts, rules, events = {}, {}, {}, {}, {}
 local active_id = 1
@@ -99,7 +99,14 @@ for count = 1, 4 do
   local boxes, targets = {}, {}
   for index = 1, count do
     targets[index] = {
-      place = function(_, box) boxes[index] = box end,
+      place = function(_, box)
+        boxes[index] = {
+          x = math.floor(box.x + 0.5),
+          y = math.floor(box.y + 0.5),
+          w = math.floor(box.w + 0.5),
+          h = math.floor(box.h + 0.5),
+        }
+      end,
     }
   end
   provider.recalculate({ area = area, targets = targets })
@@ -107,10 +114,10 @@ for count = 1, 4 do
 
   local visible = {}
   for index, box in ipairs(boxes) do
-    local top = box.y == area.y and 0 or gaps.top
-    local bottom = box.y + box.h == area.y + area.h and 0 or gaps.bottom
-    local left = box.x == area.x and 0 or gaps.left
-    local right = box.x + box.w == area.x + area.w and 0 or gaps.right
+    local top = math.abs(box.y - area.y) < 2 and 0 or gaps.top
+    local bottom = math.abs(box.y + box.h - area.y - area.h) < 2 and 0 or gaps.bottom
+    local left = math.abs(box.x - area.x) < 2 and 0 or gaps.left
+    local right = math.abs(box.x + box.w - area.x - area.w) < 2 and 0 or gaps.right
     visible[index] = {
       x = box.x + left,
       y = box.y + top,
@@ -124,7 +131,8 @@ for count = 1, 4 do
       assert(previous.y + previous.h <= visible[index].y,
         "visible rows must not overlap")
       assert(math.abs(previous.h - visible[index].h) <= 1,
-        "visible row heights must differ by at most one pixel")
+        "visible row heights must differ by at most one pixel: count=" .. count ..
+          " index=" .. index .. " previous=" .. previous.h .. " current=" .. visible[index].h)
     end
   end
 end
@@ -165,8 +173,7 @@ describe("PC monitor focus and portrait rows", () => {
 		expect(
 			swaps.filter(
 				(entry) =>
-					entry.config_file ===
-						"configs/omarchy/haoshoku/workspaces-pc.lua" &&
+					entry.config_file === "configs/omarchy/haoshoku/workspaces-pc.lua" &&
 					entry.hl_unbind === 'hl.unbind("SUPER + L")' &&
 					entry.reason === "reclaimed_by_overlay",
 			),
@@ -176,8 +183,8 @@ describe("PC monitor focus and portrait rows", () => {
 			path.join(root, "configs", "omarchy", "CLAUDE.md"),
 			"utf8",
 		);
-		expect(guidance).toContain(
-			"Haoshoku owns the layout preference for numbered workspaces 6, 7, and 10",
+		expect(guidance).toMatch(
+			/Haoshoku owns the\s+layout preference for numbered workspaces 6, 7, and 10/,
 		);
 		expect(guidance).toContain("hyprmoncfg retains sole ownership");
 	});

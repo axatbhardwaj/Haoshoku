@@ -476,7 +476,7 @@ describe("Omarchy v4 Lua overlay", () => {
 		).toEqual([]);
 	});
 
-	it("accounts for the translated directive inventory without adding PC monitor workspace rules", () => {
+	it("accounts for the translated directive inventory including fixed PC layout rules", () => {
 		const inventory = Object.fromEntries(
 			readExistingOverlays().map(({ file, source }) => [
 				path.basename(file),
@@ -501,10 +501,10 @@ describe("Omarchy v4 Lua overlay", () => {
 				env: 0,
 			},
 			"workspaces-pc.lua": {
-				unbind: 4,
-				bind: 25,
+				unbind: 5,
+				bind: 29,
 				window: 25,
-				workspace: 0,
+				workspace: 3,
 				execOnStart: 5,
 				env: 0,
 			},
