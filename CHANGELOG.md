@@ -1,5 +1,15 @@
 # Changelog
 
+## 11.13.0 - 2026-09-21
+
+- Add fixed `Super+F1`/`Super+F2`/`Super+F3` focus hotkeys for the left,
+  center, and right monitors.
+- Give numbered portrait workspaces 6, 7, and 10 equal visible rows, and guard
+  `Super+L` so their owned layout cannot be toggled away.
+- Align the bundled Claude and Codex agent profiles with the shared run
+  notification policy, a prerequisite for decision, merge-ready/merged, and
+  serious-risk Telegram alerts.
+
 ## 11.12.0 - 2026-09-20
 
 - Move the Steam client into its own `special:steam` workspace on `Super+S`
