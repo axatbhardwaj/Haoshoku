@@ -2,6 +2,40 @@
 -- Monitor-bound numbered workspace rules are intentionally omitted from this module;
 -- hyprmoncfg owns monitor configuration and receives them through its PC profile.
 
+local portrait_row_workspaces = { [6] = true, [7] = true, [10] = true }
+local portrait_rows_layout = "haoshoku-portrait-rows"
+
+hl.layout.register(portrait_rows_layout, {
+  recalculate = function(ctx)
+    local count = #ctx.targets
+    if count == 0 then
+      return
+    end
+
+    local gaps = hl.get_config("general.gaps_in")
+    local visible_height =
+      (ctx.area.h - (count - 1) * (gaps.top + gaps.bottom)) / count
+    local y = ctx.area.y
+
+    for index, target in ipairs(ctx.targets) do
+      local height = visible_height
+      if index > 1 then
+        height = height + gaps.top
+      end
+      if index < count then
+        height = height + gaps.bottom
+      end
+
+      target:place({ x = ctx.area.x, y = y, w = ctx.area.w, h = height })
+      y = y + height
+    end
+  end,
+})
+
+hl.workspace_rule({ workspace = "6", layout = "lua:" .. portrait_rows_layout })
+hl.workspace_rule({ workspace = "7", layout = "lua:" .. portrait_rows_layout })
+hl.workspace_rule({ workspace = "10", layout = "lua:" .. portrait_rows_layout })
+
 o.exec_on_start("haoshoku-default-browser")
 o.exec_on_start("haoshoku-special-workspace numbered-login 7 ghostty")
 o.exec_on_start("haoshoku-special-workspace assistants")
@@ -127,6 +161,9 @@ o.bind("SUPER + F", "Show/focus/hide Re:ANIME workspace", "haoshoku-special-work
 o.bind("SUPER + S", "Show/focus/hide Steam workspace", "haoshoku-special-workspace steam")
 o.bind("SUPER + ALT + S", "Toggle stash workspace", hl.dsp.workspace.toggle_special("stash"))
 o.bind("SUPER + SHIFT + X", "Show/focus/hide X workspace", "haoshoku-special-workspace x")
+o.bind("SUPER + F1", "Focus left portrait monitor", hl.dsp.focus({ monitor = "DP-2" }))
+o.bind("SUPER + F2", "Focus center monitor", hl.dsp.focus({ monitor = "DP-1" }))
+o.bind("SUPER + F3", "Focus right monitor", hl.dsp.focus({ monitor = "HDMI-A-1" }))
 -- bindings.lua unbinds SUPER+SHIFT+G; this module deliberately reclaims it.
 -- hyprland.lua must require bindings before this workspace module so the later bind wins.
 o.bind("SUPER + SHIFT + G", "Toggle gaming workspace", "haoshoku-gaming-workspace toggle")
@@ -136,3 +173,13 @@ o.bind(
   "Stash focused window",
   hl.dsp.window.move({ workspace = "special:stash", follow = false })
 )
+
+hl.unbind("SUPER + L")
+o.bind("SUPER + L", "Toggle workspace layout", function()
+  local workspace = hl.get_active_workspace()
+  if workspace and portrait_row_workspaces[workspace.id] then
+    return
+  end
+
+  hl.exec_cmd("omarchy-hyprland-workspace-layout-toggle")
+end)
