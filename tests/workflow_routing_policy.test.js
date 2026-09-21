@@ -100,6 +100,7 @@ describe("accepted workflow routing policy", () => {
 			"configs/claude/CLAUDE.md",
 		]) {
 			const template = compact(read(relativePath));
+			expect(template, relativePath).toContain("## Notifications");
 			expect(template, relativePath).toBe(profile);
 			expect(template, relativePath).toContain("Orca orchestration");
 			expect(template, relativePath).toContain("Axstack workflows");
