@@ -10,6 +10,7 @@ const pcOverlay = path.join(
 	"haoshoku",
 	"workspaces-pc.lua",
 );
+const luaInterpreter = Bun.which("lua5.4") ?? Bun.which("lua");
 
 const luaHarness = `
 local overlay = arg[1]
@@ -153,15 +154,20 @@ assert(#events == 1 and events[1].kind == "exec" and
 `;
 
 describe("PC monitor focus and portrait rows", () => {
-	it("executes the fixed-focus, equal-visible-row, and guarded-toggle behavior", () => {
-		const result = Bun.spawnSync(["lua", "-", pcOverlay], {
-			stdin: Buffer.from(luaHarness),
-			stdout: "pipe",
-			stderr: "pipe",
-		});
+	(luaInterpreter ? it : it.skip)(
+		"executes the fixed-focus, equal-visible-row, and guarded-toggle behavior",
+		() => {
+			if (!luaInterpreter) return;
 
-		expect(result.exitCode, result.stderr.toString()).toBe(0);
-	});
+			const result = Bun.spawnSync([luaInterpreter, "-", pcOverlay], {
+				stdin: Buffer.from(luaHarness),
+				stdout: "pipe",
+				stderr: "pipe",
+			});
+
+			expect(result.exitCode, result.stderr.toString()).toBe(0);
+		},
+	);
 
 	it("records the SUPER+L reclaim and the ownership carve-out", () => {
 		const swaps = JSON.parse(
