@@ -1,5 +1,11 @@
 # Changelog
 
+## 11.13.1 - 2026-09-21
+
+- Make the portrait-row test portable across CI runners: prefer `lua5.4`, fall
+  back to `lua`, and skip only its interpreter-backed behavior check when neither
+  is installed while keeping the static ownership check active.
+
 ## 11.13.0 - 2026-09-21
 
 - Add fixed `Super+F1`/`Super+F2`/`Super+F3` focus hotkeys for the left,
