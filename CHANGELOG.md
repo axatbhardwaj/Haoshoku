@@ -1,5 +1,11 @@
 # Changelog
 
+## 11.13.4 - 2026-09-22
+
+- Use GTK-valid application IDs for owned Ghostty windows so workspace 7,
+  Haki, and agents are recognized instead of falling back to Ghostty's default
+  class and creating duplicates.
+
 ## 11.13.3 - 2026-09-22
 
 - Make `Super+7` switch to workspace 7 and focus its owned Ghostty when present,
