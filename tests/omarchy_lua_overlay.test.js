@@ -502,7 +502,7 @@ describe("Omarchy v4 Lua overlay", () => {
 			},
 			"workspaces-pc.lua": {
 				unbind: 5,
-				bind: 29,
+				bind: 28,
 				window: 25,
 				workspace: 3,
 				execOnStart: 5,
@@ -510,7 +510,7 @@ describe("Omarchy v4 Lua overlay", () => {
 			},
 			"workspaces-laptop.lua": {
 				unbind: 4,
-				bind: 25,
+				bind: 24,
 				window: 25,
 				workspace: 10,
 				execOnStart: 5,
