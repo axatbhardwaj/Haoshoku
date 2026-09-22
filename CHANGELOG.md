@@ -1,5 +1,10 @@
 # Changelog
 
+## 11.13.2 - 2026-09-22
+
+- Make `Super+7` only switch to workspace 7 without launching Ghostty, while
+  keeping login-time workspace-7 ownership.
+
 ## 11.13.1 - 2026-09-21
 
 - Make the portrait-row test portable across CI runners: prefer `lua5.4`, fall
