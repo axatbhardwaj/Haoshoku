@@ -126,11 +126,13 @@ the live copy with the saved policy instead of reverting it. `SUPER+2` uses
 `numbered 2 omakade`. Do not bind `numbered 2 steam` to the workspace switch;
 `SUPER+SHIFT+G` remains the gaming toggle that focuses 2 and ensures Omakade.
 
-Workspace 7 leaves `SUPER+7` to Omarchy's stock workspace switch. The exact
-`haoshoku-ws7` class identifies its owned window; the startup call and the
-post-reload helper use `numbered-login 7 ghostty`, without an interactive
-Ghostty launcher binding. Haki and agents use their own exact Ghostty classes
-and tmux splits. `SUPER+Return` remains Omarchy's
+Workspace 7 replaces Omarchy's stock `SUPER+7` binding with the
+`haoshoku-special-workspace numbered 7 ghostty` recipe. It switches to workspace
+7 and focuses the exact `haoshoku-ws7` window when present, reclaiming it by
+address if needed, or creates it when absent. The startup call and post-reload
+helper use `numbered-login 7 ghostty`, which preserves the terminal without
+stealing focus. Haki and agents use their own exact Ghostty classes and tmux
+splits. `SUPER+Return` remains Omarchy's
 `xdg-terminal-exec` route, whose XDG default is Ghostty; `SUPER+T` uses
 `o.launch_sole("^Paseo$", "/usr/bin/paseo")`, focusing Paseo wherever it resides
 and launching the AUR desktop explicitly when absent, even if a user CLI shadows

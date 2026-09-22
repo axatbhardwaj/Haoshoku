@@ -257,9 +257,18 @@ describe("Omarchy v4 Lua overlay", () => {
 					.filter((file) => file.endsWith(".lua"))
 					.flatMap((file) => {
 						const source = fs.readFileSync(file, "utf8").replace(/--.*$/gm, "");
-						return [...source.matchAll(/o\.bind\(\s*"([^"]+)"/g)].map(
-							([, chord]) => chord,
-						);
+						const literalBinds = [
+							...source.matchAll(/o\.bind\(\s*"([^"]+)"/g),
+						].map(([, chord]) => chord);
+						const generatedWorkspaceBinds = source.includes(
+							'o.bind("SUPER + " .. key, "Switch to workspace "',
+						)
+							? Array.from(
+									{ length: 10 },
+									(_, index) => `SUPER + code:${index + 10}`,
+								)
+							: [];
+						return [...literalBinds, ...generatedWorkspaceBinds];
 					}),
 			);
 
@@ -501,16 +510,16 @@ describe("Omarchy v4 Lua overlay", () => {
 				env: 0,
 			},
 			"workspaces-pc.lua": {
-				unbind: 5,
-				bind: 28,
+				unbind: 6,
+				bind: 29,
 				window: 25,
 				workspace: 3,
 				execOnStart: 5,
 				env: 0,
 			},
 			"workspaces-laptop.lua": {
-				unbind: 4,
-				bind: 24,
+				unbind: 5,
+				bind: 25,
 				window: 25,
 				workspace: 10,
 				execOnStart: 5,

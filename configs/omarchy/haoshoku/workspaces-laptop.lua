@@ -74,7 +74,9 @@ o.window("^xdg-desktop-portal-gtk$", { float = true })
 o.window("^xdg-desktop-portal-gtk$", { pin = true })
 o.window("^xdg-desktop-portal-gtk$", { center = true })
 
--- These are additive supersets of Omarchy's stock Super+number workspace binds.
+-- Most are additive supersets of Omarchy's stock Super+number workspace binds.
+-- Workspace 7 replaces its stock bind so one keypress focuses or creates its
+-- owned Ghostty without dispatching two workspace actions.
 -- Workspace 2 is the gaming workspace. Omakade starts silently at login; SUPER+2
 -- focuses 2 and ensures Omakade. SUPER+SHIFT+G remains the gaming toggle that
 -- focuses 2 and ensures Omakade (never Steam -- Steam lives in special:steam).
@@ -94,6 +96,12 @@ o.bind(
   "SUPER + code:14",
   "Workspace 5 and chat",
   "haoshoku-special-workspace numbered 5 communication-numbered"
+)
+hl.unbind("SUPER + code:16")
+o.bind(
+  "SUPER + code:16",
+  "Workspace 7 Ghostty",
+  "haoshoku-special-workspace numbered 7 ghostty"
 )
 o.bind(
   "SUPER + code:19",
