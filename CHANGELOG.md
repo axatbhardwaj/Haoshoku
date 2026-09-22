@@ -1,5 +1,11 @@
 # Changelog
 
+## 11.13.3 - 2026-09-22
+
+- Make `Super+7` switch to workspace 7 and focus its owned Ghostty when present,
+  reclaim it when stranded, or create it when absent, while keeping login-time
+  startup non-focusing.
+
 ## 11.13.2 - 2026-09-22
 
 - Make `Super+7` only switch to workspace 7 without launching Ghostty, while
