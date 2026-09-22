@@ -186,7 +186,7 @@ if [[ "$recipe" == numbered || "$recipe" == numbered-login ]]; then
       launch_if_missing "$workspace" '^teams-for-linux$' teams-for-linux
       launch_if_missing "$workspace" '^(TelegramDesktop|org\.telegram\.desktop)$' Telegram
       ;;
-    ghostty) ensure_ghostty "$workspace" "haoshoku-ws${workspace}" plain "$focus_existing" ;;
+    ghostty) ensure_ghostty "$workspace" "com.haoshoku.ws${workspace}" plain "$focus_existing" ;;
     notion)
       # Brave Origin ignores --class under --app and derives the class from the URL instead.
       launch_if_missing "$workspace" '^brave-www\.notion\.so__-Default$' brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/notion" --app=https://www.notion.so/
@@ -201,8 +201,8 @@ fi
 if [[ "$recipe" == haki-terminal || "$recipe" == agents-terminal ]]; then
   [[ $# -eq 1 ]] || { echo "usage: haoshoku-special-workspace $recipe" >&2; exit 2; }
   case "$recipe" in
-    haki-terminal) exec ghostty "--class=haoshoku-haki" "--title=haki" -e sh -c "$(ghostty_tmux_split haoshoku-haki "$HOME/.local/bin/haoshoku-claude-local" codex)" ;;
-    agents-terminal) exec ghostty "--class=haoshoku-agents" "--title=agents" -e sh -c "$(ghostty_tmux_split haoshoku-agents 'claude -r io' codex)" ;;
+    haki-terminal) exec ghostty "--class=com.haoshoku.haki" "--title=haki" -e sh -c "$(ghostty_tmux_split haoshoku-haki "$HOME/.local/bin/haoshoku-claude-local" codex)" ;;
+    agents-terminal) exec ghostty "--class=com.haoshoku.agents" "--title=agents" -e sh -c "$(ghostty_tmux_split haoshoku-agents 'claude -r io' codex)" ;;
   esac
 fi
 
@@ -351,8 +351,8 @@ if [[ -n "$browser_profile" ]]; then
 elif [[ "$recipe" == haki || "$recipe" == agents ]]; then
   focus_or_toggle_special_workspace
   case "$recipe" in
-    haki) ensure_ghostty "special:$workspace" haoshoku-haki haki ;;
-    agents) ensure_ghostty "special:$workspace" haoshoku-agents agents ;;
+    haki) ensure_ghostty "special:$workspace" com.haoshoku.haki haki ;;
+    agents) ensure_ghostty "special:$workspace" com.haoshoku.agents agents ;;
   esac
   exit 0
 elif [[ "$follows_focus" == true ]]; then

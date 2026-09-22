@@ -26,8 +26,9 @@ active theme.
 
 Ghostty has no Kitty-style session files. The Haki and agents top/bottom
 splits live in `configs/scripts/haoshoku-special-workspace` as tmux
-one-liners (`ensure_ghostty`), using the same `haoshoku-haki` and
-`haoshoku-agents` window classes and tmux session names.
+one-liners (`ensure_ghostty`), using the GTK-valid `com.haoshoku.haki` and
+`com.haoshoku.agents` window classes while keeping the `haoshoku-haki` and
+`haoshoku-agents` tmux session names.
 
 ## Notes
 

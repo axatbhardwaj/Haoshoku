@@ -493,7 +493,7 @@ fi
 
 	const fluxClient = JSON.stringify([{ class: "chromium-flux" }]);
 	const hakiClient = JSON.stringify([
-		ghosttyClient("0xhaki", "special:haki", "haoshoku-haki"),
+		ghosttyClient("0xhaki", "special:haki", "com.haoshoku.haki"),
 	]);
 	function ghosttyClient(address, workspace, className) {
 		return {
@@ -526,7 +526,7 @@ fi
 		expect(rawDispatchExpressions()).toEqual([
 			'hl.dsp.focus({ workspace = "7" })',
 			`hl.dsp.exec_cmd(${JSON.stringify(
-				`[workspace 7 silent] uwsm-app -- ghostty --class=haoshoku-ws7 --working-directory=${directory} `,
+				`[workspace 7 silent] uwsm-app -- ghostty --class=com.haoshoku.ws7 --working-directory=${directory} `,
 			)})`,
 			'hl.dsp.workspace.toggle_special("assistants")',
 			'hl.dsp.window.move({ workspace = "special:assistants", window = "address:0xcodex", follow = false })',
@@ -1930,8 +1930,26 @@ printf 'signal-desktop\\n' >> "$CALL_LOG"
 
 	// Exact class plus target workspace is Ghostty's ownership contract. A matching
 	// client is focused; the same class elsewhere is reclaimed and then focused.
+	it("uses GTK-valid application IDs for owned Ghostty windows", async () => {
+		const numbered = await run(["numbered-login", "7", "ghostty"], {
+			clientsState: "[]",
+		});
+
+		expect(numbered.exitCode).toBe(0);
+		expect(ghosttyArguments()?.[0]).toBe("--class=com.haoshoku.ws7");
+
+		for (const recipe of ["haki", "agents"]) {
+			fs.rmSync(ghosttyCall, { force: true });
+			const result = await run([recipe], { clientsState: "[]" });
+			expect(result.exitCode).toBe(0);
+			expect(ghosttyArguments()?.[0], recipe).toBe(
+				`--class=com.haoshoku.${recipe}`,
+			);
+		}
+	});
+
 	it("focuses an owned Ghostty and reclaims only its stranded address", async () => {
-		const owned = ghosttyClient("0xowned", "7", "haoshoku-ws7");
+		const owned = ghosttyClient("0xowned", "7", "com.haoshoku.ws7");
 		const inPlace = await run(["numbered", "7", "ghostty"], {
 			clientsState: JSON.stringify([
 				owned,
@@ -1967,18 +1985,18 @@ printf 'signal-desktop\\n' >> "$CALL_LOG"
 		const result = await run(["numbered-login", "8", "ghostty"], {
 			clientsState: JSON.stringify([
 				ghosttyClient("0xplain", "8", "ghostty"),
-				ghosttyClient("0xother-owner", "8", "haoshoku-ws7"),
+				ghosttyClient("0xother-owner", "8", "com.haoshoku.ws7"),
 				ghosttyClient("0xelsewhere", "9", "com.mitchellh.ghostty"),
 			]),
 		});
 
 		expect(result.exitCode).toBe(0);
 		expect(ghosttyArguments()).toEqual([
-			"--class=haoshoku-ws8",
+			"--class=com.haoshoku.ws8",
 			`--working-directory=${directory}`,
 		]);
 		expect(dispatchCalls()).toEqual([
-			`dispatch exec [workspace 8 silent] uwsm-app -- ghostty --class=haoshoku-ws8 --working-directory=${directory}`,
+			`dispatch exec [workspace 8 silent] uwsm-app -- ghostty --class=com.haoshoku.ws8 --working-directory=${directory}`,
 		]);
 	});
 
@@ -1992,12 +2010,12 @@ printf 'signal-desktop\\n' >> "$CALL_LOG"
 
 		expect(result.exitCode).toBe(0);
 		expect(ghosttyArguments()).toEqual([
-			"--class=haoshoku-ws8",
+			"--class=com.haoshoku.ws8",
 			`--working-directory=${directory}`,
 		]);
 		expect(dispatchCalls()).toHaveLength(1);
 		expect(dispatchCalls()[0]).toContain(
-			"dispatch exec [workspace 8 silent] uwsm-app -- ghostty --class=haoshoku-ws8",
+			"dispatch exec [workspace 8 silent] uwsm-app -- ghostty --class=com.haoshoku.ws8",
 		);
 	});
 
@@ -2008,19 +2026,19 @@ printf 'signal-desktop\\n' >> "$CALL_LOG"
 
 		expect(first.exitCode).toBe(0);
 		expect(ghosttyArguments()).toEqual([
-			"--class=haoshoku-ws7",
+			"--class=com.haoshoku.ws7",
 			`--working-directory=${directory}`,
 		]);
 		expect(dispatchCalls()).toEqual([
 			"dispatch workspace 7",
-			`dispatch exec [workspace 7 silent] uwsm-app -- ghostty --class=haoshoku-ws7 --working-directory=${directory}`,
+			`dispatch exec [workspace 7 silent] uwsm-app -- ghostty --class=com.haoshoku.ws7 --working-directory=${directory}`,
 		]);
 
 		fs.rmSync(log, { force: true });
 		fs.rmSync(ghosttyCall, { force: true });
 		const repeated = await run(["numbered-login", "7", "ghostty"], {
 			clientsState: JSON.stringify([
-				ghosttyClient("0xowned", "7", "haoshoku-ws7"),
+				ghosttyClient("0xowned", "7", "com.haoshoku.ws7"),
 			]),
 		});
 
@@ -2032,8 +2050,8 @@ printf 'signal-desktop\\n' >> "$CALL_LOG"
 	it("reclaims only the first same-class Ghostty stray without launching", async () => {
 		const result = await run(["numbered-login", "7", "ghostty"], {
 			clientsState: JSON.stringify([
-				ghosttyClient("0xfirst", "special:stash", "haoshoku-ws7"),
-				ghosttyClient("0xsecond", "9", "haoshoku-ws7"),
+				ghosttyClient("0xfirst", "special:stash", "com.haoshoku.ws7"),
+				ghosttyClient("0xsecond", "9", "com.haoshoku.ws7"),
 			]),
 		});
 
@@ -2056,8 +2074,8 @@ printf 'signal-desktop\\n' >> "$CALL_LOG"
 
 	it("keeps Haki and agents ownership distinct by exact Ghostty class", async () => {
 		const clients = JSON.stringify([
-			ghosttyClient("0xhaki", "special:haki", "haoshoku-haki"),
-			ghosttyClient("0xagents", "special:agents", "haoshoku-agents"),
+			ghosttyClient("0xhaki", "special:haki", "com.haoshoku.haki"),
+			ghosttyClient("0xagents", "special:agents", "com.haoshoku.agents"),
 		]);
 		for (const recipe of ["haki", "agents"]) {
 			fs.rmSync(log, { force: true });
@@ -2083,7 +2101,7 @@ printf 'signal-desktop\\n' >> "$CALL_LOG"
 
 		expect(result.exitCode).toBe(0);
 		expect(ghosttyArguments()).toEqual([
-			"--class=haoshoku-haki",
+			"--class=com.haoshoku.haki",
 			"--title=haki",
 			"-e",
 			"sh",
@@ -2095,25 +2113,25 @@ printf 'signal-desktop\\n' >> "$CALL_LOG"
 	it("does not claim a Ghostty owned by another Haoshoku class", async () => {
 		const result = await run(["numbered-login", "7", "ghostty"], {
 			clientsState: JSON.stringify([
-				ghosttyClient("0xforeign", "7", "haoshoku-agents"),
+				ghosttyClient("0xforeign", "7", "com.haoshoku.agents"),
 			]),
 		});
 
 		expect(result.exitCode).toBe(0);
 		expect(ghosttyArguments()).toEqual([
-			"--class=haoshoku-ws7",
+			"--class=com.haoshoku.ws7",
 			`--working-directory=${directory}`,
 		]);
 		expect(dispatchCalls()).toHaveLength(1);
 		expect(dispatchCalls()[0]).toContain(
-			"dispatch exec [workspace 7 silent] uwsm-app -- ghostty --class=haoshoku-ws7",
+			"dispatch exec [workspace 7 silent] uwsm-app -- ghostty --class=com.haoshoku.ws7",
 		);
 	});
 
 	it("uses distinct Haki and agents Ghostty classes and tmux splits", async () => {
 		for (const { recipe, className } of [
-			{ recipe: "haki", className: "haoshoku-haki" },
-			{ recipe: "agents", className: "haoshoku-agents" },
+			{ recipe: "haki", className: "com.haoshoku.haki" },
+			{ recipe: "agents", className: "com.haoshoku.agents" },
 		]) {
 			fs.rmSync(log, { force: true });
 			fs.rmSync(ghosttyCall, { force: true });
@@ -2144,8 +2162,8 @@ printf 'signal-desktop\\n' >> "$CALL_LOG"
 
 	it("launches named Ghostty splits instead of adopting a plain Ghostty", async () => {
 		for (const { recipe, className } of [
-			{ recipe: "haki", className: "haoshoku-haki" },
-			{ recipe: "agents", className: "haoshoku-agents" },
+			{ recipe: "haki", className: "com.haoshoku.haki" },
+			{ recipe: "agents", className: "com.haoshoku.agents" },
 		]) {
 			fs.rmSync(log, { force: true });
 			fs.rmSync(ghosttyCall, { force: true });
@@ -2175,7 +2193,7 @@ printf 'signal-desktop\\n' >> "$CALL_LOG"
 	it("reclaims a restored Haki Ghostty instead of launching a duplicate", async () => {
 		const result = await run(["haki"], {
 			clientsState: JSON.stringify([
-				ghosttyClient("0xrestored", "special:stash", "haoshoku-haki"),
+				ghosttyClient("0xrestored", "special:stash", "com.haoshoku.haki"),
 			]),
 		});
 
@@ -2256,12 +2274,12 @@ printf 'signal-desktop\\n' >> "$CALL_LOG"
 			{
 				terminalRecipe: "haki-terminal",
 				sourceRecipe: "haki",
-				className: "haoshoku-haki",
+				className: "com.haoshoku.haki",
 			},
 			{
 				terminalRecipe: "agents-terminal",
 				sourceRecipe: "agents",
-				className: "haoshoku-agents",
+				className: "com.haoshoku.agents",
 			},
 		]) {
 			fs.rmSync(ghosttyCall, { force: true });
