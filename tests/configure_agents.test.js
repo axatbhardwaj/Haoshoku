@@ -28,6 +28,26 @@ describe("AGENT_TARGETS manifest", () => {
 	});
 });
 
+describe("bundled shared agent profile", () => {
+	it("routes Notion and Linear MCP access through Executor", () => {
+		for (const relativePath of [
+			"configs/agent-profile/PROFILE.md",
+			"configs/claude/CLAUDE.md",
+			"configs/codex/AGENTS.md",
+		]) {
+			const profile = fs.readFileSync(
+				path.join(import.meta.dir, "..", relativePath),
+				"utf8",
+			);
+			expect(profile).toContain(
+				"Use the configured `executor` MCP for Notion and Linear access",
+			);
+			expect(profile).toContain("including both\nNotion accounts.");
+			expect(profile).not.toMatch(/orca-linear|`orca linear/i);
+		}
+	});
+});
+
 describe("shared agent profile round trip", () => {
 	let tmpDir;
 	let srcDir;
