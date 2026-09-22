@@ -27,6 +27,12 @@ Codex, or any other agent) goes through Orca orchestration via the `orca` CLI
 in Orca. Do not use a harness's native subagent tools (Claude Agent tool, Codex
 spawn, etc.) for delegated work; use Orca runs, tasks, and dispatches instead.
 
+## MCP access
+
+Use the configured `executor` MCP for Notion and Linear access, including both
+Notion accounts. Do not use Orca's Linear integration or a Linear-specific Orca
+skill; Orca remains the orchestration layer.
+
 ## Axstack workflows
 
 Try to use relevant Axstack skills for all of the things you need to do.
