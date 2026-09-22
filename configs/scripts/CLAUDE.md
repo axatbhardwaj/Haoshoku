@@ -40,9 +40,11 @@ binary acts as a PATH-shadow wrapper for that binary.
 - Retired standalone workspace-7 helpers are cleaned from `~/.local/bin/`.
   Workspace 7 is owned by `haoshoku-special-workspace numbered 7 ghostty`; its
   dedicated `haoshoku-ws7` class lets the helper reclaim only that window if it
-  moves. The `haki` and `agents` recipes use their own Ghostty classes and tmux
-  splits (plus `haki-terminal`/`agents-terminal` direct-launch variants for
-  desktop entries).
+  moves. The interactive numbered recipe focuses the exact owned window after
+  switching or reclaiming it and launches one when absent; `numbered-login`
+  ensures ownership without stealing focus. The `haki` and `agents` recipes use
+  their own Ghostty classes and tmux splits (plus
+  `haki-terminal`/`agents-terminal` direct-launch variants for desktop entries).
 - A managed browser profile `.monitor` remains required for registry schema stability,
   but browser workspaces normally follow the focused monitor instead of that
   value. It is used only as a fallback when Hyprland transiently reports no

@@ -3,6 +3,15 @@
 	"swaps": [
 		{
 			"config_file": "configs/omarchy/haoshoku/workspaces-pc.lua",
+			"key_combination_taken": "SUPER, code:16",
+			"hl_unbind": "hl.unbind(\"SUPER + code:16\")",
+			"previous_binding": "bindd = SUPER, code:16, Switch to workspace 7, workspace, 7",
+			"moved_from_dispatcher": "workspace",
+			"moved_from_arg": "7",
+			"reason": "superseded_by_workspace_toggle"
+		},
+		{
+			"config_file": "configs/omarchy/haoshoku/workspaces-pc.lua",
 			"key_combination_taken": "SUPER, G",
 			"hl_unbind": "hl.unbind(\"SUPER + G\")",
 			"previous_binding": "bindd = SUPER, G, Toggle window grouping, togglegroup",

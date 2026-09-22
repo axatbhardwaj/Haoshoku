@@ -115,10 +115,16 @@ describe("Omarchy Lua workspace behavior", () => {
 		}
 	});
 
-	it("leaves SUPER+7 to Omarchy while retaining workspace-7 login ownership", () => {
+	it("replaces stock SUPER+7 with the owned Ghostty focus-or-create action", () => {
+		const workspaceSevenBinding = `o.bind(
+  "SUPER + code:16",
+  "Workspace 7 Ghostty",
+  "haoshoku-special-workspace numbered 7 ghostty"
+)`;
+
 		for (const overlay of [pc, laptop]) {
-			expect(overlay).not.toContain('"SUPER + code:16"');
-			expect(overlay).not.toContain("Workspace 7 and Ghostty");
+			expect(overlay).toContain('hl.unbind("SUPER + code:16")');
+			expect(overlay).toContain(workspaceSevenBinding);
 			expect(overlay).toContain(
 				'o.exec_on_start("haoshoku-special-workspace numbered-login 7 ghostty")',
 			);

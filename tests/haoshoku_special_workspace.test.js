@@ -207,6 +207,12 @@ elif [[ "$1" == "dispatch" && "$2" == hl.dsp.* ]]; then
     encoded="\${encoded%"$suffix"}"
     workspace="$(jq -r . <<<"$encoded")"
     printf 'dispatch workspace %s\\n' "$workspace" >> "$CALL_LOG"
+  elif [[ "$expression" == *"window = "* && "$expression" == hl.dsp.focus* ]]; then
+    encoded="\${expression#*window = }"
+    suffix=' })'
+    encoded="\${encoded%"$suffix"}"
+    window="$(jq -r . <<<"$encoded")"
+    printf 'dispatch focuswindow %s\\n' "$window" >> "$CALL_LOG"
   elif [[ "$expression" == *"monitor = "* && "$expression" == hl.dsp.focus* ]]; then
     encoded="\${expression#*monitor = }"
     suffix=' })'
@@ -1184,11 +1190,11 @@ exit 17
 		const result = await run(["numbered", "1", "paseo"]);
 
 		expect(result.exitCode).toBe(0);
-			expect(dispatchCalls()).toEqual([
-				"dispatch workspace 1",
-				"dispatch exec [workspace 1 silent] uwsm-app -- /usr/bin/paseo ",
-				"paseo-desktop",
-			]);
+		expect(dispatchCalls()).toEqual([
+			"dispatch workspace 1",
+			"dispatch exec [workspace 1 silent] uwsm-app -- /usr/bin/paseo ",
+			"paseo-desktop",
+		]);
 	});
 
 	it("does not relaunch Paseo when its client already exists", async () => {
@@ -1923,8 +1929,8 @@ printf 'signal-desktop\\n' >> "$CALL_LOG"
 	});
 
 	// Exact class plus target workspace is Ghostty's ownership contract. A matching
-	// client stays put; the same class elsewhere is reclaimed by its address.
-	it("keeps an owned Ghostty in place and reclaims only its stranded address", async () => {
+	// client is focused; the same class elsewhere is reclaimed and then focused.
+	it("focuses an owned Ghostty and reclaims only its stranded address", async () => {
 		const owned = ghosttyClient("0xowned", "7", "haoshoku-ws7");
 		const inPlace = await run(["numbered", "7", "ghostty"], {
 			clientsState: JSON.stringify([
@@ -1935,7 +1941,10 @@ printf 'signal-desktop\\n' >> "$CALL_LOG"
 
 		expect(inPlace.exitCode).toBe(0);
 		expect(ghosttyArguments()).toBeNull();
-		expect(dispatchCalls()).toEqual(["dispatch workspace 7"]);
+		expect(dispatchCalls()).toEqual([
+			"dispatch workspace 7",
+			"dispatch focuswindow address:0xowned",
+		]);
 
 		fs.rmSync(log, { force: true });
 		const stranded = await run(["numbered", "7", "ghostty"], {
@@ -1950,6 +1959,7 @@ printf 'signal-desktop\\n' >> "$CALL_LOG"
 		expect(dispatchCalls()).toEqual([
 			"dispatch workspace 7",
 			"dispatch movetoworkspacesilent 7,address:0xowned",
+			"dispatch focuswindow address:0xowned",
 		]);
 	});
 
@@ -2142,7 +2152,11 @@ printf 'signal-desktop\\n' >> "$CALL_LOG"
 			fs.rmSync(specialState, { force: true });
 			const result = await run([recipe], {
 				clientsState: JSON.stringify([
-					ghosttyClient("0xplain", `special:${recipe}`, "com.mitchellh.ghostty"),
+					ghosttyClient(
+						"0xplain",
+						`special:${recipe}`,
+						"com.mitchellh.ghostty",
+					),
 				]),
 			});
 
