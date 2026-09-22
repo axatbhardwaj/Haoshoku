@@ -86,9 +86,7 @@ describe("Omarchy Lua workspace behavior", () => {
 
 	it("starts login services and routes the owned Ghostty workspace exactly", () => {
 		for (const overlay of [pc, laptop]) {
-			expect(overlay).toContain(
-				'o.exec_on_start("haoshoku-default-browser")',
-			);
+			expect(overlay).toContain('o.exec_on_start("haoshoku-default-browser")');
 			expect(
 				overlay.match(/o\.launch_on_start\("\/usr\/bin\/paseo"\)/g) ?? [],
 			).toHaveLength(1);
@@ -113,6 +111,19 @@ describe("Omarchy Lua workspace behavior", () => {
 			);
 			expect(overlay).toContain(
 				'o.window("^haoshoku-haki$", { workspace = "special:haki" })',
+			);
+		}
+	});
+
+	it("leaves SUPER+7 to Omarchy while retaining workspace-7 login ownership", () => {
+		for (const overlay of [pc, laptop]) {
+			expect(overlay).not.toContain('"SUPER + code:16"');
+			expect(overlay).not.toContain("Workspace 7 and Ghostty");
+			expect(overlay).toContain(
+				'o.exec_on_start("haoshoku-special-workspace numbered-login 7 ghostty")',
+			);
+			expect(overlay).toContain(
+				'o.window("^haoshoku-ws7$", { workspace = "7 silent" })',
 			);
 		}
 	});

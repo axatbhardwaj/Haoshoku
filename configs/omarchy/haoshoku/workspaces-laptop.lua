@@ -96,11 +96,6 @@ o.bind(
   "haoshoku-special-workspace numbered 5 communication-numbered"
 )
 o.bind(
-  "SUPER + code:16",
-  "Workspace 7 and Ghostty",
-  "haoshoku-special-workspace numbered 7 ghostty"
-)
-o.bind(
   "SUPER + code:19",
   "Workspace 10 and Notion",
   "haoshoku-special-workspace numbered 10 notion"
