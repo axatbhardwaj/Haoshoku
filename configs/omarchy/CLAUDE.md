@@ -128,7 +128,7 @@ the live copy with the saved policy instead of reverting it. `SUPER+2` uses
 
 Workspace 7 replaces Omarchy's stock `SUPER+7` binding with the
 `haoshoku-special-workspace numbered 7 ghostty` recipe. It switches to workspace
-7 and focuses the exact `haoshoku-ws7` window when present, reclaiming it by
+7 and focuses the exact `com.haoshoku.ws7` window when present, reclaiming it by
 address if needed, or creates it when absent. The startup call and post-reload
 helper use `numbered-login 7 ghostty`, which preserves the terminal without
 stealing focus. Haki and agents use their own exact Ghostty classes and tmux

@@ -39,7 +39,7 @@ binary acts as a PATH-shadow wrapper for that binary.
   ChatGPT and Claude Desktop through `haoshoku-special-workspace assistants`.
 - Retired standalone workspace-7 helpers are cleaned from `~/.local/bin/`.
   Workspace 7 is owned by `haoshoku-special-workspace numbered 7 ghostty`; its
-  dedicated `haoshoku-ws7` class lets the helper reclaim only that window if it
+  dedicated GTK-valid `com.haoshoku.ws7` application ID lets the helper reclaim only that window if it
   moves. The interactive numbered recipe focuses the exact owned window after
   switching or reclaiming it and launches one when absent; `numbered-login`
   ensures ownership without stealing focus. The `haki` and `agents` recipes use

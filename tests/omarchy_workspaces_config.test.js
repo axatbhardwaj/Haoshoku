@@ -101,7 +101,7 @@ describe("Omarchy Lua workspace behavior", () => {
 			// shipped overlay keeps Steam only so SUPER+2 stays the library key.
 			expect(overlay).not.toContain("numbered-login 2 omakade");
 			expect(overlay).toContain(
-				'o.window("^haoshoku-ws7$", { workspace = "7 silent" })',
+				'o.window("^com\\\\.haoshoku\\\\.ws7$", { workspace = "7 silent" })',
 			);
 			expect(overlay).toContain(
 				'o.window("^[Ss]team$", { workspace = "special:steam silent", tile = true })',
@@ -110,7 +110,7 @@ describe("Omarchy Lua workspace behavior", () => {
 				'o.window("^io\\\\.github\\\\.tsouth89\\\\.Omakade$", { workspace = "2 silent" })',
 			);
 			expect(overlay).toContain(
-				'o.window("^haoshoku-haki$", { workspace = "special:haki" })',
+				'o.window("^com\\\\.haoshoku\\\\.haki$", { workspace = "special:haki" })',
 			);
 		}
 	});
@@ -129,7 +129,7 @@ describe("Omarchy Lua workspace behavior", () => {
 				'o.exec_on_start("haoshoku-special-workspace numbered-login 7 ghostty")',
 			);
 			expect(overlay).toContain(
-				'o.window("^haoshoku-ws7$", { workspace = "7 silent" })',
+				'o.window("^com\\\\.haoshoku\\\\.ws7$", { workspace = "7 silent" })',
 			);
 		}
 	});
