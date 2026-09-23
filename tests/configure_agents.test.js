@@ -43,6 +43,10 @@ describe("bundled shared agent profile", () => {
 				"Use the configured `executor` MCP for Notion and Linear access",
 			);
 			expect(profile).toContain("including both\nNotion accounts.");
+			expect(profile).toContain(
+				"Use Linear only for repositories in the `defi-com` GitHub organization.",
+			);
+			expect(profile).toContain("Keep specs for other repositories on GitHub");
 			expect(profile).not.toMatch(/orca-linear|`orca linear/i);
 		}
 	});
