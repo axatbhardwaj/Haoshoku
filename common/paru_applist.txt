@@ -72,3 +72,4 @@ teamspeak
 timr
 warp-terminal-bin
 windsurf
+stably-orca-bin

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Add `stably-orca-bin` to the Arch package list.
+
 ## 11.13.4 - 2026-09-22
 
 - Use GTK-valid application IDs for owned Ghostty windows so workspace 7,
