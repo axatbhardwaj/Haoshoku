@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 11.13.6 - 2026-09-23
 
 - Add a configurable, backupable native Codex status line through `--codex`
   and `--codex-backup`, with private rollback on config errors.
