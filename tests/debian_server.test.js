@@ -35,6 +35,7 @@ function runDefaultSetupWithSafeDoubles({
 	axstackResult = true,
 	claudeResult = { ok: true, reason: "installed" },
 	codexResult = { ok: true, reason: "installed" },
+	codexError = null,
 	paseoResult = true,
 	profileResult = true,
 	relayResult = true,
@@ -94,7 +95,11 @@ function runDefaultSetupWithSafeDoubles({
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_claude_remote_control.js"))}, () => ({ configureClaudeRemoteControl: record("remote-control") }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_pr_watch.js"))}, () => ({ configurePrWatch: record("pr-watch") }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_worktree_cleanup.js"))}, () => ({ syncWorktreeCleanup: record("worktree-cleanup") }));
-		mock.module(${JSON.stringify(modulePath("src/helpers/configure_codex.js"))}, () => ({ configureCodex: record("codex", ${JSON.stringify(codexResult)}) }));
+		mock.module(${JSON.stringify(modulePath("src/helpers/configure_codex.js"))}, () => ({ configureCodex: async () => {
+			events.push({ type: "helper", name: "codex" });
+			if (${JSON.stringify(codexError)} !== null) throw new Error(${JSON.stringify(codexError)});
+			return ${JSON.stringify(codexResult)};
+		} }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_agents.js"))}, () => ({ syncAgentsConfig: record("agents", true) }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_axstack.js"))}, () => ({ configureAxstack: record("axstack", { ok: ${JSON.stringify(axstackResult)} }) }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_skills.js"))}, () => ({ configureSkills: record("skills", true) }));
@@ -309,6 +314,20 @@ describe("Debian default path", () => {
 			message: expect.stringContaining(
 				"Claude (installer unavailable); Codex (registry unavailable)",
 			),
+		});
+	});
+
+	it("continues server setup when Codex rejects ambiguous config", () => {
+		const { events, result } = runDefaultSetupWithSafeDoubles({
+			codexError: "Ambiguous multiline TOML",
+		});
+		expect(result).toBe(true);
+		expect(events).toContainEqual({ type: "helper", name: "agents" });
+		expect(events).toContainEqual({ type: "helper", name: "axstack" });
+		expect(events).toContainEqual({ type: "helper", name: "paseo-profiles" });
+		expect(events).toContainEqual({
+			type: "warning",
+			message: expect.stringContaining("Ambiguous multiline TOML"),
 		});
 	});
 

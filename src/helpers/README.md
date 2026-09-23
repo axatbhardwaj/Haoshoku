@@ -5,7 +5,12 @@
 Haoshoku manages an explicit, portable policy surface:
 
 - `configs/claude/{CLAUDE.md,statusline-command.sh,gitignore.template}`
-- `configs/codex/AGENTS.md`
+- `configs/codex/AGENTS.md` and `configs/codex/status-line.toml`
+
+The Codex status-line file contains only `tui.status_line`. `--codex` merges
+that value into `~/.codex/config.toml`, preserving other settings and keeping a
+private rollback copy before a change. `--codex-backup` exports only that value,
+not the full live config. Invalid or ambiguous TOML stops the merge.
 
 The backup commands capture only those files. Runtime state, credentials,
 `settings.json`, agents, plugins, and skill directories stay machine-owned.

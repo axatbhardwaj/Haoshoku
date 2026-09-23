@@ -123,6 +123,65 @@ describe("user app configuration", () => {
 			log.warning = originalWarning;
 		}
 	});
+
+	it("continues app setup when Codex rejects ambiguous config", async () => {
+		const events = [];
+		const warnings = [];
+		const originalWarning = log.warning;
+		log.warning = (message) => warnings.push(message);
+		const noop = async () => {};
+		try {
+			await configureUserApps({
+				promptUserImpl: async () => false,
+				configureGitImpl: noop,
+				configureBrowserIntegrationImpl: noop,
+				configureAudioImpl: noop,
+				configureBashImpl: noop,
+				configureFastfetchImpl: noop,
+				configureGhosttyImpl: noop,
+				runCommandImpl: noop,
+				enableServicesImpl: noop,
+				configureClaudeImpl: async () => ({ ok: true }),
+				installGhStackImpl: noop,
+				configureClaudeStayAwakeImpl: noop,
+				configureClaudeRemoteControlImpl: noop,
+				configurePrWatchImpl: noop,
+				syncWorktreeCleanupImpl: noop,
+				configureCodexImpl: async () => {
+					throw new Error("Ambiguous multiline TOML");
+				},
+				syncAgentsConfigImpl: async () => events.push("agents"),
+				configureAxstackImpl: async () => {
+					events.push("axstack");
+					return { ok: true };
+				},
+				configureSkillsImpl: async () => {
+					events.push("skills");
+					return true;
+				},
+				syncAgentSkillsImpl: async () => {
+					events.push("agent-skills");
+					return true;
+				},
+				syncPaseoProfilesImpl: async () => {
+					events.push("paseo-profiles");
+					return true;
+				},
+			});
+			expect(events).toEqual([
+				"agents",
+				"axstack",
+				"skills",
+				"agent-skills",
+				"paseo-profiles",
+			]);
+			expect(warnings).toContainEqual(
+				expect.stringContaining("Ambiguous multiline TOML"),
+			);
+		} finally {
+			log.warning = originalWarning;
+		}
+	});
 });
 
 describe("Rust toolchain preparation", () => {

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { writeCodexStatusLine } from "../src/helpers/codex_status_line.js";
 import {
 	backupCodexConfig,
 	CODEX_PERSONAL_FILES,
@@ -69,6 +70,202 @@ describe("Codex config round trip", () => {
 			"skill=~/.agents/skills/model-routing/SKILL.md\nother=/home/alice/private\n",
 		);
 	});
+
+	it("merges the native footer while preserving unrelated config and a private rollback", async () => {
+		fs.mkdirSync(codexDir, { recursive: true });
+		const live =
+			'# keep this comment\nmodel = "custom"\n[mcp_servers.executor]\ncommand = "private"\n[tui]\nnotifications = true\nstatus_line = ["old"] # keep\n';
+		fs.writeFileSync(path.join(codexDir, "config.toml"), live);
+		fs.writeFileSync(
+			path.join(configsDir, "status-line.toml"),
+			'[tui]\nstatus_line = ["model-with-reasoning", "current-dir", "git-branch", "context-remaining", "five-hour-limit", "weekly-limit", "fast-mode"]\n',
+		);
+		await syncCodexConfig({ srcDir: configsDir, codexHome });
+		const changed = fs.readFileSync(path.join(codexDir, "config.toml"), "utf8");
+		expect(Bun.TOML.parse(changed).tui.status_line).toEqual([
+			"model-with-reasoning",
+			"current-dir",
+			"git-branch",
+			"context-remaining",
+			"five-hour-limit",
+			"weekly-limit",
+			"fast-mode",
+		]);
+		expect(changed).toContain(
+			'# keep this comment\nmodel = "custom"\n[mcp_servers.executor]\ncommand = "private"',
+		);
+		expect(changed).toContain("notifications = true");
+		expect(
+			fs.readFileSync(path.join(codexDir, "config.toml.bak"), "utf8"),
+		).toBe(live);
+		await syncCodexConfig({ srcDir: configsDir, codexHome });
+		expect(fs.readFileSync(path.join(codexDir, "config.toml"), "utf8")).toBe(
+			changed,
+		);
+		expect(
+			fs.readFileSync(path.join(codexDir, "config.toml.bak"), "utf8"),
+		).toBe(live);
+	});
+
+	it("exports only the footer value from the alternate Codex home", async () => {
+		fs.mkdirSync(codexDir, { recursive: true });
+		fs.writeFileSync(
+			path.join(codexDir, "config.toml"),
+			'model = "private"\n[mcp_servers.executor]\ncommand = "secret"\n[tui]\nstatus_line = ["git-branch", "fast-mode"]\nnotifications = true\n',
+		);
+		await backupCodexConfig({ srcDir: configsDir, codexHome });
+		const exported = fs.readFileSync(
+			path.join(configsDir, "status-line.toml"),
+			"utf8",
+		);
+		expect(Bun.TOML.parse(exported)).toEqual({
+			tui: { status_line: ["git-branch", "fast-mode"] },
+		});
+		expect(exported).not.toContain("secret");
+		expect(exported).not.toContain("private");
+		expect(fs.existsSync(path.join(configsDir, "config.toml"))).toBe(false);
+	});
+
+	it("backs up AGENTS.md when the live config has no footer", async () => {
+		fs.mkdirSync(codexDir, { recursive: true });
+		fs.writeFileSync(path.join(codexDir, "AGENTS.md"), "LIVE");
+		fs.writeFileSync(path.join(codexDir, "config.toml"), 'model = "private"\n');
+		await backupCodexConfig({ srcDir: configsDir, codexHome });
+		expect(fs.readFileSync(path.join(configsDir, "AGENTS.md"), "utf8")).toBe(
+			"LIVE",
+		);
+		expect(fs.existsSync(path.join(configsDir, "status-line.toml"))).toBe(
+			false,
+		);
+	});
+
+	it("rejects malformed config without changing it or its existing backup", async () => {
+		fs.mkdirSync(codexDir, { recursive: true });
+		const bad = '[tui]\nstatus_line = ["old"\n';
+		fs.writeFileSync(path.join(codexDir, "config.toml"), bad);
+		fs.writeFileSync(path.join(codexDir, "config.toml.bak"), "previous");
+		fs.writeFileSync(
+			path.join(configsDir, "status-line.toml"),
+			'[tui]\nstatus_line = ["git-branch"]\n',
+		);
+		await expect(
+			syncCodexConfig({ srcDir: configsDir, codexHome }),
+		).rejects.toThrow();
+		expect(fs.readFileSync(path.join(codexDir, "config.toml"), "utf8")).toBe(
+			bad,
+		);
+		expect(
+			fs.readFileSync(path.join(codexDir, "config.toml.bak"), "utf8"),
+		).toBe("previous");
+	});
+
+	it("updates a root dotted footer assignment without duplicating it", async () => {
+		fs.mkdirSync(codexDir, { recursive: true });
+		fs.writeFileSync(
+			path.join(codexDir, "config.toml"),
+			'tui.status_line = ["old"]\nmodel = "private"\n',
+		);
+		fs.writeFileSync(
+			path.join(configsDir, "status-line.toml"),
+			'[tui]\nstatus_line = ["git-branch"]\n',
+		);
+		await syncCodexConfig({ srcDir: configsDir, codexHome });
+		const changed = fs.readFileSync(path.join(codexDir, "config.toml"), "utf8");
+		expect(Bun.TOML.parse(changed)).toEqual({
+			tui: { status_line: ["git-branch"] },
+			model: "private",
+		});
+		expect(changed).toContain('model = "private"');
+	});
+
+	it("adds a root dotted footer beside existing tui settings without defining [tui]", async () => {
+		fs.mkdirSync(codexDir, { recursive: true });
+		const live =
+			'tui.notifications = true\nmodel = "private"\n[mcp_servers.executor]\ncommand = "private"\n';
+		fs.writeFileSync(path.join(codexDir, "config.toml"), live);
+		fs.writeFileSync(
+			path.join(configsDir, "status-line.toml"),
+			'[tui]\nstatus_line = ["git-branch"]\n',
+		);
+		await syncCodexConfig({ srcDir: configsDir, codexHome });
+		const changed = fs.readFileSync(path.join(codexDir, "config.toml"), "utf8");
+		expect(changed).toContain('tui.notifications = true\nmodel = "private"\n');
+		expect(changed).toContain('[mcp_servers.executor]\ncommand = "private"\n');
+		expect(changed).toContain('tui.status_line = ["git-branch"]');
+		expect(changed).not.toContain("[tui]");
+		expect(Bun.TOML.parse(changed).tui).toEqual({
+			notifications: true,
+			status_line: ["git-branch"],
+		});
+		expect(
+			fs.readFileSync(path.join(codexDir, "config.toml.bak"), "utf8"),
+		).toBe(live);
+	});
+
+	it("leaves an ambiguous inline TUI table untouched", async () => {
+		fs.mkdirSync(codexDir, { recursive: true });
+		const live = 'tui = { status_line = ["old"], notifications = true }\n';
+		fs.writeFileSync(path.join(codexDir, "config.toml"), live);
+		fs.writeFileSync(
+			path.join(configsDir, "status-line.toml"),
+			'[tui]\nstatus_line = ["git-branch"]\n',
+		);
+		await expect(
+			syncCodexConfig({ srcDir: configsDir, codexHome }),
+		).rejects.toThrow("Ambiguous");
+		expect(fs.readFileSync(path.join(codexDir, "config.toml"), "utf8")).toBe(
+			live,
+		);
+		expect(fs.existsSync(path.join(codexDir, "config.toml.bak"))).toBe(false);
+	});
+
+	it("keeps the original config if writing its replacement fails midway", () => {
+		fs.mkdirSync(codexDir, { recursive: true });
+		const livePath = path.join(codexDir, "config.toml");
+		const bundlePath = path.join(configsDir, "status-line.toml");
+		const original = 'model = "private"\n[tui]\nstatus_line = ["old"]\n';
+		fs.writeFileSync(livePath, original);
+		fs.writeFileSync(bundlePath, '[tui]\nstatus_line = ["git-branch"]\n');
+		const write = fs.writeFileSync;
+		fs.writeFileSync = (file, ...args) => {
+			if (path.dirname(file) === codexDir && !file.endsWith(".bak")) {
+				write(file, "partial");
+				throw new Error("simulated write failure");
+			}
+			return write(file, ...args);
+		};
+		try {
+			expect(() => writeCodexStatusLine(livePath, bundlePath)).toThrow(
+				"simulated write failure",
+			);
+		} finally {
+			fs.writeFileSync = write;
+		}
+		expect(fs.readFileSync(livePath, "utf8")).toBe(original);
+	});
+
+	it("rejects a symlinked config and creates private rollback files", async () => {
+		fs.mkdirSync(codexDir, { recursive: true });
+		const livePath = path.join(codexDir, "config.toml");
+		const target = path.join(tmpDir, "target.toml");
+		const original = '[tui]\nstatus_line = ["old"]\n';
+		fs.writeFileSync(target, original);
+		fs.symlinkSync(target, livePath);
+		fs.writeFileSync(
+			path.join(configsDir, "status-line.toml"),
+			'[tui]\nstatus_line = ["git-branch"]\n',
+		);
+		await expect(
+			syncCodexConfig({ srcDir: configsDir, codexHome }),
+		).rejects.toThrow("regular file");
+		expect(fs.readFileSync(target, "utf8")).toBe(original);
+		fs.rmSync(livePath);
+		fs.writeFileSync(livePath, original, { mode: 0o644 });
+		fs.chmodSync(livePath, 0o644);
+		await syncCodexConfig({ srcDir: configsDir, codexHome });
+		expect(fs.statSync(`${livePath}.bak`).mode & 0o777).toBe(0o600);
+		expect(fs.statSync(livePath).mode & 0o777).toBe(0o600);
+	});
 });
 
 describe("Codex installation", () => {
@@ -134,6 +331,36 @@ describe("Codex installation", () => {
 			);
 		} finally {
 			fs.rmSync(tmpDir, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("explicit Codex CLI mode", () => {
+	it("fails visibly on ambiguous live config without replacing it", () => {
+		const home = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-codex-cli-"));
+		try {
+			const codexDir = path.join(home, ".codex");
+			fs.mkdirSync(codexDir);
+			const live = 'developer_instructions = """private\ntext"""\n';
+			fs.writeFileSync(path.join(codexDir, "config.toml"), live);
+			const child = Bun.spawnSync(
+				[
+					process.execPath,
+					path.resolve(import.meta.dir, "../haoshoku.js"),
+					"--codex",
+				],
+				{ env: { ...process.env, HOME: home }, stdout: "pipe", stderr: "pipe" },
+			);
+			const output =
+				new TextDecoder().decode(child.stdout) +
+				new TextDecoder().decode(child.stderr);
+			expect(child.exitCode).not.toBe(0);
+			expect(output).toContain("Ambiguous multiline TOML");
+			expect(fs.readFileSync(path.join(codexDir, "config.toml"), "utf8")).toBe(
+				live,
+			);
+		} finally {
+			fs.rmSync(home, { recursive: true, force: true });
 		}
 	});
 });
