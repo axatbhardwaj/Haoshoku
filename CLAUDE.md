@@ -2,6 +2,13 @@
 
 Multi-distro Linux setup and configuration toolkit (JavaScript/Bun).
 
+## Planning and issue tracking
+
+Use Linear only for repositories in the `defi-com` GitHub organization.
+Keep specs for other repositories on GitHub. If the right GitHub location
+(issue, PR, or repo file) is unclear, ask me before creating a planning
+artifact. Do not create or update Linear items for those repositories.
+
 ## Files
 
 | File            | What                              | When to read                                    |

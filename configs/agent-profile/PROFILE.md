@@ -33,6 +33,11 @@ Use the configured `executor` MCP for Notion and Linear access, including both
 Notion accounts. Do not use Orca's Linear integration or a Linear-specific Orca
 skill; Orca remains the orchestration layer.
 
+Use Linear only for repositories in the `defi-com` GitHub organization.
+Keep specs for other repositories on GitHub. If the right GitHub location
+(issue, PR, or repo file) is unclear, ask me before creating a planning
+artifact. Do not create or update Linear items for those repositories.
+
 ## Axstack workflows
 
 Try to use relevant Axstack skills for all of the things you need to do.
