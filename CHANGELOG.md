@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Add a configurable, backupable native Codex status line through `--codex`
+  and `--codex-backup`, with private rollback on config errors.
+- Keep OS setup running when Codex status line configuration fails.
+
 ## 11.13.5 - 2026-09-23
 
 - Add `stably-orca-bin` to the Arch package list.
