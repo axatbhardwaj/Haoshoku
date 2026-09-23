@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Keep specs for repositories outside the `defi-com` GitHub organization on
+  GitHub instead of Linear in the shared agent profile.
+
 ## 11.13.6 - 2026-09-23
 
 - Add a configurable, backupable native Codex status line through `--codex`
