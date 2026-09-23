@@ -2,6 +2,10 @@ import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import {
+	exportCodexStatusLine,
+	writeCodexStatusLine,
+} from "./codex_status_line.js";
+import {
 	log,
 	portabilizeHome,
 	runCommand,
@@ -66,6 +70,11 @@ export async function syncCodexConfig(options = {}) {
 			);
 		}
 	}
+	const statusBundle = path.join(srcDir, "status-line.toml");
+	if (fs.existsSync(statusBundle)) {
+		writeCodexStatusLine(path.join(codexDir, "config.toml"), statusBundle);
+		log.info("Synced native Codex status line");
+	}
 
 	log.success("Codex config synced.");
 }
@@ -89,6 +98,14 @@ export async function backupCodexConfig(options = {}) {
 			fs.writeFileSync(destPath, portable);
 			log.info(`Backed up ${file.src}`);
 		}
+	}
+	const liveConfig = codexFilePath("config.toml", codexHome);
+	if (fs.existsSync(liveConfig)) {
+		fs.writeFileSync(
+			path.join(srcDir, "status-line.toml"),
+			exportCodexStatusLine(fs.readFileSync(liveConfig, "utf8")),
+		);
+		log.info("Backed up native Codex status line");
 	}
 
 	log.success("Codex config backed up to configs/codex/");

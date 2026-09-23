@@ -124,8 +124,14 @@ program
 		"Backup Claude Remote Control supervisor and user unit",
 	)
 	.option("--claude-update", "Redeploy the packaged Claude Code config")
-	.option("--codex", "Deploy Codex config (AGENTS.md) to ~/.codex/")
-	.option("--codex-backup", "Backup ~/.codex/AGENTS.md to configs/codex/")
+	.option(
+		"--codex",
+		"Deploy Codex AGENTS.md and native status line to ~/.codex/",
+	)
+	.option(
+		"--codex-backup",
+		"Backup Codex AGENTS.md and status line to configs/codex/",
+	)
 	.option(
 		"--agents",
 		"Deploy shared agent profile (PROFILE.md) to Claude, Codex, Opencode and Antigravity",
