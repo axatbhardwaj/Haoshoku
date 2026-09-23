@@ -622,7 +622,14 @@ export async function configureUserApps({
 			);
 		}
 	}
-	const codexResult = await configureCodexImpl();
+	let codexResult;
+	try {
+		codexResult = await configureCodexImpl();
+	} catch (err) {
+		log.warning(
+			`Codex config sync failed (${err?.message ?? err}) — continuing with remaining app setup.`,
+		);
+	}
 	if (codexResult?.ok === false) {
 		log.warning(
 			`Codex CLI installation failed: ${codexResult.reason} — continuing without syncing Codex config.`,

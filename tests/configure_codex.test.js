@@ -126,6 +126,19 @@ describe("Codex config round trip", () => {
 		expect(fs.existsSync(path.join(configsDir, "config.toml"))).toBe(false);
 	});
 
+	it("backs up AGENTS.md when the live config has no footer", async () => {
+		fs.mkdirSync(codexDir, { recursive: true });
+		fs.writeFileSync(path.join(codexDir, "AGENTS.md"), "LIVE");
+		fs.writeFileSync(path.join(codexDir, "config.toml"), 'model = "private"\n');
+		await backupCodexConfig({ srcDir: configsDir, codexHome });
+		expect(fs.readFileSync(path.join(configsDir, "AGENTS.md"), "utf8")).toBe(
+			"LIVE",
+		);
+		expect(fs.existsSync(path.join(configsDir, "status-line.toml"))).toBe(
+			false,
+		);
+	});
+
 	it("rejects malformed config without changing it or its existing backup", async () => {
 		fs.mkdirSync(codexDir, { recursive: true });
 		const bad = '[tui]\nstatus_line = ["old"\n';
@@ -135,7 +148,7 @@ describe("Codex config round trip", () => {
 			path.join(configsDir, "status-line.toml"),
 			'[tui]\nstatus_line = ["git-branch"]\n',
 		);
-		expect(
+		await expect(
 			syncCodexConfig({ srcDir: configsDir, codexHome }),
 		).rejects.toThrow();
 		expect(fs.readFileSync(path.join(codexDir, "config.toml"), "utf8")).toBe(
@@ -165,6 +178,30 @@ describe("Codex config round trip", () => {
 		expect(changed).toContain('model = "private"');
 	});
 
+	it("adds a root dotted footer beside existing tui settings without defining [tui]", async () => {
+		fs.mkdirSync(codexDir, { recursive: true });
+		const live =
+			'tui.notifications = true\nmodel = "private"\n[mcp_servers.executor]\ncommand = "private"\n';
+		fs.writeFileSync(path.join(codexDir, "config.toml"), live);
+		fs.writeFileSync(
+			path.join(configsDir, "status-line.toml"),
+			'[tui]\nstatus_line = ["git-branch"]\n',
+		);
+		await syncCodexConfig({ srcDir: configsDir, codexHome });
+		const changed = fs.readFileSync(path.join(codexDir, "config.toml"), "utf8");
+		expect(changed).toContain('tui.notifications = true\nmodel = "private"\n');
+		expect(changed).toContain('[mcp_servers.executor]\ncommand = "private"\n');
+		expect(changed).toContain('tui.status_line = ["git-branch"]');
+		expect(changed).not.toContain("[tui]");
+		expect(Bun.TOML.parse(changed).tui).toEqual({
+			notifications: true,
+			status_line: ["git-branch"],
+		});
+		expect(
+			fs.readFileSync(path.join(codexDir, "config.toml.bak"), "utf8"),
+		).toBe(live);
+	});
+
 	it("leaves an ambiguous inline TUI table untouched", async () => {
 		fs.mkdirSync(codexDir, { recursive: true });
 		const live = 'tui = { status_line = ["old"], notifications = true }\n';
@@ -173,9 +210,9 @@ describe("Codex config round trip", () => {
 			path.join(configsDir, "status-line.toml"),
 			'[tui]\nstatus_line = ["git-branch"]\n',
 		);
-		expect(syncCodexConfig({ srcDir: configsDir, codexHome })).rejects.toThrow(
-			"Ambiguous",
-		);
+		await expect(
+			syncCodexConfig({ srcDir: configsDir, codexHome }),
+		).rejects.toThrow("Ambiguous");
 		expect(fs.readFileSync(path.join(codexDir, "config.toml"), "utf8")).toBe(
 			live,
 		);
@@ -218,9 +255,9 @@ describe("Codex config round trip", () => {
 			path.join(configsDir, "status-line.toml"),
 			'[tui]\nstatus_line = ["git-branch"]\n',
 		);
-		expect(syncCodexConfig({ srcDir: configsDir, codexHome })).rejects.toThrow(
-			"regular file",
-		);
+		await expect(
+			syncCodexConfig({ srcDir: configsDir, codexHome }),
+		).rejects.toThrow("regular file");
 		expect(fs.readFileSync(target, "utf8")).toBe(original);
 		fs.rmSync(livePath);
 		fs.writeFileSync(livePath, original, { mode: 0o644 });
@@ -294,6 +331,36 @@ describe("Codex installation", () => {
 			);
 		} finally {
 			fs.rmSync(tmpDir, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("explicit Codex CLI mode", () => {
+	it("fails visibly on ambiguous live config without replacing it", () => {
+		const home = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-codex-cli-"));
+		try {
+			const codexDir = path.join(home, ".codex");
+			fs.mkdirSync(codexDir);
+			const live = 'developer_instructions = """private\ntext"""\n';
+			fs.writeFileSync(path.join(codexDir, "config.toml"), live);
+			const child = Bun.spawnSync(
+				[
+					process.execPath,
+					path.resolve(import.meta.dir, "../haoshoku.js"),
+					"--codex",
+				],
+				{ env: { ...process.env, HOME: home }, stdout: "pipe", stderr: "pipe" },
+			);
+			const output =
+				new TextDecoder().decode(child.stdout) +
+				new TextDecoder().decode(child.stderr);
+			expect(child.exitCode).not.toBe(0);
+			expect(output).toContain("Ambiguous multiline TOML");
+			expect(fs.readFileSync(path.join(codexDir, "config.toml"), "utf8")).toBe(
+				live,
+			);
+		} finally {
+			fs.rmSync(home, { recursive: true, force: true });
 		}
 	});
 });

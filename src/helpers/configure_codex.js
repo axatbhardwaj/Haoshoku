@@ -101,11 +101,13 @@ export async function backupCodexConfig(options = {}) {
 	}
 	const liveConfig = codexFilePath("config.toml", codexHome);
 	if (fs.existsSync(liveConfig)) {
-		fs.writeFileSync(
-			path.join(srcDir, "status-line.toml"),
-			exportCodexStatusLine(fs.readFileSync(liveConfig, "utf8")),
+		const statusLine = exportCodexStatusLine(
+			fs.readFileSync(liveConfig, "utf8"),
 		);
-		log.info("Backed up native Codex status line");
+		if (statusLine !== null) {
+			fs.writeFileSync(path.join(srcDir, "status-line.toml"), statusLine);
+			log.info("Backed up native Codex status line");
+		}
 	}
 
 	log.success("Codex config backed up to configs/codex/");

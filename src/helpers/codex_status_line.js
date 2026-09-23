@@ -26,6 +26,7 @@ function statusLine(text, bundle = false) {
 }
 
 export function exportCodexStatusLine(text) {
+	if (parse(text).tui?.status_line === undefined) return null;
 	return `[tui]\nstatus_line = ${JSON.stringify(statusLine(text))}\n`;
 }
 
@@ -76,6 +77,11 @@ export function mergeCodexStatusLine(live, bundle) {
 		}
 		lines.splice(matches[0], last - matches[0] + 1, replacement);
 	} else if (tui) {
+		lines.splice(end, 0, replacement);
+	} else if (parsed.tui) {
+		if (/^\s*tui\s*=/m.test(live)) {
+			throw new Error("Ambiguous inline tui table");
+		}
 		lines.splice(end, 0, replacement);
 	} else {
 		return validateMerge(
