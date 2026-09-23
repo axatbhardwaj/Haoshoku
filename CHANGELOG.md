@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 11.13.7 - 2026-09-23
 
 - Keep specs for repositories outside the `defi-com` GitHub organization on
   GitHub instead of Linear in the shared agent profile.
