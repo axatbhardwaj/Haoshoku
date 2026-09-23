@@ -1,4 +1,7 @@
 import fs from "node:fs";
+import { randomUUID } from "node:crypto";
+import path from "node:path";
+import { isDeepStrictEqual } from "node:util";
 
 function parse(text) {
 	return Bun.TOML.parse(text);
@@ -75,26 +78,56 @@ export function mergeCodexStatusLine(live, bundle) {
 	} else if (tui) {
 		lines.splice(end, 0, replacement);
 	} else {
-		return `${live}${live && !live.endsWith("\n") ? "\n" : ""}\n[tui]\nstatus_line = ${JSON.stringify(desired)}\n`;
+		return validateMerge(
+			`${live}${live && !live.endsWith("\n") ? "\n" : ""}\n[tui]\nstatus_line = ${JSON.stringify(desired)}\n`,
+			parsed,
+			desired,
+		);
 	}
-	const merged = lines.join("\n");
+	return validateMerge(lines.join("\n"), parsed, desired);
+}
+
+function validateMerge(merged, original, desired) {
 	const result = parse(merged);
-	if (JSON.stringify(result.tui?.status_line) !== JSON.stringify(desired))
+	const expected = {
+		...original,
+		tui: { ...original.tui, status_line: desired },
+	};
+	if (!isDeepStrictEqual(result, expected))
 		throw new Error("Codex footer merge failed validation");
 	return merged;
 }
 
 export function writeCodexStatusLine(livePath, bundlePath) {
 	const bundle = fs.readFileSync(bundlePath, "utf8");
-	const exists = fs.existsSync(livePath);
-	const live = exists ? fs.readFileSync(livePath, "utf8") : "";
+	let stat = null;
+	try {
+		stat = fs.lstatSync(livePath);
+	} catch (error) {
+		if (error.code !== "ENOENT") throw error;
+	}
+	if (stat && (!stat.isFile() || stat.isSymbolicLink())) {
+		throw new Error("Codex config must be a regular file, not a symlink");
+	}
+	const live = stat ? fs.readFileSync(livePath, "utf8") : "";
 	const merged = mergeCodexStatusLine(live, bundle);
 	if (merged === live) return;
-	if (exists) {
-		let backup = `${livePath}.bak`;
-		if (fs.existsSync(backup)) backup = `${backup}.${Date.now()}`;
-		fs.copyFileSync(livePath, backup, fs.constants.COPYFILE_EXCL);
-		fs.chmodSync(backup, 0o600);
+	if (stat) {
+		const primaryBackup = `${livePath}.bak`;
+		const backup = fs.existsSync(primaryBackup)
+			? `${primaryBackup}.${randomUUID()}`
+			: primaryBackup;
+		fs.writeFileSync(backup, live, { flag: "wx", mode: 0o600 });
 	}
-	fs.writeFileSync(livePath, merged, { mode: 0o600 });
+	const temp = path.join(
+		path.dirname(livePath),
+		`.${path.basename(livePath)}.${randomUUID()}.tmp`,
+	);
+	try {
+		fs.writeFileSync(temp, merged, { flag: "wx", mode: 0o600 });
+		fs.chmodSync(temp, stat?.mode & 0o600 || 0o600);
+		fs.renameSync(temp, livePath);
+	} finally {
+		fs.rmSync(temp, { force: true });
+	}
 }

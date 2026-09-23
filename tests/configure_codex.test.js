@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { writeCodexStatusLine } from "../src/helpers/codex_status_line.js";
 import {
 	backupCodexConfig,
 	CODEX_PERSONAL_FILES,
@@ -179,6 +180,54 @@ describe("Codex config round trip", () => {
 			live,
 		);
 		expect(fs.existsSync(path.join(codexDir, "config.toml.bak"))).toBe(false);
+	});
+
+	it("keeps the original config if writing its replacement fails midway", () => {
+		fs.mkdirSync(codexDir, { recursive: true });
+		const livePath = path.join(codexDir, "config.toml");
+		const bundlePath = path.join(configsDir, "status-line.toml");
+		const original = 'model = "private"\n[tui]\nstatus_line = ["old"]\n';
+		fs.writeFileSync(livePath, original);
+		fs.writeFileSync(bundlePath, '[tui]\nstatus_line = ["git-branch"]\n');
+		const write = fs.writeFileSync;
+		fs.writeFileSync = (file, ...args) => {
+			if (path.dirname(file) === codexDir && !file.endsWith(".bak")) {
+				write(file, "partial");
+				throw new Error("simulated write failure");
+			}
+			return write(file, ...args);
+		};
+		try {
+			expect(() => writeCodexStatusLine(livePath, bundlePath)).toThrow(
+				"simulated write failure",
+			);
+		} finally {
+			fs.writeFileSync = write;
+		}
+		expect(fs.readFileSync(livePath, "utf8")).toBe(original);
+	});
+
+	it("rejects a symlinked config and creates private rollback files", async () => {
+		fs.mkdirSync(codexDir, { recursive: true });
+		const livePath = path.join(codexDir, "config.toml");
+		const target = path.join(tmpDir, "target.toml");
+		const original = '[tui]\nstatus_line = ["old"]\n';
+		fs.writeFileSync(target, original);
+		fs.symlinkSync(target, livePath);
+		fs.writeFileSync(
+			path.join(configsDir, "status-line.toml"),
+			'[tui]\nstatus_line = ["git-branch"]\n',
+		);
+		expect(syncCodexConfig({ srcDir: configsDir, codexHome })).rejects.toThrow(
+			"regular file",
+		);
+		expect(fs.readFileSync(target, "utf8")).toBe(original);
+		fs.rmSync(livePath);
+		fs.writeFileSync(livePath, original, { mode: 0o644 });
+		fs.chmodSync(livePath, 0o644);
+		await syncCodexConfig({ srcDir: configsDir, codexHome });
+		expect(fs.statSync(`${livePath}.bak`).mode & 0o777).toBe(0o600);
+		expect(fs.statSync(livePath).mode & 0o777).toBe(0o600);
 	});
 });
 
