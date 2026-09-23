@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 11.13.5 - 2026-09-23
 
 - Add `stably-orca-bin` to the Arch package list.
 
