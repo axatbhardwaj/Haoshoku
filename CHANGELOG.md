@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 11.13.8 - 2026-09-24
 
 - Install the Speech Orb Omarchy plugin as the dictation HUD, place it in the
   center bar, and turn off voxtype's own OSD so only the orb shows.
