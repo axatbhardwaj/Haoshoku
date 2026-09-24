@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 11.13.9 - 2026-09-24
 
 - Keep placing launched games on gaming workspace 2 when gamescope remaps its
   window between Ubisoft Connect, the anti-cheat splash, and the game, instead of
