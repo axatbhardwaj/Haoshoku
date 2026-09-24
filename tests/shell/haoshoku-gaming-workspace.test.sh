@@ -58,6 +58,12 @@ is "missing file exits non-zero" \
 is "returns every window owned by the tree, not just the first" \
    "0xSPLASH 0xGAME" "$(match_client_for_pids "$FIXTURES/clients-two-same-pid.json" 4444 | tr '\n' ' ' | sed 's/ $//')"
 
+# gamescope unmaps and remaps its one window, keeping the address, as it moves from
+# Ubisoft Connect to the anti-cheat splash to the game. Each remap opens on the focused
+# workspace, so a window is only "placed" while it is actually on the gaming workspace.
+is "skips windows already on the gaming workspace, returns remapped ones" \
+   "0xREMAPPED" "$(match_client_for_pids "$FIXTURES/clients-one-already-placed.json" 4444 || echo '')"
+
 echo "toggle_target"
 
 is "on the gaming workspace, go back" \
@@ -161,27 +167,40 @@ is "unknown verb exits 2" \
 
 echo "place (window placement)"
 
+# A tiny compositor: a moved window reports workspace 2, anything else workspace 6.
+# Poll 1 maps 0xCAFE, poll 2 adds 0xDIALOG, and poll 3 remaps 0xCAFE under the same
+# address onto the focused workspace -- what gamescope does on the way to the game.
 cat > "$TD/placing-hyprctl" <<EOS
 #!/usr/bin/env bash
 if [ "\$1 \$2" = "clients -j" ]; then
   pid=\$(cat "\$PID_FILE" 2>/dev/null) || exit 1
-  if [ -e "\$POLL_MARKER" ]; then address=0xDIALOG
-  else address=0xCAFE; : > "\$POLL_MARKER"; fi
-  printf '[{"address":"%s","pid":%s}]\n' "\$address" "\$pid"
+  printf x >> "\$POLL_COUNT"; polls=\$(wc -c < "\$POLL_COUNT")
+  touch "\$MOVED"
+  [ "\$polls" -eq 3 ] && sed -i '/^0xCAFE\$/d' "\$MOVED"
+  addresses=0xCAFE; [ "\$polls" -ge 2 ] && addresses="0xCAFE 0xDIALOG"
+  sep=""; printf '['
+  for a in \$addresses; do
+    ws=6; grep -qx "\$a" "\$MOVED" && ws=2
+    printf '%s{"address":"%s","pid":%s,"workspace":{"id":%s}}' "\$sep" "\$a" "\$pid" "\$ws"; sep=,
+  done
+  printf ']\n'
 else
   printf '%s\n' "\$*" >> "\$DISPATCH_LOG"
+  moved=\$(printf '%s' "\$*" | sed -n 's/.*address:\(0x[A-Z]*\).*/\1/p')
+  [ -n "\$moved" ] && printf '%s\n' "\$moved" >> "\$MOVED"
+  exit 0
 fi
 EOS
 chmod +x "$TD/placing-hyprctl"
 
-PID_FILE="$TD/place.pid" POLL_MARKER="$TD/polled" DISPATCH_LOG="$TD/dispatches" \
+PID_FILE="$TD/place.pid" POLL_COUNT="$TD/polls" MOVED="$TD/moved" DISPATCH_LOG="$TD/dispatches" \
   HAOSHOKU_GW_HYPRCTL="$TD/placing-hyprctl" \
-  "$SCRIPT" place -- bash -c "echo \$\$ > '$TD/place.pid'; sleep 1" >/dev/null 2>&1
-is "moves the wrapped process window silently to workspace 2" "1" \
+  "$SCRIPT" place -- bash -c "echo \$\$ > '$TD/place.pid'; sleep 2" >/dev/null 2>&1
+is "moves the wrapped process window silently to workspace 2, and again after a remap" "2" \
    "$(grep -cFx 'dispatch hl.dsp.window.move({ workspace = "2", window = "address:0xCAFE", follow = false })' "$TD/dispatches")"
-is "moves every later window silently" "1" \
+is "moves every later window silently, once it stays placed" "1" \
    "$(grep -cFx 'dispatch hl.dsp.window.move({ workspace = "2", window = "address:0xDIALOG", follow = false })' "$TD/dispatches")"
-is "focuses workspace 2 only on the first placement" "1" \
+is "focuses workspace 2 after each placement, not on every poll" "3" \
    "$(grep -cFx 'dispatch hl.dsp.focus({ workspace = "2" })' "$TD/dispatches")"
 
 echo "place (shutdown path)"

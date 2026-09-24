@@ -83,8 +83,8 @@ collect_descendants() {
   printf '\n'
 }
 
-# Every window in <clients-json-file> owned by any of the given pids, one address per
-# line. Exits non-zero when there is no match, the file is unreadable, or the JSON is
+# Every window in <clients-json-file> owned by any of the given pids and not already on
+# the gaming workspace, one address per line. Exits non-zero when there is no match, the file is unreadable, or the JSON is
 # malformed. Every one of those is an ordinary outcome here, not an error.
 match_client_for_pids() {
   local file="$1"
@@ -96,9 +96,10 @@ match_client_for_pids() {
   pids_json="$(printf '%s\n' "$@" | jq -Rc 'select(length > 0) | tonumber' 2>/dev/null | jq -sc '.' 2>/dev/null)" || return 1
   [ -n "$pids_json" ] || return 1
 
-  address="$(jq -er --argjson pids "$pids_json" '
+  address="$(jq -er --argjson pids "$pids_json" --argjson ws "$WORKSPACE_ID" '
     .[]?
     | select(type == "object" and (.pid as $p | $pids | index($p)) != null)
+    | select(.workspace.id? != $ws)
     | .address
     | select(type == "string" and length > 0)
   ' "$file" 2>/dev/null)" || return 1
@@ -122,9 +123,13 @@ toggle_target() {
 }
 
 # Poll for windows belonging to the launched process tree and move them to the gaming
-# workspace. Runs until the process tree exits or the ceiling is hit, placing each new
-# window once. Every failure path here is a silent return: this runs beside a game that
-# must not care.
+# workspace. Runs until the process tree exits or the ceiling is hit. Every failure path
+# here is a silent return: this runs beside a game that must not care.
+#
+# "Placed" is read from the compositor each pass, never remembered by address: gamescope
+# unmaps and remaps its one window -- same address -- as it goes from Ubisoft Connect to
+# the anti-cheat splash to the game, and each remap opens on the focused workspace. An
+# address-keyed memory placed the launcher and stranded the game on another monitor.
 #
 # Known limitation, deliberate: the watch is bound to the lifetime of the process this
 # script launched. A launcher that forks the real game and exits immediately takes the
@@ -133,8 +138,7 @@ toggle_target() {
 # the launch path in exchange for a case that does not arise here.
 watch_and_place() {
   local root="$1" clients="$2"
-  local address placed=" "
-  local focused=0
+  local address
 
   # The temp file is created and removed by the caller. A RETURN trap here would not
   # run when the parent kills this watcher, which is the common ending: every launch
@@ -155,16 +159,14 @@ watch_and_place() {
         local one
         while IFS= read -r one; do
           [ -n "$one" ] || continue
-          case "$placed" in *" $one "*) continue ;; esac
-          dispatch_move_to_workspace_silent "$WORKSPACE_ID" "address:$one"
-          if [ "$focused" -eq 0 ]; then
-            dispatch_focus_workspace "$WORKSPACE_ID"
-            focused=1
-          fi
-          placed="$placed$one "
+          # `|| :` because the watcher inherits errexit: one refused dispatch -- the
+          # window unmapped between the query and the move -- must not end the watch.
+          dispatch_move_to_workspace_silent "$WORKSPACE_ID" "address:$one" || :
         done <<EOF
 $address
 EOF
+        # Follow every placement: a remap took focus to wherever it opened.
+        dispatch_focus_workspace "$WORKSPACE_ID" || :
       fi
     fi
 
