@@ -32,6 +32,7 @@ import { configureOmarchyBar } from "../helpers/configure_omarchy_bar.js";
 import { configureOmarchyPlugins } from "../helpers/configure_omarchy_plugins.js";
 import { configureOmarchyWorkspaces } from "../helpers/configure_omarchy_workspaces.js";
 import { configureOmazed } from "../helpers/configure_omazed.js";
+import { configureVoxtypeOsd } from "../helpers/configure_voxtype_osd.js";
 import { syncPaseoProfiles } from "../helpers/configure_paseo_profiles.js";
 import { configurePrWatch } from "../helpers/configure_pr_watch.js";
 import { configureSkills } from "../helpers/configure_skills.js";
@@ -685,6 +686,7 @@ export async function runCachyOSSetup({
 	configureHyprmoncfgImpl = configureHyprmoncfg,
 	configureOmarchyWorkspacesImpl = configureOmarchyWorkspaces,
 	configureOmarchyPluginsImpl = configureOmarchyPlugins,
+	configureVoxtypeOsdImpl = configureVoxtypeOsd,
 	configureKdeConnectCommandsImpl = configureKdeConnectCommands,
 	configureOmarchyBarImpl = configureOmarchyBar,
 	configureOmazedImpl = configureOmazed,
@@ -695,6 +697,7 @@ export async function runCachyOSSetup({
 	const configureHyprmoncfg = configureHyprmoncfgImpl;
 	const configureOmarchyWorkspaces = configureOmarchyWorkspacesImpl;
 	const configureOmarchyPlugins = configureOmarchyPluginsImpl;
+	const configureVoxtypeOsd = configureVoxtypeOsdImpl;
 	const configureKdeConnectCommands = configureKdeConnectCommandsImpl;
 	const configureOmarchyBar = configureOmarchyBarImpl;
 	const configureOmazed = configureOmazedImpl;
@@ -750,6 +753,15 @@ export async function runCachyOSSetup({
 			} catch (err) {
 				log.warning(
 					`Omarchy plugin configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
+				);
+			}
+		}
+		if (isOmarchy) {
+			try {
+				await configureVoxtypeOsd();
+			} catch (err) {
+				log.warning(
+					`voxtype OSD configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
 				);
 			}
 		}

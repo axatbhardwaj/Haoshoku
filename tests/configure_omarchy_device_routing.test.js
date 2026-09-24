@@ -68,6 +68,7 @@ describe("Omarchy deviceType routing", () => {
 				configureOmarchyWorkspaces({ home, ...v4Dependencies }),
 			configureOmarchyBarImpl: async () => {},
 			configureOmarchyPluginsImpl: async () => {},
+			configureVoxtypeOsdImpl: async () => {},
 			configureKdeConnectCommandsImpl: async () => {},
 			configureOmazedImpl: async () => {},
 			configureOmarchyAppearanceImpl: async () => {},
