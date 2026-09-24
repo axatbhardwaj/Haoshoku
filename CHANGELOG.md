@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Keep placing launched games on gaming workspace 2 when gamescope remaps its
+  window between Ubisoft Connect, the anti-cheat splash, and the game, instead of
+  stranding the game on the focused monitor.
+
 ## 11.13.8 - 2026-09-24
 
 - Install the Speech Orb Omarchy plugin as the dictation HUD, place it in the
