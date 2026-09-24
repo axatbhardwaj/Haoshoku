@@ -152,6 +152,10 @@ reconciles manifest plugins back to installed and enabled. If
 performs no plugin work and returns `snapshotUnavailable: true`; the
 side-effect-free manual-auth checklist is still printed.
 
+The manifest includes the Speech Orb dictation HUD. Setup turns off voxtype's
+own OSD (`voxtype config set osd.enabled false`) and restarts a running
+`voxtype.service`, so only the orb appears while you dictate.
+
 These plugins run as arbitrary, unsandboxed code inside the long-lived
 omarchy-shell process — the same risk Omarchy's own CLI warns about when
 adding plugins manually. The `--yes` flag is passed deliberately so setup
