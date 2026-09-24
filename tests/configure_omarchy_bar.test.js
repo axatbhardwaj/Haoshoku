@@ -513,6 +513,7 @@ it("places every manifest bar widget in the shipped bar layout", () => {
 		"io.github.nag3sy.feishin",
 		"dizziee.system-stats",
 		"aislandener.galaxy-buds",
+		"io.github.nodrej.speech-orb",
 	]);
 	const manifestIds = new Set(
 		JSON.parse(fs.readFileSync(SHIPPED_MANIFEST, "utf8")).map(({ id }) => id),

@@ -28,7 +28,9 @@
 		"id": "io.github.thetrueferret.decent-workspaces",
 		"url": "https://github.com/TheTrueFerret/omarchy-decent-workspaces.git",
 		"manualAuth": null,
-		"disableOnInstall": ["omarchy.workspaces"]
+		"disableOnInstall": [
+			"omarchy.workspaces"
+		]
 	},
 	{
 		"id": "dizziee.system-stats",
@@ -43,6 +45,11 @@
 	{
 		"id": "io.github.nag3sy.feishin",
 		"url": "https://github.com/nag3sy/feishin-omarchy-plugin.git",
+		"manualAuth": null
+	},
+	{
+		"id": "io.github.nodrej.speech-orb",
+		"url": "https://github.com/nodrej/omarchy-speech-orb.git",
 		"manualAuth": null
 	}
 ]

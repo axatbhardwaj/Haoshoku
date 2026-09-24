@@ -469,7 +469,7 @@ describe("Omarchy plugin installer", () => {
 		);
 	});
 
-	it("ships a manifest on disk with exactly the 9 expected plugins", () => {
+	it("ships a manifest on disk with exactly the 10 expected plugins", () => {
 		const EXPECTED_PLUGINS = [
 			{
 				id: "crmne.hyprmoncfg",
@@ -516,6 +516,11 @@ describe("Omarchy plugin installer", () => {
 			{
 				id: "io.github.nag3sy.feishin",
 				url: "https://github.com/nag3sy/feishin-omarchy-plugin.git",
+				manualAuth: null,
+			},
+			{
+				id: "io.github.nodrej.speech-orb",
+				url: "https://github.com/nodrej/omarchy-speech-orb.git",
 				manualAuth: null,
 			},
 		];

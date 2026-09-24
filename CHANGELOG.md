@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Install the Speech Orb Omarchy plugin as the dictation HUD, place it in the
+  center bar, and turn off voxtype's own OSD so only the orb shows.
+
 ## 11.13.7 - 2026-09-23
 
 - Keep specs for repositories outside the `defi-com` GitHub organization on
