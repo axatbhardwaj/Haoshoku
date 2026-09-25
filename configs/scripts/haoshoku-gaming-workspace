@@ -30,6 +30,15 @@ WATCH_TIMEOUT_SECONDS=180
 # only then moved. At a one-second interval that lands as a visible flash.
 WATCH_POLL_SECONDS=0.25
 
+# Linux punishes split locks -- atomics straddling two cache lines -- by sleeping the
+# offending thread and serialising the rest. That guards shared machines against a noisy
+# neighbour, but Division 2 takes the trap constantly and sat at ~50 fps with an idle
+# CPU and GPU. So the penalty is lifted only for the length of a launch, never for good.
+# Needs the narrow sudoers rule `haoshoku --gaming-split-lock` installs; without it the
+# `sudo -n` is refused and the game launches exactly as before.
+SPLIT_LOCK_FILE="${HAOSHOKU_GW_SPLIT_LOCK_FILE:-/proc/sys/kernel/split_lock_mitigate}"
+SUDO="${HAOSHOKU_GW_SUDO:-sudo}"
+
 lua_string() {
   jq -Rnr --arg value "$1" '$value | @json'
 }
@@ -208,6 +217,22 @@ forward_signal() {
   return 0
 }
 
+set_split_lock_mitigate() {
+  "$SUDO" -n /usr/bin/sysctl -q -w "kernel.split_lock_mitigate=$1" >/dev/null 2>&1
+}
+
+# Lifts the penalty and prints the value to restore at exit; prints nothing when there
+# is nothing to undo -- already lifted by someone else, unreadable, or sudo refused.
+lift_split_lock_penalty() {
+  local current
+  current="$(cat "$SPLIT_LOCK_FILE" 2>/dev/null)" || return 0
+  [ "$current" = 1 ] || return 0
+  if set_split_lock_mitigate 0; then
+    printf '1\n'
+  fi
+  return 0
+}
+
 cmd_place() {
   [ "${1:-}" = "--" ] || { echo "usage: haoshoku-gaming-workspace place -- <command...>" >&2; return 2; }
   shift
@@ -229,6 +254,13 @@ cmd_place() {
   # -- rejected, because it changes signal topology in a launch chain that has already
   # eaten this game four times, to buy transparency for a signal Steam never sends.
   # Steam's stop button is SIGTERM, which is unaffected and is covered by the tests.
+  #
+  # Restored after the wait below, so a stop from Steam restores it too. Only a SIGKILL
+  # of this wrapper skips the restore, and a reboot resets the kernel default anyway.
+  # Two overlapping launches share one setting: the first to exit re-arms it.
+  local split_lock_restore
+  split_lock_restore="$(lift_split_lock_penalty)"
+
   "$@" &
   local game=$!
 
@@ -269,6 +301,10 @@ cmd_place() {
   if [ -n "$watcher" ]; then
     kill "$watcher" 2>/dev/null || true
     wait "$watcher" 2>/dev/null || true
+  fi
+
+  if [ -n "$split_lock_restore" ]; then
+    set_split_lock_mitigate "$split_lock_restore" || true
   fi
 
   return "$status"

@@ -22,6 +22,12 @@ is() { # is <name> <expected> <actual>
 
 [ -f "$SCRIPT" ] || { echo "haoshoku-gaming-workspace not found at $SCRIPT" >&2; exit 1; }
 
+# Every `place` below would otherwise read the real split-lock sysctl and call the real
+# sudo. The suite must never change a kernel setting; the split-lock cases override
+# both with fakes.
+export HAOSHOKU_GW_SPLIT_LOCK_FILE=/nonexistent/split_lock_mitigate
+export HAOSHOKU_GW_SUDO=/bin/false
+
 # shellcheck source=/dev/null
 HAOSHOKU_GAMING_WORKSPACE_LIB=1 . "$SCRIPT"
 
@@ -373,6 +379,57 @@ for _ in 1 2 3; do
 done
 after_tmp="$(find "$TD/leakcount" -maxdepth 1 -name 'tmp.*' 2>/dev/null | wc -l)"
 is "three launches leak no temp files" "$before_tmp" "$after_tmp"
+
+echo "place (split-lock penalty)"
+
+# A fake sudo that plays the one sysctl the script is allowed to run: it logs the call
+# and writes the value to the fake sysctl file, as the kernel would.
+cat > "$TD/fake-sudo" <<EOS
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >> "\$SUDO_LOG"
+[ "\$1 \$2 \$3 \$4" = "-n /usr/bin/sysctl -q -w" ] || exit 1
+printf '%s\n' "\${5#kernel.split_lock_mitigate=}" > "\$SPLIT_LOCK_FILE"
+EOS
+chmod +x "$TD/fake-sudo"
+
+split_lock_place() { # split_lock_place <initial value> <sudo> -- <command...>
+  printf '%s\n' "$1" > "$TD/split_lock"
+  local sudo="$2"
+  shift 3
+  : > "$TD/sudo.log"
+  SUDO_LOG="$TD/sudo.log" SPLIT_LOCK_FILE="$TD/split_lock" \
+    HAOSHOKU_GW_SPLIT_LOCK_FILE="$TD/split_lock" HAOSHOKU_GW_SUDO="$sudo" \
+    HAOSHOKU_GW_HYPRCTL=/nonexistent/hyprctl "$SCRIPT" place -- "$@" >/dev/null 2>&1
+}
+
+split_lock_place 1 "$TD/fake-sudo" -- bash -c "cat '$TD/split_lock' > '$TD/seen'"
+is "lifts the penalty while the game runs" "0" "$(cat "$TD/seen")"
+is "restores the penalty once the game exits" "1" "$(cat "$TD/split_lock")"
+
+split_lock_place 1 "$TD/fake-sudo" -- bash -c 'exit 42'
+is "still passes the game's exit status through" "42" "$?"
+
+split_lock_place 0 "$TD/fake-sudo" -- /bin/true
+is "leaves an already-lifted penalty alone" "" "$(cat "$TD/sudo.log")"
+is "and does not turn it on at exit" "0" "$(cat "$TD/split_lock")"
+
+# No sudoers rule installed: the game must launch exactly as before, penalty and all.
+split_lock_place 1 /bin/false -- bash -c 'exit 7'
+is "a refused sudo does not affect the launch" "7" "$?"
+is "and leaves the setting untouched" "1" "$(cat "$TD/split_lock")"
+
+# Steam's stop button: the restore must still run after the forwarded TERM.
+rm -f "$TD/ready"
+printf '1\n' > "$TD/split_lock"; : > "$TD/sudo.log"
+SUDO_LOG="$TD/sudo.log" SPLIT_LOCK_FILE="$TD/split_lock" \
+  HAOSHOKU_GW_SPLIT_LOCK_FILE="$TD/split_lock" HAOSHOKU_GW_SUDO="$TD/fake-sudo" \
+  HAOSHOKU_GW_HYPRCTL=/nonexistent/hyprctl "$SCRIPT" place -- "$TD/fast-term" >/dev/null 2>&1 &
+wrapper=$!
+await_ready "$TD/ready"
+kill -TERM "$wrapper"
+wait "$wrapper"
+is "lifts, then restores the penalty around Steam's stop button" "0 1" \
+   "$(sed 's/.*=//' "$TD/sudo.log" | tr '\n' ' ' | sed 's/ $//')"
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
