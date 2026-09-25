@@ -19,6 +19,7 @@
 | `visual_explainer_vendoring.test.js` | Upstream payload revision, file-set, license, and byte digests | Updating the pinned visual-explainer payload |
 | `configure_axstack.test.js` | Axstack tarball verification, release layout, shim, no-downgrade, and harness install | Changing the Axstack pin or installer |
 | `cli_axstack_flags.test.js` | `--axstack` / `--axstack-check` routing and reporting | Changing the Axstack CLI surface |
+| `configure_split_lock_sudoers.test.js` | Split-lock sudoers rule contents, visudo gate, and staging cleanup | Changing `--gaming-split-lock` |
 | `configure_gaming.test.js`, `cli_gaming.test.js` | Workspace-2 autostart policy defaults, flags, and overlay reconciliation | Changing `--gaming*` |
 | `configure_discord_theme.test.js` | Discord theme deploy across Vesktop/Vencord clients, manifest validation, and shipped-manifest validity | Changing `--discord-theme` |
 | `configure_kde_connect.test.js` | KDE Connect device config parsing and `Screens Off` command writes | Changing `--kde-connect-commands` |

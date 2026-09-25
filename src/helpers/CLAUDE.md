@@ -43,6 +43,7 @@ Standalone setup scripts for specific tools.
 | `configure_omarchy_plugins.js` | Manifest-driven Omarchy plugin install/enable reconciliation plus one-shot `disableOnInstall`; per-plugin failures are non-fatal | Modifying the default plugin set, idempotency, stock-widget displacement, or manual-auth reporting |
 | `configure_omarchy_workspaces.js` | Omarchy 4 device-specific Lua overlay deploy plus two `hyprland.lua` require lines | Modifying workspace/binding overlays, require wiring, or reload behavior |
 | `configure_gaming.js` | Steam (special:steam) / Omakade (workspace 2) login-autostart policy (`~/.config/haoshoku/gaming.json`) plus deployed-overlay reconciliation | Modifying gaming autostart defaults, flags, or the Lua patch boundary |
+| `configure_split_lock_sudoers.js` | visudo-validated `/etc/sudoers.d/haoshoku-split-lock` granting only the two `kernel.split_lock_mitigate` sysctl calls the gaming wrapper makes | Changing the split-lock rule or `--gaming-split-lock` |
 | `configure_omazed.js` | Omazed setup, Zed theme selection/hook deploy, and legacy theme retirement | Modifying Omarchy-managed Zed theming |
 | `configure_voxtype_osd.js` | Turns off the voxtype OSD so the Speech Orb plugin replaces it | Changing dictation HUD behavior |
 | `configure_warp.js` | Dormant Warp tab/theme deploy and idempotent settings activation | Reviewing or modifying the retained Warp setup |

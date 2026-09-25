@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Lift the kernel split-lock penalty for the lifetime of games launched
+  through `haoshoku-gaming-workspace place`, restoring it on exit. Install the
+  narrow sudoers rule it needs with `haoshoku --gaming-split-lock`; the CachyOS
+  gaming step installs it too.
+
 ## 11.13.9 - 2026-09-24
 
 - Keep placing launched games on gaming workspace 2 when gamescope remaps its
