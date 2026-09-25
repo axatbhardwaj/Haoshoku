@@ -100,7 +100,10 @@ The Arch setup:
   `haoshoku --gaming-steam-autostart enabled|disabled` and
   `haoshoku --gaming-omakade-autostart enabled|disabled`. Use
   `haoshoku-gaming-workspace place -- %command%` as a Steam launch option to
-  move the launched game's process-tree windows there;
+  move the launched game's process-tree windows there. The same wrapper lifts
+  the kernel split-lock penalty while the game runs and restores it on exit
+  once `haoshoku --gaming-split-lock` has installed its narrow sudoers rule
+  (Division 2 otherwise sits near 50 fps with an idle CPU and GPU);
 - starts Flux, DeFi, WhatsApp, and Notion with empty Brave Origin profiles
   below `~/.config/brave-haoshoku/`; existing Chromium profile data remains
   untouched at `~/.config/chromium-haoshoku/` for manual import;
@@ -468,6 +471,7 @@ haoshoku --pr-watch
 haoshoku --worktree-cleanup
 haoshoku --workspaces
 haoshoku --gaming
+haoshoku --gaming-split-lock
 haoshoku --gaming-steam-autostart disabled
 haoshoku --gaming-omakade-autostart enabled
 haoshoku --monitors

@@ -636,6 +636,33 @@ describe("system package installation orchestration", () => {
 			true,
 		);
 	});
+
+	it("installs the split-lock sudoers rule only when gaming is enabled", async () => {
+		for (const enabled of [true, false]) {
+			const calls = [];
+			await installSystemPackages("paru", false, {
+				readFileImpl: () => "chromium\n",
+				installArchPackageBatchImpl: async () => ({
+					installed: [],
+					failed: [],
+					missing: [],
+					invalid: [],
+					skipped: [],
+				}),
+				runCommandImpl: async () => true,
+				promptUserImpl: async () => enabled,
+				installGamingPackagesImpl: async () => calls.push("packages"),
+				configureSplitLockSudoersImpl: async (options) =>
+					calls.push(["sudoers", options]),
+			});
+
+			expect(calls).toEqual(
+				enabled
+					? ["packages", ["sudoers", { nonInteractiveSudo: true }]]
+					: [],
+			);
+		}
+	});
 });
 
 describe("portable gaming setup", () => {

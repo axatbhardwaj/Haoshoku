@@ -53,6 +53,7 @@ export const MODE_FLAGS = [
 	"scripts",
 	"workspaces",
 	"gaming",
+	"gamingSplitLock",
 	"gamingSteamAutostart",
 	"gamingOmakadeAutostart",
 	"monitors",
