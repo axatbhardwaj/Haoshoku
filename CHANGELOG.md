@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 11.14.0 - 2026-09-25
 
 - Lift the kernel split-lock penalty for the lifetime of games launched
   through `haoshoku-gaming-workspace place`, restoring it on exit. Install the
