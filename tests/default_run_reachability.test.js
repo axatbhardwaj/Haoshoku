@@ -51,6 +51,9 @@ function deployModeFeaturesFromCli() {
 		"--gaming",
 		"--gaming-steam-autostart",
 		"--gaming-omakade-autostart",
+		// The split-lock sudoers rule is installed only after the opt-in gaming
+		// prompt, never on an unattended default run.
+		"--gaming-split-lock",
 		// Schedule ownership and mutation are always explicit, host-local modes.
 		// Normal setup must never connect to or modify the schedule API.
 		"--paseo-schedules",

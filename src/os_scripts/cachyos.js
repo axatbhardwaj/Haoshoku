@@ -17,6 +17,7 @@ import { configureAudio } from "../helpers/configure_audio.js";
 import { configureAxstack } from "../helpers/configure_axstack.js";
 import { configureBash } from "../helpers/configure_bash.js";
 import { configureBraveManagedPolicies } from "../helpers/configure_brave_managed_policies.js";
+import { configureSplitLockSudoers } from "../helpers/configure_split_lock_sudoers.js";
 import { configureChromiumProfiles } from "../helpers/configure_chromium_profiles.js";
 import { configureClaude } from "../helpers/configure_claude.js";
 import { configureClaudeRemoteControl } from "../helpers/configure_claude_remote_control.js";
@@ -482,6 +483,8 @@ export async function installSystemPackages(
 		readFileImpl = fs.readFileSync,
 		runCommandImpl = runCommand,
 		promptUserImpl = promptUser,
+		installGamingPackagesImpl = installGamingPackages,
+		configureSplitLockSudoersImpl = configureSplitLockSudoers,
 	} = {},
 ) {
 	log.info("Preparing for package installation...");
@@ -510,7 +513,8 @@ export async function installSystemPackages(
 	);
 
 	if (await promptUserImpl("Enable gaming configuration?", false)) {
-		await installGamingPackages({ aurHelper, isOmarchy });
+		await installGamingPackagesImpl({ aurHelper, isOmarchy });
+		await configureSplitLockSudoersImpl({ nonInteractiveSudo: true });
 	}
 }
 

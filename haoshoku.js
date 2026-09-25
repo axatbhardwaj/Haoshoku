@@ -23,6 +23,7 @@ import {
 	configureAxstack,
 } from "./src/helpers/configure_axstack.js";
 import { configureBraveManagedPolicies } from "./src/helpers/configure_brave_managed_policies.js";
+import { configureSplitLockSudoers } from "./src/helpers/configure_split_lock_sudoers.js";
 import {
 	backupClaudeConfig,
 	syncClaudeConfig,
@@ -246,6 +247,10 @@ program
 	.option(
 		"--gaming",
 		"Ensure the gaming autostart defaults (Steam on, Omakade off) in ~/.config/haoshoku/gaming.json",
+	)
+	.option(
+		"--gaming-split-lock",
+		"Install the sudoers rule that lets game launches lift the kernel split-lock penalty while they run",
 	)
 	.option(
 		"--gaming-steam-autostart <state>",
@@ -573,6 +578,11 @@ async function runAction(options) {
 
 	if (options.gaming) {
 		if (!ensureGamingConfig()) process.exitCode = 1;
+		return;
+	}
+
+	if (options.gamingSplitLock) {
+		if (!(await configureSplitLockSudoers())) process.exitCode = 1;
 		return;
 	}
 
