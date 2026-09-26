@@ -52,26 +52,35 @@ fi
 	});
 	afterEach(() => fs.rmSync(home, { recursive: true, force: true }));
 
-	async function run(mode, clients, app = "stably-orca", openedClient = "") {
+	async function run(
+		mode,
+		clients,
+		app = "stably-orca",
+		openedClient = "",
+		target = "1",
+	) {
 		fs.writeFileSync(path.join(home, "clients.json"), clients);
 		fs.writeFileSync(
 			path.join(home, ".config", "haoshoku", "primary-app"),
 			`${app}\n`,
 		);
-		const proc = Bun.spawn([script, mode], {
-			env: {
-				...process.env,
-				HOME: home,
-				XDG_CONFIG_HOME: path.join(home, ".config"),
-				XDG_DATA_HOME: path.join(home, "share"),
-				PATH: `${path.join(home, "bin")}:${process.env.PATH}`,
-				CLIENTS_FILE: path.join(home, "clients.json"),
-				DISPATCH_LOG: path.join(home, "dispatches"),
-				OPENED_CLIENT: openedClient,
+		const proc = Bun.spawn(
+			[script, mode, ...(mode === "focus" ? [target] : [])],
+			{
+				env: {
+					...process.env,
+					HOME: home,
+					XDG_CONFIG_HOME: path.join(home, ".config"),
+					XDG_DATA_HOME: path.join(home, "share"),
+					PATH: `${path.join(home, "bin")}:${process.env.PATH}`,
+					CLIENTS_FILE: path.join(home, "clients.json"),
+					DISPATCH_LOG: path.join(home, "dispatches"),
+					OPENED_CLIENT: openedClient,
+				},
+				stdout: "pipe",
+				stderr: "pipe",
 			},
-			stdout: "pipe",
-			stderr: "pipe",
-		});
+		);
 		const output = await new Response(proc.stderr).text();
 		const code = await proc.exited;
 		const dispatches = fs.existsSync(path.join(home, "dispatches"))
@@ -80,18 +89,34 @@ fi
 		return { code, output, dispatches };
 	}
 
-	it("focuses the existing app on its current workspace without moving it", async () => {
+	it("moves an existing app to workspace 6 and focuses it", async () => {
+		const result = await run(
+			"focus",
+			'[{"class":"orca","address":"0xabc","workspace":{"name":"1"}}]',
+			"stably-orca",
+			"",
+			"6",
+		);
+		expect(result.code).toBe(0);
+		expect(result.dispatches.trim().split("\n")).toEqual([
+			'hl.dsp.window.move({ workspace = "6", window = "address:0xabc", follow = false })',
+			'hl.dsp.focus({ workspace = "6" })',
+			'hl.dsp.focus({ window = "address:0xabc" })',
+		]);
+		expect(result.dispatches).not.toContain("exec_cmd");
+	});
+
+	it("focuses the app without moving it when it is already on the requested workspace", async () => {
 		const result = await run(
 			"focus",
 			'[{"class":"orca","address":"0xabc","workspace":{"name":"6"}}]',
+			"stably-orca",
+			"",
+			"6",
 		);
 		expect(result.code).toBe(0);
 		expect(result.dispatches).toContain('hl.dsp.focus({ workspace = "6" })');
-		expect(result.dispatches).toContain(
-			'hl.dsp.focus({ window = "address:0xabc" })',
-		);
 		expect(result.dispatches).not.toContain("window.move");
-		expect(result.dispatches).not.toContain("exec_cmd");
 	});
 
 	it("uses the replacement executable and its desktop window class", async () => {
@@ -101,7 +126,10 @@ fi
 			"t3code",
 		);
 		expect(result.code).toBe(0);
-		expect(result.dispatches).toContain('hl.dsp.focus({ workspace = "3" })');
+		expect(result.dispatches).toContain(
+			'hl.dsp.window.move({ workspace = "1", window = "address:0xdef", follow = false })',
+		);
+		expect(result.dispatches).toContain('hl.dsp.focus({ workspace = "1" })');
 		expect(result.dispatches).not.toContain("exec_cmd");
 	});
 
@@ -114,17 +142,22 @@ fi
 		expect(result.dispatches).not.toContain("hl.dsp.focus");
 	});
 
-	it("focuses a newly launched app from either number key", async () => {
+	it("moves a newly launched app to workspace 6 and focuses it", async () => {
 		const result = await run(
 			"focus",
 			"[]",
 			"stably-orca",
 			'[{"class":"orca","address":"0xnew","workspace":{"name":"1"}}]',
+			"6",
 		);
 		expect(result.code).toBe(0);
 		expect(result.dispatches).toContain(
 			"[workspace 1 silent] uwsm-app -- stably-orca",
 		);
+		expect(result.dispatches).toContain(
+			'hl.dsp.window.move({ workspace = "6", window = "address:0xnew", follow = false })',
+		);
+		expect(result.dispatches).toContain('hl.dsp.focus({ workspace = "6" })');
 		expect(result.dispatches).toContain(
 			'hl.dsp.focus({ window = "address:0xnew" })',
 		);

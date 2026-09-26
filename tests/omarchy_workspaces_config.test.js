@@ -140,10 +140,13 @@ describe("Omarchy Lua workspace behavior", () => {
 				'o.exec_on_start("haoshoku-primary-app login")',
 			);
 			expect(overlay).toContain('require("hypr.haoshoku.primary_app")');
-			for (const key of ["10", "15"]) {
+			for (const [key, workspace] of [
+				["10", "1"],
+				["15", "6"],
+			]) {
 				expect(overlay).toContain(`hl.unbind("SUPER + code:${key}")`);
 				expect(overlay).toContain(
-					`"SUPER + code:${key}", "Primary app", "haoshoku-primary-app focus"`,
+					`"SUPER + code:${key}", "Primary app on workspace ${workspace}", "haoshoku-primary-app focus ${workspace}"`,
 				);
 			}
 		}

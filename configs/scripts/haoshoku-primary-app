@@ -2,8 +2,9 @@
 set -euo pipefail
 
 mode="${1:-}"
-[[ $# -eq 1 && ( "$mode" == login || "$mode" == focus ) ]] || {
-  echo "usage: haoshoku-primary-app <login|focus>" >&2
+target="${2:-}"
+[[ ( "$mode" == login && $# -eq 1 ) || ( "$mode" == focus && $# -eq 2 && ( "$target" == 1 || "$target" == 6 ) ) ]] || {
+  echo "usage: haoshoku-primary-app login | focus <1|6>" >&2
   exit 2
 }
 
@@ -66,6 +67,9 @@ fi
 
 if [[ "$mode" == focus && -n "$client" ]]; then
   IFS=$'\t' read -r address workspace <<< "$client"
-  dispatch "hl.dsp.focus({ workspace = $(lua_string "$workspace") })"
+  if [[ "$workspace" != "$target" ]]; then
+    dispatch "hl.dsp.window.move({ workspace = $(lua_string "$target"), window = $(lua_string "address:$address"), follow = false })"
+  fi
+  dispatch "hl.dsp.focus({ workspace = $(lua_string "$target") })"
   dispatch "hl.dsp.focus({ window = $(lua_string "address:$address") })"
 fi
