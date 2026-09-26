@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Let the primary-app Lua behavior tests skip on CI hosts without a Lua
+  interpreter, matching the existing Omarchy overlay test convention.
+
 ## 11.14.1 - 2026-09-26
 
 - Launch the configurable primary app on workspace 1 and make `Super+1` and
