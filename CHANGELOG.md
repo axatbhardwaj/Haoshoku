@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 11.14.1 - 2026-09-26
 
 - Launch the configurable primary app on workspace 1 and make `Super+1` and
   `Super+6` move its existing window to the requested workspace and focus it.
