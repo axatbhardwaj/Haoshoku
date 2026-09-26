@@ -3,6 +3,24 @@
 	"swaps": [
 		{
 			"config_file": "configs/omarchy/haoshoku/workspaces-pc.lua",
+			"key_combination_taken": "SUPER, code:10",
+			"hl_unbind": "hl.unbind(\"SUPER + code:10\")",
+			"previous_binding": "bindd = SUPER, code:10, Switch to workspace 1, workspace, 1",
+			"moved_from_dispatcher": "workspace",
+			"moved_from_arg": "1",
+			"reason": "reclaimed_by_overlay"
+		},
+		{
+			"config_file": "configs/omarchy/haoshoku/workspaces-pc.lua",
+			"key_combination_taken": "SUPER, code:15",
+			"hl_unbind": "hl.unbind(\"SUPER + code:15\")",
+			"previous_binding": "bindd = SUPER, code:15, Switch to workspace 6, workspace, 6",
+			"moved_from_dispatcher": "workspace",
+			"moved_from_arg": "6",
+			"reason": "reclaimed_by_overlay"
+		},
+		{
+			"config_file": "configs/omarchy/haoshoku/workspaces-pc.lua",
 			"key_combination_taken": "SUPER, code:16",
 			"hl_unbind": "hl.unbind(\"SUPER + code:16\")",
 			"previous_binding": "bindd = SUPER, code:16, Switch to workspace 7, workspace, 7",

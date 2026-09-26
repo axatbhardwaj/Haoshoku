@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+mode="${1:-}"
+[[ $# -eq 1 && ( "$mode" == login || "$mode" == focus ) ]] || {
+  echo "usage: haoshoku-primary-app <login|focus>" >&2
+  exit 2
+}
+
+config="${XDG_CONFIG_HOME:-$HOME/.config}/haoshoku/primary-app"
+app=stably-orca
+if [[ -f "$config" ]]; then
+  IFS= read -r app < "$config" || true
+fi
+[[ -n "$app" && "$app" != *[[:space:]]* ]] || {
+  echo "primary app must be one executable name or path: $config" >&2
+  exit 2
+}
+command -v -- "$app" >/dev/null || { echo "primary app not found: $app" >&2; exit 1; }
+
+name="${app##*/}"
+class="$name"
+for desktop in "${XDG_DATA_HOME:-$HOME/.local/share}/applications/$name.desktop" \
+  /usr/local/share/applications/"$name.desktop" \
+  /usr/share/applications/"$name.desktop"; do
+  if [[ -r "$desktop" ]]; then
+    desktop_class="$(sed -n 's/^StartupWMClass=//p' "$desktop" | head -n 1)"
+    [[ -z "$desktop_class" ]] || class="$desktop_class"
+    break
+  fi
+done
+
+lua_string() { jq -nr --arg value "$1" '$value | @json'; }
+dispatch() {
+  local lua_expression="$1"
+  hyprctl dispatch "$lua_expression" >/dev/null
+}
+
+find_client() {
+  local clients
+  clients="$(hyprctl clients -j)" || return 1
+  jq -e 'type == "array" and all(.[]; type == "object")' <<< "$clients" >/dev/null || return 1
+  jq -r --arg class "$class" '
+    ([.[] | select(.class == $class)][0] // null) |
+    if . == null then ""
+    elif (.address | type) == "string" and (.workspace.name | type) == "string" then
+      [.address, .workspace.name] | @tsv
+    else error("invalid primary app client") end
+  ' <<< "$clients"
+}
+
+client="$(find_client)" || { echo "cannot inspect Hyprland clients" >&2; exit 1; }
+if [[ -z "$client" ]]; then
+  printf -v escaped_app '%q' "$app"
+  launch="[workspace 1 silent] uwsm-app -- $escaped_app"
+  dispatch "hl.dsp.exec_cmd($(lua_string "$launch"))"
+  if [[ "$mode" == focus ]]; then
+    for _ in {1..100}; do
+      sleep 0.05
+      client="$(find_client)" || { echo "cannot inspect Hyprland clients" >&2; exit 1; }
+      [[ -z "$client" ]] || break
+    done
+    [[ -n "$client" ]] || { echo "primary app did not open: $app" >&2; exit 1; }
+  fi
+fi
+
+if [[ "$mode" == focus && -n "$client" ]]; then
+  IFS=$'\t' read -r address workspace <<< "$client"
+  dispatch "hl.dsp.focus({ workspace = $(lua_string "$workspace") })"
+  dispatch "hl.dsp.focus({ window = $(lua_string "address:$address") })"
+fi
