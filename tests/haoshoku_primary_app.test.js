@@ -10,6 +10,7 @@ const script = path.join(
 	"scripts",
 	"haoshoku-primary-app",
 );
+const luaInterpreter = Bun.which("lua5.4") ?? Bun.which("lua");
 
 describe("haoshoku-primary-app", () => {
 	let home;
@@ -187,59 +188,88 @@ fi
 		expect(result.dispatches).toContain('hl.dsp.focus({ workspace = "6" })');
 	}, 10000);
 
-	it("sets the workspace rule from the same executable setting", async () => {
-		const module = path.join(
-			import.meta.dir,
-			"..",
-			"configs",
-			"omarchy",
-			"haoshoku",
-			"primary_app.lua",
-		);
-		for (const [app, expected] of [
-			["stably-orca", "^orca$"],
-			["t3code", "^t3code$"],
-		]) {
-			fs.writeFileSync(
-				path.join(home, ".config", "haoshoku", "primary-app"),
-				`${app}\n`,
+	(luaInterpreter ? it : it.skip)(
+		"sets the workspace rule from the same executable setting",
+		async () => {
+			if (!luaInterpreter) return;
+			const module = path.join(
+				import.meta.dir,
+				"..",
+				"configs",
+				"omarchy",
+				"haoshoku",
+				"primary_app.lua",
 			);
-			const proc = Bun.spawn(
-				[
-					"lua",
-					"-e",
-					`o = { window = function(class, rule) print(class, rule.workspace) end }; dofile(${JSON.stringify(module)})`,
-				],
-				{
-					env: {
-						...process.env,
-						HOME: home,
-						XDG_CONFIG_HOME: path.join(home, ".config"),
-						XDG_DATA_HOME: path.join(home, "share"),
+			for (const [app, expected] of [
+				["stably-orca", "^orca$"],
+				["t3code", "^t3code$"],
+			]) {
+				fs.writeFileSync(
+					path.join(home, ".config", "haoshoku", "primary-app"),
+					`${app}\n`,
+				);
+				const proc = Bun.spawn(
+					[
+						luaInterpreter,
+						"-e",
+						`o = { window = function(class, rule) print(class, rule.workspace) end }; dofile(${JSON.stringify(module)})`,
+					],
+					{
+						env: {
+							...process.env,
+							HOME: home,
+							XDG_CONFIG_HOME: path.join(home, ".config"),
+							XDG_DATA_HOME: path.join(home, "share"),
+						},
+						stdout: "pipe",
+						stderr: "pipe",
 					},
-					stdout: "pipe",
-					stderr: "pipe",
-				},
-			);
-			const output = await new Response(proc.stdout).text();
-			expect(await proc.exited).toBe(0);
-			expect(output).toContain(`${expected}\t1 silent`);
-		}
-	});
+				);
+				const output = await new Response(proc.stdout).text();
+				expect(await proc.exited).toBe(0);
+				expect(output).toContain(`${expected}\t1 silent`);
+			}
+		},
+	);
 
-	it("keeps the Lua overlay loadable when the app setting is invalid", async () => {
-		const module = path.join(import.meta.dir, "..", "configs", "omarchy", "haoshoku", "primary_app.lua");
-		for (const app of ["", "/usr/bin/", "t3code "]) {
-			fs.writeFileSync(path.join(home, ".config", "haoshoku", "primary-app"), `${app}\n`);
-			const proc = Bun.spawn([
-				"lua", "-e", `o = { window = function(class) print(class) end }; dofile(${JSON.stringify(module)})`,
-			], {
-				env: { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, ".config"), XDG_DATA_HOME: path.join(home, "share") },
-				stdout: "pipe", stderr: "pipe",
-			});
-			const output = await new Response(proc.stdout).text();
-			expect(await proc.exited).toBe(0);
-			expect(output.trim()).toBe("^orca$");
-		}
-	});
+	(luaInterpreter ? it : it.skip)(
+		"keeps the Lua overlay loadable when the app setting is invalid",
+		async () => {
+			if (!luaInterpreter) return;
+			const module = path.join(
+				import.meta.dir,
+				"..",
+				"configs",
+				"omarchy",
+				"haoshoku",
+				"primary_app.lua",
+			);
+			for (const app of ["", "/usr/bin/", "t3code "]) {
+				fs.writeFileSync(
+					path.join(home, ".config", "haoshoku", "primary-app"),
+					`${app}\n`,
+				);
+				const proc = Bun.spawn(
+					[
+						luaInterpreter,
+						"-e",
+						`o = { window = function(class) print(class) end }; dofile(${JSON.stringify(module)})`,
+					],
+					{
+						env: {
+							...process.env,
+							HOME: home,
+							XDG_CONFIG_HOME: path.join(home, ".config"),
+							XDG_DATA_HOME: path.join(home, "share"),
+						},
+						stdout: "pipe",
+						stderr: "pipe",
+					},
+				);
+				const output = await new Response(proc.stdout).text();
+				expect(await proc.exited).toBe(0);
+				expect(output.trim()).toBe("^orca$");
+			}
+		},
+	);
 });
