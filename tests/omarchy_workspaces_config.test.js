@@ -133,4 +133,22 @@ describe("Omarchy Lua workspace behavior", () => {
 			);
 		}
 	});
+
+	it("starts the primary app on workspace 1 and gives both number keys its focus action", () => {
+		for (const overlay of [pc, laptop]) {
+			expect(overlay).toContain(
+				'o.exec_on_start("haoshoku-primary-app login")',
+			);
+			expect(overlay).toContain('require("hypr.haoshoku.primary_app")');
+			for (const [key, workspace] of [
+				["10", "1"],
+				["15", "6"],
+			]) {
+				expect(overlay).toContain(`hl.unbind("SUPER + code:${key}")`);
+				expect(overlay).toContain(
+					`"SUPER + code:${key}", "Primary app on workspace ${workspace}", "haoshoku-primary-app focus ${workspace}"`,
+				);
+			}
+		}
+	});
 });

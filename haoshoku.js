@@ -242,7 +242,7 @@ program
 	)
 	.option(
 		"--workspaces",
-		"Deploy the two Lua overlay modules under ~/.config/hypr/haoshoku/, install the helper script, and register the two requires in ~/.config/hypr/hyprland.lua",
+		"Deploy the Lua workspace overlays and app helpers, create ~/.config/haoshoku/primary-app, and register the overlay requires in ~/.config/hypr/hyprland.lua",
 	)
 	.option(
 		"--gaming",

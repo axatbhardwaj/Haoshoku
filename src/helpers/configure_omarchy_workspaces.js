@@ -170,6 +170,12 @@ export async function configureOmarchyWorkspaces({
 		workspacesDestination,
 		now,
 	);
+	deployFile(
+		fsImpl,
+		path.join(sourceDirectory, "primary_app.lua"),
+		path.join(overlayDirectory, "primary_app.lua"),
+		now,
+	);
 
 	// The shipped overlay carries the default gaming autostart (Steam only).
 	// Reconcile the deployed copy with the persisted gaming policy so a redeploy
@@ -190,8 +196,30 @@ export async function configureOmarchyWorkspaces({
 		scriptDestination,
 		now,
 	);
-	if (scriptChanged || (fsImpl.statSync(scriptDestination).mode & 0o111) !== 0o111)
+	if (
+		scriptChanged ||
+		(fsImpl.statSync(scriptDestination).mode & 0o111) !== 0o111
+	)
 		fsImpl.chmodSync(scriptDestination, 0o755);
+	const primaryScript = path.join(
+		home,
+		".local",
+		"bin",
+		"haoshoku-primary-app",
+	);
+	deployFile(
+		fsImpl,
+		path.join(projectRoot, "configs", "scripts", "haoshoku-primary-app"),
+		primaryScript,
+		now,
+	);
+	if ((fsImpl.statSync(primaryScript).mode & 0o111) !== 0o111)
+		fsImpl.chmodSync(primaryScript, 0o755);
+	const primaryConfig = path.join(home, ".config", "haoshoku", "primary-app");
+	if (!fsImpl.existsSync(primaryConfig)) {
+		fsImpl.mkdirSync(path.dirname(primaryConfig), { recursive: true });
+		writeAtomically(fsImpl, primaryConfig, "stably-orca\n");
+	}
 
 	const mainText = fsImpl.readFileSync(main, "utf8");
 	const requires = reconcileRequires(mainText);
@@ -213,6 +241,7 @@ export async function configureOmarchyWorkspaces({
 				`${shellEscape(scriptDestination)} numbered-login 7 ghostty`,
 			),
 		);
+		await runCommandImpl(`${shellEscape(primaryScript)} login`);
 	} else {
 		logImpl.info(
 			"Hyprland is not active; workspace reload and exec-once replay are deferred to login.",

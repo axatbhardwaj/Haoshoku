@@ -11,6 +11,8 @@ hl.workspace_rule({ workspace = "9", persistent = true })
 hl.workspace_rule({ workspace = "10", persistent = true })
 
 o.exec_on_start("haoshoku-default-browser")
+o.exec_on_start("haoshoku-primary-app login")
+require("hypr.haoshoku.primary_app")
 o.exec_on_start("haoshoku-special-workspace numbered-login 7 ghostty")
 o.exec_on_start("haoshoku-special-workspace assistants")
 o.launch_on_start("/usr/bin/paseo")
@@ -82,6 +84,10 @@ o.window("^xdg-desktop-portal-gtk$", { center = true })
 -- focuses 2 and ensures Omakade (never Steam -- Steam lives in special:steam).
 -- SUPER+S toggles the Steam special workspace; the stash toggle moves to
 -- SUPER+ALT+S (SUPER+SHIFT+S still stashes the focused window).
+hl.unbind("SUPER + code:10")
+o.bind("SUPER + code:10", "Primary app on workspace 1", "haoshoku-primary-app focus 1")
+hl.unbind("SUPER + code:15")
+o.bind("SUPER + code:15", "Primary app on workspace 6", "haoshoku-primary-app focus 6")
 o.bind(
   "SUPER + code:11",
   "Workspace 2 and Omakade",

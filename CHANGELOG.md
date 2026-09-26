@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Launch the configurable primary app on workspace 1 and make `Super+1` and
+  `Super+6` move its existing window to the requested workspace and focus it.
+  Change `~/.config/haoshoku/primary-app` to switch the executable later.
+
 ## 11.14.0 - 2026-09-25
 
 - Lift the kernel split-lock penalty for the lifetime of games launched

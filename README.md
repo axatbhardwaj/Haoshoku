@@ -484,6 +484,15 @@ haoshoku --discord-theme
 haoshoku --3-4-migrate
 ```
 
+On Omarchy, the primary desktop app starts on workspace 1. Meta+1 brings its
+window to workspace 1 and focuses it; Meta+6 brings it to workspace 6 and
+focuses it. If the app is closed, either key launches it before placing it on
+the selected workspace. The default is Orca (`stably-orca`). To switch to T3 Code,
+put `t3code` in `~/.config/haoshoku/primary-app` and run `hyprctl reload`.
+Haoshoku creates this file on the first `--workspaces` setup and preserves your
+choice on later runs. Other apps can use their desktop executable name; the
+desktop entry's `StartupWMClass` identifies their window.
+
 Use `haoshoku --device-type pc` or `laptop` to override automatic detection.
 Later full Arch-family setups honor that stored explicit value.
 

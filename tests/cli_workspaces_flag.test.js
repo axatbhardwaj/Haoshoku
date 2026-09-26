@@ -31,7 +31,7 @@ describe("--workspaces CLI mode", () => {
 		expect(result.exitCode).toBe(0);
 		const help = result.stdout.toString().replace(/\s+/g, " ");
 		expect(help).toContain(
-			"--workspaces Deploy the two Lua overlay modules under ~/.config/hypr/haoshoku/, install the helper script, and register the two requires in ~/.config/hypr/hyprland.lua",
+			"--workspaces Deploy the Lua workspace overlays and app helpers, create ~/.config/haoshoku/primary-app, and register the overlay requires in ~/.config/hypr/hyprland.lua",
 		);
 		expect(help).not.toContain("monitors.conf");
 		expect(help).not.toContain("hyprland.conf");
@@ -75,6 +75,10 @@ describe("--workspaces CLI mode", () => {
 				"haoshoku-special-workspace",
 			),
 		);
+		fs.copyFileSync(
+			path.join(PROJECT_ROOT, "configs", "scripts", "haoshoku-primary-app"),
+			path.join(tmpProjectRoot, "configs", "scripts", "haoshoku-primary-app"),
+		);
 		fs.copyFileSync(CLI, path.join(tmpProjectRoot, "haoshoku.js"));
 		fs.symlinkSync(
 			path.join(PROJECT_ROOT, "node_modules"),
@@ -111,9 +115,9 @@ describe("--workspaces CLI mode", () => {
 				"utf8",
 			),
 		);
-		expect(fs.readFileSync(path.join(hyprDir(), "hyprland.lua"), "utf8")).toContain(
-			'require("hypr.haoshoku.workspaces")',
-		);
+		expect(
+			fs.readFileSync(path.join(hyprDir(), "hyprland.lua"), "utf8"),
+		).toContain('require("hypr.haoshoku.workspaces")');
 	});
 
 	it("sets or changes deviceType through the standalone CLI mode", () => {
@@ -163,5 +167,4 @@ describe("--workspaces CLI mode", () => {
 		);
 		expect(fs.existsSync(path.join(tmpHome, ".haoshoku.json"))).toBe(false);
 	});
-
 });
