@@ -14,13 +14,20 @@ local function first_line(path)
 end
 
 local app = first_line(config_home .. "/haoshoku/primary-app") or "stably-orca"
+if not app:match("^[^%s]+$") or not app:match("([^/]+)$") then
+  app = "stably-orca"
+end
 local name = app:match("([^/]+)$")
 local class = name
 for _, directory in ipairs({ data_home, "/usr/local/share", "/usr/share" }) do
   local file = io.open(directory .. "/applications/" .. name .. ".desktop", "r")
   if file then
     for line in file:lines() do
-      class = line:match("^StartupWMClass=(.+)$") or class
+      local desktop_class = line:match("^StartupWMClass=(.+)$")
+      if desktop_class then
+        class = desktop_class
+        break
+      end
     end
     file:close()
     break

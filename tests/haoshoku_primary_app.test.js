@@ -169,6 +169,24 @@ fi
 		expect(result.dispatches).toBe("");
 	});
 
+	it("keeps the workspace key useful when the configured app is missing", async () => {
+		const result = await run("focus", "[]", "missing-app", "", "6");
+		expect(result.code).not.toBe(0);
+		expect(result.dispatches.trim()).toBe('hl.dsp.focus({ workspace = "6" })');
+	});
+
+	it("focuses the requested workspace when the client probe fails", async () => {
+		const result = await run("focus", "{bad json", "stably-orca", "", "6");
+		expect(result.code).not.toBe(0);
+		expect(result.dispatches.trim()).toBe('hl.dsp.focus({ workspace = "6" })');
+	});
+
+	it("focuses the requested workspace when a launch times out", async () => {
+		const result = await run("focus", "[]", "stably-orca", "", "6");
+		expect(result.code).not.toBe(0);
+		expect(result.dispatches).toContain('hl.dsp.focus({ workspace = "6" })');
+	}, 10000);
+
 	it("sets the workspace rule from the same executable setting", async () => {
 		const module = path.join(
 			import.meta.dir,
@@ -206,6 +224,22 @@ fi
 			const output = await new Response(proc.stdout).text();
 			expect(await proc.exited).toBe(0);
 			expect(output).toContain(`${expected}\t1 silent`);
+		}
+	});
+
+	it("keeps the Lua overlay loadable when the app setting is invalid", async () => {
+		const module = path.join(import.meta.dir, "..", "configs", "omarchy", "haoshoku", "primary_app.lua");
+		for (const app of ["", "/usr/bin/", "t3code "]) {
+			fs.writeFileSync(path.join(home, ".config", "haoshoku", "primary-app"), `${app}\n`);
+			const proc = Bun.spawn([
+				"lua", "-e", `o = { window = function(class) print(class) end }; dofile(${JSON.stringify(module)})`,
+			], {
+				env: { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, ".config"), XDG_DATA_HOME: path.join(home, "share") },
+				stdout: "pipe", stderr: "pipe",
+			});
+			const output = await new Response(proc.stdout).text();
+			expect(await proc.exited).toBe(0);
+			expect(output.trim()).toBe("^orca$");
 		}
 	});
 });

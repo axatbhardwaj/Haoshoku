@@ -8,6 +8,15 @@ target="${2:-}"
   exit 2
 }
 
+# Keep the number key useful even if the app cannot launch or Hyprland cannot inspect it.
+on_exit() {
+  local status=$?
+  if (( status != 0 )) && [[ "$mode" == focus ]]; then
+    hyprctl dispatch "hl.dsp.focus({ workspace = \"$target\" })" >/dev/null || true
+  fi
+}
+trap on_exit EXIT
+
 config="${XDG_CONFIG_HOME:-$HOME/.config}/haoshoku/primary-app"
 app=stably-orca
 if [[ -f "$config" ]]; then
@@ -33,8 +42,13 @@ done
 
 lua_string() { jq -nr --arg value "$1" '$value | @json'; }
 dispatch() {
-  local lua_expression="$1"
-  hyprctl dispatch "$lua_expression" >/dev/null
+  local lua_expression="$1" output status=0
+  output="$(hyprctl dispatch "$lua_expression" 2>&1)" || status=$?
+  if (( status == 0 )) && [[ -z "$output" || "$output" == ok ]]; then
+    return 0
+  fi
+  [[ -z "$output" ]] || printf '%s\n' "$output" >&2
+  return 1
 }
 
 find_client() {
