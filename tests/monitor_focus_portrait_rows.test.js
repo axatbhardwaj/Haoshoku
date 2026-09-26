@@ -63,6 +63,7 @@ o = {
   window = function() end,
 }
 
+package.preload["hypr.haoshoku.primary_app"] = function() end
 dofile(overlay)
 
 local expected_monitors = {

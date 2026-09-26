@@ -24,7 +24,7 @@ describe("configureOmarchyWorkspaces", () => {
 	it("deploys Lua overlays to the v4 module paths and requires both", async () => {
 		fs.writeFileSync(
 			path.join(home, ".config", "hypr", "hyprland.lua"),
-			"require(\"hypr.defaults\")\n",
+			'require("hypr.defaults")\n',
 		);
 
 		await configureV4({ env: {} });
@@ -34,7 +34,14 @@ describe("configureOmarchyWorkspaces", () => {
 			fs.readFileSync(path.join(hyprDirectory, "haoshoku", "bindings.lua")),
 		).toEqual(
 			fs.readFileSync(
-				path.join(import.meta.dir, "..", "configs", "omarchy", "haoshoku", "bindings.lua"),
+				path.join(
+					import.meta.dir,
+					"..",
+					"configs",
+					"omarchy",
+					"haoshoku",
+					"bindings.lua",
+				),
 			),
 		);
 		expect(
@@ -51,7 +58,10 @@ describe("configureOmarchyWorkspaces", () => {
 				),
 			),
 		);
-		const main = fs.readFileSync(path.join(hyprDirectory, "hyprland.lua"), "utf8");
+		const main = fs.readFileSync(
+			path.join(hyprDirectory, "hyprland.lua"),
+			"utf8",
+		);
 		expect(main).toContain('require("hypr.haoshoku.bindings")');
 		expect(main).toContain('require("hypr.haoshoku.workspaces")');
 		expect(
@@ -59,6 +69,30 @@ describe("configureOmarchyWorkspaces", () => {
 				path.join(home, ".local", "bin", "haoshoku-special-workspace"),
 			).mode & 0o111,
 		).toBe(0o111);
+		expect(
+			fs.statSync(path.join(home, ".local", "bin", "haoshoku-primary-app"))
+				.mode & 0o111,
+		).toBe(0o111);
+		expect(
+			fs.readFileSync(
+				path.join(home, ".config", "haoshoku", "primary-app"),
+				"utf8",
+			),
+		).toBe("stably-orca\n");
+		expect(
+			fs.existsSync(path.join(hyprDirectory, "haoshoku", "primary_app.lua")),
+		).toBe(true);
+		fs.writeFileSync(
+			path.join(home, ".config", "haoshoku", "primary-app"),
+			"t3code\n",
+		);
+		await configureV4({ env: {} });
+		expect(
+			fs.readFileSync(
+				path.join(home, ".config", "haoshoku", "primary-app"),
+				"utf8",
+			),
+		).toBe("t3code\n");
 	});
 
 	it("refuses without writing when the v4 hyprland.lua entrypoint is absent", async () => {
@@ -139,9 +173,9 @@ describe("configureOmarchyWorkspaces", () => {
 			},
 		};
 
-		await expect(
-			configureV4({ fsImpl: failingFs }),
-		).rejects.toThrow("workspace rename failed");
+		await expect(configureV4({ fsImpl: failingFs })).rejects.toThrow(
+			"workspace rename failed",
+		);
 		expect(fs.readFileSync(main, "utf8")).toBe("return { untouched = true }\n");
 	});
 
@@ -190,8 +224,12 @@ describe("configureOmarchyWorkspaces", () => {
 		}
 		const main = fs.readFileSync(destinations.at(-1), "utf8");
 		expect(main).toContain("return { foreign = true }");
-		expect(main.match(/require\("hypr\.haoshoku\.bindings"\)/g)).toHaveLength(1);
-		expect(main.match(/require\("hypr\.haoshoku\.workspaces"\)/g)).toHaveLength(1);
+		expect(main.match(/require\("hypr\.haoshoku\.bindings"\)/g)).toHaveLength(
+			1,
+		);
+		expect(main.match(/require\("hypr\.haoshoku\.workspaces"\)/g)).toHaveLength(
+			1,
+		);
 		const requireLines = main
 			.split(/\r?\n/)
 			.filter((line) => line.startsWith('require("hypr.haoshoku.'));
@@ -200,7 +238,9 @@ describe("configureOmarchyWorkspaces", () => {
 			'require("hypr.haoshoku.bindings")',
 			'require("hypr.haoshoku.workspaces")',
 		]);
-		expect(writes).not.toEqual(expect.arrayContaining(renames.map(({ to }) => to)));
+		expect(writes).not.toEqual(
+			expect.arrayContaining(renames.map(({ to }) => to)),
+		);
 
 		writes.length = 0;
 		renames.length = 0;
@@ -256,10 +296,10 @@ describe("configureOmarchyWorkspaces", () => {
 		expect(calls).toEqual([
 			"hyprctl reload",
 			`'${script.replaceAll("'", "'\\''")}' numbered-login 7 ghostty`,
+			`'${path.join(home, ".local", "bin", "haoshoku-primary-app").replaceAll("'", "'\\''")}' login`,
 		]);
 		expect(result).toEqual(
 			expect.objectContaining({ reloaded: true, replayed: true }),
 		);
 	});
-
 });
