@@ -1,5 +1,15 @@
 # Changelog
 
+## 11.15.0 - 2026-10-05
+
+- Make T3 Code Nightly (`t3code-nightly`) the default Omarchy primary app in
+  place of Orca: it starts on workspace 1 at login and `Super+1` / `Super+6`
+  move and focus it. Line 2 of `~/.config/haoshoku/primary-app` now overrides
+  the window class (Nightly needs `com.t3tools.T3Code`), and `--workspaces`
+  migrates a stored `stably-orca` setting.
+- Install `t3code-nightly-bin` instead of `stably-orca-bin` on Arch.
+- Route agent orchestration in the shared Claude/Codex profile through T3 Code.
+
 ## 11.14.2 - 2026-09-26
 
 - Let the primary-app Lua behavior tests skip on CI hosts without a Lua
