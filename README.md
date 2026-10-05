@@ -211,7 +211,7 @@ haoshoku --paseo-profiles-backup
 The shared profile lives at `configs/agent-profile/PROFILE.md`. Apply it to
 Claude, Codex, Opencode, and Antigravity with `haoshoku --agents`, or capture
 the live Claude copy with `haoshoku --agents-backup`. The bundled policy routes
-both Notion accounts and Linear through the configured Executor MCP while Orca
+both Notion accounts and Linear through the configured Executor MCP while T3 Code
 remains responsible for orchestration.
 
 `--paseo-profiles` merges the bundled profile IDs and whitelisted provider
@@ -487,11 +487,13 @@ haoshoku --3-4-migrate
 On Omarchy, the primary desktop app starts on workspace 1. Meta+1 brings its
 window to workspace 1 and focuses it; Meta+6 brings it to workspace 6 and
 focuses it. If the app is closed, either key launches it before placing it on
-the selected workspace. The default is Orca (`stably-orca`). To switch to T3 Code,
-put `t3code` in `~/.config/haoshoku/primary-app` and run `hyprctl reload`.
-Haoshoku creates this file on the first `--workspaces` setup and preserves your
-choice on later runs. Other apps can use their desktop executable name; the
-desktop entry's `StartupWMClass` identifies their window.
+the selected workspace. The default is T3 Code Nightly (`t3code-nightly`).
+`~/.config/haoshoku/primary-app` holds the executable on line 1 and an optional
+window class on line 2; Nightly needs `com.t3tools.T3Code` there because its
+desktop entry reports the wrong class. Without line 2, the desktop entry's
+`StartupWMClass` identifies the window. Haoshoku creates this file on the first
+`--workspaces` setup, migrates the retired Orca default, and otherwise preserves
+your choice. Run `hyprctl reload` after editing it.
 
 Use `haoshoku --device-type pc` or `laptop` to override automatic detection.
 Later full Arch-family setups honor that stored explicit value.

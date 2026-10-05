@@ -78,7 +78,7 @@ describe("configureOmarchyWorkspaces", () => {
 				path.join(home, ".config", "haoshoku", "primary-app"),
 				"utf8",
 			),
-		).toBe("stably-orca\n");
+		).toBe("t3code-nightly\ncom.t3tools.T3Code\n");
 		expect(
 			fs.existsSync(path.join(hyprDirectory, "haoshoku", "primary_app.lua")),
 		).toBe(true);
@@ -93,6 +93,17 @@ describe("configureOmarchyWorkspaces", () => {
 				"utf8",
 			),
 		).toBe("t3code\n");
+		fs.writeFileSync(
+			path.join(home, ".config", "haoshoku", "primary-app"),
+			"stably-orca\n",
+		);
+		await configureV4({ env: {} });
+		expect(
+			fs.readFileSync(
+				path.join(home, ".config", "haoshoku", "primary-app"),
+				"utf8",
+			),
+		).toBe("t3code-nightly\ncom.t3tools.T3Code\n");
 	});
 
 	it("refuses without writing when the v4 hyprland.lua entrypoint is absent", async () => {

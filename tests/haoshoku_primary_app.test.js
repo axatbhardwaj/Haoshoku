@@ -11,6 +11,9 @@ const script = path.join(
 	"haoshoku-primary-app",
 );
 const luaInterpreter = Bun.which("lua5.4") ?? Bun.which("lua");
+// T3 Code Nightly's desktop entry claims class t3code; its window reports this.
+const NIGHTLY = "t3code-nightly\ncom.t3tools.T3Code";
+const NIGHTLY_CLASS = "com.t3tools.T3Code";
 
 describe("haoshoku-primary-app", () => {
 	let home;
@@ -20,7 +23,7 @@ describe("haoshoku-primary-app", () => {
 		fs.mkdirSync(path.join(home, "bin"));
 		fs.mkdirSync(path.join(home, "share", "applications"), { recursive: true });
 		for (const [app, appClass] of [
-			["stably-orca", "orca"],
+			["t3code-nightly", "t3code"],
 			["t3code", "t3code"],
 		]) {
 			fs.writeFileSync(path.join(home, "bin", app), "#!/bin/sh\nexit 0\n", {
@@ -33,7 +36,7 @@ describe("haoshoku-primary-app", () => {
 		}
 		fs.writeFileSync(
 			path.join(home, ".config", "haoshoku", "primary-app"),
-			"stably-orca\n",
+			`${NIGHTLY}\n`,
 		);
 		fs.writeFileSync(path.join(home, "clients.json"), "[]");
 		fs.writeFileSync(
@@ -56,7 +59,7 @@ fi
 	async function run(
 		mode,
 		clients,
-		app = "stably-orca",
+		app = NIGHTLY,
 		openedClient = "",
 		target = "1",
 	) {
@@ -93,8 +96,8 @@ fi
 	it("moves an existing app to workspace 6 and focuses it", async () => {
 		const result = await run(
 			"focus",
-			'[{"class":"orca","address":"0xabc","workspace":{"name":"1"}}]',
-			"stably-orca",
+			'[{"class":"com.t3tools.T3Code","address":"0xabc","workspace":{"name":"1"}}]',
+			NIGHTLY,
 			"",
 			"6",
 		);
@@ -110,8 +113,8 @@ fi
 	it("focuses the app without moving it when it is already on the requested workspace", async () => {
 		const result = await run(
 			"focus",
-			'[{"class":"orca","address":"0xabc","workspace":{"name":"6"}}]',
-			"stably-orca",
+			'[{"class":"com.t3tools.T3Code","address":"0xabc","workspace":{"name":"6"}}]',
+			NIGHTLY,
 			"",
 			"6",
 		);
@@ -134,11 +137,36 @@ fi
 		expect(result.dispatches).not.toContain("exec_cmd");
 	});
 
+	it("defaults to T3 Code Nightly and its real window class without a setting", async () => {
+		fs.rmSync(path.join(home, ".config", "haoshoku", "primary-app"));
+		fs.writeFileSync(
+			path.join(home, "clients.json"),
+			`[{"class":"${NIGHTLY_CLASS}","address":"0xabc","workspace":{"name":"6"}}]`,
+		);
+		const proc = Bun.spawn([script, "focus", "6"], {
+			env: {
+				...process.env,
+				HOME: home,
+				XDG_CONFIG_HOME: path.join(home, ".config"),
+				XDG_DATA_HOME: path.join(home, "share"),
+				PATH: `${path.join(home, "bin")}:${process.env.PATH}`,
+				CLIENTS_FILE: path.join(home, "clients.json"),
+				DISPATCH_LOG: path.join(home, "dispatches"),
+			},
+			stdout: "pipe",
+			stderr: "pipe",
+		});
+		expect(await proc.exited).toBe(0);
+		expect(fs.readFileSync(path.join(home, "dispatches"), "utf8")).toContain(
+			'hl.dsp.focus({ window = "address:0xabc" })',
+		);
+	});
+
 	it("launches a missing app on workspace 1 without changing focus at login", async () => {
 		const result = await run("login", "[]");
 		expect(result.code).toBe(0);
 		expect(result.dispatches).toContain(
-			"[workspace 1 silent] uwsm-app -- stably-orca",
+			"[workspace 1 silent] uwsm-app -- t3code-nightly",
 		);
 		expect(result.dispatches).not.toContain("hl.dsp.focus");
 	});
@@ -147,13 +175,13 @@ fi
 		const result = await run(
 			"focus",
 			"[]",
-			"stably-orca",
-			'[{"class":"orca","address":"0xnew","workspace":{"name":"1"}}]',
+			NIGHTLY,
+			'[{"class":"com.t3tools.T3Code","address":"0xnew","workspace":{"name":"1"}}]',
 			"6",
 		);
 		expect(result.code).toBe(0);
 		expect(result.dispatches).toContain(
-			"[workspace 1 silent] uwsm-app -- stably-orca",
+			"[workspace 1 silent] uwsm-app -- t3code-nightly",
 		);
 		expect(result.dispatches).toContain(
 			'hl.dsp.window.move({ workspace = "6", window = "address:0xnew", follow = false })',
@@ -177,13 +205,13 @@ fi
 	});
 
 	it("focuses the requested workspace when the client probe fails", async () => {
-		const result = await run("focus", "{bad json", "stably-orca", "", "6");
+		const result = await run("focus", "{bad json", NIGHTLY, "", "6");
 		expect(result.code).not.toBe(0);
 		expect(result.dispatches.trim()).toBe('hl.dsp.focus({ workspace = "6" })');
 	});
 
 	it("focuses the requested workspace when a launch times out", async () => {
-		const result = await run("focus", "[]", "stably-orca", "", "6");
+		const result = await run("focus", "[]", NIGHTLY, "", "6");
 		expect(result.code).not.toBe(0);
 		expect(result.dispatches).toContain('hl.dsp.focus({ workspace = "6" })');
 	}, 10000);
@@ -201,7 +229,8 @@ fi
 				"primary_app.lua",
 			);
 			for (const [app, expected] of [
-				["stably-orca", "^orca$"],
+				[NIGHTLY, "^com\\.t3tools\\.T3Code$"],
+				["t3code-nightly", "^t3code$"],
 				["t3code", "^t3code$"],
 			]) {
 				fs.writeFileSync(
@@ -268,7 +297,7 @@ fi
 				);
 				const output = await new Response(proc.stdout).text();
 				expect(await proc.exited).toBe(0);
-				expect(output.trim()).toBe("^orca$");
+				expect(output.trim()).toBe("^com\\.t3tools\\.T3Code$");
 			}
 		},
 	);

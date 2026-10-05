@@ -18,27 +18,30 @@ on_exit() {
 trap on_exit EXIT
 
 config="${XDG_CONFIG_HOME:-$HOME/.config}/haoshoku/primary-app"
-app=stably-orca
+# Line 1 is the executable; optional line 2 overrides the window class when the
+# desktop entry's StartupWMClass is wrong (T3 Code Nightly reports t3code).
+app=t3code-nightly
+class=com.t3tools.T3Code
 if [[ -f "$config" ]]; then
-  IFS= read -r app < "$config" || true
+  class=
+  { IFS= read -r app; IFS= read -r class; } < "$config" || true
 fi
-[[ -n "$app" && "$app" != *[[:space:]]* ]] || {
+[[ -n "$app" && "$app" != *[[:space:]]* && "$class" != *[[:space:]]* ]] || {
   echo "primary app must be one executable name or path: $config" >&2
   exit 2
 }
 command -v -- "$app" >/dev/null || { echo "primary app not found: $app" >&2; exit 1; }
 
 name="${app##*/}"
-class="$name"
-for desktop in "${XDG_DATA_HOME:-$HOME/.local/share}/applications/$name.desktop" \
+[[ -n "$class" ]] || for desktop in "${XDG_DATA_HOME:-$HOME/.local/share}/applications/$name.desktop" \
   /usr/local/share/applications/"$name.desktop" \
   /usr/share/applications/"$name.desktop"; do
   if [[ -r "$desktop" ]]; then
-    desktop_class="$(sed -n 's/^StartupWMClass=//p' "$desktop" | head -n 1)"
-    [[ -z "$desktop_class" ]] || class="$desktop_class"
+    class="$(sed -n 's/^StartupWMClass=//p' "$desktop" | head -n 1)"
     break
   fi
 done
+[[ -n "$class" ]] || class="$name"
 
 lua_string() { jq -nr --arg value "$1" '$value | @json'; }
 dispatch() {

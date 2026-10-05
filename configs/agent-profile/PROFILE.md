@@ -16,22 +16,22 @@ Preferences:
   granular commits that are easy to recover or cherry-pick.
 - we always use the gh stack (the gh cli extension)
 
-Platform: agents run on orca; I drive them from the orca app on
+Platform: agents run on T3 Code; I drive them from the T3 app on
 Android and desktop.
 
 ## Orchestration
 
 Every subagent, delegated worker, reviewer, or cross-harness dispatch (Claude,
-Codex, or any other agent) goes through Orca orchestration via the `orca` CLI
-(`orca-cli` / `orchestration` skills) so all agent work is visible and tracked
-in Orca. Do not use a harness's native subagent tools (Claude Agent tool, Codex
-spawn, etc.) for delegated work; use Orca runs, tasks, and dispatches instead.
+Codex, or any other agent) goes through T3 Code orchestration (the `t3-code`
+MCP: `delegate_task`, `t3_thread_launch`, schedules) so all agent work is
+visible and tracked in T3. The driver is a T3 thread. Do not use a harness's
+native subagent tools (Claude Agent tool, Codex spawn, etc.) for delegated work.
 
 ## MCP access
 
 Use the configured `executor` MCP for Notion and Linear access, including both
-Notion accounts. Do not use Orca's Linear integration or a Linear-specific Orca
-skill; Orca remains the orchestration layer.
+Notion accounts. Do not use any other Linear integration; T3 Code is the
+orchestration layer.
 
 Use Linear only for repositories in the `defi-com` GitHub organization.
 Keep specs for other repositories on GitHub. If the right GitHub location
@@ -50,4 +50,4 @@ merged (at most two such messages per run), or (c) hits a serious-risk hold,
 send me one compact Telegram message through the `axstack-relay` skill
 (`hermes`, home channel). Never send progress or heartbeats. Record this as
 the run's Notification policy. Deduplicate through `axstack-relay`; act in
-Orca/GitHub; a failed or uncertain delivery preserves the hold.
+the T3 driver thread/GitHub; a failed or uncertain delivery preserves the hold.
