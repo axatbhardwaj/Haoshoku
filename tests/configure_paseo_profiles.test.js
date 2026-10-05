@@ -898,7 +898,7 @@ describe("Paseo orchestration policy", () => {
 				path.join(import.meta.dir, "..", relativePath),
 				"utf8",
 			);
-			expect(instructions).toContain("Orca orchestration");
+			expect(instructions).toContain("T3 Code orchestration");
 			expect(instructions).toContain("Axstack workflows");
 			expect(instructions).toContain("gh stack");
 			expect(instructions).not.toContain("technical-advisor");

@@ -211,7 +211,7 @@ haoshoku --paseo-profiles-backup
 The shared profile lives at `configs/agent-profile/PROFILE.md`. Apply it to
 Claude, Codex, Opencode, and Antigravity with `haoshoku --agents`, or capture
 the live Claude copy with `haoshoku --agents-backup`. The bundled policy routes
-both Notion accounts and Linear through the configured Executor MCP while Orca
+both Notion accounts and Linear through the configured Executor MCP while T3 Code
 remains responsible for orchestration.
 
 `--paseo-profiles` merges the bundled profile IDs and whitelisted provider
