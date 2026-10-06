@@ -38,7 +38,6 @@ function runDefaultSetupWithSafeDoubles({
 	codexError = null,
 	paseoResult = true,
 	relayResult = true,
-	t3Answer = false,
 	t3Result = true,
 } = {}) {
 	const home = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-debian-path-"));
@@ -60,7 +59,6 @@ function runDefaultSetupWithSafeDoubles({
 			"Install Claude Remote Control services with all permission checks bypassed? This permanently sets bypassPermissionsModeAccepted: true in ~/.claude.json for every Claude Code session on this machine, not only these services. To undo it, edit ~/.claude.json and remove the flag or set it to false.",
 			"Enable automatic git worktree cleanup? This enables a persistent weekly timer that runs cleanup-worktrees.sh --apply and deletes eligible worktrees.",
 		]);
-		const t3Prompt = "Also configure the T3 Code service?";
 		const writeFileSync = actualFs.writeFileSync.bind(actualFs);
 		actualFs.writeFileSync = (target, ...args) => {
 			const tempRoot = path.resolve(process.env.TMPDIR);
@@ -75,7 +73,6 @@ function runDefaultSetupWithSafeDoubles({
 			log: { dim() {}, error(message) { events.push({ type: "error", message }); }, info() {}, success() {}, warning(message) { events.push({ type: "warning", message }); } },
 			promptUser: async (message, initial) => {
 				events.push({ type: "prompt", message, initial });
-				if (message === t3Prompt) return ${JSON.stringify(t3Answer)};
 				return promptAnswers.has(message);
 			},
 			runCommand: async () => true,
@@ -238,11 +235,9 @@ describe("Debian default path", () => {
 		expect(prompts.some(({ message }) => message.includes("device"))).toBe(
 			false,
 		);
-		expect(prompts).toContainEqual({
-			type: "prompt",
-			message: "Also configure the T3 Code service?",
-			initial: false,
-		});
+		expect(prompts.some(({ message }) => /T3 Code|Hermes/i.test(message))).toBe(
+			false,
+		);
 		expect(helpers).toEqual([
 			"git",
 			"claude",
@@ -258,14 +253,13 @@ describe("Debian default path", () => {
 			"paseo-server",
 			"axstack",
 			"hermes-relay",
+			"t3-code-server",
 		]);
 		expect(result).toBe(true);
 	});
 
-	it("configures T3 Code only when its optional prompt is accepted", () => {
-		const { events, result } = runDefaultSetupWithSafeDoubles({
-			t3Answer: true,
-		});
+	it("requires T3 Code without a prompt and runs the same server helper", () => {
+		const { events, result } = runDefaultSetupWithSafeDoubles();
 
 		expect(result).toBe(true);
 		expect(events).toContainEqual({ type: "helper", name: "t3-code-server" });
@@ -331,13 +325,17 @@ describe("Debian default path", () => {
 		});
 	});
 
-	it("propagates a selected T3 Code setup failure", () => {
+	it("propagates required T3 Code setup failure without prompting", () => {
 		const { events, result } = runDefaultSetupWithSafeDoubles({
-			t3Answer: true,
 			t3Result: false,
 		});
 
 		expect(result).toBe(false);
+		expect(
+			events.filter(
+				({ type, message }) => type === "prompt" && /T3 Code/i.test(message),
+			),
+		).toEqual([]);
 		expect(events.at(-1)).toEqual({
 			type: "error",
 			message: "Debian Server setup finished, but T3 Code was not configured.",

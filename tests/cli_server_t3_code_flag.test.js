@@ -9,7 +9,7 @@ const t3Helper = path.join(
 	"src/helpers/configure_t3_code_server.js",
 );
 
-function runServerMode(detectedOS) {
+function runServerMode(detectedOS, helperResult = true) {
 	const childScript = `
 		import { mock } from "bun:test";
 		mock.module(${JSON.stringify(cliUtils)}, () => ({
@@ -19,7 +19,7 @@ function runServerMode(detectedOS) {
 		mock.module(${JSON.stringify(t3Helper)}, () => ({
 			configureT3CodeServer: async () => {
 				console.log("T3_HELPER_CALLED");
-				return true;
+				return ${JSON.stringify(helperResult)};
 			},
 		}));
 		process.argv = [process.execPath, ${JSON.stringify(cli)}, "--server-t3-code"];
@@ -47,6 +47,11 @@ describe("--server-t3-code", () => {
 	it("invokes the headless installer on Debian-family hosts", () => {
 		const result = runServerMode("debian-server");
 		expect(result.exitCode, result.output).toBe(0);
+		expect(result.output).toContain("T3_HELPER_CALLED");
+	});
+	it("fails the CLI when T3 setup is incomplete", () => {
+		const result = runServerMode("debian-server", false);
+		expect(result.exitCode, result.output).toBe(1);
 		expect(result.output).toContain("T3_HELPER_CALLED");
 	});
 });
