@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Install the latest npm Axstack with SHA-512 integrity verification, report
+  Claude/Codex role files, and link the packaged nightly T3 CLI on Arch when absent.
+
 - Remove the retired server installer and desktop integration; `--server-paseo`
   is now rejected, and Omarchy's `Super+T` launches or focuses T3 Code Nightly.
 

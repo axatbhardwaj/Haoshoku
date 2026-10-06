@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import path from "node:path";
+import { detectOS } from "../common/cli_utils.js";
 import { log } from "../common/utils.js";
 
 const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?$/;
@@ -185,6 +186,27 @@ export async function configureAxstack(options = {}) {
 		};
 	}
 
+	try {
+		if (
+			(options.detectOS ?? detectOS)() === "arch" &&
+			!(options.which ?? Bun.which)("t3") &&
+			(options.nightlyExists ?? fs.existsSync("/usr/bin/t3-nightly"))
+		) {
+			fs.mkdirSync(binDir, { recursive: true });
+			try {
+				fs.symlinkSync("/usr/bin/t3-nightly", path.join(binDir, "t3"));
+			} catch (error) {
+				if (error.code !== "EEXIST") throw error;
+			}
+		}
+	} catch (error) {
+		return failedResult(
+			`T3 alias failed: ${error?.message ?? error}`,
+			"kept",
+			latestVersion,
+		);
+	}
+
 	const releaseRoot = path.join(dataDir, "releases", latestVersion);
 	let releaseAction = "kept";
 	let cliPath = path.join(releaseRoot, "package", "bin", "axstack.js");
@@ -360,16 +382,29 @@ export async function checkAxstack(options = {}) {
 			harness,
 		]);
 	}
-	const profile = {
-		path: path.join(home, ".paseo", "config.json"),
-		present: fs.existsSync(path.join(home, ".paseo", "config.json")),
-	};
+	const roles = {};
+	for (const [harness, directory] of [
+		["claude", ".claude"],
+		["codex", ".agents"],
+	]) {
+		const rolesPath = path.join(
+			home,
+			directory,
+			"skills",
+			"axstack",
+			"roles.json",
+		);
+		roles[harness] = { path: rolesPath, present: fs.existsSync(rolesPath) };
+	}
 	const lines = [
 		`shim: ${shim.present ? "present" : "missing"}; version: ${shim.version ?? "unresolved"}`,
 		`axstack --version: ${version.ok ? version.reason : `failed — ${version.reason}`}`,
 		`claude check: ${harnesses.claude.ok ? "ok" : "failed"} — ${harnesses.claude.reason}`,
 		`codex check: ${harnesses.codex.ok ? "ok" : "failed"} — ${harnesses.codex.reason}`,
-		`profile readback: ${profile.present ? "present" : "missing"} — ${profile.path}`,
+		...Object.entries(roles).map(
+			([harness, role]) =>
+				`${harness} roles readback: ${role.present ? "present" : "missing"} — ${role.path}`,
+		),
 	];
 	for (const line of lines) log.info(line);
 	return {
@@ -381,7 +416,7 @@ export async function checkAxstack(options = {}) {
 			version.ok &&
 			harnesses.claude.ok &&
 			harnesses.codex.ok,
-		profile,
+		roles,
 		shim,
 		version,
 	};

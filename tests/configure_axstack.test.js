@@ -15,6 +15,9 @@ const homes = [];
 function configureAxstack(options) {
 	return runConfigureAxstack({
 		bunPath: "/test/bin/bun",
+		detectOS: () => "debian-server",
+		which: () => null,
+		nightlyExists: false,
 		fetcher: registryFetcher(),
 		...options,
 	});
@@ -88,6 +91,44 @@ afterEach(() => {
 });
 
 describe("configureAxstack", () => {
+	it.each([
+		["arch", null, true, null, true],
+		["arch", "/path/t3", true, null, false],
+		["arch", null, false, null, false],
+		["debian-server", null, true, null, false],
+		["arch", null, true, "file", false],
+		["arch", null, true, "dangling", false],
+	])("T3 alias: OS=%s PATH=%s nightly=%s existing=%s", async (os, t3Path, nightlyExists, existing, created) => {
+		const home = makeHome();
+		const target = releasePaths(home);
+		const alias = path.join(target.binDir, "t3");
+		if (existing) {
+			fs.mkdirSync(target.binDir, { recursive: true });
+			if (existing === "file") fs.writeFileSync(alias, "user t3");
+			else fs.symlinkSync("/missing/user-t3", alias);
+		}
+		const result = await configureAxstack({
+			...target,
+			home,
+			detectOS: () => os,
+			nightlyExists,
+			which: () => t3Path,
+			extractor: makeExtractor([]),
+			runner: async () => {
+				// The alias must be ready before the harness installer runs.
+				if (created) expect(fs.readlinkSync(alias)).toBe("/usr/bin/t3-nightly");
+				return { exitCode: 0, stderr: "", stdout: "installed" };
+			},
+		});
+		expect(result.ok).toBe(true);
+		if (created) expect(fs.readlinkSync(alias)).toBe("/usr/bin/t3-nightly");
+		else if (existing === "file")
+			expect(fs.readFileSync(alias, "utf8")).toBe("user t3");
+		else if (existing === "dangling")
+			expect(fs.readlinkSync(alias)).toBe("/missing/user-t3");
+		else expect(fs.existsSync(alias)).toBe(false);
+	});
+
 	it.each([
 		null,
 		{},
@@ -461,10 +502,47 @@ describe("configureAxstack", () => {
 });
 
 describe("checkAxstack", () => {
+	it.each([
+		false,
+		true,
+	])("roles presence %s is report-only and does not gate ok", async (present) => {
+		const home = makeHome();
+		const target = releasePaths(home);
+		fs.mkdirSync(target.binDir, { recursive: true });
+		fs.writeFileSync(target.shim, `exec bun "${target.cli}" "$@"\n`);
+		for (const harness of [".claude", ".agents"]) {
+			if (present) {
+				const rolesPath = path.join(home, harness, "skills/axstack/roles.json");
+				fs.mkdirSync(path.dirname(rolesPath), { recursive: true });
+				fs.writeFileSync(rolesPath, "roles fixture");
+			}
+		}
+		const report = await checkAxstack({
+			...target,
+			home,
+			runner: async () => ({ exitCode: 0, stderr: "", stdout: "ok" }),
+		});
+		expect(report.ok).toBe(true);
+		for (const harness of ["claude", "codex"]) {
+			expect(report.roles[harness].present).toBe(present);
+			expect(fs.existsSync(report.roles[harness].path)).toBe(present);
+			if (present)
+				expect(fs.readFileSync(report.roles[harness].path, "utf8")).toBe(
+					"roles fixture",
+				);
+		}
+	});
+
 	it("checks harnesses against the bundle targeted by the shim", async () => {
 		const home = makeHome();
 		const target = paths(home);
-		const release = path.join(home, "custom-axstack", "releases", "0.8.0", "package");
+		const release = path.join(
+			home,
+			"custom-axstack",
+			"releases",
+			LATEST_VERSION,
+			"package",
+		);
 		const cli = path.join(release, "bin", "axstack.js");
 		const shim = path.join(target.binDir, "axstack");
 		fs.mkdirSync(target.binDir, { recursive: true });
@@ -520,13 +598,18 @@ describe("checkAxstack", () => {
 		expect(report.harnesses.codex.reason).toBe("shim unparsable");
 	});
 
-	it("reports shim, version, harness, and profile readback independently", async () => {
+	it("reports shim, version, harness, and roles readback independently", async () => {
 		const home = makeHome();
 		const target = releasePaths(home);
 		fs.mkdirSync(target.binDir, { recursive: true });
-		fs.mkdirSync(path.join(home, ".paseo"), { recursive: true });
+		fs.mkdirSync(path.join(home, ".claude/skills/axstack"), {
+			recursive: true,
+		});
 		fs.writeFileSync(target.shim, `exec bun ${target.cli} "$@"\n`);
-		fs.writeFileSync(path.join(home, ".paseo", "config.json"), "{}");
+		fs.writeFileSync(
+			path.join(home, ".claude/skills/axstack/roles.json"),
+			"{}",
+		);
 		const calls = [];
 		const report = await checkAxstack({
 			...target,
@@ -534,7 +617,11 @@ describe("checkAxstack", () => {
 			runner: async (_executable, args) => {
 				calls.push(args);
 				if (args[0] === "--version") {
-					return { exitCode: 0, stderr: "", stdout: "axstack 0.8.0\n" };
+					return {
+						exitCode: 0,
+						stderr: "",
+						stdout: `axstack ${LATEST_VERSION}\n`,
+					};
 				}
 				const harness = args.at(-1);
 				return {
@@ -550,14 +637,28 @@ describe("checkAxstack", () => {
 			present: true,
 			version: LATEST_VERSION,
 		});
-		expect(report.version).toEqual({ ok: true, reason: "axstack 0.8.0" });
+		expect(report.version).toEqual({
+			ok: true,
+			reason: `axstack ${LATEST_VERSION}`,
+		});
 		expect(report.harnesses.claude.reason).toContain("instruction owned");
 		expect(report.harnesses.codex).toEqual({
 			ok: false,
 			reason: "instruction missing",
 		});
-		expect(report.profile.present).toBe(true);
-		expect(report.lines).toHaveLength(5);
+		expect(report.roles).toEqual({
+			claude: {
+				path: path.join(home, ".claude/skills/axstack/roles.json"),
+				present: true,
+			},
+			codex: {
+				path: path.join(home, ".agents/skills/axstack/roles.json"),
+				present: false,
+			},
+		});
+		expect(report.lines).toHaveLength(6);
+		expect(report.lines[4]).toContain(report.roles.claude.path);
+		expect(report.lines[5]).toContain(report.roles.codex.path);
 		expect(calls).toHaveLength(3);
 	});
 });
