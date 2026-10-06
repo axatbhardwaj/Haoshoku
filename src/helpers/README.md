@@ -41,5 +41,4 @@ local/system skills are not pruned.
 `configure_paseo_server.js` owns the Debian native Paseo CLI, fresh config,
 systemd user service, persistence checks, managed-process verification, and
 optional interactive relay pairing. It deliberately does not install provider
-CLIs. `configure_paseo_profiles.js` separately performs whitelist-only policy
-merge/backup and reloads only a running daemon for the exact target home.
+CLIs. Haoshoku no longer syncs or backs up Paseo orchestration profiles.

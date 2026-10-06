@@ -48,7 +48,6 @@ describe("user app configuration", () => {
 			},
 			configureSkillsImpl: record("skills"),
 			syncAgentSkillsImpl: record("agent-skills"),
-			syncPaseoProfilesImpl: record("paseo-profiles"),
 		});
 
 		expect(events).toEqual([
@@ -68,7 +67,6 @@ describe("user app configuration", () => {
 			"axstack",
 			"skills",
 			"agent-skills",
-			"paseo-profiles",
 		]);
 	});
 
@@ -106,7 +104,6 @@ describe("user app configuration", () => {
 				configureAxstackImpl: async () => ({ ok: true }),
 				configureSkillsImpl: async () => true,
 				syncAgentSkillsImpl: async () => true,
-				syncPaseoProfilesImpl: async () => true,
 			});
 
 			expect(warnings).toContainEqual(
@@ -163,17 +160,12 @@ describe("user app configuration", () => {
 					events.push("agent-skills");
 					return true;
 				},
-				syncPaseoProfilesImpl: async () => {
-					events.push("paseo-profiles");
-					return true;
-				},
 			});
 			expect(events).toEqual([
 				"agents",
 				"axstack",
 				"skills",
 				"agent-skills",
-				"paseo-profiles",
 			]);
 			expect(warnings).toContainEqual(
 				expect.stringContaining("Ambiguous multiline TOML"),

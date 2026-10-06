@@ -45,3 +45,6 @@ The project is built using modern JavaScript (ES Modules) and runs on Bun.
 - **`src/common/utils.js`**: Shared utilities for running shell commands, logging, and checking for file/command existence.
 - **`src/common/cli_utils.js`**: The `MODE_FLAGS` registry and OS detection; every one-shot flag is registered there and exactly one may run per invocation.
 - **`src/helpers/`**: Standalone helper scripts (e.g., `configure_git.js`).
+
+Haoshoku no longer bundles, syncs, or backs up Paseo orchestration profiles.
+Arch and Debian server setup leave existing Paseo profile configuration intact.

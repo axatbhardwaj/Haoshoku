@@ -116,10 +116,10 @@ describe("findActiveModeFlags", () => {
 		).toEqual(["agentSkills", "agentSkillsBackup"]);
 	});
 
-	it("treats Paseo profile sync and backup as exclusive modes", () => {
+	it("ignores retired Paseo profile sync and backup modes", () => {
 		expect(
 			findActiveModeFlags({ paseoProfiles: true, paseoProfilesBackup: true }),
-		).toEqual(["paseoProfiles", "paseoProfilesBackup"]);
+		).toEqual([]);
 	});
 
 	it("ignores falsy flag values", () => {

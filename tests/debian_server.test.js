@@ -37,7 +37,6 @@ function runDefaultSetupWithSafeDoubles({
 	codexResult = { ok: true, reason: "installed" },
 	codexError = null,
 	paseoResult = true,
-	profileResult = true,
 	relayResult = true,
 	t3Answer = false,
 	t3Result = true,
@@ -104,7 +103,6 @@ function runDefaultSetupWithSafeDoubles({
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_axstack.js"))}, () => ({ configureAxstack: record("axstack", { ok: ${JSON.stringify(axstackResult)} }) }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_skills.js"))}, () => ({ configureSkills: record("skills", true) }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_agent_skills.js"))}, () => ({ syncAgentSkills: record("agent-skills", true) }));
-		mock.module(${JSON.stringify(modulePath("src/helpers/configure_paseo_profiles.js"))}, () => ({ syncPaseoProfiles: record("paseo-profiles", ${JSON.stringify(profileResult)}) }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_hermes_relay.js"))}, () => ({ configureHermesRelay: record("hermes-relay", ${JSON.stringify(relayResult)}) }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_t3_code_server.js"))}, () => ({ configureT3CodeServer: record("t3-code-server", ${JSON.stringify(t3Result)}) }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_paseo_server.js"))}, () => ({ configurePaseoServer: record("paseo-server", ${JSON.stringify(paseoResult)}) }));
@@ -260,7 +258,6 @@ describe("Debian default path", () => {
 			"paseo-server",
 			"axstack",
 			"hermes-relay",
-			"paseo-profiles",
 		]);
 		expect(result).toBe(true);
 	});
@@ -324,7 +321,7 @@ describe("Debian default path", () => {
 		expect(result).toBe(true);
 		expect(events).toContainEqual({ type: "helper", name: "agents" });
 		expect(events).toContainEqual({ type: "helper", name: "axstack" });
-		expect(events).toContainEqual({ type: "helper", name: "paseo-profiles" });
+		expect(events).not.toContainEqual({ type: "helper", name: "paseo-profiles" });
 		expect(events).toContainEqual({
 			type: "warning",
 			message: expect.stringContaining("Ambiguous multiline TOML"),
@@ -358,20 +355,6 @@ describe("Debian default path", () => {
 		});
 	});
 
-	it("propagates a Paseo orchestration policy sync failure", () => {
-		const { events, result } = runDefaultSetupWithSafeDoubles({
-			profileResult: false,
-		});
-
-		expect(result).toBe(false);
-		expect(events).toContainEqual({ type: "helper", name: "paseo-profiles" });
-		expect(events.at(-1)).toEqual({
-			type: "error",
-			message:
-				"Debian Server setup finished, but the Paseo orchestration policy was not synced.",
-		});
-	});
-
 	it("propagates Hermes failure without prompting for Hermes", () => {
 		const { events, result } = runDefaultSetupWithSafeDoubles({
 			relayResult: false,
@@ -393,22 +376,14 @@ describe("Debian default path", () => {
 				"Debian Server setup finished, but the Hermes relay is incomplete.",
 		});
 	});
-	it.each([
-		"profileResult",
-		"paseoResult",
-	])("runs Hermes before profiles even when %s fails", (failure) => {
+	it("runs Hermes even when Paseo server setup fails", () => {
 		const { events, result } = runDefaultSetupWithSafeDoubles({
-			[failure]: false,
+			paseoResult: false,
 		});
 		const helpers = events
 			.filter(({ type }) => type === "helper")
 			.map(({ name }) => name);
 		expect(result).toBe(false);
 		expect(helpers).toContain("hermes-relay");
-		if (failure === "profileResult") {
-			expect(helpers.indexOf("hermes-relay")).toBeLessThan(
-				helpers.indexOf("paseo-profiles"),
-			);
-		}
 	});
 });
