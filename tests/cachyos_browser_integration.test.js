@@ -18,10 +18,7 @@ function userAppDoubles(overrides = {}) {
 		enableServicesImpl: async () => {},
 		configureClaudeImpl: async () => {},
 		installGhStackImpl: async () => {},
-		configureClaudeStayAwakeImpl: async () => {},
-		configureClaudeRemoteControlImpl: async () => {},
 		configurePrWatchImpl: async () => {},
-		syncWorktreeCleanupImpl: async () => {},
 		configureCodexImpl: async () => {},
 		syncAgentsConfigImpl: async () => {},
 		configureAxstackImpl: async () => ({ ok: true }),
@@ -61,7 +58,6 @@ describe("CachyOS browser integration", () => {
 				runCommandImpl: record("uosc"),
 				enableServicesImpl: record("services"),
 				configureClaudeImpl: record("claude"),
-				configureClaudeStayAwakeImpl: record("stay-awake"),
 				configurePrWatchImpl: record("pr-watch"),
 				configureCodexImpl: record("codex"),
 				configureAxstackImpl: async () => ({ ok: true }),
@@ -70,47 +66,5 @@ describe("CachyOS browser integration", () => {
 		);
 
 		expect(calls.slice(0, 2)).toEqual(["browser-integration", "audio"]);
-	});
-
-	it("defaults remote-control services off and does nothing when declined", async () => {
-		const calls = [];
-		const prompts = [];
-		const record = (name) => async () => calls.push(name);
-
-		await configureUserApps(
-			userAppDoubles({
-				promptUserImpl: async (message, initial) => {
-					prompts.push({ message, initial });
-					return false;
-				},
-				configureBrowserIntegrationImpl: record("browser-integration"),
-				configureAudioImpl: record("audio"),
-				configureBashImpl: () => calls.push("bash"),
-				configureFastfetchImpl: record("fastfetch"),
-				runCommandImpl: record("uosc"),
-				enableServicesImpl: record("services"),
-				configureClaudeImpl: record("claude"),
-				configureClaudeStayAwakeImpl: record("stay-awake"),
-				configureClaudeRemoteControlImpl: record("remote-control"),
-				configurePrWatchImpl: record("pr-watch"),
-				configureCodexImpl: record("codex"),
-				configureAxstackImpl: async () => ({ ok: true }),
-				configureSkillsImpl: record("skills"),
-			}),
-		);
-
-		expect({
-			prompt: prompts.find(({ message }) =>
-				message.includes("Claude Remote Control"),
-			),
-			remoteCalls: calls.filter((call) => call === "remote-control"),
-		}).toEqual({
-			prompt: {
-				message:
-					"Install Claude Remote Control services with all permission checks bypassed? This permanently sets bypassPermissionsModeAccepted: true in ~/.claude.json for every Claude Code session on this machine, not only these services. To undo it, edit ~/.claude.json and remove the flag or set it to false.",
-				initial: false,
-			},
-			remoteCalls: [],
-		});
 	});
 });

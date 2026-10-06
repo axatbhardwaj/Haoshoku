@@ -20,8 +20,6 @@ import { configureBraveManagedPolicies } from "../helpers/configure_brave_manage
 import { configureSplitLockSudoers } from "../helpers/configure_split_lock_sudoers.js";
 import { configureChromiumProfiles } from "../helpers/configure_chromium_profiles.js";
 import { configureClaude } from "../helpers/configure_claude.js";
-import { configureClaudeRemoteControl } from "../helpers/configure_claude_remote_control.js";
-import { configureClaudeStayAwake } from "../helpers/configure_claude_stay_awake.js";
 import { configureCodex } from "../helpers/configure_codex.js";
 import { installGhStack } from "../helpers/configure_gh_stack.js";
 import { configureHyprmoncfg } from "../helpers/configure_hyprmoncfg.js";
@@ -36,7 +34,6 @@ import { configureOmazed } from "../helpers/configure_omazed.js";
 import { configureVoxtypeOsd } from "../helpers/configure_voxtype_osd.js";
 import { configurePrWatch } from "../helpers/configure_pr_watch.js";
 import { configureSkills } from "../helpers/configure_skills.js";
-import { syncWorktreeCleanup } from "../helpers/configure_worktree_cleanup.js";
 import { configureTailscaleT3 } from "../helpers/configure_tailscale_t3.js";
 import { installUserScripts } from "../helpers/install_user_scripts.js";
 
@@ -552,10 +549,7 @@ export async function configureUserApps({
 	enableServicesImpl = enableServices,
 	configureClaudeImpl = configureClaude,
 	installGhStackImpl = installGhStack,
-	configureClaudeStayAwakeImpl = configureClaudeStayAwake,
-	configureClaudeRemoteControlImpl = configureClaudeRemoteControl,
 	configurePrWatchImpl = configurePrWatch,
-	syncWorktreeCleanupImpl = syncWorktreeCleanup,
 	configureCodexImpl = configureCodex,
 	syncAgentsConfigImpl = syncAgentsConfig,
 	configureAxstackImpl = configureAxstack,
@@ -599,33 +593,8 @@ export async function configureUserApps({
 			`GitHub gh-stack extension installation failed (${err?.message ?? err}) — continuing with remaining app setup.`,
 		);
 	}
-	// These two portable helpers predate the confirmation expansion and were
-	// intentionally unconditional. Keep unattended setup behavior stable.
-	await configureClaudeStayAwakeImpl();
-	if (
-		await promptUserImpl(
-			"Install Claude Remote Control services with all permission checks bypassed? This permanently sets bypassPermissionsModeAccepted: true in ~/.claude.json for every Claude Code session on this machine, not only these services. To undo it, edit ~/.claude.json and remove the flag or set it to false.",
-			false,
-		)
-	) {
-		await configureClaudeRemoteControlImpl();
-	}
 	if (configurePrWatchImpl === configurePrWatch) await configurePrWatch();
 	else await configurePrWatchImpl();
-	if (
-		await promptUserImpl(
-			"Enable automatic git worktree cleanup? This enables a persistent weekly timer that runs cleanup-worktrees.sh --apply and deletes eligible worktrees.",
-			false,
-		)
-	) {
-		try {
-			await syncWorktreeCleanupImpl();
-		} catch (err) {
-			log.warning(
-				`Worktree cleanup setup failed (${err?.message ?? err}) — continuing with remaining app setup.`,
-			);
-		}
-	}
 	let codexResult;
 	try {
 		codexResult = await configureCodexImpl();

@@ -49,6 +49,11 @@ npm install -g haoshoku
 haoshoku
 ```
 
+## Arch app setup
+
+Arch app setup keeps PR watch. Retired integrations are documented in
+CHANGELOG.md; rerunning setup does not uninstall previously deployed services.
+
 ## Test
 
 ```bash

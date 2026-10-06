@@ -9,6 +9,17 @@
   and pairing hint. Add `--tailscale-t3` for idempotent standalone retries.
   Failures warn and allow the remaining setup to continue.
 
+### Removed
+
+- Arch/Omarchy setup no longer deploys Claude Remote Control, Claude
+  stay-awake, or the automatic worktree cleanup timer. Shared helpers,
+  templates, and one-shot commands remain available for Debian server setup.
+  Existing installations are not uninstalled automatically. To stop their
+  previously deployed units, run manually:
+  `systemctl --user disable --now claude-remote-control@haki.service claude-remote-control@dev.service claude-remote-control@work.service claude-stay-awake.service defi-worktree-cleanup.timer defi-worktree-cleanup.service`.
+  Disable any older enabled Remote Control instances as well. PR watch remains
+  part of Arch/Omarchy setup.
+
 ## 12.0.0 - 2026-10-06
 
 - Install the latest npm Axstack with SHA-512 integrity verification, report
