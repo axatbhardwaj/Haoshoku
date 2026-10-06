@@ -17,7 +17,7 @@ function fixture() {
 		env: { ...process.env, HOME: root, XDG_STATE_HOME: root, FORCE_COLOR: "1" },
 	};
 }
-async function cli(f, args = ["--version"]) {
+async function cli(f, args = ["--explainer-theme", "dark"]) {
 	const child = Bun.spawn([process.execPath, "haoshoku.js", ...args], {
 		env: f.env,
 		stdout: "pipe",
@@ -39,7 +39,7 @@ function readLog(f) {
 	};
 }
 
-test("even --version creates a private UTC log with device and invocation metadata", async () => {
+test("setup creates a private UTC log with device and invocation metadata", async () => {
 	const f = fixture();
 	expect((await cli(f)).exitCode).toBe(0);
 	const { file, text } = readLog(f);
@@ -50,7 +50,7 @@ test("even --version creates a private UTC log with device and invocation metada
 	expect(fs.statSync(file).mode & 0o777).toBe(0o600);
 	for (const value of [
 		"Haoshoku 12.1.0",
-		"--version",
+		"--explainer-theme",
 		"Date:",
 		"OS NAME:",
 		"OS VERSION:",
@@ -136,7 +136,12 @@ test("unwritable state warns once and preserves the run result", async () => {
 
 test("redacts credentials in the on-disk header without damaging safe argv", async () => {
 	const f = fixture();
-	await cli(f, ["--version", "password=private123", "safe-value"]);
+	await cli(f, [
+		"--explainer-theme",
+		"invalid",
+		"password=private123",
+		"safe-value",
+	]);
 	const { text } = readLog(f);
 	expect(text).not.toContain("private123");
 	expect(text).toContain("[REDACTED]");
@@ -199,7 +204,7 @@ test("quoted credential values are redacted even inside serialized argv", async 
 	expect(redactLog(secret)).not.toContain("private value");
 	expect(redactLog(JSON.stringify(secret))).not.toContain("private value");
 	const f = fixture();
-	await cli(f, ["--version", secret]);
+	await cli(f, ["--explainer-theme", "invalid", secret]);
 	expect(readLog(f).text).not.toContain("private value");
 });
 
@@ -230,4 +235,76 @@ test("a normal run never invokes the sharing helper", async () => {
 			),
 		).theme,
 	).toBe("dark");
+});
+
+for (const args of [
+	["--help"],
+	["-h"],
+	["--version"],
+	["-V"],
+	["--share-log"],
+]) {
+	test(`${args[0]} does not create or rotate logs`, async () => {
+		const f = fixture();
+		fs.mkdirSync(f.dir, { recursive: true });
+		for (let day = 1; day <= 20; day++)
+			fs.writeFileSync(
+				path.join(
+					f.dir,
+					`2025-01-${String(day).padStart(2, "0")}T00-00-00.000Z.log`,
+				),
+				`log ${day}`,
+			);
+		const before = fs
+			.readdirSync(f.dir)
+			.map((name) => [name, fs.readFileSync(path.join(f.dir, name), "utf8")]);
+		const result = await cli(f, args);
+		expect(result.exitCode).toBe(0);
+		expect(
+			fs
+				.readdirSync(f.dir)
+				.map((name) => [name, fs.readFileSync(path.join(f.dir, name), "utf8")]),
+		).toEqual(before);
+		expect(result.stdout).not.toContain("failed command");
+		if (args[0] === "--version" || args[0] === "-V")
+			expect(result.stdout).toBe("12.1.0\n");
+		if (args[0] === "--share-log")
+			expect(result.stdout).toContain("2025-01-20T00-00-00.000Z.log");
+	});
+}
+
+for (const secret of [
+	"ghs_private123",
+	"ghu_private123",
+	"ghr_private123",
+	"token: private123",
+	"token=private123",
+	"--token private123",
+	"--token=private123",
+	"--password private123",
+	"https://user:private123@example.test/path",
+]) {
+	test(`redacts additional credential form ${secret.split(/[ :=]/)[0]}`, () => {
+		const text = redactLog(secret);
+		expect(text).not.toContain("private123");
+		expect(text).toContain("[REDACTED]");
+	});
+}
+
+test("redacts separate credential flag values inside serialized argv", () => {
+	const text = redactLog(
+		JSON.stringify([
+			"program",
+			"--token",
+			"private123",
+			"--password",
+			"other-secret",
+			"--safe",
+			"keep",
+		]),
+	);
+	expect(text).not.toContain("private123");
+	expect(text).not.toContain("other-secret");
+	expect(text).toContain("keep");
+	expect(text).toContain("[REDACTED]");
 });

@@ -11,14 +11,23 @@ let activeRun;
 export function redactLog(value) {
 	return stripVTControlCharacters(String(value))
 		.replace(
-			/\b(?:ghp_|gho_|github_pat_|sk-|tskey-)[A-Za-z0-9_-]+/g,
+			/\b(?:ghp_|gho_|ghs_|ghu_|ghr_|github_pat_|sk-|tskey-)[A-Za-z0-9_-]+/g,
 			"[REDACTED]",
 		)
 		.replace(/\bBearer\s+[^\s"'\\]+/gi, "Bearer [REDACTED]")
 		.replace(
-			/(\b(?:[A-Z_]*_)?(?:password|token)\s*=\s*)(?:\\?"[^"\n]*"|\\?'[^'\n]*'|[^\s&;"'\\]+)/gi,
+			/(\b(?:[A-Z_]*_)?(?:password|token)\s*[:=]\s*)(?:\\?"[^"\n]*"|\\?'[^'\n]*'|[^\s&;"'\\]+)/gi,
 			"$1[REDACTED]",
 		)
+		.replace(
+			/(--(?:token|password)(?:=|\s+))(?:\\?"[^"\n]*"|\\?'[^'\n]*'|[^\s&;"'\\]+)/gi,
+			"$1[REDACTED]",
+		)
+		.replace(
+			/("--(?:token|password)"\s*,\s*")(?:\\.|[^"\\])*"/gi,
+			'$1[REDACTED]"',
+		)
+		.replace(/(\b[a-z][a-z0-9+.-]*:\/\/)[^/\s@]+@/gi, "$1[REDACTED]@")
 		.replace(/https:\/\/login\.tailscale\.com\/a\/[^\s"'\\]+/gi, "[REDACTED]");
 }
 
@@ -131,8 +140,13 @@ export function startRunLog({
 			}
 		}
 		if (!run.path) throw new Error("Log timestamp exhausted");
-		for (const old of listRunLogs(dir).slice(0, -20))
-			fsImpl.unlinkSync(path.join(dir, old));
+		for (const old of listRunLogs(dir).slice(0, -20)) {
+			try {
+				fsImpl.unlinkSync(path.join(dir, old));
+			} catch {
+				run.write(`[warning] Could not prune old log: ${old}`);
+			}
+		}
 		const osRelease = readOptional("/etc/os-release");
 		const field = (key) =>
 			osRelease
@@ -164,14 +178,15 @@ export function recordCommand(
 	duration,
 	stdout = "",
 	stderr = "",
+	{ expectFailure = false } = {},
 ) {
 	if (!activeRun) return;
 	const name = redactLog(command);
 	activeRun.write(
-		`Command: ${name}\nExit: ${exitCode}\nDuration: ${duration.toFixed(1)} ms`,
+		`${expectFailure ? "Probe" : "Command"}: ${name}\nExit: ${exitCode}\nDuration: ${duration.toFixed(1)} ms`,
 	);
 	if (exitCode !== 0) {
-		activeRun.failures.push(name);
+		if (!expectFailure) activeRun.failures.push(name);
 		activeRun.write(
 			`Stdout (last 50 lines):\n${redactLog(stdout).trimEnd().split("\n").slice(-50).join("\n")}`,
 		);

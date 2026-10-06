@@ -506,13 +506,14 @@ headless server for superficial symmetry.
 
 ## Logs and troubleshooting
 
-Every invocation saves a private log under
+Setup and configuration runs save a private log under
 `${XDG_STATE_HOME:-~/.local/state}/haoshoku/logs/` (directory 0700, files
 0600). The last 20 logs are kept. Logs include device/version metadata,
 `log.*` messages, command exits and durations, and bounded failure output.
 Known credential patterns and Tailscale login URLs are redacted before writing.
 The final line shows the log path; failures also show their count and names.
 If logging is unavailable, Haoshoku warns once and continues.
+`--help`, `--version`, and `--share-log` leave existing logs untouched.
 
 Normal runs upload nothing. To share the latest completed run, or a specific log:
 

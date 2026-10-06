@@ -93,8 +93,17 @@ program
 	.version("12.1.0")
 	.addHelpText("before", getBanner());
 
-const runLog = startRunLog({ version: program.version() });
-process.once("exit", (code) => runLog.finish(code));
+const informational = process.argv
+	.slice(2)
+	.some(
+		(arg) =>
+			["--help", "-h", "--version", "-V", "--share-log"].includes(arg) ||
+			arg.startsWith("--share-log="),
+	);
+const runLog = informational
+	? null
+	: startRunLog({ version: program.version() });
+if (runLog) process.once("exit", (code) => runLog.finish(code));
 
 program
 	.option("--os <type>", "Specify the target OS (arch, debian-server)")
@@ -281,7 +290,6 @@ async function runAction(options) {
 		if (
 			!(await shareLog(
 				typeof options.shareLog === "string" ? options.shareLog : undefined,
-				{ excludePath: runLog.path },
 			))
 		)
 			process.exitCode = 1;
