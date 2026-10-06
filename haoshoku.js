@@ -6,10 +6,7 @@ import { detectOS, findActiveModeFlags } from "./src/common/cli_utils.js";
 import { promptDeviceType } from "./src/common/device_type.js";
 import { getBanner, showBanner } from "./src/common/ui.js";
 import { log, promptUser, runCommand } from "./src/common/utils.js";
-import {
-	backupAgentSkills,
-	syncAgentSkills,
-} from "./src/helpers/configure_agent_skills.js";
+import { syncAgentSkills } from "./src/helpers/configure_agent_skills.js";
 import {
 	backupAgentsConfig,
 	syncAgentsConfig,
@@ -140,14 +137,10 @@ program
 		"Configure the native Paseo headless service on Debian",
 	)
 	.option("--server-hermes-relay", "Configure Hermes relay transport on Debian")
-	.option(
-		"--skills",
-		"Install Matt Pocock and Paseo skills for Claude Code and Codex",
-	)
-	.option("--skills-update", "Refresh Matt Pocock and Paseo skills")
+	.option("--skills", "Install Matt Pocock skills for Claude Code and Codex")
+	.option("--skills-update", "Refresh Matt Pocock skills")
 	.option("--skills-list", "List globally installed skills")
 	.option("--agent-skills", "Deploy Haoshoku agent skills")
-	.option("--agent-skills-backup", "Backup Haoshoku-owned orchestration skills")
 	.option(
 		"--explainer-theme <theme>",
 		"Set visual-explainer theme (dark, light, system)",
@@ -378,11 +371,6 @@ async function runAction(options) {
 
 	if (options.skillsList) {
 		if (!(await listSkills())) process.exit(1);
-		return;
-	}
-
-	if (options.agentSkillsBackup) {
-		if (!backupAgentSkills()) process.exit(1);
 		return;
 	}
 

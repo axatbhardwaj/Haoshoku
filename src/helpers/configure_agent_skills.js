@@ -6,28 +6,12 @@ import { ensureExplainerTheme } from "./configure_visual_explainer.js";
 
 const PROJECT_ROOT = path.resolve(__dirname, "..", "..");
 
-export const AGENT_SKILLS = [
+export const UPSTREAM_AGENT_SKILLS = ["visual-explainer"];
+const RETIRED_AGENT_SKILLS = [
+	"html-deliverables",
 	"model-routing",
 	"paseo-pr-babysit",
 	"paseo-pr-review",
-];
-
-export const UPSTREAM_AGENT_SKILLS = ["visual-explainer"];
-const RETIRED_AGENT_SKILLS = ["html-deliverables"];
-
-export const REFERENCED_SKILLS = [
-	"paseo",
-	"paseo-advisor",
-	"paseo-committee",
-	"paseo-handoff",
-	"paseo-help",
-	"paseo-plugin",
-	"code-review",
-	"grill-with-docs",
-	"to-spec",
-	"to-tickets",
-	"implement",
-	"implement-spec",
 ];
 
 function reconcileSkillLink({ home, agentHome, name, fsImpl, logger }) {
@@ -129,18 +113,11 @@ export function syncAgentSkills({
 		}
 	}
 
-	const skills = [
-		...AGENT_SKILLS.map((name) => ({ name, sourceRoot: "agent-skills" })),
-		...UPSTREAM_AGENT_SKILLS.map((name) => ({
-			name,
-			sourceRoot: "upstream-skills",
-		})),
-	];
-	for (const { name, sourceRoot } of skills) {
-		const source = path.join(projectRoot, "configs", sourceRoot, name);
+	for (const name of UPSTREAM_AGENT_SKILLS) {
+		const source = path.join(projectRoot, "configs", "upstream-skills", name);
 		if (!fsImpl.existsSync(source)) {
 			logger.warning(
-				`Missing bundled ${sourceRoot} skill ${name}; sync skipped.`,
+				`Missing bundled upstream-skills skill ${name}; sync skipped.`,
 			);
 			complete = false;
 			continue;
@@ -152,38 +129,6 @@ export function syncAgentSkills({
 	}
 	if (!ensureExplainerTheme({ home, fsImpl, logger })) complete = false;
 
-	for (const name of REFERENCED_SKILLS) {
-		if (!fsImpl.existsSync(path.join(live, name))) {
-			logger.warning(
-				`Referenced skill ${name} is unavailable; rerun haoshoku --skills or install its declared source.`,
-			);
-		}
-	}
 	if (complete) logger.success("Haoshoku agent skills synced.");
-	return complete;
-}
-
-export function backupAgentSkills({
-	home = homedir(),
-	projectRoot = PROJECT_ROOT,
-	fsImpl = fs,
-	copyDirImpl = copyDirRecursive,
-	logger = log,
-} = {}) {
-	const live = path.join(home, ".agents", "skills");
-	const bundled = path.join(projectRoot, "configs", "agent-skills");
-	let complete = true;
-	for (const name of AGENT_SKILLS) {
-		const source = path.join(live, name);
-		if (!fsImpl.existsSync(source)) {
-			logger.warning(`Missing owned skill ${source}; backup skipped.`);
-			complete = false;
-			continue;
-		}
-		const destination = path.join(bundled, name);
-		fsImpl.rmSync(destination, { recursive: true, force: true });
-		copyDirImpl(source, destination);
-	}
-	if (complete) logger.success("Haoshoku-owned agent skills backed up.");
 	return complete;
 }

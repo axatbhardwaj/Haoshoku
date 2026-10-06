@@ -3,8 +3,6 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import {
-	AGENT_SKILLS,
-	backupAgentSkills,
 	syncAgentSkills,
 	UPSTREAM_AGENT_SKILLS,
 } from "../src/helpers/configure_agent_skills.js";
@@ -22,11 +20,6 @@ function fixture() {
 	roots.push(root);
 	const home = path.join(root, "home");
 	const projectRoot = path.join(root, "project");
-	for (const name of AGENT_SKILLS) {
-		const skill = path.join(projectRoot, "configs", "agent-skills", name);
-		fs.mkdirSync(skill, { recursive: true });
-		fs.writeFileSync(path.join(skill, "SKILL.md"), `owned ${name}\n`);
-	}
 	for (const name of UPSTREAM_AGENT_SKILLS) {
 		const skill = path.join(projectRoot, "configs", "upstream-skills", name);
 		fs.mkdirSync(skill, { recursive: true });
@@ -36,35 +29,17 @@ function fixture() {
 }
 
 describe("Haoshoku agent skills", () => {
-	it("keeps upstream skills outside the owned backup allowlist", () => {
-		expect(AGENT_SKILLS).toEqual([
-			"model-routing",
-			"paseo-pr-babysit",
-			"paseo-pr-review",
-		]);
-		expect(UPSTREAM_AGENT_SKILLS).toEqual(["visual-explainer"]);
-	});
-
-	it("syncs owned skills and creates portable links for both agents", () => {
+	it("syncs upstream skills and creates portable links for both agents", () => {
 		const { home, projectRoot } = fixture();
-		for (const name of ["paseo", "code-review"]) {
-			fs.mkdirSync(path.join(home, ".agents", "skills", name), {
-				recursive: true,
-			});
-		}
 
 		expect(syncAgentSkills({ home, projectRoot })).toBe(true);
-		for (const name of [...AGENT_SKILLS, ...UPSTREAM_AGENT_SKILLS]) {
+		for (const name of UPSTREAM_AGENT_SKILLS) {
 			expect(
 				fs.readFileSync(
 					path.join(home, ".agents", "skills", name, "SKILL.md"),
 					"utf8",
 				),
-			).toBe(
-				UPSTREAM_AGENT_SKILLS.includes(name)
-					? `upstream ${name}\n`
-					: `owned ${name}\n`,
-			);
+			).toBe(`upstream ${name}\n`);
 			for (const agent of [".claude", ".codex"]) {
 				expect(fs.readlinkSync(path.join(home, agent, "skills", name))).toBe(
 					`../../.agents/skills/${name}`,
@@ -86,7 +61,7 @@ describe("Haoshoku agent skills", () => {
 
 	it("replaces absolute links but preserves real skill directories", () => {
 		const { home, projectRoot } = fixture();
-		const name = AGENT_SKILLS[0];
+		const name = UPSTREAM_AGENT_SKILLS[0];
 		const claudeLink = path.join(home, ".claude", "skills", name);
 		const codexDirectory = path.join(home, ".codex", "skills", name);
 		fs.mkdirSync(path.dirname(claudeLink), { recursive: true });
@@ -113,7 +88,7 @@ describe("Haoshoku agent skills", () => {
 		expect(warnings.join("\n")).toContain("real directory");
 	});
 
-	it("warns without failing when referenced external skills are missing", () => {
+	it("syncs without requiring retired routing dependencies", () => {
 		const { home, projectRoot } = fixture();
 		const warnings = [];
 
@@ -128,8 +103,7 @@ describe("Haoshoku agent skills", () => {
 				projectRoot,
 			}),
 		).toBe(true);
-		expect(warnings.join("\n")).toContain("paseo");
-		expect(warnings.join("\n")).toContain("code-review");
+		expect(warnings).toEqual([]);
 	});
 
 	it("ignores existing retired task config without changing it", () => {
@@ -143,112 +117,20 @@ describe("Haoshoku agent skills", () => {
 		expect(fs.readFileSync(config)).toEqual(before);
 	});
 
-	it("deploys the bundled task lifecycle reference", () => {
-		const { home } = fixture();
-		const projectRoot = path.resolve(import.meta.dir, "..");
-		const bundled = path.join(
-			projectRoot,
-			"configs",
-			"agent-skills",
-			"model-routing",
-			"references",
-			"task-lifecycle.md",
-		);
-		const deployed = path.join(
-			home,
-			".agents",
-			"skills",
-			"model-routing",
-			"references",
-			"task-lifecycle.md",
-		);
-
-		expect(syncAgentSkills({ home, projectRoot })).toBe(true);
-		expect(fs.readFileSync(deployed)).toEqual(fs.readFileSync(bundled));
-		const lifecycle = fs.readFileSync(deployed, "utf8");
-		expect(lifecycle).toContain("<slug>--<full-driver-paseo-id>--<run-id>");
-		expect(lifecycle).toContain("paseo.parent-agent-id");
-		expect(lifecycle).toContain("Provider-native subagents");
-		expect(lifecycle).toContain("paseo run --background");
-		expect(lifecycle).toContain("driver-recorded launch or reuse receipt");
-		expect(lifecycle).toContain("this run's exact task-label update receipt");
-		expect(lifecycle).toContain("A null `ParentAgentId` is eligible only when");
-		expect(lifecycle).toContain(
-			"A non-null mismatched parent chain is a hard retain condition",
-		);
-		expect(lifecycle).toContain("mandatory exit step");
-		expect(lifecycle).toContain("concrete reason for every retained worker");
-		expect(lifecycle).toContain("settle the old run first");
-		expect(lifecycle).not.toContain(
-			"Archive only when its parent chain still matches",
-		);
-		expect(lifecycle).toContain("never retry with `--force`");
-		expect(
-			fs.readFileSync(
-				path.join(home, ".agents", "skills", "model-routing", "SKILL.md"),
-				"utf8",
-			),
-		).toContain("references/task-lifecycle.md");
-	});
-
-	it("backs up only the owned allowlist byte-for-byte", () => {
+	it.each([
+		"html-deliverables",
+		"model-routing",
+		"paseo-pr-babysit",
+		"paseo-pr-review",
+	])("archives %s and removes managed links", (name) => {
 		const { home, projectRoot } = fixture();
-		const liveSkills = path.join(home, ".agents", "skills");
-		for (const name of AGENT_SKILLS) {
-			fs.mkdirSync(path.join(liveSkills, name), { recursive: true });
-			fs.writeFileSync(
-				path.join(liveSkills, name, "SKILL.md"),
-				`live ${name}\n`,
-			);
-		}
-		fs.mkdirSync(path.join(liveSkills, "paseo"), { recursive: true });
-		fs.writeFileSync(path.join(liveSkills, "paseo", "SKILL.md"), "upstream\n");
-		fs.mkdirSync(path.join(liveSkills, "visual-explainer"), {
-			recursive: true,
-		});
-		fs.writeFileSync(
-			path.join(liveSkills, "visual-explainer", "SKILL.md"),
-			"locally edited upstream\n",
-		);
-
-		expect(backupAgentSkills({ home, projectRoot })).toBe(true);
-		for (const name of AGENT_SKILLS) {
-			expect(
-				fs.readFileSync(
-					path.join(projectRoot, "configs", "agent-skills", name, "SKILL.md"),
-					"utf8",
-				),
-			).toBe(`live ${name}\n`);
-		}
-		expect(
-			fs.existsSync(path.join(projectRoot, "configs", "agent-skills", "paseo")),
-		).toBe(false);
-		expect(
-			fs.readFileSync(
-				path.join(
-					projectRoot,
-					"configs",
-					"upstream-skills",
-					"visual-explainer",
-					"SKILL.md",
-				),
-				"utf8",
-			),
-		).toBe("upstream visual-explainer\n");
-	});
-
-	it("archives the retired shared skill and removes only managed links", () => {
-		const { home, projectRoot } = fixture();
-		const live = path.join(home, ".agents", "skills", "html-deliverables");
+		const live = path.join(home, ".agents", "skills", name);
 		fs.mkdirSync(live, { recursive: true });
 		fs.writeFileSync(path.join(live, "CUSTOM.md"), "preserve me\n");
 		for (const agent of [".claude", ".codex"]) {
 			const skills = path.join(home, agent, "skills");
 			fs.mkdirSync(skills, { recursive: true });
-			fs.symlinkSync(
-				"../../.agents/skills/html-deliverables",
-				path.join(skills, "html-deliverables"),
-			);
+			fs.symlinkSync(`../../.agents/skills/${name}`, path.join(skills, name));
 		}
 
 		expect(syncAgentSkills({ home, projectRoot })).toBe(true);
@@ -257,7 +139,7 @@ describe("Haoshoku agent skills", () => {
 			".config",
 			"haoshoku",
 			"retired-agent-skills",
-			"html-deliverables",
+			name,
 		);
 		expect(fs.existsSync(live)).toBe(false);
 		expect(fs.readFileSync(path.join(archive, "CUSTOM.md"), "utf8")).toBe(
@@ -265,19 +147,24 @@ describe("Haoshoku agent skills", () => {
 		);
 		for (const agent of [".claude", ".codex"]) {
 			expect(
-				fs.existsSync(path.join(home, agent, "skills", "html-deliverables")),
-			).toBe(false);
+				fs.lstatSync(path.join(home, agent, "skills", name), {
+					throwIfNoEntry: false,
+				}),
+			).toBeUndefined();
 		}
 
 		expect(syncAgentSkills({ home, projectRoot })).toBe(true);
-		expect(fs.readdirSync(path.dirname(archive))).toEqual([
-			"html-deliverables",
-		]);
+		expect(fs.readdirSync(path.dirname(archive))).toEqual([name]);
 	});
 
-	it("preserves real agent-specific retired skill directories", () => {
+	it.each([
+		"html-deliverables",
+		"model-routing",
+		"paseo-pr-babysit",
+		"paseo-pr-review",
+	])("preserves real agent-specific %s directories", (name) => {
 		const { home, projectRoot } = fixture();
-		const custom = path.join(home, ".codex", "skills", "html-deliverables");
+		const custom = path.join(home, ".codex", "skills", name);
 		fs.mkdirSync(custom, { recursive: true });
 		fs.writeFileSync(path.join(custom, "KEEP"), "custom\n");
 
@@ -285,9 +172,14 @@ describe("Haoshoku agent skills", () => {
 		expect(fs.readFileSync(path.join(custom, "KEEP"), "utf8")).toBe("custom\n");
 	});
 
-	it("leaves the retired live skill intact when archival fails", () => {
+	it.each([
+		"html-deliverables",
+		"model-routing",
+		"paseo-pr-babysit",
+		"paseo-pr-review",
+	])("leaves %s intact when archival fails", (name) => {
 		const { home, projectRoot } = fixture();
-		const live = path.join(home, ".agents", "skills", "html-deliverables");
+		const live = path.join(home, ".agents", "skills", name);
 		fs.mkdirSync(live, { recursive: true });
 		fs.writeFileSync(path.join(live, "KEEP"), "still here\n");
 

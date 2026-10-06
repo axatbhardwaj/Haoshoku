@@ -53,10 +53,13 @@ describe("haoshoku CLI help", () => {
 	});
 
 	it("offers Matt Pocock skills without legacy orchestration modes", () => {
-		const help = output(["--help"]);
-		expect(help).toContain("Matt Pocock and Paseo skills");
+		const help = output(["--help"]).replace(/\s+/g, " ");
+		expect(help).toContain(
+			"Install Matt Pocock skills for Claude Code and Codex",
+		);
+		expect(help).toContain("Refresh Matt Pocock skills");
 		expect(help).toContain("--agent-skills");
-		expect(help).toContain("--agent-skills-backup");
+		expect(help).not.toContain("--agent-skills-backup");
 		expect(help).not.toContain("--paseo-profiles");
 		expect(help).not.toContain("--paseo-profiles-backup");
 		for (const flag of ["--superpowers", "--agent-os", "--claude-bootstrap"]) {
