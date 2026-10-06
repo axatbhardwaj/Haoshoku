@@ -245,79 +245,90 @@ test("retention failures leave the fresh log writable and continue pruning", () 
 	);
 });
 
-test("terminal children retain TTY prompts and receive input after their live output", async () => {
-	const root = fs.mkdtempSync(path.join(os.tmpdir(), "tty-command-"));
-	roots.push(root);
-	const childCode = `if [ -t 0 ] && [ -t 1 ] && [ -t 2 ]; then printf 'tty-stdout-ready'; printf 'tty-stderr-ready' >&2; read reply; [ "$reply" = continue ] && exit 3; fi; printf 'not-a-terminal'; exit 7`;
-	const utilsPath = path.resolve("src/common/utils.js");
-	const loggerPath = path.resolve("src/common/run_log.js");
-	const workerFile = path.join(root, "worker.js");
-	fs.writeFileSync(
-		workerFile,
-		`
-		import { runCommand } from ${JSON.stringify(utilsPath)};
-		import { startRunLog } from ${JSON.stringify(loggerPath)};
-		startRunLog({ version: "12.1.0" });
-		await runCommand(["sh", "-c", ${JSON.stringify(childCode)}], { log: false });
-	`,
+async function withTerminal(isTTY, action) {
+	const descriptors = [process.stdin, process.stdout].map((stream) =>
+		Object.getOwnPropertyDescriptor(stream, "isTTY"),
 	);
-	const quote = (arg) => `'${arg.replaceAll("'", "'\\''")}'`;
-	const proc = Bun.spawn(
-		[
-			"script",
-			"--quiet",
-			"--return",
-			"--flush",
-			"--command",
-			`${quote(process.execPath)} ${quote(workerFile)}`,
-			"/dev/null",
-		],
-		{
-			env: { ...process.env, HOME: root, XDG_STATE_HOME: root },
-			stdin: "pipe",
-			stdout: "pipe",
-			stderr: "pipe",
-		},
-	);
-	let exited = false;
-	proc.exited.then(() => {
-		exited = true;
-	});
-	const reader = proc.stdout.getReader();
-	let timer;
 	try {
-		const output = await Promise.race([
-			(async () => {
-				let text = "";
-				while (true) {
-					const { value, done } = await reader.read();
-					if (done) return text;
-					text += new TextDecoder().decode(value);
-					if (text.includes("tty-stderr-ready")) return text;
-				}
-			})(),
-			new Promise((resolve) => {
-				timer = setTimeout(() => resolve("timeout waiting for prompt"), 1500);
-			}),
-		]);
-		expect(output).toContain("tty-stdout-ready");
-		expect(output).toContain("tty-stderr-ready");
-		expect(exited).toBe(false);
-		proc.stdin.write("continue\n");
-		proc.stdin.end();
-		expect(await proc.exited).toBe(0);
-		const file = path.join(
-			root,
-			"haoshoku/logs",
-			fs.readdirSync(path.join(root, "haoshoku/logs"))[0],
-		);
-		expect(fs.readFileSync(file, "utf8")).toContain("Exit: 3");
-		expect(fs.readFileSync(file, "utf8")).toContain("tty-stderr-ready");
+		for (const stream of [process.stdin, process.stdout])
+			Object.defineProperty(stream, "isTTY", {
+				value: isTTY,
+				configurable: true,
+			});
+		return await action();
 	} finally {
-		clearTimeout(timer);
-		proc.stdin.write("continue\n");
-		proc.stdin.end();
-		await proc.exited;
-		reader.releaseLock();
+		for (const [index, stream] of [process.stdin, process.stdout].entries()) {
+			if (descriptors[index])
+				Object.defineProperty(stream, "isTTY", descriptors[index]);
+			else delete stream.isTTY;
+		}
 	}
+}
+
+test.each([
+	true,
+	false,
+])("spawns command argv directly without script or a shell (TTY=%s)", async (isTTY) => {
+	begin();
+	await withTerminal(isTTY, async () => {
+		const argv = ["example-command", "it's", "back\\slash", "$literal"];
+		let spawned;
+		expect(
+			await runCommand(argv, {
+				log: false,
+				env: { ...process.env, SHELL: "/missing-login-shell" },
+				spawnImpl: (args) => {
+					spawned = args;
+					return child(0)();
+				},
+			}),
+		).toBe(true);
+		expect(spawned).toEqual(argv);
+	});
+});
+
+test.each([
+	true,
+	false,
+])("inherits stdin while piping output (TTY=%s)", async (isTTY) => {
+	begin();
+	await withTerminal(isTTY, async () => {
+		let stdio;
+		expect(
+			await runCommand(["example-command"], {
+				log: false,
+				spawnImpl: (_args, options) => {
+					stdio = options;
+					return child(0)();
+				},
+			}),
+		).toBe(true);
+		expect(stdio.stdin).toBe("inherit");
+		expect(stdio.stdout).toBe("pipe");
+		expect(stdio.stderr).toBe("pipe");
+	});
+});
+
+test.each([
+	true,
+	false,
+])("logs each failure output stream once (TTY=%s)", async (isTTY) => {
+	await withTerminal(isTTY, async () => {
+		const run = begin();
+		expect(
+			await runCommand(["example-command"], {
+				log: false,
+				spawnImpl: child(
+					3,
+					["unique-stdout-diagnostic\n"],
+					["unique-stderr-diagnostic\n"],
+				),
+			}),
+		).toBe(false);
+		const text = content(run);
+		expect(text.split("unique-stdout-diagnostic")).toHaveLength(2);
+		expect(text.split("unique-stderr-diagnostic")).toHaveLength(2);
+		expect(text).toContain("Stdout (last 50 lines):\nunique-stdout-diagnostic");
+		expect(text).toContain("Stderr:\nunique-stderr-diagnostic");
+	});
 });

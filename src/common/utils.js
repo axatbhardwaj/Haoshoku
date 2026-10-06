@@ -82,29 +82,7 @@ export async function runCommand(command, options = { check: true }) {
 	if (options.log !== false) log.dim(`Executing: ${name}`);
 	const started = performance.now();
 	try {
-		const argv = commandArgv(command, options);
-		// util-linux script preserves TTY-driven prompts/buffering on Linux while
-		// its flushed output is still drained live below. Stdin stays inherited.
-		const terminal =
-			process.stdin.isTTY &&
-			process.stdout.isTTY &&
-			(options.stdin ?? "inherit") === "inherit" &&
-			(options.stdout ?? "inherit") === "inherit" &&
-			(options.stderr ?? "inherit") === "inherit" &&
-			Bun.which("script") !== null;
-		const quote = (arg) => `'${arg.replaceAll("'", "'\\''")}'`;
-		const processArgv = terminal
-			? [
-					"script",
-					"--quiet",
-					"--return",
-					"--flush",
-					"--command",
-					argv.map(quote).join(" "),
-					"/dev/null",
-				]
-			: argv;
-		const proc = (options.spawnImpl ?? spawn)(processArgv, {
+		const proc = (options.spawnImpl ?? spawn)(commandArgv(command, options), {
 			cwd: options.cwd,
 			env: options.env,
 			stdin: options.stdin ?? "inherit",
@@ -127,7 +105,7 @@ export async function runCommand(command, options = { check: true }) {
 			exitCode,
 			performance.now() - started,
 			stdout,
-			terminal ? `[terminal stdout/stderr]\n${stdout}${stderr}` : stderr,
+			stderr,
 			options,
 		);
 		if (options.returnExitCode) return exitCode;

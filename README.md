@@ -510,6 +510,8 @@ Setup and configuration runs save a private log under
 `${XDG_STATE_HOME:-~/.local/state}/haoshoku/logs/` (directory 0700, files
 0600). The last 20 logs are kept. Logs include device/version metadata,
 `log.*` messages, command exits and durations, and bounded failure output.
+Command output is forwarded live while stdin stays inherited for prompts.
+Some programs omit colours or progress bars when their output is captured.
 Known credential patterns and Tailscale login URLs are redacted before writing.
 The final line shows the log path; failures also show their count and names.
 If logging is unavailable, Haoshoku warns once and continues.
