@@ -2,6 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { stripVTControlCharacters } from "node:util";
+import chalk from "chalk";
 
 const LOG_NAME = /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.\d{3}Z\.log$/;
 const OUTPUT_LIMIT = 16_384;
@@ -62,6 +63,7 @@ export function startRunLog({
 } = {}) {
 	let warned = false;
 	let writable = true;
+	let finished = false;
 	const unavailable = () => {
 		writable = false;
 		if (!warned) {
@@ -76,7 +78,26 @@ export function startRunLog({
 	const dir = logDirectory(env);
 	const run = {
 		path: null,
-		failures: new Set(),
+		failures: [],
+		finish(exitCode = 0, print = console.log) {
+			if (finished) return;
+			finished = true;
+			if (exitCode !== 0 && run.failures.length === 0) {
+				run.failures.push(
+					`${argv.slice(2).find((arg) => arg.startsWith("--")) || "run"} (exit ${exitCode})`,
+				);
+			}
+			const names = [...new Set(run.failures)]
+				.map((name) => name.slice(0, 200))
+				.join("; ")
+				.slice(0, 2000);
+			const count = run.failures.length;
+			const summary = count
+				? `${count} failed ${count === 1 ? "command/step" : "commands/steps"}: ${names}. Log: ${run.path || "unavailable"}`
+				: `Log: ${run.path || "unavailable"}`;
+			run.write(summary);
+			print(count ? chalk.yellow(summary) : chalk.dim(summary));
+		},
 		write(value) {
 			if (!writable) return;
 			try {
@@ -129,7 +150,8 @@ export function startRunLog({
 
 export function recordOutput(level, message, failure = true) {
 	activeRun?.write(`[${level}] ${message}`);
-	if (level === "error" && failure) activeRun?.failures.add(redactLog(message));
+	if (level === "error" && failure)
+		activeRun?.failures.push(redactLog(message));
 }
 
 export function recordCommand(
@@ -145,7 +167,7 @@ export function recordCommand(
 		`Command: ${name}\nExit: ${exitCode}\nDuration: ${duration.toFixed(1)} ms`,
 	);
 	if (exitCode !== 0) {
-		activeRun.failures.add(name);
+		activeRun.failures.push(name);
 		activeRun.write(
 			`Stdout (last 50 lines):\n${redactLog(stdout).trimEnd().split("\n").slice(-50).join("\n")}`,
 		);

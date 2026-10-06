@@ -78,7 +78,8 @@ import { installUserScripts } from "./src/helpers/install_user_scripts.js";
 import { runCachyOSSetup } from "./src/os_scripts/cachyos.js";
 import { runDebianServerSetup } from "./src/os_scripts/debian_server.js";
 
-startRunLog({ version: "12.1.0" });
+const runLog = startRunLog({ version: "12.1.0" });
+process.once("exit", (code) => runLog.finish(code));
 
 const program = new Command();
 

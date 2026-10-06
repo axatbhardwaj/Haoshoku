@@ -107,3 +107,24 @@ test("every log level reaches the file without ANSI or credentials", () => {
 	expect(text).not.toContain("private123");
 	expect(text).not.toContain("\u001b");
 });
+
+test("summary counts repeated command failures, avoids duplicate runner errors and names steps", async () => {
+	const run = begin();
+	for (let i = 0; i < 2; i++)
+		await runCommand("false", {
+			spawnImpl: child(3),
+			check: true,
+			stdout: "ignore",
+			stderr: "ignore",
+		});
+	log.error("setup step failed");
+	const lines = [];
+	run.finish?.(1, (message) => lines.push(message));
+	expect(lines).toHaveLength(1);
+	expect(lines[0]).toContain("3 failed commands/steps:");
+	expect(lines[0]).toContain("false");
+	expect(lines[0]).toContain("setup step failed");
+	expect(lines[0]).toContain(run.path);
+	run.finish?.(1, (message) => lines.push(message));
+	expect(lines).toHaveLength(1);
+});

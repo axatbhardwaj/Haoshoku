@@ -142,3 +142,22 @@ test("redacts credentials in the on-disk header without damaging safe argv", asy
 	expect(text).toContain("[REDACTED]");
 	expect(text).toContain("safe-value");
 });
+
+test("end summary reports named failed steps and the log path even on explicit exit", async () => {
+	const f = fixture();
+	const result = await cli(f, ["--claude", "--audio"]);
+	const { file } = readLog(f);
+	expect(result.exitCode).toBe(2);
+	expect(result.stdout).toContain("1 failed command/step:");
+	expect(result.stdout).toContain("mutually exclusive");
+	expect(result.stdout).toContain(file);
+});
+
+test("clean runs end with one dim log-path line", async () => {
+	const f = fixture();
+	const result = await cli(f);
+	const { file } = readLog(f);
+	expect(result.stdout).toContain(`Log: ${file}`);
+	expect(result.stdout.match(/Log:/g)?.length).toBe(1);
+	expect(result.stdout).not.toContain("failed command");
+});
