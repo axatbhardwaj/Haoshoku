@@ -19,15 +19,9 @@ import {
 describe("user app configuration", () => {
 	it("runs portable app setup and PR watch without retired services or offers", async () => {
 		const events = [];
-		const prompts = [];
 		const record = (name) => async () => events.push(name);
 
 		await configureUserApps({
-			promptUserImpl: async (message, initial) => {
-				prompts.push({ message, initial });
-				return true;
-			},
-			configureGitImpl: record("git"),
 			configureBrowserIntegrationImpl: record("browser"),
 			configureAudioImpl: record("audio"),
 			configureBashImpl: record("bash"),
@@ -52,7 +46,6 @@ describe("user app configuration", () => {
 		});
 
 		expect(events).toEqual([
-			"git",
 			"browser",
 			"audio",
 			"bash",
@@ -69,7 +62,6 @@ describe("user app configuration", () => {
 			"skills",
 			"agent-skills",
 		]);
-		expect(prompts).toEqual([{ message: "Configure git?", initial: true }]);
 	});
 
 	it("warns when Claude or Codex installation fails", async () => {
@@ -80,8 +72,6 @@ describe("user app configuration", () => {
 
 		try {
 			await configureUserApps({
-				promptUserImpl: async () => false,
-				configureGitImpl: noop,
 				configureBrowserIntegrationImpl: noop,
 				configureAudioImpl: noop,
 				configureBashImpl: noop,
@@ -128,8 +118,6 @@ describe("user app configuration", () => {
 		const noop = async () => {};
 		try {
 			await configureUserApps({
-				promptUserImpl: async () => false,
-				configureGitImpl: noop,
 				configureBrowserIntegrationImpl: noop,
 				configureAudioImpl: noop,
 				configureBashImpl: noop,

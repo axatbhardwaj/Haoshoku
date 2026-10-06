@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Removed
+
+- Arch/Omarchy setup no longer configures git. Omarchy sets your identity at
+  install; existing `~/.gitconfig` and git profile files are left untouched.
+  Debian server setup still offers git configuration.
+
 ## 12.1.0 - 2026-10-06
 
 - Configure Arch/Omarchy Tailscale phone access after T3 installation: install

@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { promptDeviceType } from "../src/common/device_type.js";
-import { log, promptUser } from "../src/common/utils.js";
+import { log } from "../src/common/utils.js";
 import {
 	configureUserApps,
 	runCachyOSSetup,
@@ -162,11 +162,25 @@ function runArchDefaultPath() {
 	);
 	return runIsolated(
 		`
+			import { mock } from "bun:test";
 			const calls = [];
+			const prompts = [];
 			const record = (feature, result) => async () => {
 				calls.push(feature);
 				return result;
 			};
+			mock.module(${JSON.stringify(path.resolve(import.meta.dir, "..", "src/helpers/configure_git.js"))}, () => ({
+				configureGit: record("git"),
+			}));
+			const utilsPath = ${JSON.stringify(path.resolve(import.meta.dir, "..", "src/common/utils.js"))};
+			const utils = await import(utilsPath);
+			mock.module(utilsPath, () => ({
+				...utils,
+				promptUser: async (message, initial) => {
+					prompts.push({ message, initial });
+					return true;
+				},
+			}));
 			const {
 				configureBrowserIntegration,
 				configureUserApps,
@@ -184,8 +198,6 @@ function runArchDefaultPath() {
 				installSystemPackagesImpl: record("systemPackages"),
 				installFlatpakAppsImpl: record("flatpaks"),
 				configureUserAppsImpl: () => configureUserApps({
-					promptUserImpl: async () => true,
-					configureGitImpl: record("git"),
 					configureBrowserIntegrationImpl: () => configureBrowserIntegration({
 						configureChromiumProfilesImpl: record("chromiumProfiles"),
 						configureMimeappsImpl: record("mimeapps"),
@@ -216,7 +228,7 @@ function runArchDefaultPath() {
 				configureOmazedImpl: record("omazed"),
 				configureOmarchyAppearanceImpl: record("omarchyAppearance"),
 			});
-			console.log("DEFAULT_CALLS=" + JSON.stringify(calls));
+			console.log("DEFAULT_CALLS=" + JSON.stringify({ calls, prompts }));
 		`,
 		"DEFAULT_CALLS",
 	);
@@ -308,6 +320,7 @@ function runDebianDefaultPath() {
 
 const deployModeFeatures = deployModeFeaturesFromCli();
 const defaultCallsByPath = new Map();
+let archDefaultResult;
 
 function missingDefaultPaths({ flag, feature }) {
 	return [...defaultCallsByPath]
@@ -350,7 +363,6 @@ function defaultSetupOverrides({
 
 function userAppDoubles(overrides = {}) {
 	return {
-		configureGitImpl: async () => {},
 		configureBrowserIntegrationImpl: async () => {},
 		configureAudioImpl: async () => {},
 		configureBashImpl: () => {},
@@ -372,8 +384,17 @@ function userAppDoubles(overrides = {}) {
 
 describe("default-run reachability", () => {
 	beforeAll(() => {
-		defaultCallsByPath.set("arch", new Set(runArchDefaultPath()));
+		archDefaultResult = runArchDefaultPath();
+		defaultCallsByPath.set("arch", new Set(archDefaultResult.calls));
 		defaultCallsByPath.set("debian-server", new Set(runDebianDefaultPath()));
+	});
+
+	it("leaves git configuration to Omarchy without a prompt or helper call", () => {
+		expect({
+			gitCalls: archDefaultResult.calls.filter((call) => call === "git").length,
+			prompts: archDefaultResult.prompts,
+		}).toEqual({ gitCalls: 0, prompts: [] });
+		expect(defaultCallsByPath.get("arch").has("prWatch")).toBe(true);
 	});
 
 	it.each([
@@ -422,25 +443,17 @@ describe("default-run reachability", () => {
 		});
 	}
 
-	it("keeps PR watch unconditional when optional offers are declined", async () => {
-		const offers = [];
+	it("keeps PR watch in app setup", async () => {
 		let prWatchCalls = 0;
 
 		await configureUserApps(
 			userAppDoubles({
-				promptUserImpl: async (message, initial) => {
-					offers.push({ message, initial });
-					return false;
-				},
 				configurePrWatchImpl: async () => {
 					prWatchCalls += 1;
 				},
 			}),
 		);
 
-		expect(offers.map(({ message }) => message)).not.toContain(
-			"Enable PR watch helper?",
-		);
 		expect(prWatchCalls).toBe(1);
 	});
 
@@ -453,14 +466,6 @@ describe("default-run reachability", () => {
 		const originalWarning = log.warning;
 		log.warning = (message) => warnings.push(message);
 
-		const nonInteractivePrompt = (message, initial) =>
-			promptUser(message, initial, {
-				isTTY: false,
-				promptFn: async () => {
-					interactivePromptCalls += 1;
-					throw new Error("interactive prompt must not run");
-				},
-			});
 		const record = (name, result) => async () => {
 			events.push(name);
 			return result;
@@ -484,8 +489,6 @@ describe("default-run reachability", () => {
 						configureUserAppsImpl: () =>
 							configureUserApps(
 								userAppDoubles({
-									promptUserImpl: nonInteractivePrompt,
-									configureGitImpl: record("git"),
 									installGhStackImpl: record("gh-stack"),
 									configurePrWatchImpl: record("pr-watch"),
 								}),
@@ -506,9 +509,7 @@ describe("default-run reachability", () => {
 		expect(warnings.join("\n")).toContain(
 			"full setup routing reads persisted config independently",
 		);
-		expect(warnings.join("\n")).toContain(
-			'Interactive confirmation unavailable; declining "Configure git?".',
-		);
+		expect(warnings.join("\n")).not.toContain("Configure git?");
 		expect(warnings.join("\n")).not.toContain("gh-stack");
 		expect(warnings.join("\n")).not.toContain("Enable PR watch helper?");
 	});

@@ -538,8 +538,6 @@ export async function configureBrowserIntegration({
 }
 
 export async function configureUserApps({
-	promptUserImpl = promptUser,
-	configureGitImpl,
 	configureBrowserIntegrationImpl = configureBrowserIntegration,
 	configureAudioImpl = configureAudio,
 	configureBashImpl = configureBash,
@@ -556,13 +554,6 @@ export async function configureUserApps({
 	configureSkillsImpl = configureSkills,
 	syncAgentSkillsImpl = syncAgentSkills,
 } = {}) {
-	if (await promptUserImpl("Configure git?", true)) {
-		const configureGit =
-			configureGitImpl ??
-			(await import("../helpers/configure_git.js")).configureGit;
-		await configureGit();
-	}
-
 	await configureBrowserIntegrationImpl();
 	try {
 		await configureAudioImpl();

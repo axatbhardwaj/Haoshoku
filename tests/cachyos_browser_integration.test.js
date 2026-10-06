@@ -7,8 +7,6 @@ import {
 
 function userAppDoubles(overrides = {}) {
 	return {
-		promptUserImpl: async () => false,
-		configureGitImpl: async () => {},
 		configureBrowserIntegrationImpl: async () => {},
 		configureAudioImpl: async () => {},
 		configureBashImpl: () => {},
@@ -50,7 +48,6 @@ describe("CachyOS browser integration", () => {
 
 		await configureUserApps(
 			userAppDoubles({
-				promptUserImpl: async () => false,
 				configureBrowserIntegrationImpl: record("browser-integration"),
 				configureAudioImpl: record("audio"),
 				configureBashImpl: () => calls.push("bash"),
