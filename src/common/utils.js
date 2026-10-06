@@ -2,13 +2,29 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawn } from "bun";
 import chalk from "chalk";
+import { recordOutput } from "./run_log.js";
+
+function printLog(level, msg, failure = true) {
+	recordOutput(level, msg, failure);
+	const styles = {
+		info: [chalk.blue, "ℹ "],
+		success: [chalk.green, "✔ "],
+		warning: [chalk.yellow, "⚠ "],
+		error: [chalk.red, "✖ "],
+		dim: [chalk.gray, ""],
+	};
+	const [color, prefix] = styles[level];
+	const output = color(prefix) + color(msg);
+	if (level === "error") console.error(output);
+	else console.log(output);
+}
 
 export const log = {
-	info: (msg) => console.log(chalk.blue("ℹ ") + chalk.blue(msg)),
-	success: (msg) => console.log(chalk.green("✔ ") + chalk.green(msg)),
-	warning: (msg) => console.log(chalk.yellow("⚠ ") + chalk.yellow(msg)),
-	error: (msg) => console.error(chalk.red("✖ ") + chalk.red(msg)),
-	dim: (msg) => console.log(chalk.gray(msg)),
+	info: (msg) => printLog("info", msg),
+	success: (msg) => printLog("success", msg),
+	warning: (msg) => printLog("warning", msg),
+	error: (msg, failure) => printLog("error", msg, failure),
+	dim: (msg) => printLog("dim", msg),
 };
 
 /** Replace only this machine's exact absolute home prefix in portable prose. */

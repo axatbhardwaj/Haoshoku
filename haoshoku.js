@@ -2,6 +2,7 @@
 
 import { Command } from "commander";
 import prompts from "prompts";
+import { startRunLog } from "./src/common/run_log.js";
 import { detectOS, findActiveModeFlags } from "./src/common/cli_utils.js";
 import { promptDeviceType } from "./src/common/device_type.js";
 import { getBanner, showBanner } from "./src/common/ui.js";
@@ -76,6 +77,8 @@ import {
 import { installUserScripts } from "./src/helpers/install_user_scripts.js";
 import { runCachyOSSetup } from "./src/os_scripts/cachyos.js";
 import { runDebianServerSetup } from "./src/os_scripts/debian_server.js";
+
+startRunLog({ version: "12.1.0" });
 
 const program = new Command();
 
