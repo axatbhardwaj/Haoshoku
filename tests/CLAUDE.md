@@ -12,10 +12,8 @@
 | `cli_explainer_theme.test.js` | End-to-end visual-explainer theme CLI behavior | Changing `--explainer-theme` |
 | `cli_paseo_tasks.test.js` | End-to-end Paseo task lifecycle defaults, controls, preservation, and fail-closed behavior | Changing Paseo task lifecycle CLI/configuration |
 | `cli_server_hermes_relay_flag.test.js` | Debian-only Hermes relay CLI routing and failure propagation | Changing `--server-hermes-relay` |
-| `configure_hermes_relay.test.js` | Hermes relay install, preservation, activation, and failure behavior | Changing the Hermes relay helper |
+| `configure_hermes_relay.test.js` | Hermes bootstrap, plugin-free readiness, preservation, and failure behavior | Changing the Hermes relay helper |
 | `configure_paseo_profiles.test.js` | Paseo whitelist merge, lifecycle-safe reload, and backup | Changing managed Paseo policy |
-| `hermes_relay_host_boundary.test.js` | VPS enable-marker transport boundary | Changing relay use in shared agent workflows |
-| `hermes_relay_publication_transition.test.js` | Published source pin and vendored-removal boundary | Updating the standalone relay release pin |
 | `visual_explainer_vendoring.test.js` | Upstream payload revision, file-set, license, and byte digests | Updating the pinned visual-explainer payload |
 | `configure_axstack.test.js` | Axstack tarball verification, release layout, shim, no-downgrade, and harness install | Changing the Axstack pin or installer |
 | `cli_axstack_flags.test.js` | `--axstack` / `--axstack-check` routing and reporting | Changing the Axstack CLI surface |

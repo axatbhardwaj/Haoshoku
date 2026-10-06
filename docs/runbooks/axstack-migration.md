@@ -60,7 +60,7 @@ Only proceed after replacement checks pass for the affected capability.
 - **Schedules:** verify exact object identity, legacy purpose and lack of current dependencies. Save a private restorable definition, pause the schedule, verify it is paused, then retire it only when restoration and consumer checks are complete. Preserve unmapped/custom schedules. Do not use a name match or delete/recreate unrelated objects.
 - **Desktop/editor integration:** apply narrow approved entry removal, preserving general files and bindings. Load the installed `omarchy` skill instructions before live desktop customization; if unavailable, hold that desktop step. Recheck affected behavior; no desktop restart merely to simplify evidence collection.
 
-Hermes and T3 are retirement candidates. If active users, agents, notification delivery or other consumers depend on them, hold only their retirement and report why. Their absence from the new installer does not automatically stop them. Unknown system Claude services remain intact until positive provenance establishes that they are in scope.
+Hermes stays on Debian for Telegram transport through `hermes send`, as specified in [the approved T3 migration](https://github.com/axatbhardwaj/Haoshoku/issues/104). Haoshoku checks its existing private Telegram configuration and running gateway without deploying the Paseo relay plugin or changing existing plugin data and relay markers. T3 remains a retirement candidate under this older migration plan: active consumers hold that retirement, and absence from an installer does not stop it. Unknown system Claude services remain intact until positive provenance establishes that they are in scope.
 
 ## Failure and recovery
 

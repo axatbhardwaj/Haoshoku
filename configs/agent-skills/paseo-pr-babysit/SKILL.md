@@ -23,11 +23,6 @@ Record the user's existing authorization for branch pushes, PR responses, thread
 
 Apply the shared [HUMAN_DECISION reference](../model-routing/references/human-decisions.md) before escalating a high-stakes change beyond the accepted specification. Finish technical review, keep the persistent PR owner, hold `APPROVE` and `MERGE_READY`, and inspect pending relay state on later runs. The relay forwards receipts only; the driver revalidates before action.
 
-Before any Hermes relay CLI, pending-state inspection, or escalation transport,
-run `$HOME/.agents/skills/model-routing/references/hermes-relay-host-enabled`.
-If its marker is missing or disabled, make no Hermes or remote calls and keep the
-high-stakes decision in the normal local Paseo conversation.
-
 ## Start one watch
 
 1. Resolve repository, PR number/URL, author, authenticated actor, writable head repository/branch, current head/base/merge-base, gh stack topology and existing watch ownership. Confirm this is the user's/team's authored PR; ambiguous ownership is a user question, not permission to modify a peer's branch. Reuse an existing watch for the same PR instead of creating overlapping writers.

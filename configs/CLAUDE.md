@@ -29,7 +29,7 @@ Template configuration files copied to user's `~/.config/` during setup.
 | `agent-skills/` | Haoshoku-owned portable orchestration skills | Updating routing or review workflow policy |
 | `upstream-skills/` | Immutable third-party skill payloads with adjacent provenance and license records | Updating a pinned upstream skill revision without modifying vendor bytes |
 | `paseo/`        | Whitelist-only Paseo profile/provider policy | Updating managed orchestration profiles without credentials |
-| `hermes-relay/` | Immutable Hermes runtime and public standalone relay source locks | Updating Hermes or relay source pins |
+| `hermes-relay/` | Immutable Hermes runtime bootstrap pin | Updating the Hermes runtime pin |
 | `hyprmoncfg/`   | Authored monitor/workspace profile JSON consumed by hyprmoncfg; Haoshoku NEVER writes generated `monitors.lua` | Modifying monitor layouts or monitor-bound workspace rules without crossing the hyprmoncfg ownership boundary |
 | `kde/`          | KDE Ocean theme bundle (5 components)   | Modifying KDE theme deployment            |
 | `kwin/`         | KWin script placing KDE Activity windows on outputs by connector name | Modifying activity-window output placement |
