@@ -128,6 +128,20 @@ describe("findActiveModeFlags", () => {
 		);
 	});
 
+	it("ignores retired Paseo task and schedule modes", () => {
+		expect(
+			findActiveModeFlags({
+				paseoTasks: true,
+				paseoSchedules: true,
+				paseoSchedulesCheck: true,
+				paseoSchedulesApply: true,
+				paseoTasksEnabled: "enabled",
+				paseoTaskCleanup: "archive",
+				paseoTaskRenaming: "enabled",
+			}),
+		).toEqual([]);
+	});
+
 	it("returns both names when two mode flags are set", () => {
 		const result = findActiveModeFlags({ claude: true, audio: true });
 		expect(result.length).toBe(2);

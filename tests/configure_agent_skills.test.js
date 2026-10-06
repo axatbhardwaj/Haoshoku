@@ -80,17 +80,8 @@ describe("Haoshoku agent skills", () => {
 			),
 		).toEqual({ theme: "dark" });
 		expect(
-			JSON.parse(
-				fs.readFileSync(
-					path.join(home, ".config", "haoshoku", "paseo-tasks.json"),
-					"utf8",
-				),
-			),
-		).toEqual({
-			enabled: true,
-			renameChats: true,
-			cleanup: "archive",
-		});
+			fs.existsSync(path.join(home, ".config", "haoshoku", "paseo-tasks.json")),
+		).toBe(false);
 	});
 
 	it("replaces absolute links but preserves real skill directories", () => {
@@ -141,14 +132,14 @@ describe("Haoshoku agent skills", () => {
 		expect(warnings.join("\n")).toContain("code-review");
 	});
 
-	it("fails setup without replacing invalid task lifecycle config", () => {
+	it("ignores existing retired task config without changing it", () => {
 		const { home, projectRoot } = fixture();
 		const config = path.join(home, ".config", "haoshoku", "paseo-tasks.json");
 		fs.mkdirSync(path.dirname(config), { recursive: true });
 		fs.writeFileSync(config, '{"cleanup":"delete"}\n');
 		const before = fs.readFileSync(config);
 
-		expect(syncAgentSkills({ home, projectRoot })).toBe(false);
+		expect(syncAgentSkills({ home, projectRoot })).toBe(true);
 		expect(fs.readFileSync(config)).toEqual(before);
 	});
 
