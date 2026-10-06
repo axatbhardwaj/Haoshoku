@@ -4,12 +4,31 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import {
-	AXSTACK_VERSION,
 	checkAxstack,
-	configureAxstack,
+	configureAxstack as runConfigureAxstack,
 } from "../src/helpers/configure_axstack.js";
 
+const LATEST_VERSION = "0.24.7";
+const REGISTRY_URL = "https://registry.npmjs.org/axstack/latest";
 const homes = [];
+
+function configureAxstack(options) {
+	return runConfigureAxstack({
+		bunPath: "/test/bin/bun",
+		fetcher: registryFetcher(),
+		...options,
+	});
+}
+
+function registryFetcher(downloaded = fixture(), requests = []) {
+	return async (url) => {
+		requests.push(url);
+		if (url === REGISTRY_URL) return Response.json(downloaded.metadata);
+		if (url === downloaded.metadata.dist.tarball)
+			return new Response(downloaded.archive);
+		throw new Error(`unexpected URL: ${url}`);
+	};
+}
 
 function makeHome() {
 	const home = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-axstack-"));
@@ -21,7 +40,13 @@ function fixture(bytes = "fixture axstack archive") {
 	const archive = Buffer.from(bytes);
 	return {
 		archive,
-		sha256: createHash("sha256").update(archive).digest("hex"),
+		metadata: {
+			version: LATEST_VERSION,
+			dist: {
+				tarball: `https://registry.npmjs.org/axstack/-/axstack-${LATEST_VERSION}.tgz`,
+				integrity: `sha512-${createHash("sha512").update(archive).digest("base64")}`,
+			},
+		},
 	};
 }
 
@@ -40,12 +65,12 @@ function makeExtractor(calls) {
 		fs.writeFileSync(path.join(packageRoot, "bin", "axstack.js"), "cli");
 		fs.writeFileSync(
 			path.join(packageRoot, "package.json"),
-			JSON.stringify({ version: AXSTACK_VERSION }),
+			JSON.stringify({ version: LATEST_VERSION }),
 		);
 	};
 }
 
-function releasePaths(home, version = AXSTACK_VERSION) {
+function releasePaths(home, version = LATEST_VERSION) {
 	const target = paths(home);
 	const release = path.join(target.dataDir, "releases", version, "package");
 	return {
@@ -63,7 +88,82 @@ afterEach(() => {
 });
 
 describe("configureAxstack", () => {
-	it("rejects a checksum mismatch before writing the release or shim", async () => {
+	it.each([
+		null,
+		{},
+		{ ...fixture().metadata, version: "../unsafe" },
+		{
+			...fixture().metadata,
+			dist: {
+				...fixture().metadata.dist,
+				tarball: "http://example.com/archive",
+			},
+		},
+		{
+			...fixture().metadata,
+			dist: { ...fixture().metadata.dist, integrity: "sha256-abcd" },
+		},
+		{
+			...fixture().metadata,
+			dist: { ...fixture().metadata.dist, integrity: "sha512-invalid" },
+		},
+	])("rejects malformed registry metadata %j without touching an existing shim", async (metadata) => {
+		const home = makeHome();
+		const target = releasePaths(home, "0.7.0");
+		fs.mkdirSync(target.binDir, { recursive: true });
+		fs.writeFileSync(target.shim, `exec bun "${target.cli}" "$@"\n`);
+		const before = fs.readFileSync(target.shim);
+		const requests = [];
+		const result = await configureAxstack({
+			...target,
+			home,
+			fetcher: async (url) => {
+				requests.push(url);
+				return Response.json(metadata);
+			},
+			extractor: async () => {
+				throw new Error("must not extract");
+			},
+			runner: async () => {
+				throw new Error("must not run");
+			},
+		});
+		expect(result.ok).toBe(false);
+		expect(result.harnesses.claude.reason).toContain("metadata");
+		expect(requests).toEqual([REGISTRY_URL]);
+		expect(fs.readFileSync(target.shim)).toEqual(before);
+		expect(fs.existsSync(target.dataDir)).toBe(false);
+	});
+
+	it.each([
+		"unreachable",
+		"http",
+		"json",
+		"tarball",
+	])("keeps an installed shim when the registry or tarball fails: %s", async (failure) => {
+		const home = makeHome();
+		const target = releasePaths(home, "0.7.0");
+		fs.mkdirSync(target.binDir, { recursive: true });
+		fs.writeFileSync(target.shim, `exec bun "${target.cli}" "$@"\n`);
+		const before = fs.readFileSync(target.shim);
+		const result = await configureAxstack({
+			...target,
+			home,
+			fetcher: async (url) => {
+				if (failure === "unreachable") throw new Error("registry unreachable");
+				if (failure === "http") return new Response("", { status: 503 });
+				if (failure === "json") return new Response("invalid json");
+				return url === REGISTRY_URL
+					? Response.json(fixture().metadata)
+					: new Response("", { status: 404 });
+			},
+		});
+		expect(result.ok).toBe(false);
+		expect(fs.readFileSync(target.shim)).toEqual(before);
+		expect(fs.existsSync(target.dataDir)).toBe(false);
+	});
+
+	it("rejects an integrity mismatch before writing the release or shim", async () => {
 		const home = makeHome();
 		const target = releasePaths(home, "0.7.0");
 		const shimPath = target.shim;
@@ -76,14 +176,20 @@ describe("configureAxstack", () => {
 		const shimBefore = fs.readFileSync(shimPath);
 		const result = await configureAxstack({
 			...target,
-			fetcher: async () => new Response("wrong archive"),
+			fetcher: registryFetcher({
+				...fixture(),
+				archive: Buffer.from("wrong archive"),
+			}),
+			extractor: async () => {
+				throw new Error("must not extract");
+			},
 			home,
 		});
 
 		expect(result.ok).toBe(false);
-		expect(result.release.version).toBe(AXSTACK_VERSION);
+		expect(result.release.version).toBe(LATEST_VERSION);
 		expect(result.release.action).toBe("kept");
-		expect(result.harnesses.claude.reason).toContain("checksum");
+		expect(result.harnesses.claude.reason).toContain("integrity");
 		expect(fs.existsSync(target.dataDir)).toBe(false);
 		expect(fs.readFileSync(shimPath)).toEqual(shimBefore);
 	});
@@ -109,23 +215,27 @@ describe("configureAxstack", () => {
 		const home = makeHome();
 		const target = releasePaths(home);
 		const downloaded = fixture();
+		const requests = [];
 		const extracted = [];
 		const invocations = [];
 		const result = await configureAxstack({
 			...target,
 			bunPath: "/test/bin/bun",
 			extractor: makeExtractor(extracted),
-			fetcher: async () => new Response(downloaded.archive),
+			fetcher: registryFetcher(downloaded, requests),
 			home,
 			runner: async (executable, args) => {
 				invocations.push([executable, ...args]);
 				return { exitCode: 0, stderr: "", stdout: "installed" };
 			},
-			sha256: downloaded.sha256,
 		});
 
 		expect(result.ok).toBe(true);
-		expect(result.release).toEqual({ action: "installed", version: "0.8.0" });
+		expect(result.release).toEqual({
+			action: "installed",
+			version: LATEST_VERSION,
+		});
+		expect(requests).toEqual([REGISTRY_URL, downloaded.metadata.dist.tarball]);
 		expect(extracted).toHaveLength(1);
 		expect(fs.existsSync(target.cli)).toBe(true);
 		expect(fs.statSync(target.shim).mode & 0o777).toBe(0o755);
@@ -152,17 +262,16 @@ describe("configureAxstack", () => {
 		const home = makeHome();
 		const target = releasePaths(home);
 		const releasesDir = path.dirname(path.dirname(target.release));
-		const stale = path.join(releasesDir, `.${AXSTACK_VERSION}-stale`);
+		const stale = path.join(releasesDir, `.${LATEST_VERSION}-stale`);
 		fs.mkdirSync(stale, { recursive: true });
 		fs.writeFileSync(path.join(stale, "partial"), "interrupted");
 		const downloaded = fixture();
 		const result = await configureAxstack({
 			...target,
 			extractor: makeExtractor([]),
-			fetcher: async () => new Response(downloaded.archive),
+			fetcher: registryFetcher(downloaded),
 			home,
 			runner: async () => ({ exitCode: 0, stderr: "", stdout: "installed" }),
-			sha256: downloaded.sha256,
 		});
 
 		expect(result.ok).toBe(true);
@@ -172,72 +281,68 @@ describe("configureAxstack", () => {
 
 	it("keeps a newer shim target without downloading or extracting", async () => {
 		const home = makeHome();
-		const target = releasePaths(home, "0.9.0");
+		const target = releasePaths(home, "0.25.0");
 		fs.mkdirSync(target.binDir, { recursive: true });
 		fs.writeFileSync(
 			target.shim,
 			`#!/bin/sh\nexec bun ${JSON.stringify(target.cli)} "$@"\n`,
 		);
 		const before = fs.readFileSync(target.shim);
-		let downloaded = false;
+		const requests = [];
 		let ran = false;
 		const result = await configureAxstack({
 			...target,
-			fetcher: async () => {
-				downloaded = true;
-			},
+			fetcher: registryFetcher(fixture(), requests),
 			home,
 			runner: async () => {
 				ran = true;
 			},
 		});
 
-		expect(result.release).toEqual({ action: "kept-newer", version: "0.9.0" });
-		expect(downloaded).toBe(false);
+		expect(result.release).toEqual({ action: "kept-newer", version: "0.25.0" });
+		expect(requests).toEqual([REGISTRY_URL]);
 		expect(ran).toBe(false);
 		expect(fs.readFileSync(target.shim)).toEqual(before);
 	});
 
 	it("keeps a newer suffixed shim target without downloading", async () => {
 		const home = makeHome();
-		const target = releasePaths(home, "0.8.1-abc123");
+		const target = releasePaths(home, "0.24.8-abc123");
 		fs.mkdirSync(path.dirname(target.cli), { recursive: true });
 		fs.mkdirSync(target.binDir, { recursive: true });
 		fs.writeFileSync(
 			path.join(target.release, "package.json"),
-			JSON.stringify({ version: "0.8.1-abc123" }),
+			JSON.stringify({ version: "0.24.8-abc123" }),
 		);
 		fs.writeFileSync(
 			target.shim,
 			`#!/bin/sh\nexec bun ${JSON.stringify(target.cli)} "$@"\n`,
 		);
 		const before = fs.readFileSync(target.shim);
-		let downloaded = false;
+		const requests = [];
 		const result = await configureAxstack({
 			...target,
-			fetcher: async () => {
-				downloaded = true;
-			},
+			fetcher: registryFetcher(fixture(), requests),
 			home,
 		});
 
 		expect(result.release).toEqual({
 			action: "kept-newer",
-			version: "0.8.1-abc123",
+			version: "0.24.8-abc123",
 		});
-		expect(downloaded).toBe(false);
+		expect(requests).toEqual([REGISTRY_URL]);
 		expect(fs.readFileSync(target.shim)).toEqual(before);
 	});
 
 	it("keeps a same-base suffixed build and reruns both harness installs", async () => {
 		const home = makeHome();
-		const target = releasePaths(home, "0.8.0-abc123");
+		const target = releasePaths(home, `${LATEST_VERSION}-abc123`);
 		fs.mkdirSync(path.dirname(target.cli), { recursive: true });
 		fs.mkdirSync(target.binDir, { recursive: true });
 		fs.writeFileSync(target.cli, "user-managed cli");
 		fs.writeFileSync(
 			path.join(target.release, "package.json"),
-			JSON.stringify({ version: "0.8.0-abc123" }),
+			JSON.stringify({ version: `${LATEST_VERSION}-abc123` }),
 		);
 		fs.writeFileSync(
 			target.shim,
@@ -247,9 +352,7 @@ describe("configureAxstack", () => {
 		const invocations = [];
 		const result = await configureAxstack({
 			...target,
-			fetcher: async () => {
-				throw new Error("must not download");
-			},
+			fetcher: registryFetcher(),
 			home,
 			runner: async (_executable, args) => {
 				invocations.push(args);
@@ -259,7 +362,7 @@ describe("configureAxstack", () => {
 
 		expect(result.release).toEqual({
 			action: "kept-user-managed",
-			version: "0.8.0-abc123",
+			version: `${LATEST_VERSION}-abc123`,
 		});
 		expect(invocations).toHaveLength(2);
 		expect(invocations[0]).toContain(target.cli);
@@ -281,19 +384,17 @@ describe("configureAxstack", () => {
 			`#!/bin/sh\nexec bun ${JSON.stringify(target.cli)} "$@"\n`,
 		);
 		const before = fs.readFileSync(target.shim);
-		let downloaded = false;
+		const requests = [];
 		const result = await configureAxstack({
 			...target,
-			fetcher: async () => {
-				downloaded = true;
-			},
+			fetcher: registryFetcher(fixture(), requests),
 			home,
 		});
 
 		expect(result.ok).toBe(false);
 		expect(result.release.action).toBe("kept");
 		expect(result.harnesses.claude.reason).toContain("unparsable");
-		expect(downloaded).toBe(false);
+		expect(requests).toEqual([]);
 		expect(fs.readFileSync(target.shim)).toEqual(before);
 	});
 
@@ -317,9 +418,7 @@ describe("configureAxstack", () => {
 			extractor: async () => {
 				extractions += 1;
 			},
-			fetcher: async () => {
-				throw new Error("must not download");
-			},
+			fetcher: registryFetcher(),
 			home,
 			runner: async (_executable, args) => {
 				invocations.push(args);
@@ -449,7 +548,7 @@ describe("checkAxstack", () => {
 		expect(report.shim).toEqual({
 			path: target.shim,
 			present: true,
-			version: "0.8.0",
+			version: LATEST_VERSION,
 		});
 		expect(report.version).toEqual({ ok: true, reason: "axstack 0.8.0" });
 		expect(report.harnesses.claude.reason).toContain("instruction owned");
