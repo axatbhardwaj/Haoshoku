@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Remove Paseo task lifecycle and schedule configuration commands.
+
 - Keep Debian Hermes Telegram transport independent of Paseo: verify readiness
   without deploying a relay plugin, restarting the gateway, or writing host markers.
 

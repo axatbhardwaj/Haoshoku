@@ -39,12 +39,6 @@ function deployModeFeaturesFromCli() {
 		// The default setup persists dark through agent-skills sync. This flag is
 		// only an explicit preference override, not another deploy capability.
 		"--explainer-theme",
-		// Agent-skills sync ensures the Paseo task defaults. These flags only
-		// create or override that preference outside the default setup path.
-		"--paseo-tasks",
-		"--paseo-tasks-enabled",
-		"--paseo-task-cleanup",
-		"--paseo-task-renaming",
 		// The workspaces deploy ensures the gaming autostart defaults. These
 		// flags only create or override that preference outside the default
 		// setup path.
@@ -54,11 +48,6 @@ function deployModeFeaturesFromCli() {
 		// The split-lock sudoers rule is installed only after the opt-in gaming
 		// prompt, never on an unattended default run.
 		"--gaming-split-lock",
-		// Schedule ownership and mutation are always explicit, host-local modes.
-		// Normal setup must never connect to or modify the schedule API.
-		"--paseo-schedules",
-		"--paseo-schedules-check",
-		"--paseo-schedules-apply",
 		"--axstack-check",
 		"--skills",
 		"--skills-update",
