@@ -1,6 +1,6 @@
-# Spec r4: Replace Paseo with T3 Code in Haoshoku
+# Spec r5: Replace Paseo with T3 Code in Haoshoku
 
-Status: APPROVED by user 2026-10-06 ("approve and release"). This issue is the authoritative specification.
+Status: APPROVED by user 2026-10-06 ("approve and release"); r5 amendment (PR6 installs the latest Axstack instead of a pin) requested by the user 2026-10-06 ("it should install the latest axstack not pin"). This issue is the authoritative specification.
 
 ## Outcome
 
@@ -18,7 +18,7 @@ User decisions (T3 thread, 2026-10-06):
 
 Driver decisions (from host evidence and adviser review; approval of this spec confirms them):
 - D7 T3 channel is nightly: Debian installs `t3@nightly`; Omarchy uses the packaged `t3-nightly`. Observed: `t3 --version` reports `0.0.46-nightly.20261003.2610` on the VPS and on the workstation (`t3-nightly` there reports `.20261004.2644`). Axstack 0.24.1's check requires `t3` ≥ `0.0.46-nightly.20261003.2610`; npm `t3@latest` is 0.0.45. Advisers had recommended keeping the Debian T3 step optional (default no); D4 overrides that, so the T3 step becomes required.
-- D8 Pin Axstack to the T3-native 0.24.1. The current 0.8.0 pin is Orca-era (it does not touch Paseo), and Orca is retired.
+- D8 Install the latest T3-native Axstack from npm instead of a pinned release (user, r5). The current 0.8.0 pin is Orca-era (it does not touch Paseo), and Orca is retired.
 - D9 Keep the `--server-hermes-relay` flag name and `configs/agent-profile/GEMINI.append.md` (Antigravity cost rule, not Paseo routing).
 - D10 Repository-only change: no live-host mutation. Historical CHANGELOG entries, `docs/specs/`, `docs/plans/`, `docs/superpowers/` stay unchanged. Maintained docs (README, `docs/haoshoku.md`, `docs/runbooks/axstack-migration.md`, CLAUDE.md/AGENTS.md files) are updated by the PR that removes each feature.
 - D16 T3 Connect is removed and existing Connect exposure is unlinked (driver inference from D5 and the VPS probe, where Connect is disabled).
@@ -72,8 +72,8 @@ Driver decisions (from host evidence and adviser review; approval of this spec c
 - Omarchy workspaces (pc + laptop): remove the Paseo autostart; bind SUPER+T to `o.launch_sole("^com\\.t3tools\\.T3Code$", "t3code-nightly")`; `bindings.lua` unchanged. Remove the `paseo` recipe from `haoshoku-special-workspace`. Update workspace and special-workspace tests.
 - README and maintained docs describe T3 Code instead of Paseo, with a migration note listing what existing hosts keep until removed manually: `paseo-daemon.service`, `~/.paseo`, the `@getpaseo/cli` install, upstream Paseo skills, `~/.hermes/plugins/paseo-review-relay` and its data, `~/.local/bin/hermes-relay`, and `~/.config/haoshoku/{hermes-relay,paseo-tasks,paseo-schedules}.json`.
 
-### PR6 — Pin the T3-native Axstack release
-- Pin Axstack 0.24.1 from the npm tarball URL and SHA-256 above; checksum rejection happens before extraction or shim creation. Keep existing newer/same-base/reuse/unparsable-shim behaviour; derive test version fixtures from `AXSTACK_VERSION`.
+### PR6 — Install the latest T3-native Axstack
+- Resolve the latest Axstack from the npm registry (`axstack` package `latest` dist-tag: version, tarball URL, and `dist.integrity`). Download that tarball and verify it against the registry's `dist.integrity` (sha512) before extraction or shim creation; a mismatch or an unreachable registry fails without changing the installed shim. Remove the hard-coded version, URL, and SHA-256 pin. Keep existing reuse/unparsable-shim behaviour; an installed version equal to or newer than latest is kept. Tests mock the registry response.
 - `--axstack-check` reports `roles.json` presence at `~/.claude/skills/axstack/roles.json` and `~/.agents/skills/axstack/roles.json` instead of `~/.paseo/config.json`; readback stays report-only, outside `ok`.
 - In `configureAxstack`, before install on Omarchy: if no `t3` is on PATH and `/usr/bin/t3-nightly` exists, link `~/.local/bin/t3` to it; never replace an existing `~/.local/bin/t3`. README documents Axstack's Bun ≥ 1.3.14 and `t3` ≥ 0.0.46-nightly prerequisites.
 
@@ -90,7 +90,7 @@ After every PR and PR #103 are verified merged: from a clean `stable` checkout f
 - A6 T3 server step (mocked): reuses a `t3` that meets the floor and installs `t3@nightly` under `~/.local` only when `t3` is missing or too old; writes the drop-ins (sandbox only as root); requires Tailscale before changes; fails on stopped service, missing or wrong Serve mapping, or unreachable HTTPS URL; unlinks enabled Connect before the service restart and never links or authorizes Connect.
 - A7 Agent-skill sync archives the live copies of `model-routing`, `paseo-pr-babysit`, `paseo-pr-review`, unlinks managed Claude/Codex links, and returns true.
 - A8 Both workspace variants bind SUPER+T to the anchored T3 class pattern and have no Paseo autostart; primary-app behaviour and `bindings.lua` are unchanged.
-- A9 `haoshoku --axstack` installs 0.24.1 from the pinned npm tarball with checksum verification; `--axstack-check` reports both `roles.json` paths; the Omarchy `t3` link is created only when `t3` is absent.
+- A9 `haoshoku --axstack` installs the npm `latest` Axstack, verified against the registry's `dist.integrity` (mocked in tests); `--axstack-check` reports both `roles.json` paths; the Omarchy `t3` link is created only when `t3` is absent.
 - A10 `GEMINI.append.md`, the `PROFILE.md` Hermes notification text, and historical docs are unchanged.
 - A11 Release: tag `v12.0.0`, GitHub release published, npm reports `haoshoku@12.0.0`.
 
