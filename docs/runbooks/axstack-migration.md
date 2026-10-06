@@ -34,7 +34,7 @@ Names or markers alone do not prove ownership. A retained Paseo unit can be Haos
 
 1. Verify host identity and CLI paths/versions for Axstack, Claude Code, Codex, Paseo, Bun and gh/gh-stack. Resolve wrappers to their package location without executing installation or exposing environment files.
 2. Inspect each existing Axstack manifest and its profile-file binding. Retain an existing shared-directory binding; do not pass the same profile file to an installation in another skills root. Preserve independently managed OpenCode targets.
-3. Inventory Claude/Codex instruction files, skill roots, old task/theme configuration and installed legacy helpers. Check native Paseo skills and independent specialist skills separately.
+3. Inventory Claude/Codex instruction files, skill roots, old task/theme configuration and installed legacy helpers. Check independently installed skills separately; Haoshoku now installs only Matt Pocock skills and its pinned visual-explainer payload.
 4. Inventory exact user/system service instances, enabled state and consumers. Template presence is not an active instance. Keep the Paseo runtime and phone connectivity.
 5. Inventory native Paseo schedules through its supported CLI/API before manual retirement. Haoshoku no longer manages task lifecycle or schedule mappings. Preserve schedules unless positive evidence establishes approved legacy ownership.
 6. Inventory AI-only desktop/editor entries and extra applications. Mixed files and independently installed applications are not removed wholesale. Keep unrelated desktop behavior and necessary Paseo access.
@@ -55,7 +55,7 @@ Haoshoku no longer bundles, syncs, or backs up Paseo orchestration profiles. Exi
 
 Only proceed after replacement checks pass for the affected capability.
 
-- **Skills and configuration:** archive positively identified legacy entries outside every active discovery root. Remove only verified managed links. Preserve independent specialist/native Paseo skills, credentials, sessions and unrelated instructions. Do not wipe `.agents`, `.claude`, `.codex` or `.paseo`.
+- **Skills and configuration:** archive positively identified legacy entries outside every active discovery root. Remove only verified managed links. Preserve independently installed specialist skills, credentials, sessions and unrelated instructions. Do not wipe `.agents`, `.claude`, `.codex` or `.paseo`.
 - **Services:** verify the exact instance and current consumer graph. Stop the approved legacy instance, disable future activation, archive its verified unit/helper/settings, reload the relevant service manager and read back inactive/disabled or absent state. Never stop the driver transport or required Paseo runtime. Shared binaries/user data remain unless separately proven safe and in scope.
 - **Schedules:** verify exact object identity, legacy purpose and lack of current dependencies. Save a private restorable definition, pause the schedule, verify it is paused, then retire it only when restoration and consumer checks are complete. Preserve unmapped/custom schedules. Do not use a name match or delete/recreate unrelated objects.
 - **Desktop/editor integration:** apply narrow approved entry removal, preserving general files and bindings. Load the installed `omarchy` skill instructions before live desktop customization; if unavailable, hold that desktop step. Recheck affected behavior; no desktop restart merely to simplify evidence collection.

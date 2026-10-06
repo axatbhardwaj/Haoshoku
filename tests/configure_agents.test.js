@@ -29,6 +29,24 @@ describe("AGENT_TARGETS manifest", () => {
 });
 
 describe("bundled shared agent profile", () => {
+	it("keeps bundled global templates aligned with the shared agent profile", () => {
+		const read = (relativePath) =>
+			fs.readFileSync(path.join(import.meta.dir, "..", relativePath), "utf8");
+		const compact = (value) => value.replace(/\s+/g, " ");
+		const profile = compact(read("configs/agent-profile/PROFILE.md"));
+		for (const relativePath of [
+			"configs/codex/AGENTS.md",
+			"configs/claude/CLAUDE.md",
+		]) {
+			const template = compact(read(relativePath));
+			expect(template, relativePath).toContain("## Notifications");
+			expect(template, relativePath).toBe(profile);
+			expect(template, relativePath).toContain("T3 Code orchestration");
+			expect(template, relativePath).toContain("Axstack workflows");
+			expect(template, relativePath).toContain("gh stack");
+		}
+	});
+
 	it("routes Notion and Linear MCP access through Executor", () => {
 		for (const relativePath of [
 			"configs/agent-profile/PROFILE.md",

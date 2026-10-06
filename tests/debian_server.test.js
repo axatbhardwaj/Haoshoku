@@ -321,7 +321,10 @@ describe("Debian default path", () => {
 		expect(result).toBe(true);
 		expect(events).toContainEqual({ type: "helper", name: "agents" });
 		expect(events).toContainEqual({ type: "helper", name: "axstack" });
-		expect(events).not.toContainEqual({ type: "helper", name: "paseo-profiles" });
+		expect(events).not.toContainEqual({
+			type: "helper",
+			name: "paseo-profiles",
+		});
 		expect(events).toContainEqual({
 			type: "warning",
 			message: expect.stringContaining("Ambiguous multiline TOML"),

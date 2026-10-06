@@ -374,12 +374,12 @@ describe("default-run reachability", () => {
 		defaultCallsByPath.set("debian-server", new Set(runDebianDefaultPath()));
 	});
 
-	it.each(["arch", "debian-server"])(
-		"omits retired Paseo profile sync on the %s default path",
-		(pathName) => {
-			expect(defaultCallsByPath.get(pathName).has("paseoProfiles")).toBe(false);
-		},
-	);
+	it.each([
+		"arch",
+		"debian-server",
+	])("omits retired Paseo profile sync on the %s default path", (pathName) => {
+		expect(defaultCallsByPath.get(pathName).has("paseoProfiles")).toBe(false);
+	});
 
 	for (const deployFeature of deployModeFeatures) {
 		it(`invokes ${deployFeature.flag} on every applicable default path`, () => {

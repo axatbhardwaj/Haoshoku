@@ -26,7 +26,6 @@ Template configuration files copied to user's `~/.config/` during setup.
 | `claude-stay-awake/` | Claude CLI sleep-inhibitor watcher and systemd user unit | Modifying suspend blocking or session detection |
 | `codex/`        | Codex compact personal policy | Modifying deployed Codex agent guidance   |
 | `agent-profile/` | Shared T3 Code profile (PROFILE.md) deployed to Claude, Codex, Opencode and Antigravity, plus harness-specific appendices (e.g. GEMINI.append.md) | Modifying the single configurable agent identity |
-| `agent-skills/` | Haoshoku-owned portable orchestration skills | Updating routing or review workflow policy |
 | `upstream-skills/` | Immutable third-party skill payloads with adjacent provenance and license records | Updating a pinned upstream skill revision without modifying vendor bytes |
 | `hermes-relay/` | Immutable Hermes runtime bootstrap pin | Updating the Hermes runtime pin |
 | `hyprmoncfg/`   | Authored monitor/workspace profile JSON consumed by hyprmoncfg; Haoshoku NEVER writes generated `monitors.lua` | Modifying monitor layouts or monitor-bound workspace rules without crossing the hyprmoncfg ownership boundary |

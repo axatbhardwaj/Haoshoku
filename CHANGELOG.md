@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Retire bundled routing skills with archival of live edits; remove agent-skill
+  backup and install only Matt Pocock skills through the Skills CLI.
+
 - Remove Paseo profile sync and backup commands and the profile-sync step from
   Arch and Debian setup.
 

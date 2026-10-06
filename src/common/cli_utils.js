@@ -27,7 +27,6 @@ export const MODE_FLAGS = [
 	"skillsUpdate",
 	"skillsList",
 	"agentSkills",
-	"agentSkillsBackup",
 	"explainerTheme",
 	"ghStack",
 	"audio",

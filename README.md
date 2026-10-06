@@ -194,17 +194,15 @@ therefore reverted on the next deploy. Every other top-level key — including
 
 ## Agent and orchestration policy
 
-Haoshoku deploys the compact Claude/Codex instructions, installs the Matt
-Pocock and upstream Paseo skill sources through the Skills CLI, and syncs its
-three owned workflow skills: `model-routing`, `paseo-pr-babysit`, and
-`paseo-pr-review`. It also installs the pinned upstream `visual-explainer`
-payload without treating it as a Haoshoku-owned backup source. Back up live
-edits with:
+Haoshoku deploys the compact Claude/Codex instructions and installs Matt
+Pocock skills through the Skills CLI with `--skills` or `--skills-update`.
+`--agent-skills` syncs the pinned upstream `visual-explainer` payload and its
+portable Claude/Codex links. Routing and review workflow policy live in Axstack.
+Back up live instruction edits with:
 
 ```bash
 haoshoku --claude-backup
 haoshoku --codex-backup
-haoshoku --agent-skills-backup
 ```
 
 The shared profile lives at `configs/agent-profile/PROFILE.md`. Apply it to
@@ -224,35 +222,12 @@ theme in a request takes precedence. Fixed dark or light output uses the full
 upstream renderer, while the system theme may use quick mode. On the first
 sync after this migration, Haoshoku archives the retired shared
 `html-deliverables` skill under `~/.config/haoshoku/retired-agent-skills/`
-before removing only its managed Claude/Codex links.
-
-Ordinary peer PR review and implementation checkpoints use one `review-code`
-session covering Standards, Spec and the shared simplicity checklist directly.
-The six-angle workflow is reserved for an explicit six-angle request or
-documented, substantial high-risk work needing genuinely distinct coverage. A
-direct invocation of upstream `code-review` retains its two-axis native-subagent
-method.
-
-PR babysitting launches the Opus monitor and watchdog as separate sessions.
-Each owns its own expiring heartbeat; healthy ticks update snapshots without
-waking the driver, while failures and renewal needs are deduplicated and sent
-to the driver for acknowledgement and coordination.
-
-Prefer Astra at low effort when choosing the main conversation; the actual
-selected model remains the driver. Escalation is bounded to the reasoning work
-that needs it; outside the two fixed Sonnet roles, xhigh is reserved for an
-explicit exceptional request, and unrelated work returns to low. Fable Advisor runs at
-medium and is consulted only for unresolved consequential decisions after cheap
-factual checks; there is no dedicated Astra advisor profile or mandatory
-two-advisor council. High-stakes decisions still require Fable's plain AGREE and
-the driver's accepted assessment; an unavailable Fable pauses only that
-decision unless the user explicitly overrides the gate. Ordinary nontrivial
-changes use a Sol medium author and an independent Opus medium reviewer.
-High-stakes changes use an Opus high author and a fresh Sol high reviewer; the
-same author owns fixes, and the reviewer session must have authored none of the
-candidate, including uncommitted work. Simple known edits stay direct.
-Discovery, workspace ownership and unchanged skill references are cached for
-the task and refreshed on relevant configuration or capability changes.
+before removing only its managed Claude/Codex links. The same migration
+archives `model-routing`, `paseo-pr-babysit`, and `paseo-pr-review`, preserving
+live edits in the archive. Agent-specific real directories and non-managed
+links are preserved. Haoshoku no longer installs upstream Paseo skills or
+supports `--agent-skills-backup`; existing upstream skills remain until removed
+manually.
 
 ## Claude Remote Control
 
@@ -345,7 +320,6 @@ haoshoku --skills
 haoshoku --skills-update
 haoshoku --skills-list
 haoshoku --agent-skills
-haoshoku --agent-skills-backup
 haoshoku --explainer-theme dark
 haoshoku --gh-stack
 haoshoku --claude-stay-awake

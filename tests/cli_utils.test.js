@@ -110,10 +110,10 @@ describe("findActiveModeFlags", () => {
 		).toEqual(["serverT3Code", "serverPaseo"]);
 	});
 
-	it("treats owned agent skill sync and backup as exclusive modes", () => {
+	it("recognizes skill sync while ignoring the retired backup mode", () => {
 		expect(
 			findActiveModeFlags({ agentSkills: true, agentSkillsBackup: true }),
-		).toEqual(["agentSkills", "agentSkillsBackup"]);
+		).toEqual(["agentSkills"]);
 	});
 
 	it("ignores retired Paseo profile sync and backup modes", () => {
