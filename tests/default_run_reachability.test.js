@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { promptDeviceType } from "../src/common/device_type.js";
-import { log } from "../src/common/utils.js";
+import { log, promptUser } from "../src/common/utils.js";
 import {
 	configureUserApps,
 	runCachyOSSetup,
@@ -152,7 +152,7 @@ function runIsolated(script, marker) {
 	return JSON.parse(encoded);
 }
 
-function runArchDefaultPath() {
+function runArchDefaultPath({ isOmarchy = true, gitAnswer = true } = {}) {
 	const modulePath = path.resolve(
 		import.meta.dir,
 		"..",
@@ -178,7 +178,7 @@ function runArchDefaultPath() {
 				...utils,
 				promptUser: async (message, initial) => {
 					prompts.push({ message, initial });
-					return true;
+					return ${gitAnswer};
 				},
 			}));
 			const {
@@ -194,10 +194,13 @@ function runArchDefaultPath() {
 				ensureRustToolchainImpl: record("rust"),
 				ensureAurHelperImpl: record("aur", "paru"),
 				installDevToolsImpl: record("devTools"),
-				commandExistsImpl: async (command) => command === "omarchy",
+				commandExistsImpl: async (command) => command === "omarchy" && ${isOmarchy},
 				installSystemPackagesImpl: record("systemPackages"),
 				installFlatpakAppsImpl: record("flatpaks"),
-				configureUserAppsImpl: () => configureUserApps({
+				configureUserAppsImpl: (options) => configureUserApps({
+					...options,
+					promptUserImpl: undefined,
+					configureGitImpl: undefined,
 					configureBrowserIntegrationImpl: () => configureBrowserIntegration({
 						configureChromiumProfilesImpl: record("chromiumProfiles"),
 						configureMimeappsImpl: record("mimeapps"),
@@ -363,6 +366,8 @@ function defaultSetupOverrides({
 
 function userAppDoubles(overrides = {}) {
 	return {
+		promptUserImpl: async () => false,
+		configureGitImpl: async () => {},
 		configureBrowserIntegrationImpl: async () => {},
 		configureAudioImpl: async () => {},
 		configureBashImpl: () => {},
@@ -395,6 +400,18 @@ describe("default-run reachability", () => {
 			prompts: archDefaultResult.prompts,
 		}).toEqual({ gitCalls: 0, prompts: [] });
 		expect(defaultCallsByPath.get("arch").has("prWatch")).toBe(true);
+	});
+
+	it.each([true, false])("offers git configuration on non-Omarchy Arch (answer=%s)", (gitAnswer) => {
+		const result = runArchDefaultPath({ isOmarchy: false, gitAnswer });
+		expect({
+			gitCalls: result.calls.filter((call) => call === "git").length,
+			prompts: result.prompts,
+		}).toEqual({
+			gitCalls: gitAnswer ? 1 : 0,
+			prompts: [{ message: "Configure git?", initial: true }],
+		});
+		expect(result.calls).toContain("prWatch");
 	});
 
 	it.each([
@@ -443,17 +460,25 @@ describe("default-run reachability", () => {
 		});
 	}
 
-	it("keeps PR watch in app setup", async () => {
+	it("keeps PR watch unconditional when optional offers are declined", async () => {
+		const offers = [];
 		let prWatchCalls = 0;
 
 		await configureUserApps(
 			userAppDoubles({
+				promptUserImpl: async (message, initial) => {
+					offers.push({ message, initial });
+					return false;
+				},
 				configurePrWatchImpl: async () => {
 					prWatchCalls += 1;
 				},
 			}),
 		);
 
+		expect(offers.map(({ message }) => message)).not.toContain(
+			"Enable PR watch helper?",
+		);
 		expect(prWatchCalls).toBe(1);
 	});
 
@@ -466,6 +491,14 @@ describe("default-run reachability", () => {
 		const originalWarning = log.warning;
 		log.warning = (message) => warnings.push(message);
 
+		const nonInteractivePrompt = (message, initial) =>
+			promptUser(message, initial, {
+				isTTY: false,
+				promptFn: async () => {
+					interactivePromptCalls += 1;
+					throw new Error("interactive prompt must not run");
+				},
+			});
 		const record = (name, result) => async () => {
 			events.push(name);
 			return result;
@@ -486,9 +519,12 @@ describe("default-run reachability", () => {
 									throw new Error("device prompt must not run");
 								},
 							}),
-						configureUserAppsImpl: () =>
+						configureUserAppsImpl: ({ isOmarchy }) =>
 							configureUserApps(
 								userAppDoubles({
+									isOmarchy,
+									promptUserImpl: nonInteractivePrompt,
+									configureGitImpl: record("git"),
 									installGhStackImpl: record("gh-stack"),
 									configurePrWatchImpl: record("pr-watch"),
 								}),
@@ -509,7 +545,6 @@ describe("default-run reachability", () => {
 		expect(warnings.join("\n")).toContain(
 			"full setup routing reads persisted config independently",
 		);
-		expect(warnings.join("\n")).not.toContain("Configure git?");
 		expect(warnings.join("\n")).not.toContain("gh-stack");
 		expect(warnings.join("\n")).not.toContain("Enable PR watch helper?");
 	});

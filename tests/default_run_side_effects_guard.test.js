@@ -59,6 +59,8 @@ const TEST_CALLER_CONTRACTS = new Map([
 	[
 		"configureUser" + "Apps",
 		[
+			"promptUserImpl",
+			"configureGitImpl",
 			"configureBrowserIntegrationImpl",
 			"configureAudioImpl",
 			"configureBashImpl",

@@ -4,9 +4,9 @@
 
 ### Removed
 
-- Arch/Omarchy setup no longer configures git. Omarchy sets your identity at
-  install; existing `~/.gitconfig` and git profile files are left untouched.
-  Debian server setup still offers git configuration.
+- On Omarchy, Haoshoku no longer configures git because Omarchy sets your
+  identity at install; existing `~/.gitconfig` and git profile files are left
+  untouched. Other Arch hosts and Debian servers still get the git prompt.
 
 ## 12.1.0 - 2026-10-06
 

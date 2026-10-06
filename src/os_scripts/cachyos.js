@@ -538,6 +538,9 @@ export async function configureBrowserIntegration({
 }
 
 export async function configureUserApps({
+	isOmarchy = false,
+	promptUserImpl = promptUser,
+	configureGitImpl,
 	configureBrowserIntegrationImpl = configureBrowserIntegration,
 	configureAudioImpl = configureAudio,
 	configureBashImpl = configureBash,
@@ -554,6 +557,13 @@ export async function configureUserApps({
 	configureSkillsImpl = configureSkills,
 	syncAgentSkillsImpl = syncAgentSkills,
 } = {}) {
+	if (!isOmarchy && (await promptUserImpl("Configure git?", true))) {
+		const configureGit =
+			configureGitImpl ??
+			(await import("../helpers/configure_git.js")).configureGit;
+		await configureGit();
+	}
+
 	await configureBrowserIntegrationImpl();
 	try {
 		await configureAudioImpl();
@@ -678,7 +688,7 @@ export async function runCachyOSSetup({
 
 		await installSystemPackagesImpl(aurHelper, isOmarchy);
 		await installFlatpakAppsImpl();
-		const userAppsResult = await configureUserAppsImpl();
+		const userAppsResult = await configureUserAppsImpl({ isOmarchy });
 		try {
 			if (!(await configureTailscaleT3Impl())) {
 				log.warning("Tailscale/T3 setup incomplete — continuing. Retry: haoshoku --tailscale-t3");

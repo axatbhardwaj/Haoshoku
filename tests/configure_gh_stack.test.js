@@ -7,6 +7,8 @@ const { installGhStack } = ghStack;
 
 function userAppDoubles(overrides = {}) {
 	return {
+		promptUserImpl: async () => false,
+		configureGitImpl: async () => {},
 		configureBrowserIntegrationImpl: async () => {},
 		configureAudioImpl: async () => {},
 		configureBashImpl: () => {},
@@ -38,17 +40,25 @@ describe("gh stack provisioning", () => {
 		).toBe(false);
 	});
 
-	it("installs gh stack on the Arch path", async () => {
+	it("installs gh stack on the Arch path without offering a prompt", async () => {
+		const offers = [];
 		let installCalls = 0;
 
 		await configureUserApps(
 			userAppDoubles({
+				promptUserImpl: async (message, initial) => {
+					offers.push({ message, initial });
+					return false;
+				},
 				installGhStackImpl: async () => {
 					installCalls += 1;
 				},
 			}),
 		);
 
+		expect(offers.map(({ message }) => message)).not.toContain(
+			"Install GitHub gh-stack extension?",
+		);
 		expect(installCalls).toBe(1);
 	});
 
