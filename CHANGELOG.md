@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Require the nightly T3 Code server over Tailscale on Debian, disable existing
+  T3 Connect exposure, and verify the service and tailnet HTTPS before success.
+
 - Retire bundled routing skills with archival of live edits; remove agent-skill
   backup and install only Matt Pocock skills through the Skills CLI.
 

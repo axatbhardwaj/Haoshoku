@@ -73,8 +73,8 @@ describe("haoshoku CLI help", () => {
 		expect(help).toContain("--server-t3-code");
 		expect(help).toContain("Debian");
 		expect(help).toContain("headless");
-		expect(normalizedHelp).toContain("T3 Connect");
-		expect(help).not.toContain("Tailscale");
+		expect(normalizedHelp).toContain("Tailscale");
+		expect(normalizedHelp).not.toContain("T3 Connect");
 	});
 
 	it("documents the native headless Paseo server mode", () => {
@@ -92,10 +92,17 @@ describe("haoshoku CLI help", () => {
 		expect(help).toContain("Hermes relay transport on Debian");
 	});
 
-	it("documents T3 Connect instead of mandatory Tailscale server access", () => {
+	it("documents Tailscale prerequisites and pairing for the required T3 server", () => {
 		const readme = fs.readFileSync(README, "utf8");
-		expect(readme).toContain("npx --yes t3@latest connect link --headless");
-		expect(readme).not.toContain("It also installs Tailscale when needed");
-		expect(readme).not.toContain("pair --tailscale");
+		expect(readme).toContain("t3 pair --tailscale");
+		expect(readme).toContain("tailscale status");
+		expect(readme).toContain("HTTPS certificates");
+		expect(readme).toContain("tailscale set --operator=$USER");
+		expect(readme).toContain("t3@nightly");
+		expect(readme).toContain("0.0.46-nightly.20261003.2610");
+		expect(readme).toContain("T3 Code is required");
+		expect(readme).not.toContain("connect link --headless");
+		expect(readme).not.toContain("tailscale serve --https=443 off");
+		expect(readme).not.toContain("optional T3 Code");
 	});
 });
