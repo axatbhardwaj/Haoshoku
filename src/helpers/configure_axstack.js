@@ -2,13 +2,35 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import path from "node:path";
+import { detectOS } from "../common/cli_utils.js";
 import { log } from "../common/utils.js";
 
-export const AXSTACK_VERSION = "0.8.0";
-export const AXSTACK_ASSET_URL =
-	"https://github.com/axatbhardwaj/axstack/releases/download/v0.8.0/axstack-0.8.0.tgz";
-export const AXSTACK_SHA256 =
-	"f08737a9e95d67afb66d2e594040291e501e921639b4911920e8c013ad020500";
+const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?$/;
+
+async function latestRelease(fetcher) {
+	const response = await fetcher("https://registry.npmjs.org/axstack/latest");
+	if (!response?.ok)
+		throw new Error(`registry failed (${response?.status ?? "no response"})`);
+	const metadata = await response.json();
+	const { version, dist } = metadata ?? {};
+	const integrity = dist?.integrity;
+	if (
+		typeof version !== "string" ||
+		!VERSION_PATTERN.test(version) ||
+		typeof dist?.tarball !== "string" ||
+		typeof integrity !== "string" ||
+		!/^sha512-[A-Za-z0-9+/]{86}==$/.test(integrity) ||
+		Buffer.from(integrity.slice(7), "base64").toString("base64") !==
+			integrity.slice(7)
+	)
+		throw new Error("malformed Axstack registry metadata");
+	try {
+		if (new URL(dist.tarball).protocol !== "https:") throw new Error();
+	} catch {
+		throw new Error("malformed Axstack registry metadata: tarball URL");
+	}
+	return { version, tarball: dist.tarball, integrity };
+}
 
 function commandReason(result) {
 	return (
@@ -58,7 +80,7 @@ function releaseFromShim(shimPath) {
 		const pathVersion = cliPath.match(
 			/\/releases\/([^/]+)\/package\/bin\/axstack\.js$/,
 		)?.[1];
-		if (/^\d+\.\d+\.\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?$/.test(pathVersion ?? "")) {
+		if (VERSION_PATTERN.test(pathVersion ?? "")) {
 			return { cliPath, status: "resolved", version: pathVersion };
 		}
 		const packageJson = path.join(
@@ -66,7 +88,7 @@ function releaseFromShim(shimPath) {
 			"package.json",
 		);
 		const version = JSON.parse(fs.readFileSync(packageJson, "utf8")).version;
-		if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?$/.test(version ?? "")) {
+		if (!VERSION_PATTERN.test(version ?? "")) {
 			return { cliPath, status: "unparsable", version: version ?? null };
 		}
 		return { cliPath, status: "resolved", version };
@@ -109,7 +131,7 @@ function atomicWriteShim(shimPath, content) {
 	}
 }
 
-function failedResult(reason, action = "kept", version = AXSTACK_VERSION) {
+function failedResult(reason, action = "kept", version = null) {
 	return {
 		harnesses: {
 			claude: { ok: false, reason },
@@ -127,7 +149,6 @@ export async function configureAxstack(options = {}) {
 	const fetcher = options.fetcher ?? fetch;
 	const extractor = options.extractor ?? defaultExtractor;
 	const runner = options.runner ?? defaultRunner;
-	const expectedSha256 = options.sha256 ?? AXSTACK_SHA256;
 	const bunPath = options.bunPath ?? Bun.which("bun") ?? process.execPath;
 	const shimPath = path.join(binDir, "axstack");
 	const installed = releaseFromShim(shimPath);
@@ -139,9 +160,19 @@ export async function configureAxstack(options = {}) {
 		return failedResult(reason, "kept", installedVersion ?? "unresolved");
 	}
 
+	let latest;
+	try {
+		latest = await latestRelease(fetcher);
+	} catch (error) {
+		const reason = error?.message ?? String(error);
+		log.error(`Axstack setup failed: ${reason}`);
+		return failedResult(reason, "kept", installedVersion);
+	}
+	const { version: latestVersion } = latest;
+
 	if (
 		installedVersion &&
-		compareVersions(installedVersion, AXSTACK_VERSION) > 0
+		compareVersions(installedVersion, latestVersion) > 0
 	) {
 		const reason = `kept newer ${installedVersion}`;
 		log.info(`Axstack: ${reason}.`);
@@ -155,43 +186,67 @@ export async function configureAxstack(options = {}) {
 		};
 	}
 
-	const releaseRoot = path.join(dataDir, "releases", AXSTACK_VERSION);
+	try {
+		if (
+			(options.detectOS ?? detectOS)() === "arch" &&
+			!(options.which ?? Bun.which)("t3") &&
+			(options.nightlyExists ?? fs.existsSync("/usr/bin/t3-nightly"))
+		) {
+			fs.mkdirSync(binDir, { recursive: true });
+			try {
+				fs.symlinkSync("/usr/bin/t3-nightly", path.join(binDir, "t3"));
+			} catch (error) {
+				if (error.code !== "EEXIST") throw error;
+			}
+		}
+	} catch (error) {
+		return failedResult(
+			`T3 alias failed: ${error?.message ?? error}`,
+			"kept",
+			latestVersion,
+		);
+	}
+
+	const releaseRoot = path.join(dataDir, "releases", latestVersion);
 	let releaseAction = "kept";
 	let cliPath = path.join(releaseRoot, "package", "bin", "axstack.js");
 	let releasePackage = path.join(releaseRoot, "package");
-	const keepUserManaged =
-		installedVersion?.includes("-") &&
-		compareVersions(installedVersion, AXSTACK_VERSION) === 0;
-	if (keepUserManaged) {
-		releaseAction = "kept-user-managed";
+	const keepInstalled =
+		installedVersion && compareVersions(installedVersion, latestVersion) === 0;
+	if (keepInstalled) {
+		releaseAction = installedVersion.includes("-")
+			? "kept-user-managed"
+			: "kept";
 		cliPath = installed.cliPath;
 		releasePackage = path.dirname(path.dirname(cliPath));
-		log.info(`Axstack: kept user-managed ${installedVersion}.`);
+		log.info(`Axstack: kept ${installedVersion}.`);
 	} else if (!fs.existsSync(releasePackage)) {
 		const downloadDir = fs.mkdtempSync(
 			path.join(options.tempDir ?? tmpdir(), "haoshoku-axstack-"),
 		);
 		try {
-			const response = await fetcher(AXSTACK_ASSET_URL);
+			const response = await fetcher(latest.tarball);
 			if (!response?.ok) {
 				throw new Error(
 					`download failed (${response?.status ?? "no response"})`,
 				);
 			}
 			const archive = Buffer.from(await response.arrayBuffer());
-			const actual = createHash("sha256").update(archive).digest("hex");
-			if (actual !== expectedSha256) {
+			const actual = `sha512-${createHash("sha512").update(archive).digest("base64")}`;
+			if (actual !== latest.integrity) {
 				throw new Error(
-					`checksum mismatch: expected ${expectedSha256}, got ${actual}`,
+					`integrity mismatch: expected ${latest.integrity}, got ${actual}`,
 				);
 			}
 
 			const archivePath = path.join(downloadDir, "axstack.tgz");
 			fs.writeFileSync(archivePath, archive);
 			const releasesDir = path.dirname(releaseRoot);
-			const stagingPrefix = `.${AXSTACK_VERSION}-`;
+			const stagingPrefix = `.${latestVersion}-`;
 			fs.mkdirSync(releasesDir, { recursive: true });
-			for (const entry of fs.readdirSync(releasesDir, { withFileTypes: true })) {
+			for (const entry of fs.readdirSync(releasesDir, {
+				withFileTypes: true,
+			})) {
 				if (entry.isDirectory() && entry.name.startsWith(stagingPrefix)) {
 					fs.rmSync(path.join(releasesDir, entry.name), {
 						force: true,
@@ -199,9 +254,7 @@ export async function configureAxstack(options = {}) {
 					});
 				}
 			}
-			const staging = fs.mkdtempSync(
-				path.join(releasesDir, stagingPrefix),
-			);
+			const staging = fs.mkdtempSync(path.join(releasesDir, stagingPrefix));
 			try {
 				await extractor(archivePath, staging);
 				if (
@@ -218,13 +271,13 @@ export async function configureAxstack(options = {}) {
 		} catch (error) {
 			const reason = error?.message ?? String(error);
 			log.error(`Axstack setup failed: ${reason}`);
-			return failedResult(reason);
+			return failedResult(reason, "kept", latestVersion);
 		} finally {
 			fs.rmSync(downloadDir, { force: true, recursive: true });
 		}
 	}
 
-	if (!keepUserManaged) {
+	if (!keepInstalled) {
 		try {
 			atomicWriteShim(
 				shimPath,
@@ -233,7 +286,7 @@ export async function configureAxstack(options = {}) {
 		} catch (error) {
 			const reason = `shim installation failed: ${error?.message ?? error}`;
 			log.error(`Axstack setup failed: ${reason}`);
-			return failedResult(reason, releaseAction);
+			return failedResult(reason, releaseAction, latestVersion);
 		}
 	}
 	const harnesses = {};
@@ -271,14 +324,14 @@ export async function configureAxstack(options = {}) {
 	}
 	const ok = harnesses.claude.ok && harnesses.codex.ok;
 	log[ok ? "success" : "warning"](
-		`Axstack ${AXSTACK_VERSION} ${releaseAction}; Claude ${harnesses.claude.ok ? "ok" : "failed"}; Codex ${harnesses.codex.ok ? "ok" : "failed"}.`,
+		`Axstack ${latestVersion} ${releaseAction}; Claude ${harnesses.claude.ok ? "ok" : "failed"}; Codex ${harnesses.codex.ok ? "ok" : "failed"}.`,
 	);
 	return {
 		harnesses,
 		ok,
 		release: {
 			action: releaseAction,
-			version: keepUserManaged ? installedVersion : AXSTACK_VERSION,
+			version: keepInstalled ? installedVersion : latestVersion,
 		},
 	};
 }
@@ -329,16 +382,29 @@ export async function checkAxstack(options = {}) {
 			harness,
 		]);
 	}
-	const profile = {
-		path: path.join(home, ".paseo", "config.json"),
-		present: fs.existsSync(path.join(home, ".paseo", "config.json")),
-	};
+	const roles = {};
+	for (const [harness, directory] of [
+		["claude", ".claude"],
+		["codex", ".agents"],
+	]) {
+		const rolesPath = path.join(
+			home,
+			directory,
+			"skills",
+			"axstack",
+			"roles.json",
+		);
+		roles[harness] = { path: rolesPath, present: fs.existsSync(rolesPath) };
+	}
 	const lines = [
 		`shim: ${shim.present ? "present" : "missing"}; version: ${shim.version ?? "unresolved"}`,
 		`axstack --version: ${version.ok ? version.reason : `failed — ${version.reason}`}`,
 		`claude check: ${harnesses.claude.ok ? "ok" : "failed"} — ${harnesses.claude.reason}`,
 		`codex check: ${harnesses.codex.ok ? "ok" : "failed"} — ${harnesses.codex.reason}`,
-		`profile readback: ${profile.present ? "present" : "missing"} — ${profile.path}`,
+		...Object.entries(roles).map(
+			([harness, role]) =>
+				`${harness} roles readback: ${role.present ? "present" : "missing"} — ${role.path}`,
+		),
 	];
 	for (const line of lines) log.info(line);
 	return {
@@ -350,7 +416,7 @@ export async function checkAxstack(options = {}) {
 			version.ok &&
 			harnesses.claude.ok &&
 			harnesses.codex.ok,
-		profile,
+		roles,
 		shim,
 		version,
 	};

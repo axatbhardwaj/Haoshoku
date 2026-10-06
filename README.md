@@ -23,10 +23,16 @@ haoshoku --os arch
 `bun haoshoku.js --os arch` works without creating a global link. The legacy
 `--os cachyos` spelling is accepted with a deprecation warning.
 
-Install the pinned, checksum-verified Axstack release and configure its Claude
-and Codex harness targets with `haoshoku --axstack`. Run
-`haoshoku --axstack-check` to report the shim/version, each harness check, and
-the `~/.paseo/config.json` readback separately.
+Install the latest Axstack release from npm, verified against its registry
+SHA-512 integrity, and configure its Claude and Codex harness targets with
+`haoshoku --axstack`. Axstack requires Bun >= 1.3.14 and
+`t3` >= 0.0.46-nightly on PATH. On Arch/Omarchy, Haoshoku links
+`~/.local/bin/t3` to `/usr/bin/t3-nightly` when `t3` is absent, preserving
+any existing local `t3`.
+Run `haoshoku --axstack-check` to report the shim/version, each harness check,
+and `roles.json` presence at `~/.claude/skills/axstack/roles.json` and
+`~/.agents/skills/axstack/roles.json` separately. The role-file readback
+does not affect check success.
 Claude and Codex setup skip config synchronization when their CLI installation fails.
 
 ## Arch and Omarchy behavior
@@ -48,7 +54,7 @@ The Arch setup:
 - installs only JetBrains Mono Nerd Font instead of the conflicting complete
   Nerd Font group;
 - binds `Super+T` to launch or focus T3 Code Nightly with `t3code-nightly`,
-  matching only the anchored `^com\\.t3tools\\.T3Code$` window class;
+  matching only the anchored `^com\.t3tools\.T3Code$` window class;
 - keeps Bash as the account shell and adds portable aliases and tool
   initialization through `~/.config/haoshoku/bashrc`;
 - preserves Omarchy's `.bashrc`, lock screen, and core Quickshell/Hyprland
