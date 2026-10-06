@@ -16,7 +16,17 @@
   templates, and one-shot commands remain available for Debian server setup.
   Existing installations are not uninstalled automatically. To stop their
   previously deployed units, run manually:
-  `systemctl --user disable --now claude-remote-control@haki.service claude-remote-control@dev.service claude-remote-control@work.service claude-stay-awake.service defi-worktree-cleanup.timer defi-worktree-cleanup.service`.
+
+  ```bash
+  systemctl --user disable --now claude-remote-control@haki.service claude-remote-control@dev.service claude-remote-control@work.service claude-stay-awake.service
+  ```
+
+  If you enabled worktree cleanup:
+
+  ```bash
+  systemctl --user disable --now defi-worktree-cleanup.timer
+  ```
+
   Disable any older enabled Remote Control instances as well. PR watch remains
   part of Arch/Omarchy setup.
 
