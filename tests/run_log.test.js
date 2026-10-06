@@ -4,6 +4,23 @@ import os from "node:os";
 import path from "node:path";
 import { redactLog } from "../src/common/run_log.js";
 
+const packageVersion = JSON.parse(
+	fs.readFileSync(path.join(import.meta.dir, "../package.json"), "utf8"),
+).version;
+
+test("test files do not hard-code the current package version", () => {
+	const files = fs.readdirSync(import.meta.dir, { recursive: true });
+	expect(
+		files.filter(
+			(file) =>
+				/\.test\.[^/]+$/.test(file) &&
+				fs
+					.readFileSync(path.join(import.meta.dir, file), "utf8")
+					.includes(packageVersion),
+		),
+	).toEqual([]);
+});
+
 const roots = [];
 afterEach(() => {
 	for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true });
@@ -49,7 +66,7 @@ test("setup creates a private UTC log with device and invocation metadata", asyn
 	expect(fs.statSync(f.dir).mode & 0o777).toBe(0o700);
 	expect(fs.statSync(file).mode & 0o777).toBe(0o600);
 	for (const value of [
-		"Haoshoku 12.1.0",
+		`Haoshoku ${packageVersion}`,
 		"--explainer-theme",
 		"Date:",
 		"OS NAME:",
@@ -267,7 +284,7 @@ for (const args of [
 		).toEqual(before);
 		expect(result.stdout).not.toContain("failed command");
 		if (args[0] === "--version" || args[0] === "-V")
-			expect(result.stdout).toBe("12.1.0\n");
+			expect(result.stdout).toBe(`${packageVersion}\n`);
 		if (args[0] === "--share-log")
 			expect(result.stdout).toContain("2025-01-20T00-00-00.000Z.log");
 	});
