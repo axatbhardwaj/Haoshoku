@@ -2,6 +2,7 @@
 
 import { Command } from "commander";
 import prompts from "prompts";
+import { startRunLog } from "./src/common/run_log.js";
 import { detectOS, findActiveModeFlags } from "./src/common/cli_utils.js";
 import { promptDeviceType } from "./src/common/device_type.js";
 import { getBanner, showBanner } from "./src/common/ui.js";
@@ -74,6 +75,7 @@ import {
 	syncWorktreeCleanup,
 } from "./src/helpers/configure_worktree_cleanup.js";
 import { installUserScripts } from "./src/helpers/install_user_scripts.js";
+import { shareLog } from "./src/helpers/share_log.js";
 import { runCachyOSSetup } from "./src/os_scripts/cachyos.js";
 import { runDebianServerSetup } from "./src/os_scripts/debian_server.js";
 
@@ -90,6 +92,18 @@ program
 	.description("Haoshoku: portable setup for Arch / Omarchy and Debian Server.")
 	.version("12.1.0")
 	.addHelpText("before", getBanner());
+
+const informational = process.argv
+	.slice(2)
+	.some(
+		(arg) =>
+			["--help", "-h", "--version", "-V", "--share-log"].includes(arg) ||
+			arg.startsWith("--share-log="),
+	);
+const runLog = informational
+	? null
+	: startRunLog({ version: program.version() });
+if (runLog) process.once("exit", (code) => runLog.finish(code));
 
 program
 	.option("--os <type>", "Specify the target OS (arch, debian-server)")
@@ -248,6 +262,7 @@ program
 		"--brave-managed-policies",
 		"Configure Brave managed policies used by Omarchy browser theming",
 	)
+	.option("--share-log [path]", "Share the latest run log, or a specified log")
 	.action(async (options) => {
 		try {
 			await runAction(options);
@@ -269,6 +284,16 @@ async function runAction(options) {
 			`--${activeFlags[0]} and --${activeFlags[1]} are mutually exclusive — pass exactly one mode flag`,
 		);
 		process.exit(2);
+	}
+
+	if (options.shareLog) {
+		if (
+			!(await shareLog(
+				typeof options.shareLog === "string" ? options.shareLog : undefined,
+			))
+		)
+			process.exitCode = 1;
+		return;
 	}
 
 	if (options.claudeUpdate) {

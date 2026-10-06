@@ -20,6 +20,7 @@
 | `configure_gaming.test.js`, `cli_gaming.test.js` | Workspace-2 autostart policy defaults, flags, and overlay reconciliation | Changing `--gaming*` |
 | `configure_discord_theme.test.js` | Discord theme deploy across Vesktop/Vencord clients, manifest validation, and shipped-manifest validity | Changing `--discord-theme` |
 | `configure_kde_connect.test.js` | KDE Connect device config parsing and `Screens Off` command writes | Changing `--kde-connect-commands` |
+| `run_log.test.js`, `run_log_commands.test.js`, `share_log.test.js` | Run log privacy, retention, redaction, command diagnostics, summaries and explicit sharing | Changing logging or `--share-log` |
 | `utils.test.js`    | Utility function tests        | Testing shell execution, logging          |
 
 Most other tests are named after the helper, script, or CLI flag they cover

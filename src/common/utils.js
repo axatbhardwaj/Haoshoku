@@ -2,13 +2,29 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawn } from "bun";
 import chalk from "chalk";
+import { recordCommand, recordOutput, redactLog } from "./run_log.js";
+
+function printLog(level, msg, failure = true) {
+	recordOutput(level, msg, failure);
+	const styles = {
+		info: [chalk.blue, "ℹ "],
+		success: [chalk.green, "✔ "],
+		warning: [chalk.yellow, "⚠ "],
+		error: [chalk.red, "✖ "],
+		dim: [chalk.gray, ""],
+	};
+	const [color, prefix] = styles[level];
+	const output = color(prefix) + color(msg);
+	if (level === "error") console.error(output);
+	else console.log(output);
+}
 
 export const log = {
-	info: (msg) => console.log(chalk.blue("ℹ ") + chalk.blue(msg)),
-	success: (msg) => console.log(chalk.green("✔ ") + chalk.green(msg)),
-	warning: (msg) => console.log(chalk.yellow("⚠ ") + chalk.yellow(msg)),
-	error: (msg) => console.error(chalk.red("✖ ") + chalk.red(msg)),
-	dim: (msg) => console.log(chalk.gray(msg)),
+	info: (msg) => printLog("info", msg),
+	success: (msg) => printLog("success", msg),
+	warning: (msg) => printLog("warning", msg),
+	error: (msg, failure) => printLog("error", msg, failure),
+	dim: (msg) => printLog("dim", msg),
 };
 
 /** Replace only this machine's exact absolute home prefix in portable prose. */
@@ -17,45 +33,100 @@ export function portabilizeHome(content, home) {
 	return content.replaceAll(prefix, `~${path.sep}`);
 }
 
-export async function runCommand(command, options = { check: true }) {
-	if (options.log !== false) log.dim(`Executing: ${command}`);
-
-	// Auto-detect shell usage if not explicitly set
+function commandArgv(command, options) {
+	if (Array.isArray(command)) return command;
 	const useShell =
 		options.shell ||
 		["|", "&&", ";", ">", "<", "*", "?", "$", '"', "'"].some((char) =>
 			command.includes(char),
 		);
+	return useShell
+		? ["bash", "-c", `set -o pipefail; ${command}`]
+		: command.split(" ");
+}
+function commandName(command) {
+	return Array.isArray(command)
+		? JSON.stringify(command.map(redactLog))
+		: command;
+}
 
+// Drain concurrently, keeping a bounded tail. Never retain a partial leading
+// line after truncation: its missing prefix might have identified a secret.
+async function drainCommandOutput(stream, destination) {
+	const decoder = new TextDecoder("utf-8", { ignoreBOM: true });
+	let tail = "";
+	let capped = false;
+	let skipping = false;
+	for await (const chunk of stream) {
+		if (destination) destination.write(chunk);
+		let text = decoder.decode(chunk, { stream: true });
+		if (skipping) {
+			const newline = text.indexOf("\n");
+			if (newline < 0) continue;
+			text = text.slice(newline + 1);
+			skipping = false;
+		}
+		tail += text;
+		if (tail.length > 65_536) {
+			const newline = tail.indexOf("\n", tail.length - 65_536);
+			tail = newline < 0 ? "" : tail.slice(newline + 1);
+			skipping = newline < 0;
+			capped = true;
+		}
+	}
+	return `${capped ? "[output capped]\n" : ""}${tail}${skipping ? "" : decoder.decode()}`;
+}
+
+export async function runCommand(command, options = { check: true }) {
+	const name = commandName(command);
+	if (options.log !== false) log.dim(`Executing: ${name}`);
+	const started = performance.now();
 	try {
-		// Shell-routed commands run under bash with pipefail so a failing early
-		// pipeline stage (e.g. `curl bad-url | sh`) surfaces as a non-zero exit
-		// instead of POSIX sh's last-stage-only status, which masks broken
-		// installs as success. Plain commands keep argv-splitting.
-		const proc = spawn(
-			useShell
-				? ["bash", "-c", `set -o pipefail; ${command}`]
-				: command.split(" "),
-			{
-				cwd: options.cwd,
-				stdin: options.stdin ?? "inherit",
-				stdout: options.stdout ?? "inherit",
-				stderr: options.stderr ?? "inherit",
-			},
+		const proc = (options.spawnImpl ?? spawn)(commandArgv(command, options), {
+			cwd: options.cwd,
+			env: options.env,
+			stdin: options.stdin ?? "inherit",
+			stdout: "pipe",
+			stderr: "pipe",
+		});
+		const [exitCode, stdout, stderr] = await Promise.all([
+			proc.exited,
+			drainCommandOutput(
+				proc.stdout,
+				(options.stdout ?? "inherit") === "inherit" ? process.stdout : null,
+			),
+			drainCommandOutput(
+				proc.stderr,
+				(options.stderr ?? "inherit") === "inherit" ? process.stderr : null,
+			),
+		]);
+		recordCommand(
+			name,
+			exitCode,
+			performance.now() - started,
+			stdout,
+			stderr,
+			options,
 		);
-
-		const exitCode = await proc.exited;
-
 		if (options.returnExitCode) return exitCode;
-
-		if (options.check && exitCode !== 0) {
-			log.error(`Command '${command}' failed with exit code ${exitCode}`);
+		if (options.check && exitCode !== 0 && !options.expectFailure) {
+			log.error(`Command '${name}' failed with exit code ${exitCode}`, false);
 			return false;
 		}
 		return exitCode === 0;
 	} catch (error) {
-		log.error(`Failed to execute command: ${command}`);
-		console.error(error);
+		recordCommand(
+			name,
+			127,
+			performance.now() - started,
+			"",
+			error?.message ?? String(error),
+			options,
+		);
+		if (!options.expectFailure) {
+			log.error(`Failed to execute command: ${name}`, false);
+			console.error(error);
+		}
 		if (options.returnExitCode) return 127;
 		return false;
 	}
@@ -84,26 +155,17 @@ export async function startSudoSession({
 
 /** Run a command with piped output while preserving its exact stdout bytes. */
 export async function runCommandCapture(command, options = {}) {
-	log.dim(`Executing: ${command}`);
-	const useShell =
-		options.shell ||
-		["|", "&&", ";", ">", "<", "*", "?", "$", '"', "'"].some((char) =>
-			command.includes(char),
-		);
-
+	const name = commandName(command);
+	if (options.log !== false) log.dim(`Executing: ${name}`);
+	const started = performance.now();
 	try {
-		const proc = spawn(
-			useShell
-				? ["bash", "-c", `set -o pipefail; ${command}`]
-				: command.split(" "),
-			{
-				cwd: options.cwd,
-				env: options.env,
-				stdin: "inherit",
-				stdout: "pipe",
-				stderr: "pipe",
-			},
-		);
+		const proc = (options.spawnImpl ?? spawn)(commandArgv(command, options), {
+			cwd: options.cwd,
+			env: options.env,
+			stdin: options.stdin ?? "inherit",
+			stdout: "pipe",
+			stderr: "pipe",
+		});
 		const [exitCode, stdoutBytes, stderrBytes] = await Promise.all([
 			proc.exited,
 			new Response(proc.stdout).arrayBuffer(),
@@ -112,14 +174,19 @@ export async function runCommandCapture(command, options = {}) {
 		const decoder = new TextDecoder("utf-8", { ignoreBOM: true });
 		const stdout = decoder.decode(stdoutBytes);
 		const stderr = decoder.decode(stderrBytes);
+		recordCommand(
+			name,
+			exitCode,
+			performance.now() - started,
+			stdout,
+			stderr,
+			options,
+		);
 		return { exitCode, stdout, stderr, failed: exitCode !== 0 };
 	} catch (error) {
-		return {
-			exitCode: 127,
-			stdout: "",
-			stderr: error?.message ?? String(error),
-			failed: true,
-		};
+		const stderr = error?.message ?? String(error);
+		recordCommand(name, 127, performance.now() - started, "", stderr, options);
+		return { exitCode: 127, stdout: "", stderr, failed: true };
 	}
 }
 

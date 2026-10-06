@@ -56,6 +56,7 @@ export const MODE_FLAGS = [
 	"discordTheme",
 	"34Migrate",
 	"braveManagedPolicies",
+	"shareLog",
 ];
 
 /**

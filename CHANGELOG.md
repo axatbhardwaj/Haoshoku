@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Added
+
+- Private per-run logs with device metadata, credential redaction, bounded
+  command failure diagnostics, 20-log retention, and a final failure summary.
+- `--share-log [path]` shares a log explicitly through Taildrop to `io`
+  (`HAOSHOKU_LOG_TARGET` overrides it), with secret-gist and manual fallbacks.
+
 ### Removed
 
 - On Omarchy, Haoshoku no longer configures git because Omarchy sets your
