@@ -161,3 +161,35 @@ test("clean runs end with one dim log-path line", async () => {
 	expect(result.stdout.match(/Log:/g)?.length).toBe(1);
 	expect(result.stdout).not.toContain("failed command");
 });
+
+test("--share-log selects the previous run and falls back to manual instructions", async () => {
+	const f = fixture();
+	await cli(f);
+	const { file } = readLog(f);
+	const result = await cli(f, ["--share-log"]);
+	expect(result.exitCode).toBe(0);
+	expect(result.stdout).toContain(`Send this log to your agent: ${file}`);
+	expect(result.stdout).toContain("attach");
+});
+
+test("--share-log accepts an explicit path with spaces and handles missing logs", async () => {
+	const f = fixture();
+	const file = path.join(f.root, "chosen log.log");
+	fs.writeFileSync(file, "sanitized log");
+	const result = await cli(f, ["--share-log", file]);
+	expect(result.exitCode).toBe(0);
+	expect(result.stdout).toContain(file);
+	const missing = await cli(f, [
+		"--share-log",
+		path.join(f.root, "missing.log"),
+	]);
+	expect(missing.exitCode).toBe(1);
+	expect(missing.stderr).toContain("No readable run log");
+});
+
+test("--share-log is mutually exclusive with setup flags", async () => {
+	const f = fixture();
+	const result = await cli(f, ["--share-log", "--claude"]);
+	expect(result.exitCode).toBe(2);
+	expect(result.stderr).toContain("mutually exclusive");
+});

@@ -75,6 +75,7 @@ import {
 	syncWorktreeCleanup,
 } from "./src/helpers/configure_worktree_cleanup.js";
 import { installUserScripts } from "./src/helpers/install_user_scripts.js";
+import { shareLog } from "./src/helpers/share_log.js";
 import { runCachyOSSetup } from "./src/os_scripts/cachyos.js";
 import { runDebianServerSetup } from "./src/os_scripts/debian_server.js";
 
@@ -252,6 +253,7 @@ program
 		"--brave-managed-policies",
 		"Configure Brave managed policies used by Omarchy browser theming",
 	)
+	.option("--share-log [path]", "Share the latest run log, or a specified log")
 	.action(async (options) => {
 		try {
 			await runAction(options);
@@ -273,6 +275,17 @@ async function runAction(options) {
 			`--${activeFlags[0]} and --${activeFlags[1]} are mutually exclusive — pass exactly one mode flag`,
 		);
 		process.exit(2);
+	}
+
+	if (options.shareLog) {
+		if (
+			!(await shareLog(
+				typeof options.shareLog === "string" ? options.shareLog : undefined,
+				{ excludePath: runLog.path },
+			))
+		)
+			process.exitCode = 1;
+		return;
 	}
 
 	if (options.claudeUpdate) {
