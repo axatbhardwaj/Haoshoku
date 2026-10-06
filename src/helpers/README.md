@@ -38,6 +38,22 @@ review policy are managed by Axstack; agent-skill backup is no longer supported.
 
 ## Headless T3 Code
 
+| File | Responsibility |
+| --- | --- |
+| `configure_t3_code_server.js` | Debian runtime, CLI installation, Connect disablement and user service |
+| `configure_tailscale_t3.js` | Arch package, daemon, browser login, operator and user-service setup |
+| `t3_tailscale.js` | Shared CLI floor, drop-in, tailnet HTTPS readiness and pairing guidance |
+
+`configure_tailscale_t3.js` runs after Arch installs T3 and configures the
+user's CLI. It installs missing Tailscale, enables its system daemon, waits
+for `tailscale up` browser login only for `NeedsLogin`, and sets the current
+user as operator. It uses `t3 service install --base-dir ~/.t3` for a missing
+boot service, then reconciles service enablement and the HTTPS environment
+drop-in. Already-configured machines need no commands that change state or
+file rewrites. Failures warn and full setup continues; `--tailscale-t3` reruns
+only this step. System changes require non-interactive sudo authorization.
+It never enables Funnel and refuses to report public Funnel as tailnet-only.
+
 `configure_t3_code_server.js` owns the required Debian nightly T3 Code service
 over Tailscale. It checks the CLI floor, disables existing Connect exposure,
 writes the account's service drop-ins, and verifies service and tailnet HTTPS

@@ -55,6 +55,14 @@ The Arch setup:
   Nerd Font group;
 - binds `Super+T` to launch or focus T3 Code Nightly with `t3code-nightly`,
   matching only the anchored `^com\.t3tools\.T3Code$` window class;
+- installs Tailscale, enables `tailscaled.service`, and configures the T3 user
+  service for tailnet HTTPS phone access after T3 is installed. Logged-out nodes
+  print a browser login URL and wait; logged-in nodes skip login. Matching
+  service drop-ins are left untouched. Failures warn and setup continues;
+- prints the verified HTTPS URL and `t3 pair --tailscale` phone pairing hint.
+  Rerun this step alone with `haoshoku --tailscale-t3` on Arch. System changes
+  use `sudo -n`; standalone runs require an existing sudo authorization
+  (`sudo -v`). Tailnet HTTPS certificates must be enabled;
 - keeps Bash as the account shell and adds portable aliases and tool
   initialization through `~/.config/haoshoku/bashrc`;
 - preserves Omarchy's `.bashrc`, lock screen, and core Quickshell/Hyprland
