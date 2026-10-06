@@ -17,12 +17,16 @@ import {
 } from "../src/os_scripts/cachyos.js";
 
 describe("user app configuration", () => {
-	it("runs the Ghostty configurator and never reactivates Warp", async () => {
+	it("runs portable app setup and PR watch without retired services or offers", async () => {
 		const events = [];
+		const prompts = [];
 		const record = (name) => async () => events.push(name);
 
 		await configureUserApps({
-			promptUserImpl: async () => false,
+			promptUserImpl: async (message, initial) => {
+				prompts.push({ message, initial });
+				return true;
+			},
 			configureGitImpl: record("git"),
 			configureBrowserIntegrationImpl: record("browser"),
 			configureAudioImpl: record("audio"),
@@ -36,10 +40,7 @@ describe("user app configuration", () => {
 			enableServicesImpl: record("services"),
 			configureClaudeImpl: record("claude"),
 			installGhStackImpl: record("gh-stack"),
-			configureClaudeStayAwakeImpl: record("stay-awake"),
-			configureClaudeRemoteControlImpl: record("remote-control"),
 			configurePrWatchImpl: record("pr-watch"),
-			syncWorktreeCleanupImpl: record("worktree-cleanup"),
 			configureCodexImpl: record("codex"),
 			syncAgentsConfigImpl: record("agents"),
 			configureAxstackImpl: async () => {
@@ -51,6 +52,7 @@ describe("user app configuration", () => {
 		});
 
 		expect(events).toEqual([
+			"git",
 			"browser",
 			"audio",
 			"bash",
@@ -60,7 +62,6 @@ describe("user app configuration", () => {
 			"services",
 			"claude",
 			"gh-stack",
-			"stay-awake",
 			"pr-watch",
 			"codex",
 			"agents",
@@ -68,6 +69,7 @@ describe("user app configuration", () => {
 			"skills",
 			"agent-skills",
 		]);
+		expect(prompts).toEqual([{ message: "Configure git?", initial: true }]);
 	});
 
 	it("warns when Claude or Codex installation fails", async () => {
@@ -92,10 +94,7 @@ describe("user app configuration", () => {
 					reason: "install command failed",
 				}),
 				installGhStackImpl: noop,
-				configureClaudeStayAwakeImpl: noop,
-				configureClaudeRemoteControlImpl: noop,
 				configurePrWatchImpl: noop,
-				syncWorktreeCleanupImpl: noop,
 				configureCodexImpl: async () => ({
 					ok: false,
 					reason: "registry unavailable",
@@ -140,10 +139,7 @@ describe("user app configuration", () => {
 				enableServicesImpl: noop,
 				configureClaudeImpl: async () => ({ ok: true }),
 				installGhStackImpl: noop,
-				configureClaudeStayAwakeImpl: noop,
-				configureClaudeRemoteControlImpl: noop,
 				configurePrWatchImpl: noop,
-				syncWorktreeCleanupImpl: noop,
 				configureCodexImpl: async () => {
 					throw new Error("Ambiguous multiline TOML");
 				},

@@ -76,11 +76,23 @@ function deployModeFeaturesFromCli() {
 }
 
 // These are deliberate product boundaries, not gaps to hide from the guard.
-// Arch/Omarchy offers every deploy feature, so its allowlist stays empty.
+// Arch/Omarchy omits the retired background integrations and headless services.
 // Debian Server is headless: audio, MIME/browser scripts, and Omarchy display
 // configuration are desktop-only and intentionally remain on the Arch path.
 const DELIBERATE_OMISSIONS = {
 	arch: new Map([
+		[
+			"--claude-remote-control",
+			"Persistent Claude sessions are no longer offered by Arch/Omarchy setup.",
+		],
+		[
+			"--claude-stay-awake",
+			"Arch/Omarchy setup no longer installs a Claude sleep inhibitor.",
+		],
+		[
+			"--worktree-cleanup",
+			"Arch/Omarchy setup no longer enables automatic worktree deletion.",
+		],
 		[
 			"--server-t3-code",
 			"Arch installs the desktop package instead of the Debian headless service.",
@@ -187,10 +199,7 @@ function runArchDefaultPath() {
 					enableServicesImpl: record("services"),
 					configureClaudeImpl: record("claude"),
 					installGhStackImpl: record("ghStack"),
-					configureClaudeStayAwakeImpl: record("claudeStayAwake"),
-					configureClaudeRemoteControlImpl: record("claudeRemoteControl"),
 					configurePrWatchImpl: record("prWatch"),
-					syncWorktreeCleanupImpl: record("worktreeCleanup"),
 					configureCodexImpl: record("codex"),
 					syncAgentsConfigImpl: record("agents", true),
 					configureAxstackImpl: record("axstack", { ok: true }),
@@ -351,10 +360,7 @@ function userAppDoubles(overrides = {}) {
 		enableServicesImpl: async () => {},
 		configureClaudeImpl: async () => {},
 		installGhStackImpl: async () => {},
-		configureClaudeStayAwakeImpl: async () => {},
-		configureClaudeRemoteControlImpl: async () => {},
 		configurePrWatchImpl: async () => {},
-		syncWorktreeCleanupImpl: async () => {},
 		configureCodexImpl: async () => {},
 		syncAgentsConfigImpl: async () => {},
 		configureAxstackImpl: async () => ({ ok: true }),
@@ -416,28 +422,6 @@ describe("default-run reachability", () => {
 		});
 	}
 
-	it("keeps Claude stay-awake unconditional when optional offers are declined", async () => {
-		const offers = [];
-		let stayAwakeCalls = 0;
-
-		await configureUserApps(
-			userAppDoubles({
-				promptUserImpl: async (message, initial) => {
-					offers.push({ message, initial });
-					return false;
-				},
-				configureClaudeStayAwakeImpl: async () => {
-					stayAwakeCalls += 1;
-				},
-			}),
-		);
-
-		expect(offers.map(({ message }) => message)).not.toContain(
-			"Enable Claude stay-awake service?",
-		);
-		expect(stayAwakeCalls).toBe(1);
-	});
-
 	it("keeps PR watch unconditional when optional offers are declined", async () => {
 		const offers = [];
 		let prWatchCalls = 0;
@@ -458,59 +442,6 @@ describe("default-run reachability", () => {
 			"Enable PR watch helper?",
 		);
 		expect(prWatchCalls).toBe(1);
-	});
-
-	it("offers disclosed opt-in worktree cleanup and invokes its helper when accepted", async () => {
-		const offers = [];
-		let cleanupCalls = 0;
-		const cleanupOffer =
-			"Enable automatic git worktree cleanup? This enables a persistent weekly timer that runs cleanup-worktrees.sh --apply and deletes eligible worktrees.";
-
-		await configureUserApps(
-			userAppDoubles({
-				promptUserImpl: async (message, initial) => {
-					offers.push({ message, initial });
-					return message === cleanupOffer;
-				},
-				syncWorktreeCleanupImpl: async () => {
-					cleanupCalls += 1;
-				},
-			}),
-		);
-
-		expect(offers).toContainEqual({
-			message: cleanupOffer,
-			initial: false,
-		});
-		expect(cleanupCalls).toBe(1);
-	});
-
-	it("continues app setup when accepted worktree cleanup throws", async () => {
-		const events = [];
-		const warnings = [];
-		const originalWarning = log.warning;
-		log.warning = (message) => warnings.push(message);
-
-		try {
-			await configureUserApps(
-				userAppDoubles({
-					promptUserImpl: async (message) =>
-						message.startsWith("Enable automatic git worktree cleanup?"),
-					syncWorktreeCleanupImpl: async () => {
-						throw new Error("timer deployment failed");
-					},
-					configureCodexImpl: async () => events.push("codex"),
-					configureAxstackImpl: async () => ({ ok: true }),
-					configureSkillsImpl: async () => events.push("skills"),
-				}),
-			);
-		} finally {
-			log.warning = originalWarning;
-		}
-
-		expect(events).toEqual(["codex", "skills"]);
-		expect(warnings.join("\n")).toContain("timer deployment failed");
-		expect(warnings.join("\n")).toContain("continuing");
 	});
 
 	it("completes unattended setup with explicit defaults and no persisted fallback", async () => {
@@ -556,10 +487,7 @@ describe("default-run reachability", () => {
 									promptUserImpl: nonInteractivePrompt,
 									configureGitImpl: record("git"),
 									installGhStackImpl: record("gh-stack"),
-									configureClaudeStayAwakeImpl: record("stay-awake"),
-									configureClaudeRemoteControlImpl: record("remote-control"),
 									configurePrWatchImpl: record("pr-watch"),
-									syncWorktreeCleanupImpl: record("worktree-cleanup"),
 								}),
 							),
 					}),
@@ -571,7 +499,7 @@ describe("default-run reachability", () => {
 
 		expect(interactivePromptCalls).toBe(0);
 		expect(fs.existsSync(configPath)).toBe(false);
-		expect(events).toEqual(["gh-stack", "stay-awake", "pr-watch"]);
+		expect(events).toEqual(["gh-stack", "pr-watch"]);
 		expect(warnings.join("\n")).toContain(
 			"returning deviceType pc without saving it",
 		);
@@ -582,12 +510,6 @@ describe("default-run reachability", () => {
 			'Interactive confirmation unavailable; declining "Configure git?".',
 		);
 		expect(warnings.join("\n")).not.toContain("gh-stack");
-		expect(warnings.join("\n")).not.toContain(
-			"Enable Claude stay-awake service?",
-		);
 		expect(warnings.join("\n")).not.toContain("Enable PR watch helper?");
-		expect(warnings.join("\n")).toContain(
-			'Interactive confirmation unavailable; declining "Enable automatic git worktree cleanup? This enables a persistent weekly timer that runs cleanup-worktrees.sh --apply and deletes eligible worktrees.".',
-		);
 	});
 });

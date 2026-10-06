@@ -168,9 +168,6 @@ describe("pr-watch Haoshoku wiring", () => {
       /import\s+\{\s*configurePrWatch\s*\}\s+from\s+["']\.\.\/helpers\/configure_pr_watch\.js["']/,
     );
     expect(source).toMatch(/await\s+configurePrWatch\(\s*\)\s*;/);
-    expect(source.indexOf("await configurePrWatch();")).toBeGreaterThan(
-      source.indexOf("await configureClaudeStayAwake();"),
-    );
   });
 
   it("ships a three-line executable wrapper using the absolute Bun path", () => {

@@ -82,12 +82,8 @@ The Arch setup:
   so `haoshoku --device-type pc|laptop` remains the explicit override. Only
   ambiguous hardware falls back to the interactive selector; Skip persists
   nothing and leaves device-specific audio unset;
-- keeps Claude stay-awake, PR watch, and the Matt Pocock skill set as portable
-  setup steps. Full setup asks before Claude Remote Control and automatic git
-  worktree cleanup; both default to No. The worktree offer explains that it enables a
-  persistent weekly timer running
-  `cleanup-worktrees.sh --apply`, which deletes eligible worktrees. Without
-  interactive confirmation—including piped stdin—Haoshoku declines these real
+- keeps PR watch and the Matt Pocock skill set as portable setup steps. Without
+  interactive confirmation—including piped stdin—Haoshoku declines real
   user decisions immediately and does not treat input as answers;
 - adds a device-routed behavior-only Lua workspace overlay. The hyprmoncfg
   plugin owns the generated `~/.config/hypr/monitors.lua`; Haoshoku owns only
@@ -277,7 +273,7 @@ or calls systemd.
 These sessions run Claude Remote Control in **server mode**
 (`claude remote-control --spawn same-dir --capacity 5`): each is a persistent
 host that spawns up to five on-demand sessions in its own directory, launched
-with `--permission-mode bypassPermissions`. The Arch setup calls this out
+with `--permission-mode bypassPermissions`. Debian server setup calls this out
 before installation. The user services enable
 systemd lingering when possible so sessions can survive logout; if lingering
 cannot be enabled automatically, setup prints the exact `loginctl` command to
