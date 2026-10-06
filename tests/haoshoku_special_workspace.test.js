@@ -104,7 +104,6 @@ describe("haoshoku-special-workspace", () => {
 	let claudeDesktop;
 	let codexDesktop;
 	let ghosttyCall;
-	let paseo;
 	let focusedMonitorState;
 	let specialMonitorState;
 	let specialState;
@@ -118,7 +117,6 @@ describe("haoshoku-special-workspace", () => {
 		claudeDesktop = path.join(directory, ["claude", "desktop"].join("-"));
 		codexDesktop = path.join(directory, ["codex", "desktop"].join("-"));
 		ghosttyCall = path.join(directory, "ghostty-call");
-		paseo = path.join(directory, "paseo");
 		focusedMonitorState = path.join(directory, "focused-monitor-state");
 		specialMonitorState = path.join(directory, "special-monitor-state");
 		specialState = path.join(directory, "special-workspace-state");
@@ -298,12 +296,6 @@ printf 'codex-desktop\n' >> "$CALL_LOG"
 `,
 		);
 		fs.writeFileSync(
-			paseo,
-			`#!/usr/bin/env bash
-printf 'paseo-cli-shadow\n' >> "$CALL_LOG"
-`,
-		);
-		fs.writeFileSync(
 			path.join(directory, "omakade"),
 			`#!/usr/bin/env bash
 printf 'omakade\n' >> "$CALL_LOG"
@@ -326,7 +318,6 @@ esac
 		fs.chmodSync(claudeDesktop, 0o755);
 		fs.chmodSync(codexDesktop, 0o755);
 		fs.chmodSync(path.join(directory, "ghostty"), 0o755);
-		fs.chmodSync(paseo, 0o755);
 		fs.chmodSync(path.join(directory, "omakade"), 0o755);
 		fs.chmodSync(chromium, 0o755);
 		fs.chmodSync(helper, 0o755);
@@ -1186,24 +1177,16 @@ exit 17
 		]);
 	});
 
-	it("focuses workspace 1 and launches Paseo when it is missing", async () => {
-		const result = await run(["numbered", "1", "paseo"]);
-
-		expect(result.exitCode).toBe(0);
-		expect(dispatchCalls()).toEqual([
-			"dispatch workspace 1",
-			"dispatch exec [workspace 1 silent] uwsm-app -- /usr/bin/paseo ",
-			"paseo-desktop",
-		]);
-	});
-
-	it("does not relaunch Paseo when its client already exists", async () => {
-		const result = await run(["numbered", "1", "paseo"], {
-			clients: JSON.stringify([{ class: "Paseo" }]),
-		});
-
-		expect(result.exitCode).toBe(0);
-		expect(dispatchCalls()).toEqual(["dispatch workspace 1"]);
+	it.each([
+		"numbered",
+		"numbered-login",
+	])("rejects the retired Paseo recipe through %s without launching it", async (mode) => {
+		const result = await run([mode, "1", "paseo"]);
+		expect(result.exitCode).toBe(2);
+		expect(result.stderr).toContain("unknown numbered recipe");
+		expect(fs.existsSync(log) ? dispatchCalls() : []).toEqual(
+			mode === "numbered" ? ["dispatch workspace 1"] : [],
+		);
 	});
 
 	it("focuses workspace 2 and launches Omakade when it is missing", async () => {

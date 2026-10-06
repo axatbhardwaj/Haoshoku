@@ -61,7 +61,6 @@ import {
 } from "./src/helpers/configure_omarchy_bar.js";
 import { configureOmarchyPlugins } from "./src/helpers/configure_omarchy_plugins.js";
 import { configureOmarchyWorkspaces } from "./src/helpers/configure_omarchy_workspaces.js";
-import { configurePaseoServer } from "./src/helpers/configure_paseo_server.js";
 import {
 	backupPrWatch,
 	syncPrWatch,
@@ -131,10 +130,6 @@ program
 	.option(
 		"--server-t3-code",
 		"Configure the T3 Code headless service over Tailscale on Debian (keeps Grok CLI on PATH)",
-	)
-	.option(
-		"--server-paseo",
-		"Configure the native Paseo headless service on Debian",
 	)
 	.option("--server-hermes-relay", "Configure Hermes relay transport on Debian")
 	.option("--skills", "Install Matt Pocock skills for Claude Code and Codex")
@@ -328,16 +323,6 @@ async function runAction(options) {
 			return;
 		}
 		if (!(await configureT3CodeServer())) process.exitCode = 1;
-		return;
-	}
-
-	if (options.serverPaseo) {
-		if (detectOS() !== "debian-server") {
-			log.error("--server-paseo requires a Debian-family host.");
-			process.exitCode = 2;
-			return;
-		}
-		if (!(await configurePaseoServer())) process.exitCode = 1;
 		return;
 	}
 

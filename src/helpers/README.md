@@ -36,9 +36,14 @@ skills and removes only their managed links. Agent-specific real directories,
 non-managed links, and other local/system skills are preserved. Routing and
 review policy are managed by Axstack; agent-skill backup is no longer supported.
 
-## Headless Paseo
+## Headless T3 Code
 
-`configure_paseo_server.js` owns the Debian native Paseo CLI, fresh config,
-systemd user service, persistence checks, managed-process verification, and
-optional interactive relay pairing. It deliberately does not install provider
-CLIs. Haoshoku no longer syncs or backs up Paseo orchestration profiles.
+`configure_t3_code_server.js` owns the required Debian nightly T3 Code service
+over Tailscale. It checks the CLI floor, disables existing Connect exposure,
+writes the account's service drop-ins, and verifies service and tailnet HTTPS
+readiness. Tailscale login, provider authentication, and phone pairing remain
+manual prerequisites or follow-up steps. `configure_hermes_relay.js` verifies
+Hermes Telegram transport without deploying a relay plugin.
+
+See the [migration note](../../README.md#existing-host-migration) for host artifacts
+that Haoshoku leaves for manual retirement.

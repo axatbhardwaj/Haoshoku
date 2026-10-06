@@ -46,8 +46,10 @@ The project is built using modern JavaScript (ES Modules) and runs on Bun.
 - **`src/common/cli_utils.js`**: The `MODE_FLAGS` registry and OS detection; every one-shot flag is registered there and exactly one may run per invocation.
 - **`src/helpers/`**: Standalone helper scripts (e.g., `configure_git.js`).
 
-Haoshoku no longer bundles, syncs, or backs up Paseo orchestration profiles.
-Arch and Debian server setup leave existing Paseo profile configuration intact.
+T3 Code owns agent orchestration. Debian server setup requires its nightly
+service over Tailscale and Hermes Telegram transport. Omarchy binds `Super+T`
+to launch or focus T3 Code Nightly. See the [migration note](../README.md#existing-host-migration)
+for existing host artifacts that require manual retirement.
 
 `--skills` and `--skills-update` install Matt Pocock skills for Claude Code and
 Codex. `--agent-skills` syncs the pinned visual-explainer payload and archives

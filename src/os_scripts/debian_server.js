@@ -20,7 +20,6 @@ import { configureCodex } from "../helpers/configure_codex.js";
 import { installGhStack } from "../helpers/configure_gh_stack.js";
 import { configureGit } from "../helpers/configure_git.js";
 import { configureHermesRelay } from "../helpers/configure_hermes_relay.js";
-import { configurePaseoServer } from "../helpers/configure_paseo_server.js";
 import { configurePrWatch } from "../helpers/configure_pr_watch.js";
 import { configureSkills } from "../helpers/configure_skills.js";
 import { configureT3CodeServer } from "../helpers/configure_t3_code_server.js";
@@ -389,7 +388,6 @@ export async function runDebianServerSetup({
 			"Haoshoku-owned agent skills were not fully synced — continuing. Retry with: haoshoku --agent-skills",
 		);
 	}
-	const paseoConfigured = await configurePaseoServer();
 	let axstackConfigured = false;
 	try {
 		axstackConfigured = (await configureAxstackImpl()).ok;
@@ -398,12 +396,6 @@ export async function runDebianServerSetup({
 	}
 	const hermesRelayConfigured = await configureHermesRelay();
 	const t3CodeConfigured = await configureT3CodeServer();
-	if (!paseoConfigured) {
-		log.error(
-			"Debian Server setup finished, but Paseo setup or pairing is incomplete.",
-		);
-		return false;
-	}
 	if (!hermesRelayConfigured) {
 		log.error(
 			"Debian Server setup finished, but the Hermes relay is incomplete.",

@@ -19,7 +19,17 @@ const laptop = fs.readFileSync(
 );
 
 describe("Omarchy Lua workspace behavior", () => {
-	it("routes fixed-workspace apps without fixing Paseo to a workspace", () => {
+	it("omits the retired Paseo desktop package from the Arch install list", () => {
+		const packages = fs
+			.readFileSync(
+				path.resolve(import.meta.dir, "../common/paru_applist.txt"),
+				"utf8",
+			)
+			.split(/\s+/);
+		expect(packages).not.toContain("paseo-bin");
+	});
+
+	it("routes fixed-workspace apps without fixing T3 Code to a workspace", () => {
 		const expectedRules = [
 			'o.window("^chatgpt$", { workspace = "special:assistants silent" })',
 			'o.window("^com\\\\.anthropic\\\\.Claude$", { workspace = "special:assistants silent" })',
@@ -31,7 +41,7 @@ describe("Omarchy Lua workspace behavior", () => {
 
 		for (const overlay of [pc, laptop]) {
 			for (const rule of expectedRules) expect(overlay).toContain(rule);
-			expect(overlay).not.toContain('o.window("^Paseo$"');
+			expect(overlay).not.toContain('o.window("^com\\\\.t3tools\\\\.T3Code$"');
 		}
 	});
 
@@ -62,7 +72,7 @@ describe("Omarchy Lua workspace behavior", () => {
 	it("retains exact application bindings in both device profiles", () => {
 		const commands = [
 			'o.bind("SUPER + I", "Show/focus/hide AI assistants workspace", "haoshoku-special-workspace assistants")',
-			'o.bind("SUPER + T", "Paseo", o.launch_sole("^Paseo$", "/usr/bin/paseo"))',
+			'o.bind("SUPER + T", "T3 Code", o.launch_sole("^com\\\\.t3tools\\\\.T3Code$", "t3code-nightly"))',
 			'o.bind("SUPER + B", "Toggle Flux Brave Origin workspace", "haoshoku-special-workspace browser-toggle flux")',
 			'o.bind("SUPER + D", "Toggle DeFi Brave Origin workspace", "haoshoku-special-workspace browser-toggle defi")',
 			'o.bind("SUPER + SHIFT + G", "Toggle gaming workspace", "haoshoku-gaming-workspace toggle")',
@@ -87,9 +97,7 @@ describe("Omarchy Lua workspace behavior", () => {
 	it("starts login services and routes the owned Ghostty workspace exactly", () => {
 		for (const overlay of [pc, laptop]) {
 			expect(overlay).toContain('o.exec_on_start("haoshoku-default-browser")');
-			expect(
-				overlay.match(/o\.launch_on_start\("\/usr\/bin\/paseo"\)/g) ?? [],
-			).toHaveLength(1);
+			expect(overlay).not.toMatch(/paseo/i);
 			expect(overlay).toContain('o.exec_on_start("/usr/bin/kdeconnectd")');
 			expect(overlay).toContain(
 				'o.exec_on_start("haoshoku-special-workspace numbered-login 7 ghostty")',

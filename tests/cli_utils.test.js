@@ -104,10 +104,10 @@ describe("findActiveModeFlags", () => {
 		]);
 	});
 
-	it("keeps the two Debian server components mutually exclusive", () => {
+	it("ignores the retired Paseo server mode", () => {
 		expect(
 			findActiveModeFlags({ serverT3Code: true, serverPaseo: true }),
-		).toEqual(["serverT3Code", "serverPaseo"]);
+		).toEqual(["serverT3Code"]);
 	});
 
 	it("recognizes skill sync while ignoring the retired backup mode", () => {
