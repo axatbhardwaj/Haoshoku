@@ -131,3 +131,24 @@ export function recordOutput(level, message, failure = true) {
 	activeRun?.write(`[${level}] ${message}`);
 	if (level === "error" && failure) activeRun?.failures.add(redactLog(message));
 }
+
+export function recordCommand(
+	command,
+	exitCode,
+	duration,
+	stdout = "",
+	stderr = "",
+) {
+	if (!activeRun) return;
+	const name = redactLog(command);
+	activeRun.write(
+		`Command: ${name}\nExit: ${exitCode}\nDuration: ${duration.toFixed(1)} ms`,
+	);
+	if (exitCode !== 0) {
+		activeRun.failures.add(name);
+		activeRun.write(
+			`Stdout (last 50 lines):\n${redactLog(stdout).trimEnd().split("\n").slice(-50).join("\n")}`,
+		);
+		activeRun.write(`Stderr:\n${stderr}`);
+	}
+}
