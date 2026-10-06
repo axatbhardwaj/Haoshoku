@@ -130,7 +130,7 @@ program
 	.option("--axstack-check", "Check Axstack release and harness setup")
 	.option(
 		"--server-t3-code",
-		"Configure the T3 Code headless service over Tailscale on Debian",
+		"Configure the T3 Code headless service over Tailscale on Debian (keeps Grok CLI on PATH)",
 	)
 	.option(
 		"--server-paseo",

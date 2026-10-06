@@ -74,6 +74,7 @@ describe("haoshoku CLI help", () => {
 		expect(help).toContain("Debian");
 		expect(help).toContain("headless");
 		expect(normalizedHelp).toContain("Tailscale");
+		expect(normalizedHelp).toContain("Grok CLI on PATH");
 		expect(normalizedHelp).not.toContain("T3 Connect");
 	});
 
@@ -101,6 +102,9 @@ describe("haoshoku CLI help", () => {
 		expect(readme).toContain("t3@nightly");
 		expect(readme).toContain("0.0.46-nightly.20261003.2610");
 		expect(readme).toContain("T3 Code is required");
+		expect(readme).toContain(
+			"PATH=%h/.local/bin:%h/.bun/bin:%h/.grok/bin:/usr/local/bin:/usr/bin:/bin",
+		);
 		expect(readme).not.toContain("connect link --headless");
 		expect(readme).not.toContain("tailscale serve --https=443 off");
 		expect(readme).not.toContain("optional T3 Code");

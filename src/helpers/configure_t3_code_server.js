@@ -56,10 +56,11 @@ function shellQuote(value) {
 	return `'${value.replaceAll("'", "'\\''")}'`;
 }
 
-function meetsT3Floor(version) {
+function meetsT3Floor(output) {
+	const version = (output ?? "").trim().replace(/^(?:t3 v|v)/, "");
 	return (
 		/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/.test(
-			version ?? "",
+			version,
 		) && Bun.semver.order(version, T3_VERSION_FLOOR) >= 0
 	);
 }
@@ -90,7 +91,7 @@ function writeServiceDropIns(home, uid) {
 	fs.mkdirSync(directory, { recursive: true });
 	fs.writeFileSync(
 		path.join(directory, "axstack-path.conf"),
-		'[Service]\nEnvironment="PATH=%h/.local/bin:%h/.bun/bin:/usr/local/bin:/usr/bin:/bin"\n',
+		'[Service]\nEnvironment="PATH=%h/.local/bin:%h/.bun/bin:%h/.grok/bin:/usr/local/bin:/usr/bin:/bin"\n',
 	);
 	fs.writeFileSync(
 		path.join(directory, "axstack-tailscale.conf"),

@@ -393,7 +393,14 @@ exposure, and confirms it is disabled before changing the service.
 
 Before `t3 service install`, Haoshoku writes `axstack-path.conf` and
 `axstack-tailscale.conf` in `~/.config/systemd/user/t3code.service.d/`.
-They set the service PATH and `T3CODE_TAILSCALE_SERVE=true`. Only root gets
+They set `T3CODE_TAILSCALE_SERVE=true` and keep the user's Grok CLI on the
+service PATH:
+
+```ini
+PATH=%h/.local/bin:%h/.bun/bin:%h/.grok/bin:/usr/local/bin:/usr/bin:/bin
+```
+
+Only root gets
 `axstack-sandbox.conf` with `IS_SANDBOX=1`. The service belongs to the account
 that runs Haoshoku, including root when root ownership is intentional.
 

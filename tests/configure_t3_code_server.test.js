@@ -32,8 +32,8 @@ afterEach(() => {
 });
 
 function fixture({
-	version = floor,
-	installedVersion = floor,
+	version = `t3 v${floor}\n`,
+	installedVersion = `t3 v${floor}\n`,
 	desired = false,
 } = {}) {
 	const home = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-t3-"));
@@ -76,7 +76,7 @@ function fixture({
 				expect(
 					fs.readFileSync(path.join(dropIns, "axstack-path.conf"), "utf8"),
 				).toBe(
-					'[Service]\nEnvironment="PATH=%h/.local/bin:%h/.bun/bin:/usr/local/bin:/usr/bin:/bin"\n',
+					'[Service]\nEnvironment="PATH=%h/.local/bin:%h/.bun/bin:%h/.grok/bin:/usr/local/bin:/usr/bin:/bin"\n',
 				);
 				expect(
 					fs.readFileSync(path.join(dropIns, "axstack-tailscale.conf"), "utf8"),
@@ -150,13 +150,29 @@ describe("T3 server over Tailscale", () => {
 	});
 
 	it.each([
+		floor,
+		`v${floor}`,
+		`t3 v${floor}`,
+		`t3 v${floor} \n\t`,
+	])("accepts supported version output without reinstalling: %s", async (version) => {
+		const f = fixture({ version });
+		expect(await configureT3CodeServer(f.options)).toBe(true);
+		expect(f.events).toContain("t3 service install");
+		expect(f.events.some((event) => event.startsWith("npm "))).toBe(false);
+	});
+
+	it.each([
 		null,
-		"0.0.45",
-		"0.0.46-nightly.20261003.2609",
-		"0.0.46-nightly.20261002.9999",
+		"t3 v0.0.45",
+		"t3 v0.0.46-nightly.20261003.2609",
+		"t3 v0.0.46-nightly.20261002.9999",
 		"garbage",
 		"0.0.99-nightly..1",
 		"00.0.99",
+		"t3 v0.0.99-nightly..1",
+		"t3 v00.0.99",
+		"t3 vv0.0.99",
+		"t3 v0.0.99 extra output",
 	])("installs the durable nightly CLI when PATH reports %s", async (version) => {
 		const f = fixture({ version });
 		expect(await configureT3CodeServer(f.options)).toBe(true);
@@ -169,10 +185,10 @@ describe("T3 server over Tailscale", () => {
 	});
 
 	it.each([
-		"0.0.46-nightly.20261004.2644",
-		"0.0.46",
-		"0.0.47-nightly.20261001.1",
-		"1.0.0",
+		"t3 v0.0.46-nightly.20261004.2644",
+		"t3 v0.0.46",
+		"t3 v0.0.47-nightly.20261001.1",
+		"t3 v1.0.0",
 	])("keeps a newer CLI %s without installing npm packages", async (version) => {
 		const f = fixture({ version });
 		expect(await configureT3CodeServer(f.options)).toBe(true);
@@ -180,10 +196,14 @@ describe("T3 server over Tailscale", () => {
 	});
 
 	it.each([
-		"0.0.45",
+		"t3 v0.0.45",
 		"garbage",
 		"",
 		"0.0.99-nightly..1",
+		"t3 v0.0.99-nightly..1",
+		"t3 v00.0.99",
+		"t3 vv0.0.99",
+		"t3 v0.0.99 extra output",
 	])("rejects an installed CLI below the floor: %s", async (installedVersion) => {
 		const f = fixture({ version: null, installedVersion });
 		expect(await configureT3CodeServer(f.options)).toBe(false);
