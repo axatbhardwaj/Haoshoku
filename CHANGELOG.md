@@ -18,7 +18,13 @@
   previously deployed units, run manually:
 
   ```bash
-  systemctl --user disable --now claude-remote-control@haki.service claude-remote-control@dev.service claude-remote-control@work.service claude-stay-awake.service
+  systemctl --user disable --now claude-stay-awake.service
+  ```
+
+  If you enabled Remote Control:
+
+  ```bash
+  systemctl --user disable --now claude-remote-control@haki.service claude-remote-control@dev.service claude-remote-control@work.service
   ```
 
   If you enabled worktree cleanup:
