@@ -82,7 +82,29 @@ export async function runCommand(command, options = { check: true }) {
 	if (options.log !== false) log.dim(`Executing: ${name}`);
 	const started = performance.now();
 	try {
-		const proc = (options.spawnImpl ?? spawn)(commandArgv(command, options), {
+		const argv = commandArgv(command, options);
+		// util-linux script preserves TTY-driven prompts/buffering on Linux while
+		// its flushed output is still drained live below. Stdin stays inherited.
+		const terminal =
+			process.stdin.isTTY &&
+			process.stdout.isTTY &&
+			(options.stdin ?? "inherit") === "inherit" &&
+			(options.stdout ?? "inherit") === "inherit" &&
+			(options.stderr ?? "inherit") === "inherit" &&
+			Bun.which("script") !== null;
+		const quote = (arg) => `'${arg.replaceAll("'", "'\\''")}'`;
+		const processArgv = terminal
+			? [
+					"script",
+					"--quiet",
+					"--return",
+					"--flush",
+					"--command",
+					argv.map(quote).join(" "),
+					"/dev/null",
+				]
+			: argv;
+		const proc = (options.spawnImpl ?? spawn)(processArgv, {
 			cwd: options.cwd,
 			env: options.env,
 			stdin: options.stdin ?? "inherit",
@@ -100,9 +122,16 @@ export async function runCommand(command, options = { check: true }) {
 				(options.stderr ?? "inherit") === "inherit" ? process.stderr : null,
 			),
 		]);
-		recordCommand(name, exitCode, performance.now() - started, stdout, stderr);
+		recordCommand(
+			name,
+			exitCode,
+			performance.now() - started,
+			stdout,
+			terminal ? `[terminal stdout/stderr]\n${stdout}${stderr}` : stderr,
+			options,
+		);
 		if (options.returnExitCode) return exitCode;
-		if (options.check && exitCode !== 0) {
+		if (options.check && exitCode !== 0 && !options.expectFailure) {
 			log.error(`Command '${name}' failed with exit code ${exitCode}`, false);
 			return false;
 		}
@@ -114,9 +143,12 @@ export async function runCommand(command, options = { check: true }) {
 			performance.now() - started,
 			"",
 			error?.message ?? String(error),
+			options,
 		);
-		log.error(`Failed to execute command: ${name}`, false);
-		console.error(error);
+		if (!options.expectFailure) {
+			log.error(`Failed to execute command: ${name}`, false);
+			console.error(error);
+		}
 		if (options.returnExitCode) return 127;
 		return false;
 	}
@@ -164,11 +196,18 @@ export async function runCommandCapture(command, options = {}) {
 		const decoder = new TextDecoder("utf-8", { ignoreBOM: true });
 		const stdout = decoder.decode(stdoutBytes);
 		const stderr = decoder.decode(stderrBytes);
-		recordCommand(name, exitCode, performance.now() - started, stdout, stderr);
+		recordCommand(
+			name,
+			exitCode,
+			performance.now() - started,
+			stdout,
+			stderr,
+			options,
+		);
 		return { exitCode, stdout, stderr, failed: exitCode !== 0 };
 	} catch (error) {
 		const stderr = error?.message ?? String(error);
-		recordCommand(name, 127, performance.now() - started, "", stderr);
+		recordCommand(name, 127, performance.now() - started, "", stderr, options);
 		return { exitCode: 127, stdout: "", stderr, failed: true };
 	}
 }

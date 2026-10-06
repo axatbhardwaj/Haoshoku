@@ -133,3 +133,28 @@ test("missing explicit log fails before probing or uploading", async () => {
 	expect(f.calls).toHaveLength(0);
 	expect(f.messages.join("\n")).toContain("No readable run log");
 });
+
+test("real-runner availability probes are recorded without bogus failures", async () => {
+	const root = fs.mkdtempSync(path.join(os.tmpdir(), "share-real-runner-"));
+	roots.push(root);
+	const { startRunLog } = await import("../src/common/run_log.js");
+	const { runCommandCapture } = await import("../src/common/utils.js");
+	const env = { ...process.env, HOME: root, XDG_STATE_HOME: root };
+	const run = startRunLog({ version: "12.1.0", env });
+	// These real subprocesses hit the required exit-1 guard scripts, never live tools.
+	expect(await shareLog(run.path, { env })).toBe(true);
+	expect(run.failures).toEqual([]);
+	const text = fs.readFileSync(run.path, "utf8");
+	expect(text).toContain('Probe: ["tailscale","status","--json"]\nExit: 1');
+	expect(text).toContain('Probe: ["gh","auth","status"]\nExit: 1');
+	const result = await runCommandCapture([
+		"sh",
+		"-c",
+		"echo actual-failure >&2; exit 7",
+	]);
+	expect(result.exitCode).toBe(7);
+	const lines = [];
+	run.finish(0, (line) => lines.push(line));
+	expect(lines[0]).toContain("1 failed command/step:");
+	expect(lines[0]).toContain("actual-failure");
+});

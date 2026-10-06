@@ -29,9 +29,9 @@ export async function shareLog(
 		);
 		return false;
 	}
-	const run = async (argv) => {
+	const run = async (argv, options = {}) => {
 		try {
-			return await runProcess(argv, { stdin: "ignore", env });
+			return await runProcess(argv, { stdin: "ignore", env, ...options });
 		} catch (error) {
 			return {
 				exitCode: 127,
@@ -41,7 +41,10 @@ export async function shareLog(
 		}
 	};
 	const target = env.HAOSHOKU_LOG_TARGET || "io";
-	const status = await run(["tailscale", "status", "--json"]);
+	const status = await run(["tailscale", "status", "--json"], {
+		expectFailure: true,
+		log: false,
+	});
 	let peer;
 	if (status.exitCode === 0) {
 		try {
@@ -79,7 +82,10 @@ export async function shareLog(
 		);
 		return true;
 	}
-	const auth = await run(["gh", "auth", "status"]);
+	const auth = await run(["gh", "auth", "status"], {
+		expectFailure: true,
+		log: false,
+	});
 	if (auth.exitCode === 0) {
 		// gh gist create is secret by default; --secret is not a supported flag.
 		const result = await run(["gh", "gist", "create", file]);
