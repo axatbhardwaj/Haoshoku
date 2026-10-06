@@ -1,6 +1,6 @@
 # Axstack migration runbook
 
-Preparation draft for [approved spec r2](https://github.com/axatbhardwaj/Haoshoku/issues/63) and [T4](https://github.com/axatbhardwaj/Haoshoku/issues/66). This is not a record of completed migration. Source changes, release verification and per-host checks below must finish before rollout. Execute IO first, then VPS.
+Migration guidance aligned with [the approved T3 Code replacement](https://github.com/axatbhardwaj/Haoshoku/issues/104). This is not a record of completed host migration. The repository change does not authorize live-host mutation. If host rollout is separately approved, complete release verification and per-host checks below, then execute IO before VPS.
 
 ## Release and execution gate
 
@@ -28,16 +28,16 @@ Before each change, preserve exact relevant bytes, permissions, link destination
 | Executor | Actual session and host |
 | Result | Before/after checks, remaining dependencies and limitations |
 
-Names or markers alone do not prove ownership. A retained Paseo unit can be Haoshoku-owned and must still be retained. A failed provenance or dependency check leaves the item intact and its retirement incomplete.
+Names or markers alone do not prove ownership. A retained T3 Code unit can be Haoshoku-owned and must still be retained. A failed provenance or dependency check leaves the item intact and its retirement incomplete.
 
 ## Inventory before changing anything
 
-1. Verify host identity and CLI paths/versions for Axstack, Claude Code, Codex, Paseo, Bun and gh/gh-stack. Resolve wrappers to their package location without executing installation or exposing environment files.
+1. Verify host identity and CLI paths/versions for Axstack, Claude Code, Codex, T3 Code, Bun and gh/gh-stack. Resolve wrappers to their package location without executing installation or exposing environment files.
 2. Inspect each existing Axstack manifest and its profile-file binding. Retain an existing shared-directory binding; do not pass the same profile file to an installation in another skills root. Preserve independently managed OpenCode targets.
 3. Inventory Claude/Codex instruction files, skill roots, old task/theme configuration and installed legacy helpers. Check independently installed skills separately; Haoshoku now installs only Matt Pocock skills and its pinned visual-explainer payload.
-4. Inventory exact user/system service instances, enabled state and consumers. Template presence is not an active instance. Keep the Paseo runtime and phone connectivity.
-5. Inventory native Paseo schedules through its supported CLI/API before manual retirement. Haoshoku no longer manages task lifecycle or schedule mappings. Preserve schedules unless positive evidence establishes approved legacy ownership.
-6. Inventory AI-only desktop/editor entries and extra applications. Mixed files and independently installed applications are not removed wholesale. Keep unrelated desktop behavior and necessary Paseo access.
+4. Inventory exact user/system service instances, enabled state and consumers. Template presence is not an active instance. Keep the T3 Code runtime and phone connectivity.
+5. Inventory existing legacy schedules through their supported runtime interface before manual retirement. Haoshoku no longer manages task lifecycle or schedule mappings. Preserve schedules unless positive evidence establishes approved legacy ownership.
+6. Inventory AI-only desktop/editor entries and extra applications. Mixed files and independently installed applications are not removed wholesale. Keep unrelated desktop behavior and necessary T3 Code access.
 
 The preparation snapshot found IO's Claude Remote Control and stay-awake unit bytes matching bundled templates. It found three mapped VPS schedules among eight active schedules, and unverified system Claude services. These are historical findings to recheck, not permanent allowlists.
 
@@ -49,18 +49,18 @@ Verify the installed release identity and package bytes. Run `axstack check` for
 
 Axstack must preserve text outside its owned instruction block. Existing unmarked routing prose remains unowned: archive and replace only a verified legacy section as an explicit migration action. Personal preferences stay byte-identical. Duplicate/malformed markers or edited/unknown blocks hold conversion; never use force as a generic migration fix.
 
-Haoshoku no longer bundles, syncs, or backs up Paseo orchestration profiles. Existing host profiles remain intact. For any separately approved manual profile change, apply only the documented runtime reload path and verify live profile readback. Preserve active agents. If activation requires a disruptive restart, record deferred activation and hold dependent cleanup; file installation alone is not success.
+T3 Code owns orchestration; Haoshoku no longer supplies model-routing profiles. Existing legacy host configuration remains intact, as listed in the [migration note](../../README.md#existing-host-migration). For any separately approved manual configuration change, use the runtime's documented activation path and verify live readback. Preserve active agents. If activation requires a disruptive restart, record deferred activation and hold dependent cleanup; file installation alone is not success.
 
 ## Retire verified legacy items
 
 Only proceed after replacement checks pass for the affected capability.
 
-- **Skills and configuration:** archive positively identified legacy entries outside every active discovery root. Remove only verified managed links. Preserve independently installed specialist skills, credentials, sessions and unrelated instructions. Do not wipe `.agents`, `.claude`, `.codex` or `.paseo`.
-- **Services:** verify the exact instance and current consumer graph. Stop the approved legacy instance, disable future activation, archive its verified unit/helper/settings, reload the relevant service manager and read back inactive/disabled or absent state. Never stop the driver transport or required Paseo runtime. Shared binaries/user data remain unless separately proven safe and in scope.
+- **Skills and configuration:** archive positively identified legacy entries outside every active discovery root. Remove only verified managed links. Preserve independently installed specialist skills, credentials, sessions and unrelated instructions. Do not wipe `.agents`, `.claude`, `.codex` or other runtime data roots.
+- **Services:** verify the exact instance and current consumer graph. Stop the approved legacy instance, disable future activation, archive its verified unit/helper/settings, reload the relevant service manager and read back inactive/disabled or absent state. Never stop the driver transport or required T3 Code runtime. Shared binaries/user data remain unless separately proven safe and in scope.
 - **Schedules:** verify exact object identity, legacy purpose and lack of current dependencies. Save a private restorable definition, pause the schedule, verify it is paused, then retire it only when restoration and consumer checks are complete. Preserve unmapped/custom schedules. Do not use a name match or delete/recreate unrelated objects.
 - **Desktop/editor integration:** apply narrow approved entry removal, preserving general files and bindings. Load the installed `omarchy` skill instructions before live desktop customization; if unavailable, hold that desktop step. Recheck affected behavior; no desktop restart merely to simplify evidence collection.
 
-Hermes stays on Debian for Telegram transport through `hermes send`, as specified in [the approved T3 migration](https://github.com/axatbhardwaj/Haoshoku/issues/104). Haoshoku checks its existing private Telegram configuration and running gateway without deploying the Paseo relay plugin or changing existing plugin data and relay markers. T3 remains a retirement candidate under this older migration plan: active consumers hold that retirement, and absence from an installer does not stop it. Unknown system Claude services remain intact until positive provenance establishes that they are in scope.
+Hermes stays on Debian for Telegram transport through `hermes send`, as specified in [the approved T3 migration](https://github.com/axatbhardwaj/Haoshoku/issues/104). Haoshoku checks its existing private Telegram configuration and running gateway without deploying a relay plugin or changing existing plugin data and relay markers. T3 Code is the retained orchestration runtime. Verify its service, Tailscale HTTPS route, and phone pairing before retiring legacy access. Unknown system Claude services remain intact until positive provenance establishes that they are in scope.
 
 ## Failure and recovery
 
@@ -76,7 +76,7 @@ Verify after the final mutation, and retain separate evidence for:
 
 - release/installed bytes and CLI versions;
 - actual Claude/Codex skill and instruction discovery;
-- live Paseo profiles, agent continuity and phone connectivity;
+- live T3 Code orchestration, agent continuity and phone connectivity;
 - retired items absent from active discovery/activation;
 - preserved items and protected configuration unchanged;
 - schedules and services in their intended final state;

@@ -14,6 +14,24 @@ function output(args) {
 }
 
 describe("haoshoku CLI help", () => {
+	it("lists the existing-host artifacts that require manual migration", () => {
+		const readme = fs.readFileSync(README, "utf8");
+		const note =
+			readme.split("### Existing-host migration")[1]?.split("\n## ")[0] ?? "";
+		for (const artifact of [
+			"paseo-daemon.service",
+			"~/.paseo",
+			"@getpaseo/cli",
+			"upstream Paseo skills",
+			"~/.hermes/plugins/paseo-review-relay",
+			"~/.hermes/plugin-data/paseo-review-relay",
+			"~/.local/bin/hermes-relay",
+			"~/.config/haoshoku/{hermes-relay,paseo-tasks,paseo-schedules}.json",
+		])
+			expect(note).toContain(artifact);
+		expect(note).toContain("manually");
+	});
+
 	it("documents Arch/Omarchy as the desktop target", () => {
 		const help = output(["--help"]);
 		// Normalize whitespace: commander rewraps descriptions to the longest
@@ -76,14 +94,6 @@ describe("haoshoku CLI help", () => {
 		expect(normalizedHelp).toContain("Tailscale");
 		expect(normalizedHelp).toContain("Grok CLI on PATH");
 		expect(normalizedHelp).not.toContain("T3 Connect");
-	});
-
-	it("documents the native headless Paseo server mode", () => {
-		const help = output(["--help"]);
-		const normalizedHelp = help.replace(/\s+/g, " ");
-
-		expect(help).toContain("--server-paseo");
-		expect(normalizedHelp).toContain("native Paseo headless service on Debian");
 	});
 
 	it("documents the Debian-only Hermes relay mode", () => {

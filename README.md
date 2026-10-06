@@ -26,7 +26,7 @@ haoshoku --os arch
 Install the pinned, checksum-verified Axstack release and configure its Claude
 and Codex harness targets with `haoshoku --axstack`. Run
 `haoshoku --axstack-check` to report the shim/version, each harness check, and
-the Paseo profile-file readback separately.
+the `~/.paseo/config.json` readback separately.
 Claude and Codex setup skip config synchronization when their CLI installation fails.
 
 ## Arch and Omarchy behavior
@@ -47,9 +47,8 @@ The Arch setup:
   still-uninstalled packages individually when a batch fails;
 - installs only JetBrains Mono Nerd Font instead of the conflicting complete
   Nerd Font group;
-- installs the AUR `paseo-bin` desktop app, launches `/usr/bin/paseo` at login,
-  and binds `Super+T` to its exact `Paseo` window class. The absolute desktop
-  path prevents a user-installed Paseo CLI in `~/.local/bin` from shadowing it;
+- binds `Super+T` to launch or focus T3 Code Nightly with `t3code-nightly`,
+  matching only the anchored `^com\\.t3tools\\.T3Code$` window class;
 - keeps Bash as the account shell and adds portable aliases and tool
   initialization through `~/.config/haoshoku/bashrc`;
 - preserves Omarchy's `.bashrc`, lock screen, and core Quickshell/Hyprland
@@ -211,10 +210,29 @@ the live Claude copy with `haoshoku --agents-backup`. The bundled policy routes
 both Notion accounts and Linear through the configured Executor MCP while T3 Code
 remains responsible for orchestration.
 
-Haoshoku no longer bundles, syncs, or backs up Paseo orchestration profiles.
-Arch and Debian setup leave existing `~/.paseo/config.json` profile and provider
-settings intact. Claude/Codex runtime state and `settings.json` remain
-machine-local.
+T3 Code owns agent orchestration, and Axstack supplies routing policy.
+Claude/Codex runtime state and `settings.json` remain machine-local.
+
+### Existing-host migration
+
+Haoshoku no longer installs, configures, or launches Paseo. Existing hosts keep
+these artifacts until you remove them manually:
+
+- `paseo-daemon.service` and `~/.paseo`;
+- the `@getpaseo/cli` install and the `paseo-bin` desktop package;
+- upstream Paseo skills;
+- `~/.hermes/plugins/paseo-review-relay` and its data at
+  `~/.hermes/plugin-data/paseo-review-relay`;
+- `~/.local/bin/hermes-relay`;
+- `~/.config/haoshoku/{hermes-relay,paseo-tasks,paseo-schedules}.json`.
+
+Retiring these host artifacts needs a separate manual migration after checking
+active consumers and preserving private recovery data. Haoshoku's agent-skill
+sync archives the retired bundled `model-routing`, `paseo-pr-babysit`, and
+`paseo-pr-review` skills with their live edits. It removes only managed
+Claude/Codex links; agent-specific directories and non-managed links stay intact.
+
+### Visual explainer and skills
 
 The visual explainer defaults to a fixed dark theme. Set and persist a different
 preference with `haoshoku --explainer-theme dark|light|system`; an explicit
@@ -222,12 +240,8 @@ theme in a request takes precedence. Fixed dark or light output uses the full
 upstream renderer, while the system theme may use quick mode. On the first
 sync after this migration, Haoshoku archives the retired shared
 `html-deliverables` skill under `~/.config/haoshoku/retired-agent-skills/`
-before removing only its managed Claude/Codex links. The same migration
-archives `model-routing`, `paseo-pr-babysit`, and `paseo-pr-review`, preserving
-live edits in the archive. Agent-specific real directories and non-managed
-links are preserved. Haoshoku no longer installs upstream Paseo skills or
-supports `--agent-skills-backup`; existing upstream skills remain until removed
-manually.
+before removing only its managed Claude/Codex links. Haoshoku no longer
+supports `--agent-skills-backup`; existing upstream skills remain untouched.
 
 ## Claude Remote Control
 
@@ -309,7 +323,6 @@ haoshoku --claude-update
 haoshoku --codex
 haoshoku --codex-backup
 haoshoku --server-t3-code
-haoshoku --server-paseo
 haoshoku --device-type laptop
 haoshoku --kde-connect-commands
 haoshoku --audio
@@ -371,9 +384,8 @@ haoshoku --os debian-server
 ```
 
 The Debian path remains deliberately headless. In addition to server hardening,
-it installs the portable Claude/Codex policy, Matt Pocock and upstream Paseo
-skills, Haoshoku-owned workflow skills, PR-watch, and the native Paseo daemon.
-Paseo is required; setup leaves its existing orchestration profiles intact.
+it installs the portable Claude/Codex policy, Matt Pocock skills, the pinned
+visual-explainer, Axstack, PR-watch, and Hermes Telegram transport.
 T3 Code is required and runs without a prompt; an incomplete T3 setup fails
 Debian setup. `haoshoku --server-t3-code` runs the same step on its own.
 
@@ -418,73 +430,8 @@ a rerun may fail; inspect `t3 --version` and retry once the nightly tag catches
 up.
 
 The full Debian path asks about Git, Claude stay-awake, Claude Remote Control,
-and automatic worktree cleanup. `haoshoku --skills` refreshes both declared
-external skill sources independently using Bun's `bunx` runner.
-
-### Native headless Paseo
-
-Run `haoshoku --server-paseo` directly as the account that should own Paseo.
-Normal login users and direct root logins are supported; do not prefix a
-non-root run with `sudo` unless root ownership is intentional. Haoshoku installs
-`@getpaseo/cli` under `~/.local`, writes a new `~/.paseo/config.json` only when
-none exists, and manages `paseo-daemon.service` as that account's systemd user
-service. For root this means `/root/.local`, `/root/.paseo`, and the root user
-manager at `/run/user/0/bus`. If that manager is unavailable, Haoshoku stops
-with recovery guidance instead of targeting another user's session. A new config
-listens on `127.0.0.1:6767`, enables the Paseo MCP endpoint, disables relay,
-and keeps the bundled web UI off. An existing valid JSON object is left
-byte-for-byte untouched, so its listen, authentication, relay, providers,
-profiles, and unknown settings remain authoritative. Edit that file directly,
-then use `paseo reload`; restart only when Paseo reports a restart-required
-setting.
-
-The unit runs `paseo daemon start --foreground --home ~/.paseo`, restarts only
-after failure, and enables user lingering for startup after reboot and logout.
-Haoshoku refuses to replace a foreign unit or take over an unmanaged/desktop
-daemon. Useful lifecycle and recovery commands are:
-
-```bash
-systemctl --user status paseo-daemon.service
-systemctl --user restart paseo-daemon.service
-journalctl --user -u paseo-daemon.service -n 100
-paseo daemon status --home ~/.paseo
-```
-
-In an attached terminal Haoshoku optionally runs
-`paseo daemon pair --relay --home ~/.paseo`; otherwise it prints that command
-for later. Pairing enables Paseo's end-to-end encrypted relay and creates a
-phone offer. It does not authenticate an agent provider or prove that a phone
-connected. For local-only access, keep relay disabled and connect through
-Paseo's SSH transport; Haoshoku does not open a port or alter the firewall.
-
-To operate a VPS from a PC agent without enabling a public Paseo port, first
-configure and verify a normal SSH alias in `~/.ssh/config`, then pass that alias
-after each Paseo subcommand (the installed 0.7.2 CLI does not accept a global
-`--host` before the command):
-
-```bash
-ssh my-vps
-paseo ls --host ssh://my-vps --json
-paseo reload --host ssh://my-vps --json
-```
-
-The desktop app can keep the local PC and VPS available through the same app.
-For phone access, run the pairing command on each desired host and accept its
-encrypted relay offer in the app. SSH and relay are independent; neither flow
-causes Haoshoku to expose port 6767.
-
-This setup does not install or authenticate provider CLIs. Install and log in
-to Claude Code, Codex, or another enabled provider separately as
-the same user, then verify the daemon's environment and available models:
-
-```bash
-paseo provider diagnostic codex
-paseo provider models codex
-```
-
-The standalone `--server-paseo` flag remains lifecycle-only. Browser tools
-require a connected Paseo desktop app because the headless daemon brokers
-browser tabs but does not host a browser itself.
+and automatic worktree cleanup. `haoshoku --skills` refreshes Matt Pocock
+skills using Bun's `bunx` runner.
 
 ### VPS Hermes Telegram transport
 
@@ -513,7 +460,7 @@ The command succeeds only when Hermes is usable, its config exists, the bot
 token is configured, the private home channel resolves, and the gateway reports
 running. Missing or unverifiable readiness returns failure with retry guidance.
 A busy running gateway passes. Haoshoku never prompts for activation, restarts
-the gateway, deploys or enables a relay plugin, or calls Paseo during this step.
+the gateway, or deploys or enables a relay plugin.
 It preserves existing Hermes config, credentials, plugins, plugin data, and
 legacy relay markers. Telegram notifications use `hermes send`.
 

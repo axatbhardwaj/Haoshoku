@@ -134,9 +134,10 @@ helper use `numbered-login 7 ghostty`, which preserves the terminal without
 stealing focus. Haki and agents use their own exact Ghostty classes and tmux
 splits. `SUPER+Return` remains Omarchy's
 `xdg-terminal-exec` route, whose XDG default is Ghostty; `SUPER+T` uses
-`o.launch_sole("^Paseo$", "/usr/bin/paseo")`, focusing Paseo wherever it resides
-and launching the AUR desktop explicitly when absent, even if a user CLI shadows
-`paseo` in PATH. The assistants recipe runs
+`o.launch_sole("^com\\.t3tools\\.T3Code$", "t3code-nightly")`, focusing T3 Code
+wherever it resides and launching T3 Code Nightly when absent. Keep the class
+anchored and its dots escaped. Primary-app workspace behavior stays independent
+of this launcher. The assistants recipe runs
 at login and on `SUPER+I`, managing ChatGPT and Claude Desktop in `special:assistants`;
 Twitch retains its own special workspace.
 
