@@ -2,7 +2,6 @@ import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { copyDirRecursive, log } from "../common/utils.js";
-import { ensurePaseoTaskConfig } from "./configure_paseo_tasks.js";
 import { ensureExplainerTheme } from "./configure_visual_explainer.js";
 
 const PROJECT_ROOT = path.resolve(__dirname, "..", "..");
@@ -152,7 +151,6 @@ export function syncAgentSkills({
 		}
 	}
 	if (!ensureExplainerTheme({ home, fsImpl, logger })) complete = false;
-	if (!ensurePaseoTaskConfig({ home, fsImpl, logger })) complete = false;
 
 	for (const name of REFERENCED_SKILLS) {
 		if (!fsImpl.existsSync(path.join(live, name))) {
