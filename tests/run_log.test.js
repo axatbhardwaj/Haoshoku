@@ -193,3 +193,41 @@ test("--share-log is mutually exclusive with setup flags", async () => {
 	expect(result.exitCode).toBe(2);
 	expect(result.stderr).toContain("mutually exclusive");
 });
+
+test("quoted credential values are redacted even inside serialized argv", async () => {
+	const secret = 'PASSWORD="private value"';
+	expect(redactLog(secret)).not.toContain("private value");
+	expect(redactLog(JSON.stringify(secret))).not.toContain("private value");
+	const f = fixture();
+	await cli(f, ["--version", secret]);
+	expect(readLog(f).text).not.toContain("private value");
+});
+
+test("a normal run never invokes the sharing helper", async () => {
+	const f = fixture();
+	const cliPath = path.resolve("haoshoku.js");
+	const helperPath = path.resolve("src/helpers/share_log.js");
+	const script = `
+		import { mock } from "bun:test";
+		mock.module(${JSON.stringify(helperPath)}, () => ({ shareLog: async () => { console.log("UPLOAD_CALLED"); return true; } }));
+		process.argv = [process.execPath, ${JSON.stringify(cliPath)}, "--explainer-theme", "dark"];
+		await import(${JSON.stringify(cliPath)});
+	`;
+	const result = Bun.spawnSync([process.execPath, "--eval", script], {
+		env: f.env,
+		stdout: "pipe",
+		stderr: "pipe",
+	});
+	expect(result.exitCode).toBe(0);
+	expect(new TextDecoder().decode(result.stdout)).not.toContain(
+		"UPLOAD_CALLED",
+	);
+	expect(
+		JSON.parse(
+			fs.readFileSync(
+				path.join(f.root, ".config/haoshoku/visual-explainer.json"),
+				"utf8",
+			),
+		).theme,
+	).toBe("dark");
+});

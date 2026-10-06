@@ -56,6 +56,7 @@ function run(args) {
 				name,
 				name === "log" ? { dim() {}, error() {}, info() {}, success() {}, warning() {} }
 				: name === "getBanner" ? () => ""
+				: name === "startRunLog" ? () => ({ path: null, finish() {} })
 				: name === "findActiveModeFlags" ? () => []
 				: called(name),
 			])));

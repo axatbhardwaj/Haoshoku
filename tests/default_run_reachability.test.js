@@ -35,6 +35,8 @@ function deployModeFeaturesFromCli() {
 	// default setup path. This guard does not execute those state-specific
 	// branches, so exclude them instead of claiming default-path coverage.
 	const excludedNonDefaultModes = new Set([
+		// Log sharing is explicit and must never upload during default setup.
+		"--share-log",
 		"--claude-update",
 		// The default setup persists dark through agent-skills sync. This flag is
 		// only an explicit preference override, not another deploy capability.
@@ -103,7 +105,10 @@ const DELIBERATE_OMISSIONS = {
 		],
 	]),
 	"debian-server": new Map([
-		["--tailscale-t3", "Arch provisioning; Debian uses --server-t3-code with preconfigured Tailscale."],
+		[
+			"--tailscale-t3",
+			"Arch provisioning; Debian uses --server-t3-code with preconfigured Tailscale.",
+		],
 		["--audio", "WirePlumber routing depends on desktop device profiles."],
 		["--mimeapps", "Default-app routing is a desktop-session concern."],
 		["--scripts", "The managed user scripts are desktop app launchers."],

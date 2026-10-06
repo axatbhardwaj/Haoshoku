@@ -128,3 +128,20 @@ test("summary counts repeated command failures, avoids duplicate runner errors a
 	run.finish?.(1, (message) => lines.push(message));
 	expect(lines).toHaveLength(1);
 });
+
+test("log files have mode 0600 even under a restrictive umask", () => {
+	const run = begin({
+		fsImpl: {
+			...fs,
+			openSync: (...args) => {
+				const original = process.umask(0o777);
+				try {
+					return fs.openSync(...args);
+				} finally {
+					process.umask(original);
+				}
+			},
+		},
+	});
+	expect(fs.statSync(run.path).mode & 0o777).toBe(0o600);
+});

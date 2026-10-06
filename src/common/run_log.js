@@ -16,7 +16,7 @@ export function redactLog(value) {
 		)
 		.replace(/\bBearer\s+[^\s"'\\]+/gi, "Bearer [REDACTED]")
 		.replace(
-			/(\b(?:[A-Z_]*_)?(?:password|token)\s*=\s*)(?:"[^"\n]*"|'[^'\n]*'|[^\s&;"'\\]+)/gi,
+			/(\b(?:[A-Z_]*_)?(?:password|token)\s*=\s*)(?:\\?"[^"\n]*"|\\?'[^'\n]*'|[^\s&;"'\\]+)/gi,
 			"$1[REDACTED]",
 		)
 		.replace(/https:\/\/login\.tailscale\.com\/a\/[^\s"'\\]+/gi, "[REDACTED]");
@@ -119,7 +119,11 @@ export function startRunLog({
 			try {
 				const file = path.join(dir, filename);
 				const fd = fsImpl.openSync(file, "wx", 0o600);
-				fsImpl.closeSync(fd);
+				try {
+					fsImpl.fchmodSync(fd, 0o600);
+				} finally {
+					fsImpl.closeSync(fd);
+				}
 				run.path = file;
 				break;
 			} catch (error) {
@@ -140,7 +144,7 @@ export function startRunLog({
 		);
 		const omarchy = fs.existsSync(omarchyRoot) || Bun.which("omarchy") !== null;
 		run.write(
-			`Haoshoku ${version}\nArgv: ${JSON.stringify(argv)}\nDate: ${now.toISOString()}\nOS NAME: ${field("NAME")}\nOS VERSION: ${field("VERSION")}\nOmarchy: ${omarchy ? `present (${readOptional(path.join(omarchyRoot, "version"))})` : "absent"}\nKernel: ${os.release()}\nArch: ${os.arch()}\nRuntime: ${import.meta.dir.startsWith("/$bunfs/") ? "compiled binary" : "source"}`,
+			`Haoshoku ${version}\nArgv: ${JSON.stringify(argv.map(redactLog))}\nDate: ${now.toISOString()}\nOS NAME: ${field("NAME")}\nOS VERSION: ${field("VERSION")}\nOmarchy: ${omarchy ? `present (${readOptional(path.join(omarchyRoot, "version"))})` : "absent"}\nKernel: ${os.release()}\nArch: ${os.arch()}\nRuntime: ${import.meta.dir.startsWith("/$bunfs/") ? "compiled binary" : "source"}`,
 		);
 	} catch {
 		unavailable();

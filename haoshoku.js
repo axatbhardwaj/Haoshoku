@@ -79,9 +79,6 @@ import { shareLog } from "./src/helpers/share_log.js";
 import { runCachyOSSetup } from "./src/os_scripts/cachyos.js";
 import { runDebianServerSetup } from "./src/os_scripts/debian_server.js";
 
-const runLog = startRunLog({ version: "12.1.0" });
-process.once("exit", (code) => runLog.finish(code));
-
 const program = new Command();
 
 function parseEnabledState(value) {
@@ -95,6 +92,9 @@ program
 	.description("Haoshoku: portable setup for Arch / Omarchy and Debian Server.")
 	.version("12.1.0")
 	.addHelpText("before", getBanner());
+
+const runLog = startRunLog({ version: program.version() });
+process.once("exit", (code) => runLog.finish(code));
 
 program
 	.option("--os <type>", "Specify the target OS (arch, debian-server)")

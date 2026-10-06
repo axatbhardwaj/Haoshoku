@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawn } from "bun";
 import chalk from "chalk";
-import { recordCommand, recordOutput } from "./run_log.js";
+import { recordCommand, recordOutput, redactLog } from "./run_log.js";
 
 function printLog(level, msg, failure = true) {
 	recordOutput(level, msg, failure);
@@ -45,7 +45,9 @@ function commandArgv(command, options) {
 		: command.split(" ");
 }
 function commandName(command) {
-	return Array.isArray(command) ? JSON.stringify(command) : command;
+	return Array.isArray(command)
+		? JSON.stringify(command.map(redactLog))
+		: command;
 }
 
 // Drain concurrently, keeping a bounded tail. Never retain a partial leading
