@@ -648,8 +648,11 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 		];
 
 		const providerAliases = {
+			"chatgpt.desktop": "openai-codex-desktop",
 			"chromium.desktop": "chromium",
 			"com.anthropic.Claude.desktop": "claude-desktop",
+			"com.t3tools.T3Code.desktop": "t3code-nightly-bin",
+			"dev.zed.Zed.desktop": "zed",
 			"org.gnome.Nautilus.desktop": "nautilus",
 		};
 		const installed = new Set(
