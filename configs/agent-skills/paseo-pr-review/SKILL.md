@@ -37,11 +37,6 @@ The driver waits for all six reports or records the blocked seats. Validate acti
 
 Apply the shared [HUMAN_DECISION reference](../model-routing/references/human-decisions.md) when a proposed response would go beyond the accepted specification by changing a trust/security boundary, taking an irreversible action, or materially changing direction. Finish the technical review, keep the persistent owner, and hold `APPROVE` while pending. A relay receipt is not action authority; the driver revalidates it and the live revision.
 
-Before any Hermes relay CLI, pending-state inspection, or escalation transport,
-run `$HOME/.agents/skills/model-routing/references/hermes-relay-host-enabled`.
-If its marker is missing or disabled, make no Hermes or remote calls and keep the
-high-stakes decision in the normal local Paseo conversation.
-
 For an explicit transient launch failure, inspect the recorded session and retry once; authentication or unsupported-capability errors block the seat immediately. Long-running agents are not failures: use completion notifications, and inspect liveness on a reported error or missed agreed deadline. If a focused follow-up leaves a material disagreement unresolved, the driver records the uncertainty and marks the result INCOMPLETE; advisory escalation uses `paseo-committee` when needed.
 
 Deliver one report with PR identity and reviewed SHA, recommendation, severity-ordered findings, distinguishable Standards and Spec findings, six-angle coverage, validation and limitations. A recommendation is separate from CI/merge readiness. Refresh the PR head, base and checks before final delivery. If the candidate changed, reuse the same reviewers to inspect the exact delta plus affected coverage and obtain refreshed SHA receipts. Run a full six-angle re-review for substantive scope, base or behavior change, and whenever the user's explicit full or six-angle request requires it; otherwise retain unchanged coverage without redoing it.

@@ -20,7 +20,7 @@ Standalone setup scripts for specific tools.
 | `configure_gh_stack.js` | Idempotent `github/gh-stack` extension install | Adding or debugging stacked-PR tooling setup |
 | `configure_pr_watch.js` | pr-watch PR watcher sync/backup | Adding or debugging the PR watcher deploy |
 | `configure_paseo_server.js` | Native Paseo CLI, loopback config, and persistent user-service setup for Debian servers | Adding or debugging headless Paseo lifecycle and pairing |
-| `configure_hermes_relay.js` | Pinned Hermes bootstrap plus VPS-only relay deploy, private config, validation, activation, and host marker | Adding or debugging Hermes review-relay setup |
+| `configure_hermes_relay.js` | Pinned bootstrap when Hermes is absent plus plugin-free Telegram and running-gateway readiness probes | Adding or debugging Debian Hermes transport |
 | `configure_paseo_profiles.js` | Whitelist-only Paseo profile/provider policy sync, backup, and safe live reload | Adding or debugging managed orchestration policy |
 | `configure_paseo_schedules.js` | Explicit `--paseo-schedules` / `-check` / `-apply` role-to-schedule mapping in `~/.config/haoshoku/paseo-schedules.json`; never creates, deletes, pauses, or runs schedules | Changing schedule role defaults, identity checks, or apply semantics |
 | `paseo_schedule_client.js` | Scoped local Paseo client (`PASEO_HOME`/`PASEO_HOST` ignored) for schedule readback | Changing how schedules are read from the local Paseo daemon |

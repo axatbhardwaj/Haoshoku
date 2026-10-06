@@ -616,59 +616,37 @@ after editing the bundled policy. Browser tools require a connected Paseo
 desktop app because the headless daemon brokers browser tabs but does not host
 a browser itself.
 
-### VPS Hermes conversation relay
+### VPS Hermes Telegram transport
 
-`haoshoku --server-hermes-relay` configures a generic Telegram-to-Paseo
-conversation transport only on a Debian-family server. Its legacy native plugin
-name and data path remain `paseo-review-relay` for compatibility. The full
-Debian setup runs this step after native Paseo and the managed Paseo profiles.
-Arch/Omarchy setup never calls it and never creates its enable marker.
+`haoshoku --server-hermes-relay` verifies Hermes Telegram transport on a
+Debian-family server. Full Debian setup runs this step independently of Paseo
+profiles and fails if Hermes readiness is incomplete. Arch/Omarchy setup never
+calls it.
 
-An existing Hermes installation is reused and never upgraded. If Hermes is
-missing, Haoshoku downloads the official installer and installs the validated
-commit from [`configs/hermes-relay/hermes-runtime.json`](configs/hermes-relay/hermes-runtime.json)
-with `--skip-setup --skip-browser --skip-computer-use --non-interactive`. That
-bootstrap deliberately leaves credentials and gateway setup to the operator.
-Complete those private steps without placing secrets in this repository:
+An existing usable Hermes installation is kept without upgrading or replacing
+it. If Hermes is absent, Haoshoku downloads the official installer and installs
+the pinned commit from
+[`configs/hermes-relay/hermes-runtime.json`](configs/hermes-relay/hermes-runtime.json)
+with `--skip-setup --skip-browser --skip-computer-use --non-interactive`.
+Credentials and gateway setup remain manual. Complete these private steps
+without placing secrets in this repository:
 
-1. Run `hermes setup` and configure the Telegram bot token in `~/.hermes/.env`.
-2. Set one private Telegram owner/DM in Hermes. Haoshoku derives IDs only when
-   the existing private configuration is unambiguous; otherwise set
-   `telegramChatId` and `telegramUserId` in
-   `~/.hermes/plugin-data/paseo-review-relay/config.json`.
-3. Install login startup with
+1. Run `hermes setup` so `$HERMES_HOME/config.yaml` exists (`HERMES_HOME`
+   defaults to `~/.hermes`). Configure `TELEGRAM_BOT_TOKEN` in its `.env`.
+2. Set exactly one owner in `TELEGRAM_ALLOWED_USERS`. Set the private Telegram
+   home channel in `TELEGRAM_HOME_CHANNEL` or
+   `platforms.telegram.home_channel.chat_id` in `config.yaml` to that same ID.
+3. Install startup with
    `hermes gateway install --no-start-now --start-on-login`, start or verify the
    gateway manually, then rerun `haoshoku --server-hermes-relay`.
 
-Missing credentials, an unverifiable local Paseo identity, plugin doctor
-failure, or pending activation returns failure rather than reporting success.
-The helper preserves Hermes YAML, auth, unrelated plugins, database, and relay
-anchors; it backs up a changed plugin directory, deploys only allowlisted files,
-and creates `~/.local/bin/hermes-relay` as a symlink. A changed installation is
-restarted only after an interactive confirmation that the gateway is idle. A
-required activation deferred because the gateway is busy, an unknown gateway
-state, and an incomplete noninteractive run revoke the host marker. An
-unchanged, previously activated relay remains enabled while its running gateway
-is busy. Haoshoku never restarts Paseo or changes schedules.
-
-Relay source is controlled by [`configs/hermes-relay/lock.json`](configs/hermes-relay/lock.json).
-It pins the public `paseo-hermes-relay` v0.2.0 release to immutable commit
-`73846214657a165379a1698b6bccff6c9c9e484f`. Haoshoku fetches that exact commit,
-verifies both `HEAD` and the peeled tag, and rejects mismatches. An offline test
-checkout may be supplied with `HAOSHOKU_HERMES_RELAY_SOURCE=/absolute/path`; the
-same commit, tag, and manifest checks still apply.
-
-Only a fully configured and activated server receives
-`~/.config/haoshoku/hermes-relay.json` with `version: 1` and `enabled: true`.
-Bundled PR workflows must run their `hermes-relay-host-enabled` check before any
-relay command, pending-state inspection, or escalation transport. A missing or
-disabled marker means normal local handling in the Paseo conversation with no
-Hermes or remote relay calls. Bundled PR workflows explicitly use `mode: "pr"`,
-whose receipts retain the live GitHub head/base/open-state guard. Generic
-conversation receipts are separately opt-in delivery only: they do not activate
-local work, and the persistent owner must revalidate authority, context, and live
-state before acting. High-stakes decisions and action authority stay with the
-human in the Paseo conversation.
+The command succeeds only when Hermes is usable, its config exists, the bot
+token is configured, the private home channel resolves, and the gateway reports
+running. Missing or unverifiable readiness returns failure with retry guidance.
+A busy running gateway passes. Haoshoku never prompts for activation, restarts
+the gateway, deploys or enables a relay plugin, or calls Paseo during this step.
+It preserves existing Hermes config, credentials, plugins, plugin data, and
+legacy relay markers. Telegram notifications use `hermes send`.
 
 Debian Server does not ask for `deviceType`: that value only selects desktop
 audio and Hyprland/Omarchy variants. For the same reason the Debian path does

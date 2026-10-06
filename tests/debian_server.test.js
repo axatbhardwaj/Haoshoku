@@ -259,8 +259,8 @@ describe("Debian default path", () => {
 			"agent-skills",
 			"paseo-server",
 			"axstack",
-			"paseo-profiles",
 			"hermes-relay",
+			"paseo-profiles",
 		]);
 		expect(result).toBe(true);
 	});
@@ -372,7 +372,7 @@ describe("Debian default path", () => {
 		});
 	});
 
-	it("runs Hermes relay after Paseo profiles and propagates an incomplete setup", () => {
+	it("propagates Hermes failure without prompting for Hermes", () => {
 		const { events, result } = runDefaultSetupWithSafeDoubles({
 			relayResult: false,
 		});
@@ -381,13 +381,34 @@ describe("Debian default path", () => {
 			.map(({ name }) => name);
 
 		expect(result).toBe(false);
-		expect(helpers.indexOf("paseo-profiles")).toBeLessThan(
-			helpers.indexOf("hermes-relay"),
-		);
+		expect(helpers).toContain("hermes-relay");
+		expect(
+			events.filter(
+				({ type, message }) => type === "prompt" && /hermes/i.test(message),
+			),
+		).toEqual([]);
 		expect(events.at(-1)).toEqual({
 			type: "error",
 			message:
 				"Debian Server setup finished, but the Hermes relay is incomplete.",
 		});
+	});
+	it.each([
+		"profileResult",
+		"paseoResult",
+	])("runs Hermes before profiles even when %s fails", (failure) => {
+		const { events, result } = runDefaultSetupWithSafeDoubles({
+			[failure]: false,
+		});
+		const helpers = events
+			.filter(({ type }) => type === "helper")
+			.map(({ name }) => name);
+		expect(result).toBe(false);
+		expect(helpers).toContain("hermes-relay");
+		if (failure === "profileResult") {
+			expect(helpers.indexOf("hermes-relay")).toBeLessThan(
+				helpers.indexOf("paseo-profiles"),
+			);
+		}
 	});
 });

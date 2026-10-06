@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Keep Debian Hermes Telegram transport independent of Paseo: verify readiness
+  without deploying a relay plugin, restarting the gateway, or writing host markers.
+
 ## 11.15.0 - 2026-10-05
 
 - Make T3 Code Nightly (`t3code-nightly`) the default Omarchy primary app in
