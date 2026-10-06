@@ -23,18 +23,18 @@ Use `--claude-backup` and `--codex-backup` after changing the live policy; use
 ## Skills
 
 `configure_skills.js` delegates skill installation to the upstream Skills CLI.
-Haoshoku declares `mattpocock/skills` and `getpaseo/paseo` as external sources
-for Claude Code and Codex. The new source uses `bunx skills@latest ... -y`;
-Haoshoku does not maintain its own clone or wrapper.
+Haoshoku installs `mattpocock/skills` for Claude Code and Codex; it does not
+maintain its own clone or wrapper.
 
-- `--skills` and `--skills-update` reconcile both external sources.
+- `--skills` and `--skills-update` reconcile the Matt Pocock source.
 - `--skills-list` prints the Skills CLI global inventory.
 - Full Arch and Debian setup performs the same reconciliation after Codex.
 
-`configure_agent_skills.js` separately syncs three Haoshoku-owned orchestration
-skills plus the pinned upstream `visual-explainer`, with portable Claude/Codex
-links for both sets. Backup writes only the three owned skills; other
-local/system skills are not pruned.
+`configure_agent_skills.js` separately syncs the pinned upstream
+`visual-explainer` with portable Claude/Codex links. It archives retired bundled
+skills and removes only their managed links. Agent-specific real directories,
+non-managed links, and other local/system skills are preserved. Routing and
+review policy are managed by Axstack; agent-skill backup is no longer supported.
 
 ## Headless Paseo
 

@@ -48,3 +48,10 @@ The project is built using modern JavaScript (ES Modules) and runs on Bun.
 
 Haoshoku no longer bundles, syncs, or backs up Paseo orchestration profiles.
 Arch and Debian server setup leave existing Paseo profile configuration intact.
+
+`--skills` and `--skills-update` install Matt Pocock skills for Claude Code and
+Codex. `--agent-skills` syncs the pinned visual-explainer payload and archives
+retired bundled routing skills under `~/.config/haoshoku/retired-agent-skills/`,
+removing only managed Claude/Codex links. Routing policy lives in Axstack;
+Haoshoku no longer provides agent-skill backup. Existing upstream skills remain
+untouched.

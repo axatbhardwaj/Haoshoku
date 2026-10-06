@@ -7,7 +7,7 @@
 | `cachyos.test.js`  | CachyOS setup tests           | Testing Arch setup, debugging failures    |
 | `common.test.js`   | Common module tests           | Testing shared functionality              |
 | `configure_claude_remote_control.test.js` | Claude Remote Control state, deployment, supervisor, linger, and backup tests | Changing Remote Control setup or service lifecycle |
-| `configure_agent_skills.test.js` | Owned/upstream skill sync, retirement, links, boundaries, and owned-only backup | Changing managed orchestration skills |
+| `configure_agent_skills.test.js` | Pinned-upstream skill sync, retirement, links, and preservation boundaries | Changing managed skills |
 | `configure_visual_explainer.test.js` | Visual-explainer theme defaults, persistence, and invalid-config behavior | Changing explainer theme configuration |
 | `cli_removed_flags.test.js` | Unknown-option rejection of retired CLI flags before helpers, processes, or services run | Extending the removed-flag table |
 | `cli_explainer_theme.test.js` | End-to-end visual-explainer theme CLI behavior | Changing `--explainer-theme` |
