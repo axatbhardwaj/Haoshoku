@@ -25,14 +25,6 @@ const RETIRED_PATTERNS = [
 	},
 ];
 
-// These files are immutable captures of the user's current routing policy.
-// Their references either prohibit the retired workflow or preserve source
-// provenance; allowing only these exact files keeps the general boundary firm.
-const CAPTURED_POLICY_EXCEPTIONS = new Set([
-	"configs/agent-skills/model-routing/SKILL.md",
-	"configs/agent-skills/model-routing/references/briefings.md",
-]);
-
 function maintainedPaths() {
 	const listed = Bun.spawnSync(
 		["git", "ls-files", "-co", "--exclude-standard", "-z"],
@@ -56,7 +48,6 @@ function maintainedText(relativePath) {
 it("keeps maintained files free of retired orchestration vocabulary", () => {
 	const violations = [];
 	for (const relativePath of maintainedPaths()) {
-		if (CAPTURED_POLICY_EXCEPTIONS.has(relativePath)) continue;
 		const normalized = maintainedText(relativePath)
 			.replace(/\[([a-z0-9])\]/gi, "$1")
 			.toLowerCase();
