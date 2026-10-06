@@ -10,12 +10,13 @@ PipeWire and WirePlumber drop-in config files for audio-rate handling.
 | `pipewire/pipewire-pulse.conf.d/50-spotify-44100.conf`      | PulseAudio-compat rule that pins Spotify's pulse node to 44100 Hz / 1024-frame latency (currently a no-op; future-proofing) | Adjusting Spotify-specific rate or latency in the PulseAudio layer |
 | `wireplumber/pc/51-logitech-prox-44100.conf`                | ALSA monitor rule that hard-pins the Logitech G PRO X USB sink to 44100 Hz exclusively, preventing PipeWire from resampling to 48 kHz | Changing the headset rate or adding rules for another sink on the PC |
 | `wireplumber/pc/52-fifine-default-source.conf`             | ALSA monitor rule that raises the FIFINE USB mic's `priority.session` to 3000 so it wins default-capture-source selection over the higher-priority Lenovo webcam mic | Changing the default mic or its capture priority on the PC |
+| `wireplumber/pc/bluetooth-a2dp-autoconnect.conf`            | BlueZ monitor rule that auto-connects the A2DP sink and source profiles on every Bluetooth card (`bluez_card.*`), so speakers and receivers come up without manual recovery | Changing Bluetooth audio profile auto-connect on the PC |
 
 ## How deviceType selection works
 
 The two **PipeWire** drop-ins (`pipewire.conf.d/` and `pipewire-pulse.conf.d/`) are **portable** — they contain only generic rate settings and are valid on any machine. They are tracked directly under `configs/audio/pipewire/…`, mirroring their target `~/.config/pipewire/…` paths.
 
-The **WirePlumber** drop-ins are **device-specific**: they hardcode this PC's exact devices by `node.name` (the Logitech G PRO X sink rate-pin, and the FIFINE mic default-source pin), so they live under a per-device subdirectory:
+The **WirePlumber** drop-ins are **device-specific**: most hardcode this PC's exact devices by `node.name` (the Logitech G PRO X sink rate-pin, and the FIFINE mic default-source pin). The Bluetooth A2DP auto-connect rule matches any card but is captured from, and ships only to, the PC. They live under a per-device subdirectory:
 
 - `deviceType === "pc"`     → deploys from `wireplumber/pc/`     → `~/.config/wireplumber/wireplumber.conf.d/`
 - `deviceType === "laptop"` → no WirePlumber rule currently ships; laptop does not need the lossless hard-pin setup
