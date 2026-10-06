@@ -13,7 +13,6 @@
     "format": "biome format . --write"
   },
   "dependencies": {
-    "@getpaseo/client": "0.7.2",
     "chalk": "^5.6.2",
     "commander": "^14.0.2",
     "figlet": "^1.9.4",
