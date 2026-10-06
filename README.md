@@ -230,80 +230,6 @@ sync after this migration, Haoshoku archives the retired shared
 `html-deliverables` skill under `~/.config/haoshoku/retired-agent-skills/`
 before removing only its managed Claude/Codex links.
 
-`haoshoku --agent-skills` also ensures
-`~/.config/haoshoku/paseo-tasks.json`. Its defaults enable the future-task
-lifecycle, readable `<Task or PR> · <Role>` chat names, and archival after the
-parent records completion. Configure it independently with:
-
-```bash
-haoshoku --paseo-tasks
-haoshoku --paseo-tasks-enabled enabled
-haoshoku --paseo-tasks-enabled disabled
-haoshoku --paseo-task-renaming enabled
-haoshoku --paseo-task-renaming disabled
-haoshoku --paseo-task-cleanup archive
-haoshoku --paseo-task-cleanup keep
-```
-
-The config merge preserves unknown fields. Malformed JSON or invalid owned
-fields are left byte-for-byte untouched and return failure; the routing policy
-then makes no metadata or cleanup changes. `keep` disables completion cleanup
-without disabling shared task labels.
-
-### Bounded Paseo schedule settings
-
-Haoshoku can manage only the provider, model, reasoning effort, and optional
-mode of three explicitly mapped native Paseo `new-agent` schedules. Initialize
-the private host-local config, preview it, and apply verified differences with:
-
-```bash
-haoshoku --paseo-schedules
-haoshoku --paseo-schedules-check
-haoshoku --paseo-schedules-apply
-```
-
-The config lives at `~/.config/haoshoku/paseo-schedules.json`. It starts with
-all `scheduleId` values set to `null`: stale archive and worktree cleaner use
-Claude Sonnet 5 at high reasoning, while merge readiness uses Codex Luna at
-high reasoning. Run the configure command in a terminal to select only the
-roles this host owns and enter each native schedule ID and settings. An
-unmapped role is skipped, so a host may own none, one, or several roles.
-
-`--paseo-schedules-check` is read-only. It validates every mapped ID against
-the running local daemon, requires a `new-agent` target, and reports capability
-support plus owned-field differences. `--paseo-schedules-apply` repeats the
-full preflight, writes an exclusive mode-`0600` backup under
-`~/.config/haoshoku/paseo-schedule-backups/`, updates only differences through
-Paseo's native API, and verifies readback. Cadence, prompt, status, safety
-settings, limits, and every other schedule remain untouched. If a write was
-attempted but verification fails, inspect the reported schedule and backup
-before retrying; Haoshoku never retries or rolls back uncertain state
-automatically.
-
-These modes never infer ownership from schedule titles, create, delete, pause,
-resume, or run schedules, and never reload or restart Paseo. Normal Haoshoku
-setup does not configure, check, or apply schedules. Run the command locally on
-each host; ambient `PASEO_HOME` and `PASEO_HOST` values are ignored.
-
-This is a bundled model-routing convention implemented with existing Paseo
-metadata and preferred no-force archive commands, not a new daemon feature,
-timer, state engine, or native UI grouping/filter. Paseo 0.7.2 performs the
-running-state check before its archive API call, so it cannot guarantee atomic
-idle-only archival; the convention requires owner quiescence, no pending
-launches, and an immediate recheck, retaining ambiguous workers. Each future
-run gets an identity made from its human task slug, full parent agent ID, and a
-fresh run discriminator. The bundled task-lifecycle reference is the
-authoritative procedure: it keeps workflow chats available until completion
-and requires exit reconciliation before a final response, handoff, or driver
-archive. Exact rosters plus launch/reuse and current label-update receipts bind
-supported background CLI launches even when `ParentAgentId` is null; mismatched
-non-null parentage is retained. Cross-run reuse first settles the prior run,
-then re-rosters and relabels the exact agent. Provider-native subagents remain
-inside their owning Paseo agent's report and never receive Paseo lifecycle
-commands. Existing chats are not inferred or migrated. Phone and desktop
-clients on the same daemon see the same metadata; each independent agent host
-must run its own Haoshoku configuration.
-
 Ordinary documentation uses `docs`; PR correctness and requirements review
 use `pr-correctness` and `pr-requirements`. Targeted web research uses
 `research-web`. Recurring PR monitoring uses `pr-monitor`, while the independent
@@ -456,13 +382,6 @@ haoshoku --skills-list
 haoshoku --agent-skills
 haoshoku --agent-skills-backup
 haoshoku --explainer-theme dark
-haoshoku --paseo-tasks
-haoshoku --paseo-tasks-enabled disabled
-haoshoku --paseo-task-renaming disabled
-haoshoku --paseo-task-cleanup keep
-haoshoku --paseo-schedules
-haoshoku --paseo-schedules-check
-haoshoku --paseo-schedules-apply
 haoshoku --paseo-profiles
 haoshoku --paseo-profiles-backup
 haoshoku --gh-stack

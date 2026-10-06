@@ -36,7 +36,7 @@ Names or markers alone do not prove ownership. A retained Paseo unit can be Haos
 2. Inspect each existing Axstack manifest and its profile-file binding. Retain an existing shared-directory binding; do not pass the same profile file to an installation in another skills root. Preserve independently managed OpenCode targets.
 3. Inventory Claude/Codex instruction files, skill roots, old task/theme configuration and installed legacy helpers. Check native Paseo skills and independent specialist skills separately.
 4. Inventory exact user/system service instances, enabled state and consumers. Template presence is not an active instance. Keep the Paseo runtime and phone connectivity.
-5. Query live Paseo schedules through its supported CLI/API. Compare saved Haoshoku mappings with actual objects and their current purpose. A mapping is a candidate list, not a deletion command. Preserve unmapped schedules unless positive evidence establishes approved legacy ownership.
+5. Inventory native Paseo schedules through its supported CLI/API before manual retirement. Haoshoku no longer manages task lifecycle or schedule mappings. Preserve schedules unless positive evidence establishes approved legacy ownership.
 6. Inventory AI-only desktop/editor entries and extra applications. Mixed files and independently installed applications are not removed wholesale. Keep unrelated desktop behavior and necessary Paseo access.
 
 The preparation snapshot found IO's Claude Remote Control and stay-awake unit bytes matching bundled templates. It found three mapped VPS schedules among eight active schedules, and unverified system Claude services. These are historical findings to recheck, not permanent allowlists.
