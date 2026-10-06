@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
+import { PROJECT_ROOT } from "../common/paths.js";
 import {
 	log,
 	portabilizeHome,
@@ -10,7 +11,6 @@ import {
 
 const HOME = homedir();
 
-const PROJECT_ROOT = path.resolve(__dirname, "..", "..");
 const CONFIGS_DIR = path.join(PROJECT_ROOT, "configs");
 const CUSTOM_CLAUDE_DIR = path.join(CONFIGS_DIR, "claude");
 

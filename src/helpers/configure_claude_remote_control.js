@@ -1,12 +1,12 @@
 import fs from "node:fs";
 import { homedir, userInfo } from "node:os";
 import path from "node:path";
+import { PROJECT_ROOT as PROJECT_ROOT_DEFAULT } from "../common/paths.js";
 
 import { log } from "../common/utils.js";
 
 const HOME_DEFAULT = homedir();
 const USER_DEFAULT = userInfo().username;
-const PROJECT_ROOT_DEFAULT = path.resolve(__dirname, "..", "..");
 const SCRIPT = "haoshoku-claude-remote-control";
 const UNIT = "claude-remote-control@.service";
 const TRUST_WRITE_ATTEMPTS = 3;

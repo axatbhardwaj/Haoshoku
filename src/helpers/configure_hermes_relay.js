@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
+import { PROJECT_ROOT } from "../common/paths.js";
 
 import { log } from "../common/utils.js";
 
@@ -242,7 +243,7 @@ async function bootstrapHermes({
 
 export async function configureHermesRelay({
 	home = homedir(),
-	projectRoot = path.resolve(import.meta.dir, "..", ".."),
+	projectRoot = PROJECT_ROOT,
 	fsImpl = fs,
 	runProcessImpl = defaultRunProcess,
 	environment = process.env,

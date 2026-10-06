@@ -1,9 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
+import { PROJECT_ROOT } from "../common/paths.js";
 import { checkOmarchyV4 } from "../common/omarchy_version.js";
 import { log } from "../common/utils.js";
 
-const PROJECT_ROOT = path.resolve(import.meta.dir, "..", "..");
 const DEFAULT_MANIFEST_PATH = path.join(
 	PROJECT_ROOT,
 	"configs",

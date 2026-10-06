@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
+import { PROJECT_ROOT } from "../common/paths.js";
 
 import { log } from "../common/utils.js";
 
@@ -11,8 +12,8 @@ export const SCREENS_OFF_COMMAND = Object.freeze({
 
 const SAFE_DEVICE_ID = /^[A-Za-z0-9_-]+$/;
 const COMMANDS_WRITER = path.join(
-	import.meta.dir,
-	"kde_connect_commands_writer.qml",
+	PROJECT_ROOT,
+	"src/helpers/kde_connect_commands_writer.qml",
 );
 
 function decodeCommandsValue(value) {

@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
+import { PROJECT_ROOT as ROOT } from "../common/paths.js";
 import { checkOmarchyV4 } from "../common/omarchy_version.js";
 import {
 	log,
@@ -13,7 +14,6 @@ import {
 	syncDeployedGamingAutostart,
 } from "./configure_gaming.js";
 
-const ROOT = path.resolve(import.meta.dir, "..", "..");
 const BINDINGS_REQUIRE = 'require("hypr.haoshoku.bindings")';
 const WORKSPACES_REQUIRE = 'require("hypr.haoshoku.workspaces")';
 const PRIMARY_APP_DEFAULT = "t3code-nightly\ncom.t3tools.T3Code\n";

@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
+import { PROJECT_ROOT } from "../common/paths.js";
 import { promptDeviceType } from "../common/device_type.js";
 import { withSpinner } from "../common/ui.js";
 import {
@@ -51,7 +52,6 @@ const _CARGO_HOME = path.join(HOME, ".cargo");
 const PARU_BUILD_DIR = "/tmp/paru";
 const FASTFETCH_CONFIG_DIR = path.join(HOME, ".config", "fastfetch");
 // Project paths (resolved from script location, works from any cwd)
-const PROJECT_ROOT = path.resolve(__dirname, "..", "..");
 const COMMON_DIR = path.join(PROJECT_ROOT, "common");
 const CONFIGS_DIR = path.join(PROJECT_ROOT, "configs");
 
