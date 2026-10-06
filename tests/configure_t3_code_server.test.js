@@ -1,12 +1,11 @@
-import { describe, expect, it } from "bun:test";
+import { afterEach, describe, expect, it } from "bun:test";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import {
-	canResumeT3Connect,
 	configureT3CodeServer,
 	ensureT3NodeRuntime,
-	isT3ConnectReady,
 	isT3NodeVersionSupported,
-	parseT3ConnectStatus,
-	readT3ConnectStatus,
 } from "../src/helpers/configure_t3_code_server.js";
 
 const silentLogger = {
@@ -16,19 +15,357 @@ const silentLogger = {
 	warning() {},
 };
 
-const readyStatus = {
-	desired: true,
-	authenticated: true,
-	linked: true,
-	relayUrl: "https://relay.t3.codes",
-	relayClientAvailable: true,
+const floor = "0.0.46-nightly.20261003.2610";
+const serveConfig = {
+	TCP: { 443: { HTTPS: true } },
+	Web: {
+		"server.tail123.ts.net:443": {
+			Handlers: { "/": { Proxy: "http://127.0.0.1:3773" } },
+		},
+	},
 };
+const homes = [];
+afterEach(() => {
+	for (const home of homes.splice(0)) {
+		fs.rmSync(home, { recursive: true, force: true });
+	}
+});
 
-const pendingStatus = {
-	...readyStatus,
-	linked: false,
-	relayUrl: null,
-};
+function fixture({
+	version = floor,
+	installedVersion = floor,
+	desired = false,
+} = {}) {
+	const home = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-t3-"));
+	homes.push(home);
+	const events = [];
+	const errors = [];
+	const overrides = new Map();
+	const dropIns = path.join(home, ".config/systemd/user/t3code.service.d");
+	const installedT3 = `'${home}/.local/bin/t3'`;
+	const response = (stdout = "", exitCode = 0) => ({ stdout, exitCode });
+	const options = {
+		home,
+		uid: 1000,
+		ensureNodeImpl: async () => {
+			events.push("node");
+			return true;
+		},
+		captureCommandImpl: async (command) => {
+			events.push(command);
+			if (overrides.has(command)) {
+				const value = overrides.get(command);
+				if (value instanceof Error) throw value;
+				return typeof value === "function" ? value() : value;
+			}
+			if (command === "tailscale status") return response("logged in");
+			if (command === "t3 --version")
+				return response(version ?? "", version === null ? 127 : 0);
+			if (command === `${installedT3} --version`)
+				return response(installedVersion);
+			if (command.endsWith("connect status --json"))
+				return response(JSON.stringify({ desired }));
+			if (command === "tailscale serve status --json")
+				return response(JSON.stringify(serveConfig));
+			throw new Error(`Unexpected probe: ${command}`);
+		},
+		runCommandImpl: async (command) => {
+			events.push(command);
+			if (command.endsWith("connect unlink")) desired = false;
+			if (command.endsWith("service install")) {
+				expect(
+					fs.readFileSync(path.join(dropIns, "axstack-path.conf"), "utf8"),
+				).toBe(
+					'[Service]\nEnvironment="PATH=%h/.local/bin:%h/.bun/bin:/usr/local/bin:/usr/bin:/bin"\n',
+				);
+				expect(
+					fs.readFileSync(path.join(dropIns, "axstack-tailscale.conf"), "utf8"),
+				).toBe("[Service]\nEnvironment=T3CODE_TAILSCALE_SERVE=true\n");
+				const sandbox = path.join(dropIns, "axstack-sandbox.conf");
+				expect(fs.existsSync(sandbox)).toBe(options.uid === 0);
+				if (options.uid === 0) {
+					expect(fs.readFileSync(sandbox, "utf8")).toBe(
+						"[Service]\nEnvironment=IS_SANDBOX=1\n",
+					);
+				}
+			}
+			return overrides.get(command) ?? true;
+		},
+		fetchImpl: async (url, init) => {
+			events.push(url);
+			expect(init.signal).toBeInstanceOf(AbortSignal);
+			expect(init.redirect).toBe("error");
+			return new Response("T3 ready");
+		},
+		sleepImpl: async (ms) => events.push(`sleep ${ms}`),
+		maxReadinessAttempts: 2,
+		logger: { ...silentLogger, error: (message) => errors.push(message) },
+	};
+	return {
+		home,
+		dropIns,
+		installedT3,
+		options,
+		events,
+		errors,
+		overrides,
+		response,
+	};
+}
+
+describe("T3 server over Tailscale", () => {
+	it("does not invoke T3 when a compatible Node runtime cannot be prepared", async () => {
+		const f = fixture();
+		f.options.ensureNodeImpl = async () => false;
+		expect(await configureT3CodeServer(f.options)).toBe(false);
+		expect(f.events).toEqual(["tailscale status"]);
+		expect(fs.existsSync(f.dropIns)).toBe(false);
+	});
+
+	it("requires logged-in Tailscale before runtime, CLI, or service changes", async () => {
+		const f = fixture();
+		f.overrides.set("tailscale status", f.response("Logged out", 1));
+		expect(await configureT3CodeServer(f.options)).toBe(false);
+		expect(f.events).toEqual(["tailscale status"]);
+		expect(fs.existsSync(f.dropIns)).toBe(false);
+		expect(f.errors.join(" ")).toContain("Tailscale");
+	});
+
+	it("reuses the floor CLI and verifies the service and HTTPS mapping", async () => {
+		const f = fixture();
+		expect(await configureT3CodeServer(f.options)).toBe(true);
+		expect(f.events).toEqual([
+			"tailscale status",
+			"node",
+			"t3 --version",
+			"t3 connect status --json",
+			"t3 service install",
+			"systemctl --user is-active --quiet t3code.service",
+			"tailscale serve status --json",
+			"https://server.tail123.ts.net",
+		]);
+		expect(fs.existsSync(path.join(f.dropIns, "axstack-sandbox.conf"))).toBe(
+			false,
+		);
+	});
+
+	it.each([
+		null,
+		"0.0.45",
+		"0.0.46-nightly.20261003.2609",
+		"0.0.46-nightly.20261002.9999",
+		"garbage",
+		"0.0.99-nightly..1",
+		"00.0.99",
+	])("installs the durable nightly CLI when PATH reports %s", async (version) => {
+		const f = fixture({ version });
+		expect(await configureT3CodeServer(f.options)).toBe(true);
+		expect(f.events).toContain(
+			`npm --global --prefix '${f.home}/.local' install t3@nightly`,
+		);
+		expect(f.events).toContain(`${f.installedT3} --version`);
+		expect(f.events).toContain(`${f.installedT3} service install`);
+		expect(f.events).not.toContain("t3 service install");
+	});
+
+	it.each([
+		"0.0.46-nightly.20261004.2644",
+		"0.0.46",
+		"0.0.47-nightly.20261001.1",
+		"1.0.0",
+	])("keeps a newer CLI %s without installing npm packages", async (version) => {
+		const f = fixture({ version });
+		expect(await configureT3CodeServer(f.options)).toBe(true);
+		expect(f.events.some((event) => event.startsWith("npm "))).toBe(false);
+	});
+
+	it.each([
+		"0.0.45",
+		"garbage",
+		"",
+		"0.0.99-nightly..1",
+	])("rejects an installed CLI below the floor: %s", async (installedVersion) => {
+		const f = fixture({ version: null, installedVersion });
+		expect(await configureT3CodeServer(f.options)).toBe(false);
+		expect(f.events.at(-1)).toBe(`${f.installedT3} --version`);
+		expect(fs.existsSync(f.dropIns)).toBe(false);
+		expect(f.errors.join(" ")).toContain(floor);
+	});
+
+	it("stops when nightly installation fails", async () => {
+		const f = fixture({ version: null });
+		const install = `npm --global --prefix '${f.home}/.local' install t3@nightly`;
+		f.overrides.set(install, false);
+		expect(await configureT3CodeServer(f.options)).toBe(false);
+		expect(f.events.at(-1)).toBe(install);
+		expect(fs.existsSync(f.dropIns)).toBe(false);
+	});
+
+	it("unlinks enabled Connect and confirms disabled before installing the service", async () => {
+		const f = fixture({ desired: true });
+		expect(await configureT3CodeServer(f.options)).toBe(true);
+		expect(f.events.slice(3, 7)).toEqual([
+			"t3 connect status --json",
+			"t3 connect unlink",
+			"t3 connect status --json",
+			"t3 service install",
+		]);
+		expect(
+			f.events.some((event) =>
+				/connect (link|authorize)|service update/.test(event),
+			),
+		).toBe(false);
+	});
+
+	it.each([
+		"{}",
+		"[]",
+		"not-json",
+		'{"desired":"false"}',
+		'{"desired":null}',
+	])("stops before service changes for unknown Connect state: %s", async (stdout) => {
+		const f = fixture();
+		f.overrides.set("t3 connect status --json", f.response(stdout));
+		expect(await configureT3CodeServer(f.options)).toBe(false);
+		expect(f.events.at(-1)).toBe("t3 connect status --json");
+		expect(fs.existsSync(f.dropIns)).toBe(false);
+	});
+
+	it("fails if unlink fails or Connect remains enabled", async () => {
+		for (const unlinkFails of [true, false]) {
+			const f = fixture({ desired: true });
+			f.overrides.set("t3 connect unlink", !unlinkFails);
+			f.overrides.set(
+				"t3 connect status --json",
+				f.response('{"desired":true}'),
+			);
+			expect(await configureT3CodeServer(f.options)).toBe(false);
+			expect(fs.existsSync(f.dropIns)).toBe(false);
+			expect(f.errors.join(" ")).toContain("connect");
+		}
+	});
+
+	it("writes the root-only sandbox drop-in and preserves unrelated drop-ins", async () => {
+		const f = fixture();
+		f.options.uid = 0;
+		fs.mkdirSync(f.dropIns, { recursive: true });
+		fs.writeFileSync(path.join(f.dropIns, "custom.conf"), "custom");
+		expect(await configureT3CodeServer(f.options)).toBe(true);
+		expect(
+			fs.readFileSync(path.join(f.dropIns, "axstack-sandbox.conf"), "utf8"),
+		).toBe("[Service]\nEnvironment=IS_SANDBOX=1\n");
+		expect(fs.readFileSync(path.join(f.dropIns, "custom.conf"), "utf8")).toBe(
+			"custom",
+		);
+		f.options.uid = 1000;
+		expect(await configureT3CodeServer(f.options)).toBe(true);
+		expect(fs.existsSync(path.join(f.dropIns, "axstack-sandbox.conf"))).toBe(
+			false,
+		);
+	});
+
+	it("fails with guidance when drop-ins cannot be written", async () => {
+		const f = fixture();
+		fs.mkdirSync(path.dirname(f.dropIns), { recursive: true });
+		fs.writeFileSync(f.dropIns, "blocked");
+		expect(await configureT3CodeServer(f.options)).toBe(false);
+		expect(f.events).not.toContain("t3 service install");
+		expect(f.errors.join(" ")).toContain("drop-in");
+	});
+
+	it.each([
+		"t3 service install",
+		"systemctl --user is-active --quiet t3code.service",
+	])("fails when %s fails", async (command) => {
+		const f = fixture();
+		f.overrides.set(command, false);
+		expect(await configureT3CodeServer(f.options)).toBe(false);
+		expect(f.events).not.toContain("https://server.tail123.ts.net");
+		expect(f.errors.join(" ")).toContain(command);
+	});
+
+	it.each([
+		{},
+		{ Web: serveConfig.Web },
+		{ ...serveConfig, TCP: { 443: { HTTPS: false } } },
+		{
+			...serveConfig,
+			Web: {
+				"server.tail123.ts.net:443": {
+					Handlers: { "/": { Proxy: "http://127.0.0.1:9999" } },
+				},
+			},
+		},
+		{
+			...serveConfig,
+			Web: { "evil.example:443": Object.values(serveConfig.Web)[0] },
+		},
+		{
+			...serveConfig,
+			Web: {
+				"server.tail123.ts.net:443": {
+					Handlers: { "/other": { Proxy: "http://127.0.0.1:3773" } },
+				},
+			},
+		},
+	])("rejects missing, wrong, or non-tailnet HTTPS mappings: %j", async (config) => {
+		const f = fixture();
+		f.overrides.set(
+			"tailscale serve status --json",
+			f.response(JSON.stringify(config)),
+		);
+		expect(await configureT3CodeServer(f.options)).toBe(false);
+		expect(
+			f.events.filter((event) => event === "tailscale serve status --json"),
+		).toHaveLength(2);
+		expect(f.events.some((event) => event.startsWith("https://"))).toBe(false);
+		expect(f.errors.join(" ")).toContain("tailscale serve status");
+	});
+
+	it("waits within a bound for Serve and HTTPS startup", async () => {
+		const f = fixture();
+		let attempts = 0;
+		f.options.fetchImpl = async () =>
+			new Response("starting", { status: ++attempts === 1 ? 503 : 200 });
+		expect(await configureT3CodeServer(f.options)).toBe(true);
+		expect(attempts).toBe(2);
+		expect(f.events.filter((event) => event.startsWith("sleep "))).toEqual([
+			"sleep 2000",
+		]);
+	});
+
+	it("returns false after bounded HTTPS errors or non-success responses", async () => {
+		for (const throws of [true, false]) {
+			const f = fixture();
+			let attempts = 0;
+			f.options.fetchImpl = async () => {
+				attempts++;
+				if (throws) throw new Error("unreachable");
+				return new Response("unavailable", { status: 503 });
+			};
+			expect(await configureT3CodeServer(f.options)).toBe(false);
+			expect(attempts).toBe(2);
+			expect(f.errors.join(" ")).toContain("HTTPS");
+		}
+	});
+
+	it.each([
+		"tailscale status",
+		"t3 --version",
+		"t3 connect status --json",
+		"tailscale serve status --json",
+	])("handles a missing or failing probe: %s", async (command) => {
+		const f = fixture();
+		f.overrides.set(command, new Error("missing executable"));
+		if (command === "t3 --version") {
+			expect(await configureT3CodeServer(f.options)).toBe(true);
+			expect(f.events).toContain(`${f.installedT3} service install`);
+		} else {
+			expect(await configureT3CodeServer(f.options)).toBe(false);
+			expect(f.errors.length).toBeGreaterThan(0);
+		}
+	});
+});
 
 describe("T3 Code Node.js compatibility", () => {
 	it("accepts every release family supported by the current T3 engine range", () => {
@@ -127,306 +464,5 @@ describe("T3 Code Node.js runtime preparation", () => {
 			"curl -fsSL https://deb.nodesource.com/setup_24.x | sudo bash -",
 			"sudo apt install -y nodejs",
 		]);
-	});
-});
-
-describe("T3 Connect status parsing", () => {
-	const readyJson = JSON.stringify({
-		desired: true,
-		authenticated: true,
-		linked: true,
-		cloudUserId: "must-not-be-retained",
-		relayUrl: "https://relay.t3.codes",
-		publishAgentActivity: false,
-		relayClient: { status: "available", source: "managed" },
-	});
-
-	it("parses only readiness fields from T3 Connect JSON", () => {
-		expect(parseT3ConnectStatus(readyJson)).toEqual(readyStatus);
-	});
-
-	it("distinguishes ready and resumable pending states", () => {
-		const ready = parseT3ConnectStatus(readyJson);
-		const pending = parseT3ConnectStatus(
-			JSON.stringify({
-				desired: true,
-				authenticated: true,
-				linked: false,
-				relayUrl: null,
-				relayClient: { status: "available" },
-			}),
-		);
-
-		expect(isT3ConnectReady(ready)).toBe(true);
-		expect(isT3ConnectReady(pending)).toBe(false);
-		expect(canResumeT3Connect(pending)).toBe(true);
-	});
-
-	it("rejects incomplete relay state as not ready or resumable", () => {
-		const missingClient = { ...readyStatus, relayClientAvailable: false };
-		const emptyRelay = { ...readyStatus, relayUrl: "  " };
-
-		expect(isT3ConnectReady(missingClient)).toBe(false);
-		expect(canResumeT3Connect(missingClient)).toBe(false);
-		expect(isT3ConnectReady(emptyRelay)).toBe(false);
-	});
-
-	it("rejects malformed and structurally invalid status", () => {
-		for (const output of ["", "not-json", "[]", "{}", '{"desired":"yes"}']) {
-			expect(parseT3ConnectStatus(output)).toBeNull();
-		}
-	});
-
-	it("runs the machine-readable status command without retaining identifiers", () => {
-		const calls = [];
-		const result = readT3ConnectStatus({
-			spawnSyncImpl: (args, options) => {
-				calls.push({ args, options });
-				return {
-					exitCode: 0,
-					stdout: new TextEncoder().encode(readyJson),
-				};
-			},
-		});
-
-		expect(result).toEqual(readyStatus);
-		expect(calls).toEqual([
-			{
-				args: ["npx", "--yes", "t3@latest", "connect", "status", "--json"],
-				options: { stderr: "ignore", stdout: "pipe" },
-			},
-		]);
-	});
-
-	it("returns null when the status command fails", () => {
-		expect(
-			readT3ConnectStatus({
-				spawnSyncImpl: () => ({ exitCode: 1, stdout: new Uint8Array() }),
-			}),
-		).toBeNull();
-	});
-});
-
-describe("T3 Code headless service configuration", () => {
-	it("does not invoke T3 when a compatible Node.js runtime cannot be prepared", async () => {
-		const commands = [];
-		const result = await configureT3CodeServer({
-			ensureNodeImpl: async () => false,
-			runCommandImpl: async (command) => {
-				commands.push(command);
-				return true;
-			},
-			logger: silentLogger,
-		});
-
-		expect(result).toBe(false);
-		expect(commands).toEqual([]);
-	});
-
-	it("skips the status probe when service installation fails", async () => {
-		const commands = [];
-		let statusCalls = 0;
-		const result = await configureT3CodeServer({
-			ensureNodeImpl: async () => true,
-			getConnectStatusImpl: async () => {
-				statusCalls += 1;
-				return readyStatus;
-			},
-			runCommandImpl: async (command) => {
-				commands.push(command);
-				return false;
-			},
-			logger: silentLogger,
-		});
-
-		expect(result).toBe(false);
-		expect(commands).toEqual(["npx --yes t3@latest service install"]);
-		expect(statusCalls).toBe(0);
-	});
-
-	it("returns failure when the installed service cannot be verified", async () => {
-		const commands = [];
-		let statusCalls = 0;
-		const result = await configureT3CodeServer({
-			ensureNodeImpl: async () => true,
-			getConnectStatusImpl: async () => {
-				statusCalls += 1;
-				return readyStatus;
-			},
-			runCommandImpl: async (command) => {
-				commands.push(command);
-				return !command.endsWith("service status");
-			},
-			logger: silentLogger,
-		});
-
-		expect(result).toBe(false);
-		expect(commands).toEqual([
-			"npx --yes t3@latest service install",
-			"npx --yes t3@latest service status",
-		]);
-		expect(statusCalls).toBe(0);
-	});
-
-	it("keeps an already-ready Connect environment without relinking or restarting", async () => {
-		const commands = [];
-		const messages = [];
-		const result = await configureT3CodeServer({
-			ensureNodeImpl: async () => true,
-			getConnectStatusImpl: async () => readyStatus,
-			runCommandImpl: async (command) => {
-				commands.push(command);
-				return true;
-			},
-			logger: {
-				...silentLogger,
-				info: (message) => messages.push(message),
-				success: (message) => messages.push(message),
-			},
-		});
-
-		expect(result).toBe(true);
-		expect(commands).toEqual([
-			"npx --yes t3@latest service install",
-			"npx --yes t3@latest service status",
-		]);
-		expect(
-			messages.some((message) => message.includes("already provisioned")),
-		).toBe(true);
-	});
-
-	it("restarts a previously authorized pending environment without relinking", async () => {
-		const commands = [];
-		const statuses = [pendingStatus, readyStatus];
-		const result = await configureT3CodeServer({
-			ensureNodeImpl: async () => true,
-			getConnectStatusImpl: async () =>
-				statuses.length > 0 ? statuses.shift() : readyStatus,
-			runCommandImpl: async (command) => {
-				commands.push(command);
-				return true;
-			},
-			sleepImpl: async () => {},
-			logger: silentLogger,
-		});
-
-		expect(result).toBe(true);
-		expect(commands).toEqual([
-			"npx --yes t3@latest service install",
-			"npx --yes t3@latest service status",
-			"npx --yes t3@latest service update",
-			"systemctl --user restart t3code.service",
-			"npx --yes t3@latest service status",
-		]);
-	});
-
-	it("links headlessly, restarts, polls, and verifies the service", async () => {
-		const commands = [];
-		const sleeps = [];
-		const messages = [];
-		const statuses = [null, pendingStatus, readyStatus];
-		const result = await configureT3CodeServer({
-			ensureNodeImpl: async () => true,
-			getConnectStatusImpl: async () =>
-				statuses.length > 0 ? statuses.shift() : readyStatus,
-			runCommandImpl: async (command) => {
-				commands.push(command);
-				return true;
-			},
-			sleepImpl: async (milliseconds) => sleeps.push(milliseconds),
-			logger: {
-				...silentLogger,
-				info: (message) => messages.push(message),
-				success: (message) => messages.push(message),
-			},
-		});
-
-		expect(result).toBe(true);
-		expect(commands).toEqual([
-			"npx --yes t3@latest service install",
-			"npx --yes t3@latest service status",
-			"npx --yes t3@latest connect link --headless",
-			"npx --yes t3@latest service update",
-			"systemctl --user restart t3code.service",
-			"npx --yes t3@latest service status",
-		]);
-		expect(sleeps).toEqual([2000]);
-		expect(messages.some((message) => message.includes("phone"))).toBe(true);
-		expect(commands.some((command) => command.includes("tailscale"))).toBe(
-			false,
-		);
-	});
-
-	it("stops at each Connect command failure boundary", async () => {
-		for (const failingCommand of [
-			"npx --yes t3@latest connect link --headless",
-			"npx --yes t3@latest service update",
-			"systemctl --user restart t3code.service",
-		]) {
-			const commands = [];
-			const errors = [];
-			const result = await configureT3CodeServer({
-				ensureNodeImpl: async () => true,
-				getConnectStatusImpl: async () => null,
-				runCommandImpl: async (command) => {
-					commands.push(command);
-					return command !== failingCommand;
-				},
-				sleepImpl: async () => {},
-				logger: { ...silentLogger, error: (message) => errors.push(message) },
-			});
-
-			expect(result).toBe(false);
-			expect(commands.at(-1)).toBe(failingCommand);
-			expect(errors.at(-1)).toContain(failingCommand);
-			expect(commands.some((command) => command.includes("tailscale"))).toBe(
-				false,
-			);
-		}
-	});
-
-	it("times out when the environment never becomes ready", async () => {
-		const errors = [];
-		let statusCalls = 0;
-		let sleepCalls = 0;
-		const result = await configureT3CodeServer({
-			ensureNodeImpl: async () => true,
-			getConnectStatusImpl: async () => {
-				statusCalls += 1;
-				return pendingStatus;
-			},
-			runCommandImpl: async () => true,
-			sleepImpl: async () => {
-				sleepCalls += 1;
-			},
-			maxConnectAttempts: 2,
-			logger: { ...silentLogger, error: (message) => errors.push(message) },
-		});
-
-		expect(result).toBe(false);
-		expect(statusCalls).toBe(3);
-		expect(sleepCalls).toBe(1);
-		expect(errors.at(-1)).toContain("npx --yes t3@latest connect status");
-	});
-
-	it("fails when the provisioned service cannot be verified", async () => {
-		const commands = [];
-		const statuses = [pendingStatus, readyStatus];
-		let serviceStatusCalls = 0;
-		const result = await configureT3CodeServer({
-			ensureNodeImpl: async () => true,
-			getConnectStatusImpl: async () => statuses.shift() ?? readyStatus,
-			runCommandImpl: async (command) => {
-				commands.push(command);
-				if (!command.endsWith("service status")) return true;
-				serviceStatusCalls += 1;
-				return serviceStatusCalls === 1;
-			},
-			sleepImpl: async () => {},
-			logger: silentLogger,
-		});
-
-		expect(result).toBe(false);
-		expect(commands.at(-1)).toBe("npx --yes t3@latest service status");
 	});
 });
