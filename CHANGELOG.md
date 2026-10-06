@@ -9,6 +9,11 @@
   and pairing hint. Add `--tailscale-t3` for idempotent standalone retries.
   Failures warn and allow the remaining setup to continue.
 
+- Add a one-line Linux installer with compiled x64/arm64 binaries and runtime
+  assets, so installing and running Haoshoku does not require Bun.
+- Resolve packaged assets beside the executable and publish binary archives
+  alongside npm on GitHub releases.
+
 ### Removed
 
 - Arch/Omarchy setup no longer deploys Claude Remote Control, Claude
