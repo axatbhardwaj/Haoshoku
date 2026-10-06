@@ -504,6 +504,35 @@ bundle, Brave managed policies, Hyprland monitors/workspaces, or Omazed. Those
 steps remain on the Arch/Omarchy path instead of being installed onto a
 headless server for superficial symmetry.
 
+## Logs and troubleshooting
+
+Every invocation saves a private log under
+`${XDG_STATE_HOME:-~/.local/state}/haoshoku/logs/` (directory 0700, files
+0600). The last 20 logs are kept. Logs include device/version metadata,
+`log.*` messages, command exits and durations, and bounded failure output.
+Known credential patterns and Tailscale login URLs are redacted before writing.
+The final line shows the log path; failures also show their count and names.
+If logging is unavailable, Haoshoku warns once and continues.
+
+Normal runs upload nothing. To share the latest completed run, or a specific log:
+
+```bash
+haoshoku --share-log
+haoshoku --share-log /path/to/run.log
+```
+
+Haoshoku tries Taildrop to the online device `io` first. Override the receiver
+with `HAOSHOKU_LOG_TARGET=other-device`. On **io**, collect the file with:
+
+```bash
+tailscale file get ~/Downloads
+```
+
+Tell your agent the filename shown by `--share-log`. If Taildrop is unavailable
+and GitHub CLI is authenticated, Haoshoku creates a secret gist and prints its
+URL. Otherwise it prints the local path for copying or attaching to your agent
+conversation. A failed upload keeps the file and reports failure.
+
 ## Development
 
 ```bash

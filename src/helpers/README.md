@@ -63,3 +63,15 @@ Hermes Telegram transport without deploying a relay plugin.
 
 See the [migration note](../../README.md#existing-host-migration) for host artifacts
 that Haoshoku leaves for manual retirement.
+
+
+## Run log sharing
+
+| File | Responsibility |
+| --- | --- |
+| `share_log.js` | Select the latest completed log or an explicit path; send via Taildrop to `io` (or `HAOSHOKU_LOG_TARGET`), fall back to a secret gist or manual instructions |
+
+Sharing runs only for `--share-log [path]`. The receiver uses
+`tailscale file get ~/Downloads`; pass the printed filename or gist URL to the
+agent. Process execution is injectable for tests, so upload paths can be checked
+without live tools or credentials.

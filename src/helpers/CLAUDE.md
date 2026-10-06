@@ -48,3 +48,4 @@ Standalone setup scripts for specific tools.
 | `install_user_scripts.js` | Copy `configs/scripts/*` → `~/.local/bin/` + chmod 755 | Adding user-level shell wrappers (PATH shadows, helper commands) |
 | `migrate_omarchy_3_to_4.js` | Re-runnable `--3-4-migrate` flow; requires Omarchy >= 4 and defers while the Quattro live shim remains active | Modifying legacy cleanup, Lua/plugin deployment, monitor handoff, or migration gates |
 | `README.md`           | Architecture and design decisions      | Understanding symlink vs copy pattern         |
+| `share_log.js` | Explicit log sharing through Taildrop, secret gist, or manual handoff | Changing `--share-log` or receiver selection |
