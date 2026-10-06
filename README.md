@@ -59,6 +59,9 @@ Claude and Codex setup skip config synchronization when their CLI installation f
 
 The Arch setup:
 
+- skips git configuration on Omarchy, which sets your identity at install,
+  leaving existing `~/.gitconfig` and git profile files untouched; other Arch
+  hosts still get the "Configure git?" prompt;
 - authenticates sudo once up front and keeps that authorization alive with
   silent, non-interactive refreshes until setup finishes or aborts. Later
   Haoshoku sudo calls are non-interactive and fail instead of prompting again;

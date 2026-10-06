@@ -152,7 +152,7 @@ function runIsolated(script, marker) {
 	return JSON.parse(encoded);
 }
 
-function runArchDefaultPath() {
+function runArchDefaultPath({ isOmarchy = true, gitAnswer = true } = {}) {
 	const modulePath = path.resolve(
 		import.meta.dir,
 		"..",
@@ -162,11 +162,25 @@ function runArchDefaultPath() {
 	);
 	return runIsolated(
 		`
+			import { mock } from "bun:test";
 			const calls = [];
+			const prompts = [];
 			const record = (feature, result) => async () => {
 				calls.push(feature);
 				return result;
 			};
+			mock.module(${JSON.stringify(path.resolve(import.meta.dir, "..", "src/helpers/configure_git.js"))}, () => ({
+				configureGit: record("git"),
+			}));
+			const utilsPath = ${JSON.stringify(path.resolve(import.meta.dir, "..", "src/common/utils.js"))};
+			const utils = await import(utilsPath);
+			mock.module(utilsPath, () => ({
+				...utils,
+				promptUser: async (message, initial) => {
+					prompts.push({ message, initial });
+					return ${gitAnswer};
+				},
+			}));
 			const {
 				configureBrowserIntegration,
 				configureUserApps,
@@ -180,12 +194,13 @@ function runArchDefaultPath() {
 				ensureRustToolchainImpl: record("rust"),
 				ensureAurHelperImpl: record("aur", "paru"),
 				installDevToolsImpl: record("devTools"),
-				commandExistsImpl: async (command) => command === "omarchy",
+				commandExistsImpl: async (command) => command === "omarchy" && ${isOmarchy},
 				installSystemPackagesImpl: record("systemPackages"),
 				installFlatpakAppsImpl: record("flatpaks"),
-				configureUserAppsImpl: () => configureUserApps({
-					promptUserImpl: async () => true,
-					configureGitImpl: record("git"),
+				configureUserAppsImpl: (options) => configureUserApps({
+					...options,
+					promptUserImpl: undefined,
+					configureGitImpl: undefined,
 					configureBrowserIntegrationImpl: () => configureBrowserIntegration({
 						configureChromiumProfilesImpl: record("chromiumProfiles"),
 						configureMimeappsImpl: record("mimeapps"),
@@ -216,7 +231,7 @@ function runArchDefaultPath() {
 				configureOmazedImpl: record("omazed"),
 				configureOmarchyAppearanceImpl: record("omarchyAppearance"),
 			});
-			console.log("DEFAULT_CALLS=" + JSON.stringify(calls));
+			console.log("DEFAULT_CALLS=" + JSON.stringify({ calls, prompts }));
 		`,
 		"DEFAULT_CALLS",
 	);
@@ -308,6 +323,7 @@ function runDebianDefaultPath() {
 
 const deployModeFeatures = deployModeFeaturesFromCli();
 const defaultCallsByPath = new Map();
+let archDefaultResult;
 
 function missingDefaultPaths({ flag, feature }) {
 	return [...defaultCallsByPath]
@@ -350,6 +366,7 @@ function defaultSetupOverrides({
 
 function userAppDoubles(overrides = {}) {
 	return {
+		promptUserImpl: async () => false,
 		configureGitImpl: async () => {},
 		configureBrowserIntegrationImpl: async () => {},
 		configureAudioImpl: async () => {},
@@ -372,8 +389,29 @@ function userAppDoubles(overrides = {}) {
 
 describe("default-run reachability", () => {
 	beforeAll(() => {
-		defaultCallsByPath.set("arch", new Set(runArchDefaultPath()));
+		archDefaultResult = runArchDefaultPath();
+		defaultCallsByPath.set("arch", new Set(archDefaultResult.calls));
 		defaultCallsByPath.set("debian-server", new Set(runDebianDefaultPath()));
+	});
+
+	it("leaves git configuration to Omarchy without a prompt or helper call", () => {
+		expect({
+			gitCalls: archDefaultResult.calls.filter((call) => call === "git").length,
+			prompts: archDefaultResult.prompts,
+		}).toEqual({ gitCalls: 0, prompts: [] });
+		expect(defaultCallsByPath.get("arch").has("prWatch")).toBe(true);
+	});
+
+	it.each([true, false])("offers git configuration on non-Omarchy Arch (answer=%s)", (gitAnswer) => {
+		const result = runArchDefaultPath({ isOmarchy: false, gitAnswer });
+		expect({
+			gitCalls: result.calls.filter((call) => call === "git").length,
+			prompts: result.prompts,
+		}).toEqual({
+			gitCalls: gitAnswer ? 1 : 0,
+			prompts: [{ message: "Configure git?", initial: true }],
+		});
+		expect(result.calls).toContain("prWatch");
 	});
 
 	it.each([
@@ -481,9 +519,10 @@ describe("default-run reachability", () => {
 									throw new Error("device prompt must not run");
 								},
 							}),
-						configureUserAppsImpl: () =>
+						configureUserAppsImpl: ({ isOmarchy }) =>
 							configureUserApps(
 								userAppDoubles({
+									isOmarchy,
 									promptUserImpl: nonInteractivePrompt,
 									configureGitImpl: record("git"),
 									installGhStackImpl: record("gh-stack"),
@@ -505,9 +544,6 @@ describe("default-run reachability", () => {
 		);
 		expect(warnings.join("\n")).toContain(
 			"full setup routing reads persisted config independently",
-		);
-		expect(warnings.join("\n")).toContain(
-			'Interactive confirmation unavailable; declining "Configure git?".',
 		);
 		expect(warnings.join("\n")).not.toContain("gh-stack");
 		expect(warnings.join("\n")).not.toContain("Enable PR watch helper?");

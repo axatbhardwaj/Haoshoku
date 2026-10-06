@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Removed
+
+- On Omarchy, Haoshoku no longer configures git because Omarchy sets your
+  identity at install; existing `~/.gitconfig` and git profile files are left
+  untouched. Other Arch hosts and Debian servers still get the git prompt.
+
 ## 12.1.0 - 2026-10-06
 
 - Configure Arch/Omarchy Tailscale phone access after T3 installation: install
