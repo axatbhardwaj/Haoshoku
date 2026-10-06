@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 12.1.0 - 2026-10-06
 
 - Configure Arch/Omarchy Tailscale phone access after T3 installation: install
   Tailscale, enable its daemon, wait for browser login only when logged out,
