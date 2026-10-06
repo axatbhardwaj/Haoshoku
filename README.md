@@ -374,36 +374,52 @@ The Debian path remains deliberately headless. In addition to server hardening,
 it installs the portable Claude/Codex policy, Matt Pocock and upstream Paseo
 skills, Haoshoku-owned workflow skills, PR-watch, and the native Paseo daemon.
 Paseo is required; setup leaves its existing orchestration profiles intact.
-T3 Code is an optional, default-No compatibility step.
+T3 Code is required and runs without a prompt; an incomplete T3 setup fails
+Debian setup. `haoshoku --server-t3-code` runs the same step on its own.
 
-When T3 Code is selected, Haoshoku ensures its current Node.js runtime range
-before installing and verifying the upstream-managed service. It then inspects
-T3 Connect's machine-readable status. An existing
-provisioned link is left running without reauthorization or restart. Otherwise,
-Haoshoku runs `npx --yes t3@latest connect link --headless` in the attached
-terminal, allowing T3 to install and verify its managed relay client and guide
-you through browser authorization. It updates and restarts `t3code.service`,
-waits for the environment link and relay to become ready, and verifies the
-service again. The service belongs to the account that runs Haoshoku, including
-root when root ownership is intentional.
+Before setup, install Tailscale yourself and log in to your tailnet. Confirm
+that `tailscale status` succeeds. Enable HTTPS certificates in the tailnet
+admin console. For a non-root service account, run
+`sudo tailscale set --operator=$USER` so T3 can manage its Serve route. Your
+phone must also be logged in to the same tailnet. Haoshoku does not install
+Tailscale or log in for you.
 
-T3 remains bound to `127.0.0.1:3773`; Haoshoku does not create an Nginx virtual
-host, change DNS, open that port, or add a firewall rule. After setup, open the
-T3 Code phone app, choose T3 Connect, and sign in with the same account used
-during authorization. The phone does not need Tailscale. Run
-`haoshoku --server-t3-code` to install or repair only this complete server
-component; normal Debian setup offers the same flow without removing existing
-T3 installations or sessions when declined.
+Haoshoku prepares a compatible Node.js runtime and reuses `t3` on PATH when
+`t3 --version` is at least `0.0.46-nightly.20261003.2610` (Axstack's floor).
+Otherwise, it installs a durable nightly CLI with
+`npm --global --prefix ~/.local install t3@nightly` and verifies the installed
+version. Setup reads `t3 connect status --json`, unlinks enabled Connect
+exposure, and confirms it is disabled before changing the service.
 
-If the server previously used Haoshoku v8.5.3's Tailscale integration, inspect
-`tailscale serve status` after confirming T3 Connect works. Only when it still
-shows the old T3 HTTPS handler, remove that handler with
-`tailscale serve --https=443 off`. `No serve config` means cleanup is already
-complete; Haoshoku never changes existing Tailscale routes automatically.
+Before `t3 service install`, Haoshoku writes `axstack-path.conf` and
+`axstack-tailscale.conf` in `~/.config/systemd/user/t3code.service.d/`.
+They set `T3CODE_TAILSCALE_SERVE=true` and keep the user's Grok CLI on the
+service PATH:
+
+```ini
+PATH=%h/.local/bin:%h/.bun/bin:%h/.grok/bin:/usr/local/bin:/usr/bin:/bin
+```
+
+Only root gets
+`axstack-sandbox.conf` with `IS_SANDBOX=1`. The service belongs to the account
+that runs Haoshoku, including root when root ownership is intentional.
+
+Setup requires an active `t3code.service`, a `tailscale serve status --json`
+HTTPS mapping to `http://127.0.0.1:3773`, and a successful response from the
+tailnet HTTPS URL. Readiness retries are bounded to 30 attempts with a
+five-second HTTPS timeout and two seconds between attempts. Failure reports
+what to inspect and returns incomplete setup. T3 stays bound to localhost.
+
+After setup, pair the phone using `t3 pair --tailscale`. If the CLI was freshly
+installed and `~/.local/bin` is not on PATH yet, run
+`~/.local/bin/t3 pair --tailscale`. T3 Connect authorization is no longer part
+of this flow. If a service self-update has advanced past npm's nightly tag,
+a rerun may fail; inspect `t3 --version` and retry once the nightly tag catches
+up.
 
 The full Debian path asks about Git, Claude stay-awake, Claude Remote Control,
-automatic worktree cleanup, and optional T3 Code. `haoshoku --skills` refreshes
-both declared external skill sources independently using Bun's `bunx` runner.
+and automatic worktree cleanup. `haoshoku --skills` refreshes both declared
+external skill sources independently using Bun's `bunx` runner.
 
 ### Native headless Paseo
 

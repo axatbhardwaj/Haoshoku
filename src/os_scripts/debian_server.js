@@ -397,10 +397,7 @@ export async function runDebianServerSetup({
 		log.warning(`Axstack setup failed (${error?.message ?? error}).`);
 	}
 	const hermesRelayConfigured = await configureHermesRelay();
-	let t3CodeConfigured = true;
-	if (await promptUser("Also configure the T3 Code service?", false)) {
-		t3CodeConfigured = await configureT3CodeServer();
-	}
+	const t3CodeConfigured = await configureT3CodeServer();
 	if (!paseoConfigured) {
 		log.error(
 			"Debian Server setup finished, but Paseo setup or pairing is incomplete.",

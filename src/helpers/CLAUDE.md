@@ -21,7 +21,7 @@ Standalone setup scripts for specific tools.
 | `configure_pr_watch.js` | pr-watch PR watcher sync/backup | Adding or debugging the PR watcher deploy |
 | `configure_paseo_server.js` | Native Paseo CLI, loopback config, and persistent user-service setup for Debian servers | Adding or debugging headless Paseo lifecycle and pairing |
 | `configure_hermes_relay.js` | Pinned bootstrap when Hermes is absent plus plugin-free Telegram and running-gateway readiness probes | Adding or debugging Debian Hermes transport |
-| `configure_t3_code_server.js` | Debian T3 Code service plus idempotent T3 Connect lifecycle | Adding or debugging T3 Connect authorization, provisioning, or service verification |
+| `configure_t3_code_server.js` | Required Debian nightly T3 service over Tailscale; disables Connect and verifies HTTPS readiness | Changing CLI floor checks, service drop-ins, Tailscale mapping, or pairing guidance |
 | `configure_git.js`    | Git user and signing setup             | Modifying automated git configuration         |
 | `configure_hyprmoncfg.js` | Profile JSON sync/backup plus hyprmoncfg package and `hyprmoncfgd.service` setup; never writes `monitors.lua` | Modifying monitor-profile deployment or the hyprmoncfg ownership boundary |
 | `configure_kde_activities.js` | KDE Activity provisioning plus Haoshoku KWin activity/output rules | Modifying activity creation, window routing, or KWin script deployment |
