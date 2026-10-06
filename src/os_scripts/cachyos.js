@@ -37,6 +37,7 @@ import { configureVoxtypeOsd } from "../helpers/configure_voxtype_osd.js";
 import { configurePrWatch } from "../helpers/configure_pr_watch.js";
 import { configureSkills } from "../helpers/configure_skills.js";
 import { syncWorktreeCleanup } from "../helpers/configure_worktree_cleanup.js";
+import { configureTailscaleT3 } from "../helpers/configure_tailscale_t3.js";
 import { installUserScripts } from "../helpers/install_user_scripts.js";
 
 // URLs
@@ -678,6 +679,7 @@ export async function runCachyOSSetup({
 	installSystemPackagesImpl = installSystemPackages,
 	installFlatpakAppsImpl = installFlatpakApps,
 	configureUserAppsImpl = configureUserApps,
+	configureTailscaleT3Impl = configureTailscaleT3,
 	promptDeviceTypeImpl = promptDeviceType,
 	configureBraveManagedPoliciesImpl = configureBraveManagedPolicies,
 	configureHyprmoncfgImpl = configureHyprmoncfg,
@@ -717,6 +719,13 @@ export async function runCachyOSSetup({
 		await installSystemPackagesImpl(aurHelper, isOmarchy);
 		await installFlatpakAppsImpl();
 		const userAppsResult = await configureUserAppsImpl();
+		try {
+			if (!(await configureTailscaleT3Impl())) {
+				log.warning("Tailscale/T3 setup incomplete — continuing. Retry: haoshoku --tailscale-t3");
+			}
+		} catch (err) {
+			log.warning(`Tailscale/T3 configuration failed (${err?.message ?? err}) — continuing. Retry: haoshoku --tailscale-t3`);
+		}
 		if (isOmarchy) {
 			try {
 				await configureBraveManagedPolicies({ nonInteractiveSudo: true });

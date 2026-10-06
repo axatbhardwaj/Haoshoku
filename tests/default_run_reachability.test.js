@@ -91,6 +91,7 @@ const DELIBERATE_OMISSIONS = {
 		],
 	]),
 	"debian-server": new Map([
+		["--tailscale-t3", "Arch provisioning; Debian uses --server-t3-code with preconfigured Tailscale."],
 		["--audio", "WirePlumber routing depends on desktop device profiles."],
 		["--mimeapps", "Default-app routing is a desktop-session concern."],
 		["--scripts", "The managed user scripts are desktop app launchers."],
@@ -160,6 +161,7 @@ function runArchDefaultPath() {
 				runCachyOSSetup,
 			} = await import(${JSON.stringify(modulePath)});
 			await runCachyOSSetup({
+				configureTailscaleT3Impl: record("tailscaleT3", true),
 				promptDeviceTypeImpl: record("deviceType"),
 				startSudoSessionImpl: record("sudoSession", () => calls.push("sudoStop")),
 				prepareArchPackageManagerImpl: record("packageManager", true),
@@ -311,6 +313,7 @@ function defaultSetupOverrides({
 	configureUserAppsImpl = async () => {},
 }) {
 	return {
+		configureTailscaleT3Impl: async () => true,
 		startSudoSessionImpl: async () => () => {},
 		prepareArchPackageManagerImpl: async () => true,
 		ensureRustToolchainImpl: async () => {},

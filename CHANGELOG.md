@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Configure Arch/Omarchy Tailscale phone access after T3 installation: install
+  Tailscale, enable its daemon, wait for browser login only when logged out,
+  set the user operator, and enable T3's boot service with its HTTPS drop-in.
+  Reuse Debian's CLI floor and HTTPS readiness helpers; print the tailnet URL
+  and pairing hint. Add `--tailscale-t3` for idempotent standalone retries.
+  Failures warn and allow the remaining setup to continue.
+
 ## 12.0.0 - 2026-10-06
 
 - Install the latest npm Axstack with SHA-512 integrity verification, report

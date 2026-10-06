@@ -66,6 +66,7 @@ import {
 	syncPrWatch,
 } from "./src/helpers/configure_pr_watch.js";
 import { configureSkills, listSkills } from "./src/helpers/configure_skills.js";
+import { configureTailscaleT3 } from "./src/helpers/configure_tailscale_t3.js";
 import { configureT3CodeServer } from "./src/helpers/configure_t3_code_server.js";
 import { setExplainerTheme } from "./src/helpers/configure_visual_explainer.js";
 import {
@@ -130,6 +131,10 @@ program
 	.option(
 		"--server-t3-code",
 		"Configure the T3 Code headless service over Tailscale on Debian (keeps Grok CLI on PATH)",
+	)
+	.option(
+		"--tailscale-t3",
+		"Configure Tailscale login and T3 Code phone access on Arch",
 	)
 	.option("--server-hermes-relay", "Configure Hermes relay transport on Debian")
 	.option("--skills", "Install Matt Pocock skills for Claude Code and Codex")
@@ -313,6 +318,16 @@ async function runAction(options) {
 
 	if (options.axstackCheck) {
 		if (!(await checkAxstack()).ok) process.exitCode = 1;
+		return;
+	}
+
+	if (options.tailscaleT3) {
+		if (detectOS() !== "arch") {
+			log.error("--tailscale-t3 requires an Arch-family host.");
+			process.exitCode = 2;
+			return;
+		}
+		if (!(await configureTailscaleT3())) process.exitCode = 1;
 		return;
 	}
 
