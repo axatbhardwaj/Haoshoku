@@ -72,3 +72,4 @@ timr
 warp-terminal-bin
 windsurf
 t3code-nightly-bin
+tailscale

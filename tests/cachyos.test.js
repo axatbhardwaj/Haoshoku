@@ -700,6 +700,7 @@ describe("Arch package-manager preflight", () => {
 			throw new Error("setup continued without an authenticated sudo session");
 		};
 		const result = await runCachyOSSetup({
+			configureTailscaleT3Impl: async () => true,
 			promptDeviceTypeImpl: async () => events.push("device-type"),
 			startSudoSessionImpl: async () => {
 				events.push("sudo-start");
@@ -742,6 +743,7 @@ describe("Arch package-manager preflight", () => {
 			);
 		};
 		const result = await runCachyOSSetup({
+			configureTailscaleT3Impl: async () => true,
 			promptDeviceTypeImpl: async () => events.push("device-type"),
 			startSudoSessionImpl: async () => {
 				events.push("sudo-start");
@@ -788,6 +790,7 @@ describe("Arch package-manager preflight", () => {
 			throw new Error("setup continued after injected failure");
 		};
 		const setup = runCachyOSSetup({
+			configureTailscaleT3Impl: async () => true,
 			promptDeviceTypeImpl: async () => {},
 			startSudoSessionImpl: async () => () => events.push("sudo-stop"),
 			commandExistsImpl: async () => false,
@@ -882,6 +885,7 @@ describe("Arch package-manager preflight", () => {
 			);
 		};
 		const result = await runCachyOSSetup({
+			configureTailscaleT3Impl: async () => true,
 			promptDeviceTypeImpl: async () => events.push("device-type"),
 			startSudoSessionImpl: async () => () => {},
 			commandExistsImpl: async () => {
@@ -921,6 +925,7 @@ describe("Arch package-manager preflight", () => {
 			);
 		};
 		const result = await runCachyOSSetup({
+			configureTailscaleT3Impl: async () => true,
 			promptDeviceTypeImpl: async () => events.push("device-type"),
 			startSudoSessionImpl: async () => () => {},
 			commandExistsImpl: async (command) => {
@@ -961,6 +966,7 @@ describe("Arch package-manager preflight", () => {
 				return result;
 			};
 			const result = await runCachyOSSetup({
+				configureTailscaleT3Impl: async () => true,
 				startSudoSessionImpl: async () => () => {},
 				prepareArchPackageManagerImpl: record("prepare", true),
 				ensureRustToolchainImpl: record("rust", true),
@@ -1035,6 +1041,7 @@ describe("Arch package-manager preflight", () => {
 		};
 
 		await runCachyOSSetup({
+			configureTailscaleT3Impl: async () => true,
 			promptDeviceTypeImpl: async () => {},
 			startSudoSessionImpl: async () => () => {},
 			prepareArchPackageManagerImpl: async () => true,
@@ -1077,6 +1084,7 @@ describe("Arch package-manager preflight", () => {
 			let result;
 			try {
 				result = await runCachyOSSetup({
+					configureTailscaleT3Impl: async () => true,
 					startSudoSessionImpl: async () => () => {},
 					prepareArchPackageManagerImpl: async () => true,
 					ensureRustToolchainImpl: async () => {},
@@ -1140,6 +1148,7 @@ describe("Arch package-manager preflight", () => {
 					}
 				};
 				const result = await runCachyOSSetup({
+					configureTailscaleT3Impl: async () => true,
 					startSudoSessionImpl: async () => () => {},
 					prepareArchPackageManagerImpl: async () => true,
 					ensureRustToolchainImpl: async () => {},
@@ -1260,5 +1269,55 @@ describe("Omarchy-owned defaults", () => {
 			)
 			.split(/\r?\n/);
 		expect(packages).not.toContain("stremio");
+	});
+});
+
+describe("Arch T3 phone access integration", () => {
+	it.each([
+		false,
+		true,
+	])("runs after user apps and continues on failure (throws=%s)", async (throws) => {
+		const events = [];
+		const warnings = [];
+		const original = log.warning;
+		log.warning = (message) => warnings.push(message);
+		try {
+			const result = await runCachyOSSetup({
+				promptDeviceTypeImpl: async () => {},
+				startSudoSessionImpl: async () => () => events.push("sudo-stop"),
+				prepareArchPackageManagerImpl: async () => true,
+				ensureRustToolchainImpl: async () => {},
+				ensureAurHelperImpl: async () => "paru",
+				installDevToolsImpl: async () => {},
+				commandExistsImpl: async () => false,
+				installSystemPackagesImpl: async () => events.push("packages"),
+				installFlatpakAppsImpl: async () => {},
+				configureUserAppsImpl: async () => events.push("user-apps"),
+				configureBraveManagedPoliciesImpl: async () => {},
+				configureHyprmoncfgImpl: async () => {},
+				configureOmarchyWorkspacesImpl: async () => {},
+				configureOmarchyPluginsImpl: async () => {},
+				configureVoxtypeOsdImpl: async () => {},
+				configureKdeConnectCommandsImpl: async () => {},
+				configureOmarchyBarImpl: async () => {},
+				configureOmazedImpl: async () => {},
+				configureOmarchyAppearanceImpl: async () => {},
+				configureTailscaleT3Impl: async () => {
+					events.push("tailscale-t3");
+					if (throws) throw new Error("unavailable");
+					return false;
+				},
+			});
+			expect(result).toBe(true);
+			expect(events).toEqual([
+				"packages",
+				"user-apps",
+				"tailscale-t3",
+				"sudo-stop",
+			]);
+			expect(warnings.join(" ")).toContain("--tailscale-t3");
+		} finally {
+			log.warning = original;
+		}
 	});
 });
