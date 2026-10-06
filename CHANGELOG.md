@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Remove the retired server installer and desktop integration; `--server-paseo`
+  is now rejected, and Omarchy's `Super+T` launches or focuses T3 Code Nightly.
+
 - Require the nightly T3 Code server over Tailscale on Debian, disable existing
   T3 Connect exposure, and verify the service and tailnet HTTPS before success;
   accept the CLI's prefixed version output and keep Grok on the service PATH.

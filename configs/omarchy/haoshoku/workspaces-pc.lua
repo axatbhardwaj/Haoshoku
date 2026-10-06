@@ -41,7 +41,6 @@ o.exec_on_start("haoshoku-primary-app login")
 require("hypr.haoshoku.primary_app")
 o.exec_on_start("haoshoku-special-workspace numbered-login 7 ghostty")
 o.exec_on_start("haoshoku-special-workspace assistants")
-o.launch_on_start("/usr/bin/paseo")
 -- Hyprland does not process XDG autostart, so
 -- /etc/xdg/autostart/org.kde.kdeconnect.daemon.desktop never fires. Start explicitly
 -- instead of relying on incidental D-Bus activation for phone sync after login.
@@ -156,7 +155,7 @@ o.bind(
 )
 
 o.bind("SUPER + I", "Show/focus/hide AI assistants workspace", "haoshoku-special-workspace assistants")
-o.bind("SUPER + T", "Paseo", o.launch_sole("^Paseo$", "/usr/bin/paseo"))
+o.bind("SUPER + T", "T3 Code", o.launch_sole("^com\\.t3tools\\.T3Code$", "t3code-nightly"))
 o.bind("SUPER + SHIFT + T", "Show/focus/hide Twitch workspace", "haoshoku-special-workspace twitch")
 o.bind("SUPER + M", "Show/focus/hide music workspace", "haoshoku-special-workspace music")
 o.bind("SUPER + O", "Show/focus/hide 1Password workspace", "haoshoku-special-workspace 1password")
