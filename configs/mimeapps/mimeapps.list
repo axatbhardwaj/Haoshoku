@@ -31,5 +31,9 @@ x-scheme-handler/about=haoshoku-browser.desktop
 x-scheme-handler/unknown=haoshoku-browser.desktop
 x-scheme-handler/notion=notion-chromium.desktop
 x-scheme-handler/claude=com.anthropic.Claude.desktop
+x-scheme-handler/codex=chatgpt.desktop
+x-scheme-handler/t3code=com.t3tools.T3Code.desktop
+text/markdown=dev.zed.Zed.desktop
 
 [Added Associations]
+text/markdown=dev.zed.Zed.desktop;

@@ -22,19 +22,22 @@
 				"id": "omarchy.indicators"
 			},
 			{
-				"id": "omarchy.clock",
-				"format": "dddd HH:mm",
-				"formatAlt": "d MMMM 'W'ww yyyy",
-				"verticalFormat": "HH\n—\nmm"
-			},
-			{
 				"id": "omarchy.keyboard-layout"
 			},
 			{
 				"id": "omarchy.weather"
 			},
 			{
-				"id": "io.github.nodrej.speech-orb"
+				"id": "omarchy.clock"
+			},
+			{
+				"id": "io.github.nodrej.speech-orb",
+				"size": 183,
+				"dotCount": 2657,
+				"dotSize": 0.9055059523809523,
+				"outline": 0.49603174603174605,
+				"turbulence": 2.3217740221088436,
+				"sensitivity": 1.9684594671201812
 			},
 			{
 				"id": "dizziee.system-stats"
