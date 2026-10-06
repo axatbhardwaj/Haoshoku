@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Release tests derive the expected CLI version from `package.json`, so
+  version bumps no longer break the binary and npm release workflows
+  (v12.2.0 shipped no artifacts and is superseded by this release).
+
 ## 12.2.0 - 2026-10-06
 
 ### Added
