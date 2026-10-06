@@ -19,6 +19,7 @@ artifact. Do not create or update Linear items for those repositories.
 | `CHANGELOG.md`  | Version history                   | Checking release notes                          |
 | `info.txt`      | Theme names and resource links    | Reference for KDE theme components              |
 | `bun.lock`      | Dependency lockfile (Bun)         | Checking exact dependency versions              |
+| `install.sh`    | No-Bun Linux binary installer     | Changing install locations or release downloads |
 | `AGENTS.md`     | Codex copy of this file; keep both in sync | Editing repo guidance for either harness |
 | `biome.json`    | Lint/format config and fixture excludes | Changing lint rules or excluded fixtures |
 | `BRANCH-NOTES.md` | Dated log of branch outcomes and test counts | Checking what a past branch delivered |

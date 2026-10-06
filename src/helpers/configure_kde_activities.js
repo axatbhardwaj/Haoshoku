@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
+import { PROJECT_ROOT } from "../common/paths.js";
 
 import { log, runCommand } from "../common/utils.js";
 
@@ -59,7 +60,6 @@ const RETIRED_RULE_IDS = new Set([
 	...RULES.map(([id]) => id),
 ]);
 
-const PROJECT_ROOT = path.resolve(__dirname, "..", "..");
 const SCRIPT_SOURCE = path.join(
 	PROJECT_ROOT,
 	"configs",

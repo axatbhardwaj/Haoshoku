@@ -1,0 +1,32 @@
+name: Release binary
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  binary:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [x64, arm64]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun test
+      - name: Package compiled binary and runtime assets
+        run: bash scripts/package-binary.sh "${{ matrix.arch }}" dist
+      - name: Upload release asset
+        run: gh release upload "$RELEASE_TAG" "dist/haoshoku-linux-${{ matrix.arch }}.tar.gz" --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}

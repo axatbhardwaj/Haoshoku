@@ -12,6 +12,26 @@ owner of the desktop experience. The desktop path requires Omarchy 4
 
 ## Install
 
+On Linux x64 or arm64, install the compiled CLI and its runtime assets:
+
+```bash
+curl -fsSL https://axatbhardwaj.xyz/haoshoku | bash
+haoshoku --os arch
+```
+
+Bun is not required to install or run this CLI. The installer needs Bash,
+curl, tar, and standard Linux coreutils. It stores each version beside
+`~/.local/share/haoshoku`, swaps that symlink atomically on updates, and links
+`~/.local/bin/haoshoku`. Add `~/.local/bin` to PATH if the installer warns.
+Run the same one-liner again to update. Individual setup commands may install
+tools that have their own runtime requirements, including Bun for Axstack.
+
+Set `HAOSHOKU_HOME` to override the install location. For offline installation,
+use `HAOSHOKU_TARBALL=file:///absolute/path/haoshoku-linux-x64.tar.gz bash install.sh`.
+`HAOSHOKU_BASE_URL` overrides the release download directory.
+
+For development, clone the repository and use Bun:
+
 ```bash
 git clone https://github.com/axatbhardwaj/haoshoku.git
 cd haoshoku

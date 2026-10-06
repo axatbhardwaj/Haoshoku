@@ -1,9 +1,9 @@
 import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
+import { PROJECT_ROOT } from "../common/paths.js";
 import { log, safeCopyFile } from "../common/utils.js";
 
-const PROJECT_ROOT = path.resolve(import.meta.dir, "..", "..");
 const BASH_FRAGMENT = path.join(
 	PROJECT_ROOT,
 	"configs",

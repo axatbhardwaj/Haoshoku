@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import { homedir, tmpdir, userInfo } from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { PROJECT_ROOT } from "../common/paths.js";
 import { withSpinner } from "../common/ui.js";
 import {
 	commandExists,
@@ -31,9 +31,6 @@ const FISH_CONFIG_DIR = path.join(HOME, ".config", "fish");
 const STARSHIP_CONFIG_PATH = path.join(HOME, ".config", "starship.toml");
 
 // Project paths
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const PROJECT_ROOT = path.resolve(__dirname, "..", "..");
 const CONFIGS_DIR = path.join(PROJECT_ROOT, "configs");
 const CUSTOM_FISH_CONFIG_PATH = path.join(CONFIGS_DIR, "fish", "config.fish");
 

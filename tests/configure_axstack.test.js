@@ -92,6 +92,40 @@ afterEach(() => {
 
 describe("configureAxstack", () => {
 	it.each([
+		false,
+		true,
+	])("requires Bun before changing releases or shims (existing=%s)", async (existing) => {
+		const home = makeHome();
+		const target = releasePaths(home);
+		const original = `#!/bin/sh\nexec bun '${target.cli}' "$@"\n`;
+		if (existing) {
+			fs.mkdirSync(target.binDir, { recursive: true });
+			fs.writeFileSync(target.shim, original);
+		}
+		const requests = [];
+		const invocations = [];
+		const result = await configureAxstack({
+			...target,
+			home,
+			bunPath: undefined,
+			which: () => null,
+			fetcher: registryFetcher(fixture(), requests),
+			extractor: makeExtractor([]),
+			runner: async (...args) => {
+				invocations.push(args);
+				return { exitCode: 0, stderr: "", stdout: "installed" };
+			},
+		});
+		expect(result.ok).toBe(false);
+		expect(result.harnesses.codex.reason).toContain("Bun required for Axstack");
+		expect(requests).toEqual([]);
+		expect(invocations).toEqual([]);
+		expect(fs.existsSync(target.dataDir)).toBe(false);
+		if (existing) expect(fs.readFileSync(target.shim, "utf8")).toBe(original);
+		else expect(fs.existsSync(target.shim)).toBe(false);
+	});
+
+	it.each([
 		["arch", null, true, null, true],
 		["arch", "/path/t3", true, null, false],
 		["arch", null, false, null, false],

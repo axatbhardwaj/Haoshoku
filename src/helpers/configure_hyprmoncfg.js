@@ -1,11 +1,11 @@
 import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
+import { PROJECT_ROOT } from "../common/paths.js";
 
 import { checkOmarchyV4 } from "../common/omarchy_version.js";
 import { commandExists, log, runCommandCapture } from "../common/utils.js";
 
-const PROJECT_ROOT = path.resolve(import.meta.dir, "..", "..");
 const MINIMUM_VERSION = [1, 12, 0];
 const SERVICE_UNIT = "hyprmoncfgd.service";
 const INSTALL_HINT = "paru -S --needed --noconfirm hyprmoncfg";

@@ -1,7 +1,11 @@
 import chalk from "chalk";
 import figlet from "figlet";
+import standardFont from "figlet/importable-fonts/Standard.js";
 import gradient from "gradient-string";
 import ora from "ora";
+
+// The compiled binary cannot read Figlet's node_modules/fonts directory.
+figlet.parseFont("Standard", standardFont);
 
 /**
  * Generates the application banner string.

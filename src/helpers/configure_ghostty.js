@@ -1,11 +1,11 @@
 import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
+import { PROJECT_ROOT as PROJECT_ROOT_DEFAULT } from "../common/paths.js";
 
 import { log, safeCopyFile } from "../common/utils.js";
 
 const HOME_DEFAULT = homedir();
-const PROJECT_ROOT_DEFAULT = path.resolve(__dirname, "..", "..");
 const XDG_TERMINAL_PREFERENCE =
 	"# Terminal emulator preference order for xdg-terminal-exec\n" +
 	"# The first found and valid terminal will be used\n" +

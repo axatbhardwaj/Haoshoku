@@ -1,11 +1,11 @@
 import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
+import { PROJECT_ROOT as PROJECT_ROOT_DEFAULT } from "../common/paths.js";
 
 import { log } from "../common/utils.js";
 
 const HOME_DEFAULT = homedir();
-const PROJECT_ROOT_DEFAULT = path.resolve(__dirname, "..", "..");
 
 const SCRIPT = "claude-stay-awake";
 const SERVICE_UNIT = "claude-stay-awake.service";

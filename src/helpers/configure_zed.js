@@ -1,12 +1,12 @@
 import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
+import { PROJECT_ROOT } from "../common/paths.js";
 import { log, safeCopyFile } from "../common/utils.js";
 
 const HOME = homedir();
 const ZED_CONFIG_DIR = path.join(HOME, ".config", "zed");
 
-const PROJECT_ROOT = path.resolve(__dirname, "..", "..");
 const CONFIGS_DIR = path.join(PROJECT_ROOT, "configs");
 const ZED_BACKUP_DIR = path.join(CONFIGS_DIR, "zed");
 

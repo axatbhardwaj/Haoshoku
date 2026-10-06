@@ -1,10 +1,10 @@
 import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
+import { PROJECT_ROOT } from "../common/paths.js";
 import { copyDirRecursive, log } from "../common/utils.js";
 import { ensureExplainerTheme } from "./configure_visual_explainer.js";
 
-const PROJECT_ROOT = path.resolve(__dirname, "..", "..");
 
 export const UPSTREAM_AGENT_SKILLS = ["visual-explainer"];
 const RETIRED_AGENT_SKILLS = [

@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
+import { PROJECT_ROOT } from "../common/paths.js";
 import {
 	exportCodexStatusLine,
 	writeCodexStatusLine,
@@ -13,7 +14,6 @@ import {
 } from "../common/utils.js";
 
 const HOME = homedir();
-const PROJECT_ROOT = path.resolve(__dirname, "..", "..");
 const CUSTOM_CODEX_DIR = path.join(PROJECT_ROOT, "configs", "codex");
 const CODEX_NPM_PACKAGE = "@openai/codex";
 

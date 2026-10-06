@@ -1,10 +1,10 @@
 import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
+import { PROJECT_ROOT } from "../common/paths.js";
 import { log, portabilizeHome, safeCopyFile } from "../common/utils.js";
 
 const HOME = homedir();
-const PROJECT_ROOT = path.resolve(__dirname, "..", "..");
 const AGENT_PROFILE_DIR = path.join(PROJECT_ROOT, "configs", "agent-profile");
 
 // Single configurable source (PROFILE.md) deployed to every harness.
