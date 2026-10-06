@@ -397,11 +397,9 @@ export async function runDebianServerSetup({
 	} catch (error) {
 		log.warning(`Axstack setup failed (${error?.message ?? error}).`);
 	}
+	const hermesRelayConfigured = await configureHermesRelay();
 	const paseoProfilesConfigured = paseoConfigured
 		? await syncPaseoProfiles()
-		: false;
-	const hermesRelayConfigured = paseoProfilesConfigured
-		? await configureHermesRelay()
 		: false;
 	let t3CodeConfigured = true;
 	if (await promptUser("Also configure the T3 Code service?", false)) {
