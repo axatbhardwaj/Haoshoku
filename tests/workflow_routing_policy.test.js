@@ -15,29 +15,6 @@ const mattPath =
 const babysitPath = "configs/agent-skills/paseo-pr-babysit/SKILL.md";
 
 describe("accepted workflow routing policy", () => {
-	it("keeps 21 stable profiles while selecting the two explicit Sonnet xhigh exceptions", () => {
-		const bundled = JSON.parse(read("configs/paseo/agent-profiles.json"));
-		const profiles = new Map(
-			bundled.agentProfiles.map((profile) => [profile.id, profile]),
-		);
-
-		expect(bundled.agentProfiles).toHaveLength(21);
-		expect(new Set(profiles.keys()).size).toBe(21);
-		expect(profiles.get("explore-codebase")).toMatchObject({
-			model: "claude-sonnet-5",
-			thinkingOptionId: "xhigh",
-		});
-		expect(profiles.get("explainer")).toMatchObject({
-			model: "claude-sonnet-5",
-			thinkingOptionId: "xhigh",
-		});
-		expect(profiles.get("explainer-review")).toMatchObject({
-			model: "gpt-5.6-luna",
-			thinkingOptionId: "max",
-		});
-		expect(bundled.providers.grok.enabled).toBe(false);
-	});
-
 	it("defines ordinary and high-stakes pairs without making xhigh a blanket route", () => {
 		const policy = compact(read(policyPath));
 		const briefings = compact(read(briefingsPath));

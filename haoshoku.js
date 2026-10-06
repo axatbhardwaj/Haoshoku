@@ -64,10 +64,6 @@ import {
 } from "./src/helpers/configure_omarchy_bar.js";
 import { configureOmarchyPlugins } from "./src/helpers/configure_omarchy_plugins.js";
 import { configureOmarchyWorkspaces } from "./src/helpers/configure_omarchy_workspaces.js";
-import {
-	backupPaseoProfiles,
-	syncPaseoProfiles,
-} from "./src/helpers/configure_paseo_profiles.js";
 import { configurePaseoServer } from "./src/helpers/configure_paseo_server.js";
 import {
 	backupPrWatch,
@@ -155,11 +151,6 @@ program
 	.option(
 		"--explainer-theme <theme>",
 		"Set visual-explainer theme (dark, light, system)",
-	)
-	.option("--paseo-profiles", "Deploy managed Paseo orchestration policy")
-	.option(
-		"--paseo-profiles-backup",
-		"Backup the secret-free Paseo orchestration policy",
 	)
 	.option(
 		"--gh-stack",
@@ -402,16 +393,6 @@ async function runAction(options) {
 
 	if (options.explainerTheme) {
 		if (!setExplainerTheme(options.explainerTheme)) process.exitCode = 1;
-		return;
-	}
-
-	if (options.paseoProfilesBackup) {
-		if (!backupPaseoProfiles()) process.exit(1);
-		return;
-	}
-
-	if (options.paseoProfiles) {
-		if (!(await syncPaseoProfiles())) process.exit(1);
 		return;
 	}
 

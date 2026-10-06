@@ -27,7 +27,6 @@ function userAppDoubles(overrides = {}) {
 		configureAxstackImpl: async () => ({ ok: true }),
 		configureSkillsImpl: async () => true,
 		syncAgentSkillsImpl: async () => true,
-		syncPaseoProfilesImpl: async () => true,
 		...overrides,
 	};
 }

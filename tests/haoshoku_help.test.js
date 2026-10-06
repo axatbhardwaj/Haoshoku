@@ -57,8 +57,8 @@ describe("haoshoku CLI help", () => {
 		expect(help).toContain("Matt Pocock and Paseo skills");
 		expect(help).toContain("--agent-skills");
 		expect(help).toContain("--agent-skills-backup");
-		expect(help).toContain("--paseo-profiles");
-		expect(help).toContain("--paseo-profiles-backup");
+		expect(help).not.toContain("--paseo-profiles");
+		expect(help).not.toContain("--paseo-profiles-backup");
 		for (const flag of ["--superpowers", "--agent-os", "--claude-bootstrap"]) {
 			expect(help).not.toContain(flag);
 		}

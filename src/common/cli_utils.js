@@ -29,8 +29,6 @@ export const MODE_FLAGS = [
 	"agentSkills",
 	"agentSkillsBackup",
 	"explainerTheme",
-	"paseoProfiles",
-	"paseoProfilesBackup",
 	"ghStack",
 	"audio",
 	"audioBackup",

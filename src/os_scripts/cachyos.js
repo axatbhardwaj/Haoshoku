@@ -34,7 +34,6 @@ import { configureOmarchyPlugins } from "../helpers/configure_omarchy_plugins.js
 import { configureOmarchyWorkspaces } from "../helpers/configure_omarchy_workspaces.js";
 import { configureOmazed } from "../helpers/configure_omazed.js";
 import { configureVoxtypeOsd } from "../helpers/configure_voxtype_osd.js";
-import { syncPaseoProfiles } from "../helpers/configure_paseo_profiles.js";
 import { configurePrWatch } from "../helpers/configure_pr_watch.js";
 import { configureSkills } from "../helpers/configure_skills.js";
 import { syncWorktreeCleanup } from "../helpers/configure_worktree_cleanup.js";
@@ -561,7 +560,6 @@ export async function configureUserApps({
 	configureAxstackImpl = configureAxstack,
 	configureSkillsImpl = configureSkills,
 	syncAgentSkillsImpl = syncAgentSkills,
-	syncPaseoProfilesImpl = syncPaseoProfiles,
 } = {}) {
 	if (await promptUserImpl("Configure git?", true)) {
 		const configureGit =
@@ -661,11 +659,6 @@ export async function configureUserApps({
 	if (!(await syncAgentSkillsImpl())) {
 		log.warning(
 			"Haoshoku-owned agent skills were not fully synced — continuing. Retry with: haoshoku --agent-skills",
-		);
-	}
-	if (!(await syncPaseoProfilesImpl())) {
-		log.warning(
-			"Paseo orchestration policy was not fully synced — continuing. Retry with: haoshoku --paseo-profiles",
 		);
 	}
 	if (!axstackResult.ok) {

@@ -198,7 +198,6 @@ function runArchDefaultPath() {
 					configureAxstackImpl: record("axstack", { ok: true }),
 					configureSkillsImpl: record("skills", true),
 					syncAgentSkillsImpl: record("agentSkills", true),
-					syncPaseoProfilesImpl: record("paseoProfiles", true),
 				}),
 				configureBraveManagedPoliciesImpl: record("braveManagedPolicies", true),
 				configureHyprmoncfgImpl: record("monitors"),
@@ -286,9 +285,6 @@ function runDebianDefaultPath() {
 			mock.module(${JSON.stringify(helperPath("configure_agent_skills.js"))}, () => ({
 				syncAgentSkills: record("agentSkills", true),
 			}));
-			mock.module(${JSON.stringify(helperPath("configure_paseo_profiles.js"))}, () => ({
-				syncPaseoProfiles: record("paseoProfiles", true),
-			}));
 			mock.module(${JSON.stringify(helperPath("configure_hermes_relay.js"))}, () => ({
 				configureHermesRelay: record("serverHermesRelay", true),
 			}));
@@ -368,7 +364,6 @@ function userAppDoubles(overrides = {}) {
 		configureAxstackImpl: async () => ({ ok: true }),
 		configureSkillsImpl: async () => true,
 		syncAgentSkillsImpl: async () => true,
-		syncPaseoProfilesImpl: async () => true,
 		...overrides,
 	};
 }
@@ -378,6 +373,13 @@ describe("default-run reachability", () => {
 		defaultCallsByPath.set("arch", new Set(runArchDefaultPath()));
 		defaultCallsByPath.set("debian-server", new Set(runDebianDefaultPath()));
 	});
+
+	it.each(["arch", "debian-server"])(
+		"omits retired Paseo profile sync on the %s default path",
+		(pathName) => {
+			expect(defaultCallsByPath.get(pathName).has("paseoProfiles")).toBe(false);
+		},
+	);
 
 	for (const deployFeature of deployModeFeatures) {
 		it(`invokes ${deployFeature.flag} on every applicable default path`, () => {
