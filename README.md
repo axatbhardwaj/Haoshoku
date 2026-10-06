@@ -205,7 +205,6 @@ edits with:
 haoshoku --claude-backup
 haoshoku --codex-backup
 haoshoku --agent-skills-backup
-haoshoku --paseo-profiles-backup
 ```
 
 The shared profile lives at `configs/agent-profile/PROFILE.md`. Apply it to
@@ -214,12 +213,9 @@ the live Claude copy with `haoshoku --agents-backup`. The bundled policy routes
 both Notion accounts and Linear through the configured Executor MCP while T3 Code
 remains responsible for orchestration.
 
-`--paseo-profiles` merges the bundled profile IDs and whitelisted provider
-fields into `~/.paseo/config.json`, preserving unknown profiles, credentials,
-relay/listen/auth settings, and every unrelated key. Its backup writes only
-profile fields plus provider `extends`, `label`, `description`, `command`, and
-`enabled`; it never copies credentials, daemon identity, relay state, or
-runtime files. Claude/Codex runtime state and `settings.json` remain
+Haoshoku no longer bundles, syncs, or backs up Paseo orchestration profiles.
+Arch and Debian setup leave existing `~/.paseo/config.json` profile and provider
+settings intact. Claude/Codex runtime state and `settings.json` remain
 machine-local.
 
 The visual explainer defaults to a fixed dark theme. Set and persist a different
@@ -229,29 +225,6 @@ upstream renderer, while the system theme may use quick mode. On the first
 sync after this migration, Haoshoku archives the retired shared
 `html-deliverables` skill under `~/.config/haoshoku/retired-agent-skills/`
 before removing only its managed Claude/Codex links.
-
-Ordinary documentation uses `docs`; PR correctness and requirements review
-use `pr-correctness` and `pr-requirements`. Targeted web research uses
-`research-web`. Recurring PR monitoring uses `pr-monitor`, while the independent
-`pr-watchdog` checks its health. Exact profile defaults are 21 total: 2 high, 10
-medium, 6 low, 2 xhigh, and 1 max:
-
-- Xhigh: `explore-codebase` and `explainer` (Sonnet), as explicit fixed
-  exceptions rather than a blanket escalation policy.
-- High: `pr-security`, `pr-architecture`.
-- Max: `explainer-review` (Luna), independently reviewing the exact artifact.
-- Medium: `planning-advisor`, `research-requirements`, `research-code`,
-  `implement-code`, `review-code`, `pr-correctness`, `pr-integration`,
-  `pr-requirements`, `pr-complexity`,
-  `explainer-content-review`.
-- Low: `research-web`, `docs`, `pr-monitor`, `pr-watchdog`,
-  `explore-execution`, `explainer-content`.
-
-The bundled Grok provider is disabled; no active workflow role selects it.
-Its compatibility definition preserves existing authentication without enabling usage. During an upgrade,
-Haoshoku removes superseded managed workflow IDs only when their replacement is
-present in the bundled policy; custom profile IDs and provider secrets remain
-untouched.
 
 Ordinary peer PR review and implementation checkpoints use one `review-code`
 session covering Standards, Spec and the shared simplicity checklist directly.
@@ -265,18 +238,10 @@ Each owns its own expiring heartbeat; healthy ticks update snapshots without
 waking the driver, while failures and renewal needs are deduplicated and sent
 to the driver for acknowledgement and coordination.
 
-Substantial research starts with the profile matching the unresolved question;
-another researcher is added only for a distinct unresolved question or high-risk
-independent validation. Requested visual artifacts use the
-`explainer` presentation profile and the pinned upstream visual-explainer;
-source-content and independent visual review profiles remain available when
-the artifact's risk warrants them. Ordinary prose stays prose, with no
-mandatory Markdown-to-HTML chain. Upgrades retire the former `research-sonnet`
-and `explainer-sonnet` IDs only when their respective replacements are bundled.
 Prefer Astra at low effort when choosing the main conversation; the actual
 selected model remains the driver. Escalation is bounded to the reasoning work
 that needs it; outside the two fixed Sonnet roles, xhigh is reserved for an
-explicit exceptional request, and unrelated work returns to low. Fable Advisor (`planning-advisor`) runs at
+explicit exceptional request, and unrelated work returns to low. Fable Advisor runs at
 medium and is consulted only for unresolved consequential decisions after cheap
 factual checks; there is no dedicated Astra advisor profile or mandatory
 two-advisor council. High-stakes decisions still require Fable's plain AGREE and
@@ -382,8 +347,6 @@ haoshoku --skills-list
 haoshoku --agent-skills
 haoshoku --agent-skills-backup
 haoshoku --explainer-theme dark
-haoshoku --paseo-profiles
-haoshoku --paseo-profiles-backup
 haoshoku --gh-stack
 haoshoku --claude-stay-awake
 haoshoku --pr-watch
@@ -436,8 +399,8 @@ haoshoku --os debian-server
 The Debian path remains deliberately headless. In addition to server hardening,
 it installs the portable Claude/Codex policy, Matt Pocock and upstream Paseo
 skills, Haoshoku-owned workflow skills, PR-watch, and the native Paseo daemon.
-Paseo is required and its managed orchestration policy is synced after the
-service is ready. T3 Code is an optional, default-No compatibility step.
+Paseo is required; setup leaves its existing orchestration profiles intact.
+T3 Code is an optional, default-No compatibility step.
 
 When T3 Code is selected, Haoshoku ensures its current Node.js runtime range
 before installing and verifying the upstream-managed service. It then inspects
@@ -529,18 +492,15 @@ paseo provider diagnostic codex
 paseo provider models codex
 ```
 
-The standalone `--server-paseo` flag remains lifecycle-only. Full Debian setup
-follows it with `--paseo-profiles` behavior; use that one-shot flag explicitly
-after editing the bundled policy. Browser tools require a connected Paseo
-desktop app because the headless daemon brokers browser tabs but does not host
-a browser itself.
+The standalone `--server-paseo` flag remains lifecycle-only. Browser tools
+require a connected Paseo desktop app because the headless daemon brokers
+browser tabs but does not host a browser itself.
 
 ### VPS Hermes Telegram transport
 
 `haoshoku --server-hermes-relay` verifies Hermes Telegram transport on a
-Debian-family server. Full Debian setup runs this step independently of Paseo
-profiles and fails if Hermes readiness is incomplete. Arch/Omarchy setup never
-calls it.
+Debian-family server. Full Debian setup fails if Hermes readiness is incomplete.
+Arch/Omarchy setup never calls it.
 
 An existing usable Hermes installation is kept without upgrading or replacing
 it. If Hermes is absent, Haoshoku downloads the official installer and installs

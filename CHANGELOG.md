@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Remove Paseo profile sync and backup commands and the profile-sync step from
+  Arch and Debian setup.
+
 - Remove Paseo task lifecycle and schedule configuration commands.
 
 - Keep Debian Hermes Telegram transport independent of Paseo: verify readiness

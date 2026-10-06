@@ -49,7 +49,7 @@ Verify the installed release identity and package bytes. Run `axstack check` for
 
 Axstack must preserve text outside its owned instruction block. Existing unmarked routing prose remains unowned: archive and replace only a verified legacy section as an explicit migration action. Personal preferences stay byte-identical. Duplicate/malformed markers or edited/unknown blocks hold conversion; never use force as a generic migration fix.
 
-After necessary profile file changes, apply only the documented runtime reload path and verify live profile readback. Preserve active agents. If activation requires a disruptive restart, record deferred activation and hold dependent cleanup; file installation alone is not success.
+Haoshoku no longer bundles, syncs, or backs up Paseo orchestration profiles. Existing host profiles remain intact. For any separately approved manual profile change, apply only the documented runtime reload path and verify live profile readback. Preserve active agents. If activation requires a disruptive restart, record deferred activation and hold dependent cleanup; file installation alone is not success.
 
 ## Retire verified legacy items
 
