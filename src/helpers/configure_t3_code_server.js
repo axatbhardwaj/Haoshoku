@@ -3,14 +3,16 @@ import { homedir } from "node:os";
 import path from "node:path";
 import { ensureNode24Runtime } from "../common/node_24_runtime.js";
 import { log, runCommand, runCommandCapture } from "../common/utils.js";
-
-const T3_VERSION_FLOOR = "0.0.46-nightly.20261003.2610";
-const SERVICE_ACTIVE_COMMAND =
-	"systemctl --user is-active --quiet t3code.service";
-const SERVE_STATUS_COMMAND = "tailscale serve status --json";
-const READINESS_ATTEMPTS = 30;
-const READINESS_INTERVAL_MS = 2000;
-const HTTPS_TIMEOUT_MS = 5000;
+import {
+	T3_VERSION_FLOOR,
+	SERVICE_ACTIVE_COMMAND,
+	READINESS_ATTEMPTS,
+	meetsT3Floor,
+	parseJson,
+	shellQuote,
+	waitForT3Tailscale,
+	writeTailscaleDropIn,
+} from "./t3_tailscale.js";
 
 function getNodeVersion() {
 	const result = Bun.spawnSync(["node", "--version"], {
@@ -52,40 +54,6 @@ export async function ensureT3NodeRuntime({
 	);
 }
 
-function shellQuote(value) {
-	return `'${value.replaceAll("'", "'\\''")}'`;
-}
-
-function meetsT3Floor(output) {
-	const version = (output ?? "").trim().replace(/^(?:t3 v|v)/, "");
-	return (
-		/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/.test(
-			version,
-		) && Bun.semver.order(version, T3_VERSION_FLOOR) >= 0
-	);
-}
-
-function parseJson(output) {
-	try {
-		return JSON.parse(output);
-	} catch {
-		return null;
-	}
-}
-
-function tailscaleHttpsUrl(config) {
-	if (config?.TCP?.[443]?.HTTPS !== true) return null;
-	for (const [hostPort, web] of Object.entries(config.Web ?? {})) {
-		if (
-			/^[a-z0-9-]+\.[a-z0-9-]+\.ts\.net:443$/i.test(hostPort) &&
-			web?.Handlers?.["/"]?.Proxy === "http://127.0.0.1:3773"
-		) {
-			return `https://${hostPort.slice(0, -4)}`;
-		}
-	}
-	return null;
-}
-
 function writeServiceDropIns(home, uid) {
 	const directory = path.join(home, ".config/systemd/user/t3code.service.d");
 	fs.mkdirSync(directory, { recursive: true });
@@ -93,8 +61,9 @@ function writeServiceDropIns(home, uid) {
 		path.join(directory, "axstack-path.conf"),
 		'[Service]\nEnvironment="PATH=%h/.local/bin:%h/.bun/bin:%h/.grok/bin:/usr/local/bin:/usr/bin:/bin"\n',
 	);
-	fs.writeFileSync(
-		path.join(directory, "axstack-tailscale.conf"),
+	writeTailscaleDropIn(
+		home,
+		fs,
 		"[Service]\nEnvironment=T3CODE_TAILSCALE_SERVE=true\n",
 	);
 	const sandbox = path.join(directory, "axstack-sandbox.conf");
@@ -191,35 +160,13 @@ export async function configureT3CodeServer({
 		);
 	}
 
-	const attempts =
-		Number.isInteger(maxReadinessAttempts) && maxReadinessAttempts > 0
-			? Math.min(maxReadinessAttempts, READINESS_ATTEMPTS)
-			: READINESS_ATTEMPTS;
-	for (let attempt = 0; attempt < attempts; attempt++) {
-		const url = tailscaleHttpsUrl(parseJson(await probe(SERVE_STATUS_COMMAND)));
-		if (url) {
-			try {
-				const response = await fetchImpl(url, {
-					signal: AbortSignal.timeout(HTTPS_TIMEOUT_MS),
-					redirect: "error",
-				});
-				await response.body?.cancel();
-				if (response.ok) {
-					logger.success(
-						`T3 Code service and Tailscale HTTPS are ready: ${url}`,
-					);
-					logger.info(
-						`Pair your phone on the same tailnet with: ${t3} pair --tailscale`,
-					);
-					return true;
-				}
-			} catch {
-				// Serve and HTTPS certificates can take time to become available.
-			}
-		}
-		if (attempt < attempts - 1) await sleepImpl(READINESS_INTERVAL_MS);
-	}
-	return fail(
-		`Tailscale HTTPS is not ready. Inspect ${SERVE_STATUS_COMMAND} for a tailnet HTTPS route to http://127.0.0.1:3773. Enable tailnet HTTPS certificates; non-root users need tailscale set --operator=$USER. Retry haoshoku --server-t3-code.`,
-	);
+	return waitForT3Tailscale({
+		probe,
+		t3,
+		fetchImpl,
+		sleepImpl,
+		maxReadinessAttempts,
+		logger,
+		fail,
+	});
 }
