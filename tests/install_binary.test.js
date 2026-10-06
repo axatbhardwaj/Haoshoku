@@ -26,9 +26,9 @@ function fixture(version) {
 	expect(spawnSync("tar", ["-czf", tarball, "-C", bundle, "."]).status).toBe(0);
 }
 
-function install(overrides = {}) {
+function install(overrides = {}, input = fs.readFileSync(installer)) {
 	return spawnSync("/bin/bash", [], {
-		input: fs.readFileSync(installer),
+		input,
 		encoding: "utf8",
 		env: {
 			...process.env,
@@ -53,6 +53,16 @@ beforeEach(() => {
 });
 
 afterEach(() => fs.rmSync(scratch, { recursive: true, force: true }));
+
+test("a truncated piped download has no installation side effects", () => {
+	const script = fs.readFileSync(installer, "utf8");
+	const lines = script.trimEnd().split("\n");
+	for (let end = 1; end < lines.length; end += 1) {
+		install({}, `${lines.slice(0, end).join("\n")}\n`);
+		expect(fs.existsSync(path.join(home, ".local"))).toBe(false);
+		expect(fs.existsSync(path.dirname(installHome))).toBe(false);
+	}
+});
 
 test("piped installer lays out assets, links the command, and warns about PATH", () => {
 	const result = install();

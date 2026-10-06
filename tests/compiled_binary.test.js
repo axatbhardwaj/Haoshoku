@@ -20,11 +20,32 @@ test("release bundle runs help and deploys a real config without Bun or the chec
 		expect(build.status).toBe(0);
 		const home = path.join(scratch, "home");
 		fs.mkdirSync(home);
+		const tools = path.join(scratch, "tools");
+		fs.mkdirSync(tools);
+		for (const tool of [
+			"curl",
+			"tar",
+			"gzip",
+			"uname",
+			"dirname",
+			"mkdir",
+			"basename",
+			"mktemp",
+			"rm",
+			"readlink",
+			"ln",
+			"mv",
+		]) {
+			fs.symlinkSync(Bun.which(tool), path.join(tools, tool));
+		}
 		const options = {
 			cwd: home,
-			env: { ...process.env, HOME: home, PATH: "/usr/bin:/bin" },
+			env: { ...process.env, HOME: home, PATH: tools },
 			encoding: "utf8",
 		};
+		expect(
+			spawnSync("/bin/bash", ["-c", "command -v bun"], options).status,
+		).toBe(1);
 		const install = spawnSync("/bin/bash", [], {
 			...options,
 			input: fs.readFileSync(path.join(root, "install.sh")),
@@ -60,6 +81,11 @@ test("release bundle runs help and deploys a real config without Bun or the chec
 		expect(fs.readFileSync(path.join(home, ".codex/AGENTS.md"), "utf8")).toBe(
 			expected,
 		);
+		const axstack = spawnSync(binary, ["--axstack"], options);
+		expect(axstack.status).toBe(1);
+		expect(axstack.stderr).toContain("Bun required for Axstack");
+		expect(fs.existsSync(path.join(home, ".local/bin/axstack"))).toBe(false);
+		expect(fs.existsSync(path.join(home, ".local/share/axstack"))).toBe(false);
 	} finally {
 		fs.rmSync(scratch, { recursive: true, force: true });
 	}

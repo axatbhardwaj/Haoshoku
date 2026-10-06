@@ -149,10 +149,16 @@ export async function configureAxstack(options = {}) {
 	const fetcher = options.fetcher ?? fetch;
 	const extractor = options.extractor ?? defaultExtractor;
 	const runner = options.runner ?? defaultRunner;
-	const bunPath = options.bunPath ?? Bun.which("bun") ?? process.execPath;
+	const bunPath = options.bunPath ?? (options.which ?? Bun.which)("bun");
 	const shimPath = path.join(binDir, "axstack");
 	const installed = releaseFromShim(shimPath);
 	const installedVersion = installed.version;
+	if (!bunPath) {
+		const reason =
+			"Bun required for Axstack (>= 1.3.14); install Bun and add it to PATH";
+		log.error(`Axstack setup failed: ${reason}`);
+		return failedResult(reason, "kept", installedVersion);
+	}
 
 	if (installed.status === "unparsable") {
 		const reason = "existing Axstack shim or version is unparsable";
