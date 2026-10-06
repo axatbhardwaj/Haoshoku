@@ -86,10 +86,6 @@ const DELIBERATE_OMISSIONS = {
 			"Arch installs the desktop package instead of the Debian headless service.",
 		],
 		[
-			"--server-paseo",
-			"Paseo's headless user service is configured only on Debian-family hosts.",
-		],
-		[
 			"--server-hermes-relay",
 			"Hermes relay transport is enabled only on an explicitly configured Debian server.",
 		],
@@ -290,9 +286,6 @@ function runDebianDefaultPath() {
 			}));
 			mock.module(${JSON.stringify(helperPath("configure_t3_code_server.js"))}, () => ({
 				configureT3CodeServer: record("serverT3Code", true),
-			}));
-			mock.module(${JSON.stringify(helperPath("configure_paseo_server.js"))}, () => ({
-				configurePaseoServer: record("serverPaseo", true),
 			}));
 			const { runDebianServerSetup } = await import(${JSON.stringify(modulePath)});
 			await runDebianServerSetup();

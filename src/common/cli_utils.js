@@ -21,7 +21,6 @@ export const MODE_FLAGS = [
 	"axstack",
 	"axstackCheck",
 	"serverT3Code",
-	"serverPaseo",
 	"serverHermesRelay",
 	"skills",
 	"skillsUpdate",

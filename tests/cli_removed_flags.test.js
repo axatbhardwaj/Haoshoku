@@ -7,6 +7,7 @@ const projectRoot = path.resolve(import.meta.dir, "..");
 const cli = path.join(projectRoot, "haoshoku.js");
 const homes = [];
 const removedFlags = [
+	["--server-paseo"],
 	["--agent-skills-backup"],
 	["--paseo-profiles"],
 	["--paseo-profiles-backup"],

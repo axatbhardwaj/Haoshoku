@@ -36,7 +36,6 @@ function runDefaultSetupWithSafeDoubles({
 	claudeResult = { ok: true, reason: "installed" },
 	codexResult = { ok: true, reason: "installed" },
 	codexError = null,
-	paseoResult = true,
 	relayResult = true,
 	t3Result = true,
 } = {}) {
@@ -102,7 +101,7 @@ function runDefaultSetupWithSafeDoubles({
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_agent_skills.js"))}, () => ({ syncAgentSkills: record("agent-skills", true) }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_hermes_relay.js"))}, () => ({ configureHermesRelay: record("hermes-relay", ${JSON.stringify(relayResult)}) }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_t3_code_server.js"))}, () => ({ configureT3CodeServer: record("t3-code-server", ${JSON.stringify(t3Result)}) }));
-		mock.module(${JSON.stringify(modulePath("src/helpers/configure_paseo_server.js"))}, () => ({ configurePaseoServer: record("paseo-server", ${JSON.stringify(paseoResult)}) }));
+		mock.module(${JSON.stringify(modulePath("src/helpers/configure_paseo_server.js"))}, () => ({ configurePaseoServer: record("paseo-server", false) }));
 		const { runDebianServerSetup } = await import(${JSON.stringify(debianModule)} + "?default-path-test");
 		const result = await runDebianServerSetup();
 		console.log("DEBIAN_EVENTS=" + JSON.stringify(events));
@@ -250,7 +249,6 @@ describe("Debian default path", () => {
 			"agents",
 			"skills",
 			"agent-skills",
-			"paseo-server",
 			"axstack",
 			"hermes-relay",
 			"t3-code-server",
@@ -263,10 +261,7 @@ describe("Debian default path", () => {
 
 		expect(result).toBe(true);
 		expect(events).toContainEqual({ type: "helper", name: "t3-code-server" });
-		expect(events).toContainEqual({ type: "helper", name: "paseo-server" });
-		expect(
-			events.findIndex(({ name }) => name === "paseo-server"),
-		).toBeLessThan(events.findIndex(({ name }) => name === "t3-code-server"));
+		expect(events).not.toContainEqual({ type: "helper", name: "paseo-server" });
 	});
 
 	it("reports Axstack failure without failing the remaining default setup", () => {
@@ -342,20 +337,6 @@ describe("Debian default path", () => {
 		});
 	});
 
-	it("propagates a selected Paseo setup failure", () => {
-		const { events, result } = runDefaultSetupWithSafeDoubles({
-			paseoResult: false,
-		});
-
-		expect(result).toBe(false);
-		expect(events).toContainEqual({ type: "helper", name: "paseo-server" });
-		expect(events.at(-1)).toEqual({
-			type: "error",
-			message:
-				"Debian Server setup finished, but Paseo setup or pairing is incomplete.",
-		});
-	});
-
 	it("propagates Hermes failure without prompting for Hermes", () => {
 		const { events, result } = runDefaultSetupWithSafeDoubles({
 			relayResult: false,
@@ -377,14 +358,16 @@ describe("Debian default path", () => {
 				"Debian Server setup finished, but the Hermes relay is incomplete.",
 		});
 	});
-	it("runs Hermes even when Paseo server setup fails", () => {
-		const { events, result } = runDefaultSetupWithSafeDoubles({
-			paseoResult: false,
-		});
-		const helpers = events
-			.filter(({ type }) => type === "helper")
-			.map(({ name }) => name);
-		expect(result).toBe(false);
-		expect(helpers).toContain("hermes-relay");
+	it("never calls the retired Paseo helper during successful or failed setup", () => {
+		for (const options of [{}, { t3Result: false }, { relayResult: false }]) {
+			const { events, result } = runDefaultSetupWithSafeDoubles(options);
+			expect(result).toBe(!Object.values(options).includes(false));
+			expect(events).toContainEqual({ type: "helper", name: "hermes-relay" });
+			expect(events).toContainEqual({ type: "helper", name: "t3-code-server" });
+			expect(events).not.toContainEqual({
+				type: "helper",
+				name: "paseo-server",
+			});
+		}
 	});
 });
