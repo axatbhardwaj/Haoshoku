@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 12.0.0 - 2026-10-06
 
 - Install the latest npm Axstack with SHA-512 integrity verification, report
   Claude/Codex role files, and link the packaged nightly T3 CLI on Arch when absent.

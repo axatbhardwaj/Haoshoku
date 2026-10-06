@@ -87,7 +87,7 @@ function parseEnabledState(value) {
 program
 	.name("haoshoku")
 	.description("Haoshoku: portable setup for Arch / Omarchy and Debian Server.")
-	.version("11.15.0")
+	.version("12.0.0")
 	.addHelpText("before", getBanner());
 
 program
