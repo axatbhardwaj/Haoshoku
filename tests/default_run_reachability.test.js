@@ -79,14 +79,6 @@ function deployModeFeaturesFromCli() {
 const DELIBERATE_OMISSIONS = {
 	arch: new Map([
 		[
-			"--claude-remote-control",
-			"Persistent Claude sessions are no longer offered by Arch/Omarchy setup.",
-		],
-		[
-			"--claude-stay-awake",
-			"Arch/Omarchy setup no longer installs a Claude sleep inhibitor.",
-		],
-		[
 			"--worktree-cleanup",
 			"Arch/Omarchy setup no longer enables automatic worktree deletion.",
 		],
@@ -214,7 +206,6 @@ function runArchDefaultPath({ isOmarchy = true, gitAnswer = true } = {}) {
 					enableServicesImpl: record("services"),
 					configureClaudeImpl: record("claude"),
 					installGhStackImpl: record("ghStack"),
-					configurePrWatchImpl: record("prWatch"),
 					configureCodexImpl: record("codex"),
 					syncAgentsConfigImpl: record("agents", true),
 					configureAxstackImpl: record("axstack", { ok: true }),
@@ -278,15 +269,6 @@ function runDebianDefaultPath() {
 				configureClaude: record("claude"),
 			}));
 			mock.module(${JSON.stringify(helperPath("configure_gh_stack.js"))}, () => ({ installGhStack: record("ghStack") }));
-			mock.module(${JSON.stringify(helperPath("configure_claude_stay_awake.js"))}, () => ({
-				configureClaudeStayAwake: record("claudeStayAwake"),
-			}));
-			mock.module(${JSON.stringify(helperPath("configure_claude_remote_control.js"))}, () => ({
-				configureClaudeRemoteControl: record("claudeRemoteControl"),
-			}));
-			mock.module(${JSON.stringify(helperPath("configure_pr_watch.js"))}, () => ({
-				configurePrWatch: record("prWatch"),
-			}));
 			mock.module(${JSON.stringify(helperPath("configure_worktree_cleanup.js"))}, () => ({
 				syncWorktreeCleanup: record("worktreeCleanup"),
 			}));
@@ -369,7 +351,6 @@ function userAppDoubles(overrides = {}) {
 		enableServicesImpl: async () => {},
 		configureClaudeImpl: async () => {},
 		installGhStackImpl: async () => {},
-		configurePrWatchImpl: async () => {},
 		configureCodexImpl: async () => {},
 		syncAgentsConfigImpl: async () => {},
 		configureAxstackImpl: async () => ({ ok: true }),
@@ -389,7 +370,7 @@ describe("default-run reachability", () => {
 			gitCalls: archDefaultResult.calls.filter((call) => call === "git").length,
 			prompts: archDefaultResult.prompts,
 		}).toEqual({ gitCalls: 0, prompts: [] });
-		expect(defaultCallsByPath.get("arch").has("prWatch")).toBe(true);
+		expect(defaultCallsByPath.get("arch").has("prWatch")).toBe(false);
 	});
 
 	it.each([true, false])("offers git configuration on non-Omarchy Arch (answer=%s)", (gitAnswer) => {
@@ -401,7 +382,7 @@ describe("default-run reachability", () => {
 			gitCalls: gitAnswer ? 1 : 0,
 			prompts: [{ message: "Configure git?", initial: true }],
 		});
-		expect(result.calls).toContain("prWatch");
+		expect(result.calls).not.toContain("prWatch");
 	});
 
 	it.each([
@@ -450,28 +431,6 @@ describe("default-run reachability", () => {
 		});
 	}
 
-	it("keeps PR watch unconditional when optional offers are declined", async () => {
-		const offers = [];
-		let prWatchCalls = 0;
-
-		await configureUserApps(
-			userAppDoubles({
-				promptUserImpl: async (message, initial) => {
-					offers.push({ message, initial });
-					return false;
-				},
-				configurePrWatchImpl: async () => {
-					prWatchCalls += 1;
-				},
-			}),
-		);
-
-		expect(offers.map(({ message }) => message)).not.toContain(
-			"Enable PR watch helper?",
-		);
-		expect(prWatchCalls).toBe(1);
-	});
-
 	it("completes unattended setup with explicit defaults and no persisted fallback", async () => {
 		const home = makeHome();
 		const configPath = path.join(home, ".haoshoku.json");
@@ -516,7 +475,6 @@ describe("default-run reachability", () => {
 									promptUserImpl: nonInteractivePrompt,
 									configureGitImpl: record("git"),
 									installGhStackImpl: record("gh-stack"),
-									configurePrWatchImpl: record("pr-watch"),
 								}),
 							),
 					}),
@@ -528,7 +486,7 @@ describe("default-run reachability", () => {
 
 		expect(interactivePromptCalls).toBe(0);
 		expect(fs.existsSync(configPath)).toBe(false);
-		expect(events).toEqual(["gh-stack", "pr-watch"]);
+		expect(events).toEqual(["gh-stack"]);
 		expect(warnings.join("\n")).toContain(
 			"returning deviceType pc without saving it",
 		);

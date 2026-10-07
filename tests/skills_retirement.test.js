@@ -6,7 +6,16 @@ import path from "node:path";
 
 const root = path.resolve(import.meta.dir, "..");
 const homes = [];
+const retiredServiceFlags = [
+	"--claude-remote-control",
+	"--claude-remote-control-backup",
+	"--claude-stay-awake",
+	"--claude-stay-awake-backup",
+	"--pr-watch",
+	"--pr-watch-backup",
+];
 const retiredFlags = [
+	...retiredServiceFlags,
 	"--skills",
 	"--skills-update",
 	"--skills-list",
@@ -16,10 +25,55 @@ const retiredFlags = [
 afterEach(() => {
 	for (const home of homes.splice(0)) fs.rmSync(home, { recursive: true });
 });
-function fixture(withSkills = true) {
+function fixture(withLegacy = true) {
 	const home = fs.mkdtempSync(path.join(os.tmpdir(), "skills-retirement-"));
 	homes.push(home);
-	if (!withSkills) return home;
+	for (const [file, content] of [
+		[".config/editor/settings.json", '{"personal":true}\n'],
+		...(withLegacy
+			? [
+					[
+						".local/bin/haoshoku-claude-remote-control",
+						"personal supervisor\n",
+					],
+					[".local/bin/claude-stay-awake", "personal inhibitor\n"],
+					[".local/bin/pr-watch", "personal watcher wrapper\n"],
+					[".local/bin/pr-watch.js", "personal watcher runtime\n"],
+					[
+						".config/systemd/user/claude-remote-control@.service",
+						"personal remote unit\n",
+					],
+					[
+						".config/systemd/user/claude-stay-awake.service",
+						"personal inhibitor unit\n",
+					],
+					[
+						".config/haoshoku/claude-remote-control/haki.env",
+						"personal remote environment\n",
+					],
+					[".local/state/pr-watch/repo-1.json", '{"personal":"watch state"}\n'],
+					[
+						".claude.json",
+						'{"personal":true,"bypassPermissionsModeAccepted":false}\n',
+					],
+				]
+			: []),
+	]) {
+		const target = path.join(home, file);
+		fs.mkdirSync(path.dirname(target), { recursive: true });
+		fs.writeFileSync(target, content, { mode: 0o600 });
+	}
+	if (!withLegacy) return home;
+	const wants = path.join(home, ".config/systemd/user/default.target.wants");
+	fs.mkdirSync(wants, { recursive: true });
+	fs.symlinkSync(
+		"../claude-remote-control@.service",
+		path.join(wants, "claude-remote-control@haki.service"),
+	);
+	fs.symlinkSync(
+		"../claude-stay-awake.service",
+		path.join(wants, "claude-stay-awake.service"),
+	);
 	for (const name of [
 		"visual-explainer",
 		"model-routing",
@@ -99,7 +153,28 @@ function run(home, script) {
 	};
 }
 
-describe("portable skill retirement", () => {
+describe("selected integration retirement", () => {
+	it("keeps help available without offering retired integrations", () => {
+		const home = fixture();
+		const before = snapshot(home);
+		const result = run(
+			home,
+			`process.argv = [process.execPath, ${JSON.stringify(path.join(root, "haoshoku.js"))}, "--help"]; await import(${JSON.stringify(path.join(root, "haoshoku.js"))});`,
+		);
+		expect(result.code, result.output).toBe(0);
+		for (const flag of retiredFlags) expect(result.output).not.toContain(flag);
+		for (const flag of [
+			"--claude",
+			"--codex",
+			"--axstack",
+			"--gh-stack",
+			"--server-t3-code",
+			"--server-hermes-relay",
+			"--worktree-cleanup",
+		])
+			expect(result.output).toContain(flag);
+		expect(snapshot(home)).toEqual(before);
+	});
 	for (const flag of retiredFlags) {
 		const forms = [
 			[flag],
@@ -108,6 +183,9 @@ describe("portable skill retirement", () => {
 			[flag, "false"],
 			[`${flag}=false`],
 			[`${flag}=`],
+			[`${flag}=malformed`],
+			["--unknown", flag],
+			[flag, "--pr-watch", "--skills"],
 			[flag, "--claude"],
 			["--os", "arch", flag],
 			["--os=debian-server", flag],
@@ -142,27 +220,48 @@ describe("portable skill retirement", () => {
 			const result = run(home, script);
 			expect(result.code, result.output).not.toBe(0);
 			expect(result.output).toContain(`${flag} has been retired`);
-			expect(result.output).toContain("Manage independent skills separately");
+			expect(result.output).toContain(
+				retiredServiceFlags.includes(flag)
+					? "Manage existing services and watchers separately"
+					: "Manage independent skills separately",
+			);
 			expect(result.output).not.toContain("SIDE_EFFECT=");
 			expect(snapshot(home)).toEqual(before);
 		});
 	}
 
 	for (const target of ["arch", "debian-server"]) {
-		for (const withSkills of [true, false]) {
-			it(`${withSkills ? "existing" : "fresh"} and repeated ${target} setup preserves user skills and retained tools`, () => {
-				const home = fixture(withSkills);
+		for (const withLegacy of [true, false]) {
+			it(`${withLegacy ? "existing" : "fresh"} and repeated ${target} setup preserves legacy installations and retained tools`, () => {
+				const home = fixture(withLegacy);
 				const before = snapshot(home);
+				const protectedRoots = [
+					".agents",
+					".claude",
+					".codex",
+					".config/haoshoku",
+					".config/systemd",
+					".config/editor",
+					".local/bin",
+					".local/state",
+					".claude.json",
+				];
 				const script = `
+				import fs from "node:fs";
+				import path from "node:path";
+				import { createHash } from "node:crypto";
+				const snapshot = ${snapshot.toString()};
+				const protectedRoots = ${JSON.stringify(protectedRoots)};
+				const preserved = [];
 				import { mock, spyOn } from "bun:test";
 				import childProcess from "node:child_process";
-				const calls = [], commands = [];
+				const calls = [], commands = [], prompts = [];
 				const record = (name, result = true) => async () => { calls.push(name); return result; };
 				const utilsPath = ${JSON.stringify(path.join(root, "src/common/utils.js"))};
 				const utils = await import(utilsPath);
 				mock.module(utilsPath, () => ({ ...utils,
 					runCommand: async (command) => { commands.push(command); return true; },
-					commandExists: async () => false, promptUser: async () => false, safeCopyFile() {},
+					commandExists: async () => false, promptUser: async (message) => { prompts.push(message); return /Claude stay-awake|Claude Remote Control/.test(message); }, safeCopyFile() {},
 				}));
 				for (const name of ["spawn", "spawnSync", "exec", "execSync", "execFile", "execFileSync"]) spyOn(childProcess, name).mockImplementation(() => { throw new Error("unstubbed process: " + name); });
 				for (const name of ["spawn", "spawnSync"]) spyOn(Bun, name).mockImplementation(() => { throw new Error("unstubbed process: " + name); });
@@ -173,6 +272,8 @@ describe("portable skill retirement", () => {
 					configure_axstack: ["configureAxstack", "axstack", { ok: true }],
 					configure_gh_stack: ["installGhStack", "gh-stack", true],
 					configure_pr_watch: ["configurePrWatch", "pr-watch", true],
+					configure_claude_stay_awake: ["configureClaudeStayAwake", "stay-awake", true],
+					configure_claude_remote_control: ["configureClaudeRemoteControl", "remote-control", true],
 					configure_hermes_relay: ["configureHermesRelay", "hermes", true],
 					configure_t3_code_server: ["configureT3CodeServer", "t3", true],
 				};
@@ -203,8 +304,9 @@ describe("portable skill retirement", () => {
 						}),
 					}) : await runDebianServerSetup();
 					if (!ok) throw new Error("setup incomplete");
+					preserved.push(snapshot(process.env.HOME).filter(([name]) => protectedRoots.some((directory) => name === directory || name.startsWith(directory + "/"))));
 				}
-				console.log("RESULT=" + JSON.stringify({ calls, commands }));
+				console.log("RESULT=" + JSON.stringify({ calls, commands, prompts, preserved }));
 			`;
 				const result = run(home, script);
 				expect(result.code, result.output).toBe(0);
@@ -229,22 +331,28 @@ describe("portable skill retirement", () => {
 					).toHaveLength(2);
 
 				// Debian legitimately creates SSH/fish directories and a jail fixture.
-				for (const directory of [
-					".agents",
-					".claude",
-					".codex",
-					".config/haoshoku",
-				]) {
-					const entries = (all) =>
-						all.filter(
-							([name]) =>
-								name === directory || name.startsWith(`${directory}/`),
-						);
-					expect(entries(snapshot(home))).toEqual(entries(before));
-				}
+				const expected = before.filter(([name]) =>
+					protectedRoots.some(
+						(directory) =>
+							name === directory || name.startsWith(`${directory}/`),
+					),
+				);
+				expect(recorded.preserved).toEqual([expected, expected]);
+				expect(
+					recorded.calls.filter((call) =>
+						/pr-watch|stay-awake|remote-control/.test(call),
+					),
+				).toEqual([]);
+				expect(
+					recorded.prompts.filter((message) =>
+						/Claude stay-awake|Claude Remote Control|PR watch/.test(message),
+					),
+				).toEqual([]);
 				expect(
 					recorded.commands.filter((command) =>
-						/skills@|mattpocock/.test(command),
+						/skills@|mattpocock|pr-watch|claude-stay-awake|claude-remote-control/.test(
+							command,
+						),
 					),
 				).toEqual([]);
 			});

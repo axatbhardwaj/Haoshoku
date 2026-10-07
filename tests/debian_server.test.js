@@ -54,8 +54,6 @@ function runDefaultSetupWithSafeDoubles({
 		};
 		const promptAnswers = new Set([
 			"Configure git?",
-			"Enable Claude stay-awake service?",
-			"Install Claude Remote Control services with all permission checks bypassed? This permanently sets bypassPermissionsModeAccepted: true in ~/.claude.json for every Claude Code session on this machine, not only these services. To undo it, edit ~/.claude.json and remove the flag or set it to false.",
 			"Enable automatic git worktree cleanup? This enables a persistent weekly timer that runs cleanup-worktrees.sh --apply and deletes eligible worktrees.",
 		]);
 		const writeFileSync = actualFs.writeFileSync.bind(actualFs);
@@ -86,9 +84,6 @@ function runDefaultSetupWithSafeDoubles({
 			configureClaude: record("claude", ${JSON.stringify(claudeResult)}),
 		}));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_gh_stack.js"))}, () => ({ installGhStack: record("gh-stack") }));
-		mock.module(${JSON.stringify(modulePath("src/helpers/configure_claude_stay_awake.js"))}, () => ({ configureClaudeStayAwake: record("stay-awake") }));
-		mock.module(${JSON.stringify(modulePath("src/helpers/configure_claude_remote_control.js"))}, () => ({ configureClaudeRemoteControl: record("remote-control") }));
-		mock.module(${JSON.stringify(modulePath("src/helpers/configure_pr_watch.js"))}, () => ({ configurePrWatch: record("pr-watch") }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_worktree_cleanup.js"))}, () => ({ syncWorktreeCleanup: record("worktree-cleanup") }));
 		mock.module(${JSON.stringify(modulePath("src/helpers/configure_codex.js"))}, () => ({ configureCodex: async () => {
 			events.push({ type: "helper", name: "codex" });
@@ -214,16 +209,11 @@ describe("Debian default path", () => {
 		expect(prompts.some(({ message }) => message.includes("gh-stack"))).toBe(
 			false,
 		);
-		expect(prompts).toContainEqual({
-			type: "prompt",
-			message: "Enable Claude stay-awake service?",
-			initial: true,
-		});
-		expect(prompts).toContainEqual({
-			type: "prompt",
-			message: expect.stringContaining("Claude Remote Control"),
-			initial: false,
-		});
+		expect(
+			prompts.filter(({ message }) =>
+				/Claude stay-awake|Claude Remote Control|PR watch/.test(message),
+			),
+		).toEqual([]);
 		expect(prompts).toContainEqual({
 			type: "prompt",
 			message: expect.stringContaining("automatic git worktree cleanup"),
@@ -239,9 +229,6 @@ describe("Debian default path", () => {
 			"git",
 			"claude",
 			"gh-stack",
-			"stay-awake",
-			"remote-control",
-			"pr-watch",
 			"worktree-cleanup",
 			"codex",
 			"agents",

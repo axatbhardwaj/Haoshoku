@@ -18,7 +18,6 @@ function userAppDoubles(overrides = {}) {
 		enableServicesImpl: async () => {},
 		configureClaudeImpl: async () => {},
 		installGhStackImpl: async () => {},
-		configurePrWatchImpl: async () => {},
 		configureCodexImpl: async () => {},
 		syncAgentsConfigImpl: async () => {},
 		configureAxstackImpl: async () => ({ ok: true }),

@@ -32,7 +32,6 @@ import { configureOmarchyPlugins } from "../helpers/configure_omarchy_plugins.js
 import { configureOmarchyWorkspaces } from "../helpers/configure_omarchy_workspaces.js";
 import { configureOmazed } from "../helpers/configure_omazed.js";
 import { configureVoxtypeOsd } from "../helpers/configure_voxtype_osd.js";
-import { configurePrWatch } from "../helpers/configure_pr_watch.js";
 import { configureTailscaleT3 } from "../helpers/configure_tailscale_t3.js";
 import { installUserScripts } from "../helpers/install_user_scripts.js";
 
@@ -548,7 +547,6 @@ export async function configureUserApps({
 	enableServicesImpl = enableServices,
 	configureClaudeImpl = configureClaude,
 	installGhStackImpl = installGhStack,
-	configurePrWatchImpl = configurePrWatch,
 	configureCodexImpl = configureCodex,
 	syncAgentsConfigImpl = syncAgentsConfig,
 	configureAxstackImpl = configureAxstack,
@@ -590,8 +588,6 @@ export async function configureUserApps({
 			`GitHub gh-stack extension installation failed (${err?.message ?? err}) — continuing with remaining app setup.`,
 		);
 	}
-	if (configurePrWatchImpl === configurePrWatch) await configurePrWatch();
-	else await configurePrWatchImpl();
 	let codexResult;
 	try {
 		codexResult = await configureCodexImpl();

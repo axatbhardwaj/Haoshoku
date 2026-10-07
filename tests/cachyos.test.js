@@ -17,7 +17,7 @@ import {
 } from "../src/os_scripts/cachyos.js";
 
 describe("user app configuration", () => {
-	it("runs portable app setup and PR watch without retired services or offers", async () => {
+	it("runs portable app setup without retired services or offers", async () => {
 		const events = [];
 		const prompts = [];
 		const record = (name) => async () => events.push(name);
@@ -40,7 +40,6 @@ describe("user app configuration", () => {
 			enableServicesImpl: record("services"),
 			configureClaudeImpl: record("claude"),
 			installGhStackImpl: record("gh-stack"),
-			configurePrWatchImpl: record("pr-watch"),
 			configureCodexImpl: record("codex"),
 			syncAgentsConfigImpl: record("agents"),
 			configureAxstackImpl: async () => {
@@ -60,7 +59,6 @@ describe("user app configuration", () => {
 			"services",
 			"claude",
 			"gh-stack",
-			"pr-watch",
 			"codex",
 			"agents",
 			"axstack",
@@ -90,7 +88,6 @@ describe("user app configuration", () => {
 					reason: "install command failed",
 				}),
 				installGhStackImpl: noop,
-				configurePrWatchImpl: noop,
 				configureCodexImpl: async () => ({
 					ok: false,
 					reason: "registry unavailable",
@@ -133,7 +130,6 @@ describe("user app configuration", () => {
 				enableServicesImpl: noop,
 				configureClaudeImpl: async () => ({ ok: true }),
 				installGhStackImpl: noop,
-				configurePrWatchImpl: noop,
 				configureCodexImpl: async () => {
 					throw new Error("Ambiguous multiline TOML");
 				},

@@ -70,7 +70,6 @@ const TEST_CALLER_CONTRACTS = new Map([
 			"enableServicesImpl",
 			"configureClaudeImpl",
 			"installGhStackImpl",
-			"configurePrWatchImpl",
 			"configureCodexImpl",
 			"syncAgentsConfigImpl",
 			"configureAxstackImpl",

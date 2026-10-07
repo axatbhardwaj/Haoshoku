@@ -13,13 +13,10 @@ import {
 import { syncAgentsConfig } from "../helpers/configure_agents.js";
 import { configureAxstack } from "../helpers/configure_axstack.js";
 import { configureClaude } from "../helpers/configure_claude.js";
-import { configureClaudeRemoteControl } from "../helpers/configure_claude_remote_control.js";
-import { configureClaudeStayAwake } from "../helpers/configure_claude_stay_awake.js";
 import { configureCodex } from "../helpers/configure_codex.js";
 import { installGhStack } from "../helpers/configure_gh_stack.js";
 import { configureGit } from "../helpers/configure_git.js";
 import { configureHermesRelay } from "../helpers/configure_hermes_relay.js";
-import { configurePrWatch } from "../helpers/configure_pr_watch.js";
 import { configureT3CodeServer } from "../helpers/configure_t3_code_server.js";
 import { syncWorktreeCleanup } from "../helpers/configure_worktree_cleanup.js";
 
@@ -327,18 +324,6 @@ export async function runDebianServerSetup({
 			`GitHub gh-stack extension installation failed (${err?.message ?? err}) — continuing with remaining server setup.`,
 		);
 	}
-	if (await promptUser("Enable Claude stay-awake service?", true)) {
-		await configureClaudeStayAwake();
-	}
-	if (
-		await promptUser(
-			"Install Claude Remote Control services with all permission checks bypassed? This permanently sets bypassPermissionsModeAccepted: true in ~/.claude.json for every Claude Code session on this machine, not only these services. To undo it, edit ~/.claude.json and remove the flag or set it to false.",
-			false,
-		)
-	) {
-		await configureClaudeRemoteControl();
-	}
-	await configurePrWatch();
 	if (
 		await promptUser(
 			"Enable automatic git worktree cleanup? This enables a persistent weekly timer that runs cleanup-worktrees.sh --apply and deletes eligible worktrees.",

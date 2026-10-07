@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-it("packs retained agent tools without the retired skill payload or helpers", () => {
+it("packs retained agent tools without the any selected retired payload or helpers", () => {
 	const cache = fs.mkdtempSync(path.join(os.tmpdir(), "skills-pack-cache-"));
 	try {
 		const packed = Bun.spawnSync(["npm", "pack", "--dry-run", "--json"], {
@@ -22,7 +22,10 @@ it("packs retained agent tools without the retired skill payload or helpers", ()
 			files.filter(
 				(file) =>
 					file.startsWith("configs/upstream-skills/") ||
-					/src\/helpers\/configure_(?:skills|agent_skills|visual_explainer)\.js$/.test(
+					/^configs\/(?:claude-remote-control|claude-stay-awake|pr-watch)\//.test(
+						file,
+					) ||
+					/src\/helpers\/configure_(?:skills|agent_skills|visual_explainer|claude_remote_control|claude_stay_awake|pr_watch)\.js$/.test(
 						file,
 					),
 			),

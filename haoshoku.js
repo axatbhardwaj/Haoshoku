@@ -26,14 +26,6 @@ import {
 	syncClaudeConfig,
 } from "./src/helpers/configure_claude.js";
 import {
-	backupClaudeRemoteControl,
-	syncClaudeRemoteControl,
-} from "./src/helpers/configure_claude_remote_control.js";
-import {
-	backupClaudeStayAwake,
-	syncClaudeStayAwake,
-} from "./src/helpers/configure_claude_stay_awake.js";
-import {
 	backupCodexConfig,
 	syncCodexConfig,
 } from "./src/helpers/configure_codex.js";
@@ -61,10 +53,6 @@ import {
 } from "./src/helpers/configure_omarchy_bar.js";
 import { configureOmarchyPlugins } from "./src/helpers/configure_omarchy_plugins.js";
 import { configureOmarchyWorkspaces } from "./src/helpers/configure_omarchy_workspaces.js";
-import {
-	backupPrWatch,
-	syncPrWatch,
-} from "./src/helpers/configure_pr_watch.js";
 import { configureTailscaleT3 } from "./src/helpers/configure_tailscale_t3.js";
 import { configureT3CodeServer } from "./src/helpers/configure_t3_code_server.js";
 import {
@@ -78,7 +66,7 @@ import { runDebianServerSetup } from "./src/os_scripts/debian_server.js";
 
 // Check raw arguments before parsing or starting logs so retired commands cannot
 // fall through to setup, including malformed values and combined modes.
-const retiredSkillOption = process.argv
+const retiredOption = process.argv
 	.slice(2)
 	.find((arg) =>
 		[
@@ -87,11 +75,22 @@ const retiredSkillOption = process.argv
 			"--skills-list",
 			"--agent-skills",
 			"--explainer-theme",
+			"--claude-remote-control",
+			"--claude-remote-control-backup",
+			"--claude-stay-awake",
+			"--claude-stay-awake-backup",
+			"--pr-watch",
+			"--pr-watch-backup",
 		].includes(arg.split("=")[0]),
 	);
-if (retiredSkillOption) {
+if (retiredOption) {
+	const flag = retiredOption.split("=")[0];
+	const guidance =
+		flag.startsWith("--claude-") || flag.startsWith("--pr-watch")
+			? "Manage existing services and watchers separately; existing installations are left untouched."
+			: "Manage independent skills separately; existing skills are left untouched.";
 	console.error(
-		`${retiredSkillOption.split("=")[0]} has been retired from Haoshoku. Manage independent skills separately; existing skills are left untouched. Use haoshoku --axstack for Axstack workflows.`,
+		`${flag} has been retired from Haoshoku. ${guidance} Use haoshoku --axstack for Axstack workflows.`,
 	);
 	process.exit(2);
 }
@@ -131,14 +130,6 @@ program
 	.option(
 		"--claude-backup",
 		"Backup Claude Code config (CLAUDE.md, statusline, .gitignore)",
-	)
-	.option(
-		"--claude-remote-control",
-		"Deploy Claude Remote Control supervisor and user services",
-	)
-	.option(
-		"--claude-remote-control-backup",
-		"Backup Claude Remote Control supervisor and user unit",
 	)
 	.option("--claude-update", "Redeploy the packaged Claude Code config")
 	.option(
@@ -192,22 +183,6 @@ program
 	.option(
 		"--worktree-cleanup-backup",
 		"Backup the ~/defi worktree-cleanup script + systemd units to configs/worktree-cleanup/",
-	)
-	.option(
-		"--claude-stay-awake",
-		"Deploy the claude-stay-awake sleep inhibitor (configs/claude-stay-awake/ → live) and enable the systemd user service",
-	)
-	.option(
-		"--claude-stay-awake-backup",
-		"Backup the claude-stay-awake script + systemd unit to configs/claude-stay-awake/",
-	)
-	.option(
-		"--pr-watch",
-		"Deploy the pr-watch PR watcher (configs/pr-watch/ → ~/.local/bin/)",
-	)
-	.option(
-		"--pr-watch-backup",
-		"Backup the pr-watch PR watcher from ~/.local/bin/ to configs/pr-watch/",
 	)
 	.option("--device-type <type>", "Set device type (pc or laptop)")
 	.option(
@@ -315,16 +290,6 @@ async function runAction(options) {
 		return;
 	}
 
-	if (options.claudeRemoteControlBackup) {
-		if (!(await backupClaudeRemoteControl())) process.exit(1);
-		return;
-	}
-
-	if (options.claudeRemoteControl) {
-		if (!(await syncClaudeRemoteControl())) process.exit(1);
-		return;
-	}
-
 	if (options.codexBackup) {
 		await backupCodexConfig();
 		return;
@@ -425,26 +390,6 @@ async function runAction(options) {
 
 	if (options.worktreeCleanup) {
 		await syncWorktreeCleanup();
-		return;
-	}
-
-	if (options.claudeStayAwakeBackup) {
-		await backupClaudeStayAwake();
-		return;
-	}
-
-	if (options.claudeStayAwake) {
-		await syncClaudeStayAwake();
-		return;
-	}
-
-	if (options.prWatchBackup) {
-		await backupPrWatch();
-		return;
-	}
-
-	if (options.prWatch) {
-		await syncPrWatch();
 		return;
 	}
 
