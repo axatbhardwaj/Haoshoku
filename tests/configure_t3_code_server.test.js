@@ -15,6 +15,7 @@ const silentLogger = {
 	warning() {},
 };
 
+const listenerCommand = "ss -Hltn 'sport = :3773'";
 const floor = "0.0.46-nightly.20261003.2610";
 const serveConfig = {
 	TCP: { 443: { HTTPS: true } },
@@ -59,6 +60,8 @@ function fixture({
 				if (value instanceof Error) throw value;
 				return typeof value === "function" ? value() : value;
 			}
+			if (command === listenerCommand)
+				return response("LISTEN 0 128 127.0.0.1:3773 0.0.0.0:*");
 			if (command === "tailscale status") return response("logged in");
 			if (command === "tailscale debug prefs")
 				return response('{"OperatorUser":"test"}');
@@ -147,6 +150,7 @@ describe("T3 server over Tailscale", () => {
 			"systemctl --user is-active --quiet t3code.service",
 			"tailscale serve status --json",
 			"https://server.tail123.ts.net",
+			listenerCommand,
 		]);
 		expect(fs.existsSync(path.join(f.dropIns, "axstack-sandbox.conf"))).toBe(
 			false,
@@ -607,5 +611,42 @@ describe("Debian T3 drop-in idempotency", () => {
 		).toBe(
 			'[Service]\nEnvironment="PATH=%h/.local/bin:%h/.bun/bin:%h/.grok/bin:/usr/local/bin:/usr/bin:/bin"\n',
 		);
+	});
+});
+
+describe("Debian T3 listener verification", () => {
+	it("errors on a non-loopback listener without announcing success", async () => {
+		const f = fixture();
+		const messages = [];
+		f.options.logger.success = (message) => messages.push(message);
+		f.overrides.set(
+			listenerCommand,
+			f.response("LISTEN 0 128 100.65.100.23:3773 *:*"),
+		);
+		expect(await configureT3CodeServer(f.options)).toBe(false);
+		expect(f.events).toContain("https://server.tail123.ts.net");
+		expect(f.errors.join(" ")).toContain("100.65.100.23");
+		expect(f.errors.join(" ")).toContain("127.0.0.1");
+		expect(f.errors.join(" ")).toContain("only via Tailscale Serve");
+		expect(messages).toEqual([]);
+	});
+
+	it.each([
+		"empty",
+		"missing",
+		"throws",
+	])("logs unverifiable binding when ss is %s", async (mode) => {
+		const f = fixture();
+		const warnings = [];
+		f.options.logger.warning = (message) => warnings.push(message);
+		f.overrides.set(
+			listenerCommand,
+			mode === "throws"
+				? new Error("ss missing")
+				: f.response("", mode === "missing" ? 127 : 0),
+		);
+		expect(await configureT3CodeServer(f.options)).toBe(true);
+		expect(warnings.join(" ")).toContain("bind could not be verified");
+		expect(f.errors).toEqual([]);
 	});
 });

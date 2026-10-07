@@ -8,6 +8,7 @@ const pathDropIn =
 	"/home/test/.config/systemd/user/t3code.service.d/axstack-path.conf";
 const pathContent =
 	'[Service]\nEnvironment="PATH=%h/.local/bin:%h/.bun/bin:%h/.local/share/mise/shims:/usr/local/bin:/usr/bin:/bin"\n';
+const listenerCommand = "ss -Hltn 'sport = :3773'";
 const url = "https://laptop.tail123.ts.net";
 const serve = {
 	TCP: { 443: { HTTPS: true } },
@@ -52,10 +53,22 @@ function fixture({ fresh = false, loggedOut = fresh } = {}) {
 		},
 		captureCommandImpl: async (command) => {
 			events.push(command);
-			if (overrides.has(command)) return overrides.get(command);
+			if (overrides.has(command)) {
+				const value = overrides.get(command);
+				if (value instanceof Error) throw value;
+				return value;
+			}
 			let stdout = "";
 			let exitCode = 0;
-			if (command === "pacman -Q tailscale") exitCode = fresh ? 1 : 0;
+			if (command === listenerCommand)
+				stdout = "LISTEN 0 128 127.0.0.1:3773 0.0.0.0:*";
+			else if (command === "command -v t3") stdout = "/usr/bin/t3";
+			else if (command === "/usr/bin/t3 --version")
+				stdout = "t3 v0.0.46-nightly.20261004.2644";
+			else if (command === "pacman -Q t3code-bin") exitCode = 1;
+			else if (command === "pacman -Q t3code-nightly-bin")
+				stdout = "t3code-nightly-bin 0.0.46";
+			else if (command === "pacman -Q tailscale") exitCode = fresh ? 1 : 0;
 			else if (command.includes("--user is-active"))
 				exitCode = serviceActive ? 0 : 1;
 			else if (command.includes("is-enabled") || command.includes("is-active"))
@@ -114,7 +127,7 @@ describe("Arch T3 over Tailscale", () => {
 		]);
 		expect(f.files.get(dropIn)).toBe(content);
 		expect(f.files.get(pathDropIn)).toBe(pathContent);
-		expect(f.events.at(-1)).toBe(url);
+		expect(f.events).toContain(url);
 		expect(f.messages.join(" ")).toContain(url);
 		expect(f.messages.join(" ")).toContain("t3 pair --tailscale");
 	});
@@ -314,6 +327,99 @@ describe("Arch T3 agent PATH drop-in", () => {
 		]);
 		f.mutations.length = 0;
 		expect(await configureTailscaleT3(f.options)).toBe(true);
+		expect(f.mutations).toEqual([]);
+	});
+});
+
+describe("Arch T3 listener verification", () => {
+	it.each([
+		"0.0.0.0",
+		"100.65.100.23",
+		"[::]",
+		"*",
+	])("rejects a non-loopback listener at %s after HTTPS readiness", async (address) => {
+		const f = fixture();
+		f.overrides.set(listenerCommand, {
+			stdout: `LISTEN 0 128 127.0.0.1:3773 0.0.0.0:*\nLISTEN 0 128 ${address}:3773 *:*`,
+			exitCode: 0,
+		});
+		expect(await configureTailscaleT3(f.options)).toBe(false);
+		expect(f.events).toContain(url);
+		expect(f.warnings.join(" ")).toContain(
+			address.replaceAll("[", "").replaceAll("]", ""),
+		);
+		expect(f.warnings.join(" ")).toContain("127.0.0.1");
+		expect(f.warnings.join(" ")).toContain("only via Tailscale Serve");
+		expect(f.messages.join(" ")).not.toContain("are ready");
+	});
+
+	it.each([
+		"127.0.0.1",
+		"127.0.0.2",
+		"[::1]",
+	])("accepts loopback listener %s", async (address) => {
+		const f = fixture();
+		f.overrides.set(listenerCommand, {
+			stdout: `LISTEN 0 128 ${address}:3773 *:*`,
+			exitCode: 0,
+		});
+		expect(await configureTailscaleT3(f.options)).toBe(true);
+		expect(f.events).toContain(listenerCommand);
+		expect(f.warnings).toEqual([]);
+	});
+
+	it.each([
+		"empty",
+		"missing",
+		"throws",
+	])("warns without failing when ss is %s", async (mode) => {
+		const f = fixture();
+		f.overrides.set(
+			listenerCommand,
+			mode === "throws"
+				? new Error("ss missing")
+				: {
+						stdout: "",
+						exitCode: mode === "missing" ? 127 : 0,
+					},
+		);
+		expect(await configureTailscaleT3(f.options)).toBe(true);
+		expect(f.warnings.join(" ")).toContain("bind could not be verified");
+	});
+});
+
+describe("Arch T3 installation diagnostics", () => {
+	it("warns about a shadowing CLI with both paths and versions, without removing it", async () => {
+		const f = fixture();
+		f.overrides.set("command -v t3", {
+			stdout: "/home/test/.local/bin/t3",
+			exitCode: 0,
+		});
+		f.overrides.set("/usr/bin/t3 --version", {
+			stdout: "t3 v0.0.46-nightly.20261006.2735",
+			exitCode: 0,
+		});
+		expect(await configureTailscaleT3(f.options)).toBe(true);
+		for (const text of [
+			"/home/test/.local/bin/t3",
+			"/usr/bin/t3",
+			"20261004.2644",
+			"20261006.2735",
+		]) {
+			expect(f.warnings.join(" ")).toContain(text);
+		}
+		expect(f.mutations).toEqual([]);
+	});
+
+	it("warns when stable and nightly packages coexist without uninstalling them", async () => {
+		const f = fixture();
+		f.overrides.set("pacman -Q t3code-bin", {
+			stdout: "t3code-bin 0.0.45",
+			exitCode: 0,
+		});
+		expect(await configureTailscaleT3(f.options)).toBe(true);
+		expect(f.warnings.join(" ")).toContain("t3code-bin");
+		expect(f.warnings.join(" ")).toContain("t3code-nightly-bin");
 		expect(f.mutations).toEqual([]);
 	});
 });

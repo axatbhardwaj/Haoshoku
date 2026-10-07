@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { isIP } from "node:net";
 import path from "node:path";
 
 export const T3_VERSION_FLOOR = "0.0.46-nightly.20261003.2610";
@@ -90,6 +91,36 @@ export function writeServiceDropIn(home, name, content, fsImpl = fs) {
 	return true;
 }
 
+async function verifyT3Loopback(probe, logger, fail) {
+	let listeners;
+	try {
+		listeners = await probe("ss -Hltn 'sport = :3773'");
+	} catch {
+		// ss may be absent on an otherwise ready machine.
+	}
+	if (!listeners) {
+		logger.warning(
+			"T3 bind could not be verified: ss is unavailable or reports no listeners on port 3773",
+		);
+		return true;
+	}
+	for (const line of listeners.split("\n")) {
+		const local = line.trim().split(/\s+/)[3] ?? "";
+		const address = local.replace(/:3773$/, "").replace(/^\[(.*)\]$/, "$1");
+		if (
+			!(
+				address === "::1" ||
+				(isIP(address) === 4 && address.startsWith("127."))
+			)
+		) {
+			return fail(
+				`T3 listener ${local || line} is not loopback. T3 must listen on 127.0.0.1 and be exposed only via Tailscale Serve.`,
+			);
+		}
+	}
+	return true;
+}
+
 export async function waitForT3Tailscale({
 	probe,
 	t3 = "t3",
@@ -119,6 +150,7 @@ export async function waitForT3Tailscale({
 				});
 				await response.body?.cancel();
 				if (response.ok) {
+					if (!(await verifyT3Loopback(probe, logger, fail))) return false;
 					logger.success(
 						`T3 Code service and Tailscale HTTPS are ready: ${url}`,
 					);

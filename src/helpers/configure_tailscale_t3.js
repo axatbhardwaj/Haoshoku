@@ -32,8 +32,8 @@ export async function configureTailscaleT3({
 		);
 		return false;
 	};
-	const probe = async (command) => {
-		const result = await captureCommandImpl(command);
+	const probe = async (command, options) => {
+		const result = await captureCommandImpl(command, options);
 		return result.exitCode === 0 ? result.stdout.trim() : null;
 	};
 	const run = async (command, options) => {
@@ -82,7 +82,22 @@ export async function configureTailscaleT3({
 			}))
 		)
 			return false;
-		if (!meetsT3Floor(await probe("t3 --version"))) {
+		const version = await probe("t3 --version");
+		const resolved = await probe("command -v t3", { shell: true });
+		if (resolved && resolved !== "/usr/bin/t3") {
+			const packagedVersion = await probe("/usr/bin/t3 --version");
+			logger.warning(
+				`T3 on PATH is ${resolved} (${version ?? "unknown version"}), shadowing packaged /usr/bin/t3 (${packagedVersion ?? "unknown version"}). Inspect these installs.`,
+			);
+		}
+		const stablePackage = await probe("pacman -Q t3code-bin");
+		const nightlyPackage = await probe("pacman -Q t3code-nightly-bin");
+		if (stablePackage !== null && nightlyPackage !== null) {
+			logger.warning(
+				`Both T3 packages are installed: ${stablePackage}; ${nightlyPackage}. Inspect t3code-bin and t3code-nightly-bin for conflicting installs.`,
+			);
+		}
+		if (!meetsT3Floor(version)) {
 			return fail(
 				`T3 must be >= ${T3_VERSION_FLOOR}; install/update t3code-nightly-bin and ensure t3 is on PATH`,
 			);

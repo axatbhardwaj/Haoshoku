@@ -4,6 +4,10 @@
 
 ### Fixed
 
+- Both T3 setup paths verify port 3773 listeners after HTTPS readiness and
+  reject non-loopback binds; unavailable listener checks report uncertainty.
+  Arch warns about shadowing T3 binaries and coinstalled stable/nightly packages.
+
 - Arch T3 services prioritize real agent CLIs before mise shims; both setup
   paths write service drop-ins only when content changes. Debian root services
   disable the browser sandbox and remove that override for non-root users.
