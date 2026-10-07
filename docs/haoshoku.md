@@ -68,3 +68,14 @@ updating it. The focused helpers separate process/filesystem preflight from
 bounded application and origin probes. See [Executor server prerequisites and
 preservation](../README.md#opt-in-executor-server) for the image, data ownership,
 verification limits and manual owner/authentication steps.
+
+Executor client registration is a separate, explicit user command:
+`haoshoku --executor-clients <https-endpoint>`. The CLI validates the standalone
+endpoint/auth inputs before logging or writes, then calls focused config and
+filesystem helpers. Both Claude/Codex configs are preflighted together; JSON key
+insertion and TOML append preserve unrelated bytes, and caught write failures
+restore original contents from memory without backup artifacts. Matching entries
+perform no config writes. No server provisioning or authenticated discovery runs.
+See [Executor client prerequisites and session inheritance](../README.md#opt-in-executor-clients)
+for auth syntax, effective user/config homes, conservative unsupported shapes,
+T3 environment inheritance, and the crash/verification limits.

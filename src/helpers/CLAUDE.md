@@ -13,6 +13,9 @@ Standalone setup scripts for specific tools.
 | `configure_axstack.js` | Latest npm Axstack release install with registry SHA-512 integrity verification under `~/.local/share/axstack/releases/<version>` with the `~/.local/bin/axstack` shim, no silent downgrade, then `axstack install --harness claude\|codex`; `checkAxstack` reports shim/version/harness state and both roles.json paths; Arch links missing t3 to t3-nightly without replacing a local t3 | Changing registry resolution or install verification, or debugging `--axstack`/`--axstack-check` |
 | `configure_codex.js` | Codex CLI plus personal config sync/backup | Adding Codex setup features or debugging config sync |
 | `configure_gh_stack.js` | Idempotent `github/gh-stack` extension install | Adding or debugging stacked-PR tooling setup |
+| `configure_executor_clients.js` | Explicit Claude/Codex user-scope Executor registration, endpoint/auth validation and truthful config-only result | Changing `--executor-clients` |
+| `executor_client_config.js` | Byte-preserving JSON insertion and TOML append with duplicate/unsupported/conflict refusals | Changing supported client config contracts |
+| `executor_client_files.js` | Owned-path preflight, no-op detection, changed-input checks and in-memory write recovery without backups | Changing client file preservation |
 | `configure_executor_server.js` | Opt-in Debian Executor prerequisites, image digest pinning and truthful provisioning result | Changing `--server-executor` or its injected process boundary |
 | `executor_deployment.js` | Managed compose generation and read-only filesystem/container/port preservation checks | Changing Executor deployment identity or data ownership rules |
 | `executor_readiness.js` | Bounded local/public health and OAuth metadata probes | Changing Executor application/origin verification |

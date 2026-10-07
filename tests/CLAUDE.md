@@ -9,6 +9,7 @@
 | `skills_retirement.test.js` | All five retired families: CLI forms, default setup and repeated-run preservation with retained tools | Changing integration retirement boundaries |
 | `skills_packaging.test.js` | npm payload excludes all five retired families of helpers and assets while retaining agent tools | Changing package contents |
 | `cli_removed_flags.test.js` | Unknown-option rejection of retired CLI flags before helpers, processes, or services run | Extending the removed-flag table |
+| `executor_clients.test.js` | Real CLI/filesystem fixtures for Claude/Codex env auth, preservation, conflicts, reruns and write faults | Changing client setup and credential safety |
 | `cli_server_executor_flag.test.js` | Explicit HTTPS origin, opt-in route, host/mode refusals and safe run logs | Changing Executor CLI behavior |
 | `configure_executor_server.test.js` | Disposable data/command/probe fixtures for fresh, rerun, conflict and incomplete Executor setup | Changing Executor provisioning, preservation or readiness |
 | `cli_server_hermes_relay_flag.test.js` | Debian-only Hermes relay CLI routing and failure propagation | Changing `--server-hermes-relay` |

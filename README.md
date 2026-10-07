@@ -327,6 +327,8 @@ haoshoku --codex
 haoshoku --codex-backup
 haoshoku --server-t3-code
 haoshoku --server-executor https://gateway.example.net
+# With EXECUTOR_AUTHORIZATION supplied securely in the environment:
+haoshoku --executor-clients https://executor.example.net/mcp
 haoshoku --device-type laptop
 haoshoku --kde-connect-commands
 haoshoku --audio
@@ -610,3 +612,78 @@ partial state for manual inspection; rerunning never tries destructive repair.
 handshake or healthy integrations. Complete first-owner signup yourself in the
 public web UI, then configure authentication, policies and integrations there.
 Haoshoku does not create owners, API keys, policies or OAuth connections.
+
+## Opt-in Executor clients
+
+For an ordinary agent user, run this standalone command after making the existing
+Executor HTTPS MCP endpoint and its authentication available:
+
+```bash
+# Supply EXECUTOR_AUTHORIZATION securely in this process environment first.
+haoshoku --executor-clients https://executor.example.net/mcp
+```
+
+`EXECUTOR_AUTHORIZATION` must contain the **complete** Authorization header value:
+`Bearer ` followed by the API key/token accepted by that endpoint. Do not put the
+secret in CLI arguments, a tracked file, or shell history. Missing, empty, raw-token,
+and newline-bearing values are rejected without printing them. The command stores
+only an environment reference, never the authorization value. HTTPS is required;
+ports and endpoint paths such as `/mcp` are supported, credentials/query/fragment
+are rejected. This endpoint differs from `--server-executor`'s origin-only input.
+
+The command adds an `executor` HTTP entry for **both Claude Code and Codex**.
+It requires no root privileges or harness subprocess and can run from any directory.
+It is separate from server provisioning and never creates accounts, keys, policy
+rules, or integrations. It is not part of default OS setup and cannot be combined
+with another mode or `--os`.
+
+Configuration locations follow the harness user contracts:
+
+- Claude Code: `$HOME/.claude.json`, or `$CLAUDE_CONFIG_DIR/.claude.json` when that
+  override is nonempty. The entry lives in the top-level `mcpServers` map (user
+  scope), with `"headers": {"Authorization": "${EXECUTOR_AUTHORIZATION}"}`.
+- Codex: `$CODEX_HOME/config.toml`, defaulting to `$HOME/.codex/config.toml`.
+  The `[mcp_servers.executor]` table uses
+  `env_http_headers = { Authorization = "EXECUTOR_AUTHORIZATION" }`.
+
+Use absolute homes for the intended non-root user; `XDG_CONFIG_HOME` does not
+redirect these MCP files. Auth references are resolved from the harness environment
+when it loads/connects the server, rather than saved as credentials during setup.
+Both use the header verbatim, so the environment value must include `Bearer `.
+This contract was checked against Claude Code **2.1.292**, Codex **0.160.1**, and the
+[Claude MCP documentation](https://code.claude.com/docs/en/mcp),
+[Claude environment settings](https://code.claude.com/docs/en/env-vars), and
+[Codex MCP](https://developers.openai.com/codex/mcp) /
+[config-home documentation](https://developers.openai.com/codex/config-advanced).
+Other harnesses and older versions are unverified.
+
+Both files are inspected before writes. A matching entry is a config no-op,
+including file permissions and timestamps. A differing or unknown `executor`
+entry stops: reconcile it manually in the effective user config, then retry.
+Existing inline credentials remain opaque; this command does not migrate them.
+Unrelated JSON bytes, settings, TOML sections, and comments are retained. Duplicate
+JSON keys, malformed configs, linked files/directories, foreign ownership, and
+shared write permissions are refused. The additive TOML path conservatively refuses
+multiline strings and inline/dotted `mcp_servers` parent definitions; use regular
+MCP tables or configure the entry manually for those shapes.
+
+New config files use mode 0600 and new directories 0700; existing file modes are
+preserved. Existing files are updated in place, with changed-input checks before
+writing and restoration from memory after caught write failures. No secret-bearing
+backups or temporary config copies are created. Run with other config writers
+stopped: these two file updates are not an atomic transaction across crashes or
+power loss. An incomplete/recovery warning requires manual inspection of both
+files before retrying; empty directories may remain after a failed fresh setup.
+
+For **T3-launched sessions**, run setup with the homes of the user that runs the
+future T3 backend/harness. That backend and its future child sessions must inherit
+`EXECUTOR_AUTHORIZATION` and the same `HOME`, `CODEX_HOME`, and/or
+`CLAUDE_CONFIG_DIR`. Exporting in an unrelated terminal does not update an already
+running backend. This command does not alter T3 provider settings, services, launch
+environments, or sessions. Managed/project config and explicit launch overrides
+can take precedence over these user entries.
+
+“Configuration written” or “already matches” proves only local registration.
+This command does **not** contact Executor, authenticate, run OAuth, discover tools,
+or verify account/integration access. Check an authenticated MCP handshake and
+expected tool discovery separately in the intended future harness session.
