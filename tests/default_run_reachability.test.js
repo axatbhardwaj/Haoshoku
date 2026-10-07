@@ -39,6 +39,8 @@ function deployModeFeaturesFromCli() {
 		"--share-log",
 		// Server provisioning requires an explicit public origin and is opt-in.
 		"--server-executor",
+		// Client registration requires explicit endpoint/auth; covered by the opt-in keeper.
+		"--executor-clients",
 		"--claude-update",
 		// The workspaces deploy ensures the gaming autostart defaults. These
 		// flags only create or override that preference outside the default
@@ -159,6 +161,7 @@ function runArchDefaultPath({ isOmarchy = true, gitAnswer = true } = {}) {
 			import { mock } from "bun:test";
 			const calls = [];
 			mock.module(${JSON.stringify(path.resolve(import.meta.dir, "..", "src/helpers/configure_executor_server.js"))}, () => ({ configureExecutorServer: async () => { calls.push("serverExecutor"); return true; } }));
+			mock.module(${JSON.stringify(path.resolve(import.meta.dir, "..", "src/helpers/configure_executor_clients.js"))}, () => ({ configureExecutorClients: () => { calls.push("executorClients"); return true; } }));
 			const prompts = [];
 			const record = (feature, result) => async () => {
 				calls.push(feature);
@@ -252,6 +255,7 @@ function runDebianDefaultPath() {
 			import { mock } from "bun:test";
 				const calls = [];
 			mock.module(${JSON.stringify(path.resolve(import.meta.dir, "..", "src/helpers/configure_executor_server.js"))}, () => ({ configureExecutorServer: async () => { calls.push("serverExecutor"); return true; } }));
+			mock.module(${JSON.stringify(path.resolve(import.meta.dir, "..", "src/helpers/configure_executor_clients.js"))}, () => ({ configureExecutorClients: () => { calls.push("executorClients"); return true; } }));
 			const record = (feature, result) => async () => {
 				calls.push(feature);
 				return result;
@@ -375,6 +379,13 @@ describe("default-run reachability", () => {
 		"debian-server",
 	])("keeps Executor provisioning opt-in on %s", (pathName) => {
 		expect(defaultCallsByPath.get(pathName).has("serverExecutor")).toBe(false);
+	});
+
+	it.each([
+		"arch",
+		"debian-server",
+	])("keeps Executor client registration opt-in on %s", (pathName) => {
+		expect(defaultCallsByPath.get(pathName).has("executorClients")).toBe(false);
 	});
 
 	it("leaves git configuration to Omarchy without a prompt or helper call", () => {
