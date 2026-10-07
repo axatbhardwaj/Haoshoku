@@ -32,6 +32,7 @@ function fixture({ fresh = false, loggedOut = fresh } = {}) {
 	const options = {
 		home: "/home/test",
 		user: "test",
+		env: {},
 		fsImpl: {
 			readFileSync: (file) => {
 				if (!files.has(file))
@@ -222,3 +223,72 @@ describe("existing T3 service reconciliation", () => {
 		]);
 	});
 });
+
+describe("Tailscale operator reconciliation", () => {
+	it("selects the invoking desktop user under sudo", async () => {
+		const f = fixture();
+		f.options.user = "root";
+		f.options.env = { SUDO_USER: "desktop" };
+		expect(await configureTailscaleT3(f.options)).toBe(true);
+		expect(f.mutations).toContain("sudo -n tailscale set --operator='desktop'");
+		expect(f.mutations).not.toContain(
+			"sudo -n tailscale set --operator='root'",
+		);
+	});
+
+	it("warns before replacing an existing different operator", async () => {
+		const f = fixture();
+		f.overrides.set("tailscale debug prefs", {
+			stdout: '{"OperatorUser":"previous"}',
+			exitCode: 0,
+		});
+		f.options.runCommandImpl = async (command) => {
+			expect(f.warnings.join(" ")).toContain("previous");
+			expect(f.warnings.join(" ")).toContain("test");
+			f.mutations.push(command);
+			return true;
+		};
+		expect(await configureTailscaleT3(f.options)).toBe(true);
+		expect(f.mutations).toContain("sudo -n tailscale set --operator='test'");
+	});
+
+	it("reports operator command failures without readiness success", async () => {
+		for (const throws of [false, true]) {
+			const f = fixture();
+			f.overrides.set("tailscale debug prefs", {
+				stdout: '{"OperatorUser":""}',
+				exitCode: 0,
+			});
+			f.options.runCommandImpl = async () => {
+				if (throws) throw new Error("operator denied");
+				return false;
+			};
+			expect(await configureTailscaleT3(f.options)).toBe(false);
+			expect(f.warnings.join(" ")).toContain("operator");
+			expect(f.warnings).toHaveLength(1);
+			expect(f.warnings[0]).toContain("haoshoku --tailscale-t3");
+			expect(f.messages.join(" ")).not.toContain("are ready");
+		}
+	});
+});
+
+
+describe("Arch Tailscale operator remediation", () => {
+	it("names the invoking user's exact manual command on failure", async () => {
+		const f = fixture();
+		f.options.user = "root";
+		f.options.env = { SUDO_USER: "desktop" };
+		f.overrides.set("tailscale debug prefs", {
+			stdout: '{"OperatorUser":""}',
+			exitCode: 0,
+		});
+		f.options.runCommandImpl = async () => false;
+		expect(await configureTailscaleT3(f.options)).toBe(false);
+		expect(f.warnings.join(" ")).toContain(
+			"sudo tailscale set --operator='desktop'",
+		);
+		expect(f.messages.join(" ")).not.toContain("are ready");
+	});
+});
+
+

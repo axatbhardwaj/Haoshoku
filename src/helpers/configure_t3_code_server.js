@@ -1,9 +1,10 @@
 import fs from "node:fs";
-import { homedir } from "node:os";
+import { homedir, userInfo } from "node:os";
 import path from "node:path";
 import { ensureNode24Runtime } from "../common/node_24_runtime.js";
 import { log, runCommand, runCommandCapture } from "../common/utils.js";
 import {
+	ensureTailscaleOperator,
 	T3_VERSION_FLOOR,
 	SERVICE_ACTIVE_COMMAND,
 	READINESS_ATTEMPTS,
@@ -77,6 +78,7 @@ function writeServiceDropIns(home, uid) {
 export async function configureT3CodeServer({
 	home = homedir(),
 	uid = process.getuid(),
+	user = userInfo().username,
 	ensureNodeImpl = ensureT3NodeRuntime,
 	captureCommandImpl = runCommandCapture,
 	runCommandImpl = runCommand,
@@ -139,6 +141,16 @@ export async function configureT3CodeServer({
 				`Connect is not confirmed disabled. Inspect: ${connectStatusCommand}`,
 			);
 		}
+	}
+
+	if (uid !== 0) {
+		// Operator access gates HTTPS Serve, not local service installation.
+		await ensureTailscaleOperator({
+			user,
+			probe,
+			runCommandImpl,
+			logger,
+		});
 	}
 
 	try {

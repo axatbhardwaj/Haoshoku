@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- T3 setup shares idempotent Tailscale operator configuration across Arch and
+  non-root Debian, selects the invoking desktop user under sudo, and warns
+  before replacing an operator or when permission setup fails. Non-root Debian
+  still installs the local service after operator failure; readiness requires
+  working HTTPS, and warnings give the manual repair command and retry flag.
+
 ## 12.2.1 - 2026-10-06
 
 ### Fixed

@@ -47,6 +47,7 @@ function fixture({
 	const options = {
 		home,
 		uid: 1000,
+		user: "test",
 		ensureNodeImpl: async () => {
 			events.push("node");
 			return true;
@@ -59,6 +60,8 @@ function fixture({
 				return typeof value === "function" ? value() : value;
 			}
 			if (command === "tailscale status") return response("logged in");
+			if (command === "tailscale debug prefs")
+				return response('{"OperatorUser":"test"}');
 			if (command === "t3 --version")
 				return response(version ?? "", version === null ? 127 : 0);
 			if (command === `${installedT3} --version`)
@@ -139,6 +142,7 @@ describe("T3 server over Tailscale", () => {
 			"node",
 			"t3 --version",
 			"t3 connect status --json",
+			"tailscale debug prefs",
 			"t3 service install",
 			"systemctl --user is-active --quiet t3code.service",
 			"tailscale serve status --json",
@@ -224,10 +228,11 @@ describe("T3 server over Tailscale", () => {
 	it("unlinks enabled Connect and confirms disabled before installing the service", async () => {
 		const f = fixture({ desired: true });
 		expect(await configureT3CodeServer(f.options)).toBe(true);
-		expect(f.events.slice(3, 7)).toEqual([
+		expect(f.events.slice(3, 8)).toEqual([
 			"t3 connect status --json",
 			"t3 connect unlink",
 			"t3 connect status --json",
+			"tailscale debug prefs",
 			"t3 service install",
 		]);
 		expect(
@@ -484,5 +489,84 @@ describe("T3 Code Node.js runtime preparation", () => {
 			"curl -fsSL https://deb.nodesource.com/setup_24.x | sudo bash -",
 			"sudo apt install -y nodejs",
 		]);
+	});
+});
+
+describe("Debian Tailscale operator reconciliation", () => {
+	it("grants non-root users operator access and warns about replacement", async () => {
+		const f = fixture();
+		const warnings = [];
+		f.options.logger.warning = (message) => warnings.push(message);
+		f.overrides.set(
+			"tailscale debug prefs",
+			f.response('{"OperatorUser":"previous"}'),
+		);
+		const run = f.options.runCommandImpl;
+		f.options.runCommandImpl = async (command) => {
+			if (command.includes("set --operator")) {
+				expect(warnings.join(" ")).toContain("previous");
+				expect(warnings.join(" ")).toContain("test");
+			}
+			return run(command);
+		};
+		expect(await configureT3CodeServer(f.options)).toBe(true);
+		expect(f.events).toContain("sudo -n tailscale set --operator='test'");
+		expect(warnings.join(" ")).toContain("previous");
+		expect(warnings.join(" ")).toContain("test");
+	});
+
+	it("skips operator configuration for root", async () => {
+		const f = fixture();
+		f.options.uid = 0;
+		expect(await configureT3CodeServer(f.options)).toBe(true);
+		expect(f.events).not.toContain("tailscale debug prefs");
+	});
+
+	it("keeps an existing matching operator without a set command", async () => {
+		const f = fixture();
+		expect(await configureT3CodeServer(f.options)).toBe(true);
+		expect(f.events).toContain("tailscale debug prefs");
+		expect(f.events.some((command) => command.includes("set --operator"))).toBe(
+			false,
+		);
+	});
+
+	it.each([
+		[false, true],
+		[true, true],
+		[false, false],
+		[true, false],
+	])("continues service setup after operator failure (throws=%s, HTTPS ready=%s)", async (throws, ready) => {
+		const f = fixture();
+		const warnings = [];
+		const messages = [];
+		f.options.logger.warning = (message) => warnings.push(message);
+		f.options.logger.success = (message) => messages.push(message);
+		f.overrides.set("tailscale debug prefs", f.response('{"OperatorUser":""}'));
+		const run = f.options.runCommandImpl;
+		f.options.runCommandImpl = async (command) => {
+			if (command.includes("set --operator")) {
+				f.events.push(command);
+				if (throws) throw new Error("sudo timestamp expired");
+				return false;
+			}
+			return run(command);
+		};
+		if (!ready)
+			f.options.fetchImpl = async () =>
+				new Response("not ready", { status: 503 });
+		expect(await configureT3CodeServer(f.options)).toBe(ready);
+		expect(f.events).toContain("t3 service install");
+		expect(f.events).toContain(
+			"systemctl --user is-active --quiet t3code.service",
+		);
+		expect(warnings).toHaveLength(1);
+		expect(warnings[0]).toContain("sudo tailscale set --operator='test'");
+		expect(warnings[0]).toContain("haoshoku --server-t3-code");
+		if (ready) expect(messages.join(" ")).toContain("are ready");
+		else {
+			expect(messages).toEqual([]);
+			expect(f.errors.join(" ")).toContain("HTTPS");
+		}
 	});
 });

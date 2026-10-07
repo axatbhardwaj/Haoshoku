@@ -3,6 +3,7 @@ import { homedir, userInfo } from "node:os";
 import path from "node:path";
 import { log, runCommand, runCommandCapture } from "../common/utils.js";
 import {
+	ensureTailscaleOperator,
 	meetsT3Floor,
 	parseJson,
 	SERVICE_ACTIVE_COMMAND,
@@ -16,6 +17,7 @@ import {
 export async function configureTailscaleT3({
 	home = homedir(),
 	user = userInfo().username,
+	env = process.env,
 	fsImpl = fs,
 	captureCommandImpl = runCommandCapture,
 	runCommandImpl = runCommand,
@@ -66,13 +68,20 @@ export async function configureTailscaleT3({
 				"Tailscale is not logged in and running. Inspect tailscale status",
 			);
 		}
-		const prefs = parseJson(await probe("tailscale debug prefs"));
-		if (!prefs || typeof prefs.OperatorUser !== "string") {
-			return fail("Cannot verify Tailscale operator preferences");
-		}
-		if (prefs.OperatorUser !== user) {
-			await run(`sudo -n tailscale set --operator=${shellQuote(user)}`);
-		}
+		const operator =
+			user === "root" && env.SUDO_USER && env.SUDO_USER !== "root"
+				? env.SUDO_USER
+				: user;
+		if (
+			!(await ensureTailscaleOperator({
+				user: operator,
+				retryFlag: "--tailscale-t3",
+				probe,
+				runCommandImpl,
+				logger,
+			}))
+		)
+			return false;
 		if (!meetsT3Floor(await probe("t3 --version"))) {
 			return fail(
 				`T3 must be >= ${T3_VERSION_FLOOR}; install/update t3code-nightly-bin and ensure t3 is on PATH`,

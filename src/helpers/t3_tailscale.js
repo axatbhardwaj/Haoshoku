@@ -30,6 +30,40 @@ export function parseJson(output) {
 	}
 }
 
+export async function ensureTailscaleOperator({
+	user,
+	probe,
+	runCommandImpl,
+	logger,
+	retryFlag = "--server-t3-code",
+}) {
+	try {
+		const prefs = parseJson(await probe("tailscale debug prefs"));
+		if (!prefs || typeof prefs.OperatorUser !== "string") {
+			throw new Error("Cannot verify Tailscale operator preferences");
+		}
+		if (prefs.OperatorUser === user) return true;
+		if (prefs.OperatorUser) {
+			logger.warning(
+				`Replacing Tailscale operator ${prefs.OperatorUser} with ${user}`,
+			);
+		}
+		if (
+			!(await runCommandImpl(
+				`sudo -n tailscale set --operator=${shellQuote(user)}`,
+			))
+		) {
+			throw new Error(`Cannot set Tailscale operator to ${user}`);
+		}
+		return true;
+	} catch (error) {
+		logger.warning(
+			`Tailscale operator configuration failed: ${error.message}. Run sudo tailscale set --operator=${shellQuote(user)}, then retry haoshoku ${retryFlag}.`,
+		);
+		return false;
+	}
+}
+
 function tailscaleHttpsUrl(config) {
 	if (config?.TCP?.[443]?.HTTPS !== true) return null;
 	for (const [hostPort, web] of Object.entries(config.Web ?? {})) {
