@@ -37,6 +37,8 @@ function deployModeFeaturesFromCli() {
 	const excludedNonDefaultModes = new Set([
 		// Log sharing is explicit and must never upload during default setup.
 		"--share-log",
+		// Server provisioning requires an explicit public origin and is opt-in.
+		"--server-executor",
 		"--claude-update",
 		// The workspaces deploy ensures the gaming autostart defaults. These
 		// flags only create or override that preference outside the default
@@ -156,6 +158,7 @@ function runArchDefaultPath({ isOmarchy = true, gitAnswer = true } = {}) {
 		`
 			import { mock } from "bun:test";
 			const calls = [];
+			mock.module(${JSON.stringify(path.resolve(import.meta.dir, "..", "src/helpers/configure_executor_server.js"))}, () => ({ configureExecutorServer: async () => { calls.push("serverExecutor"); return true; } }));
 			const prompts = [];
 			const record = (feature, result) => async () => {
 				calls.push(feature);
@@ -248,6 +251,7 @@ function runDebianDefaultPath() {
 		`
 			import { mock } from "bun:test";
 				const calls = [];
+			mock.module(${JSON.stringify(path.resolve(import.meta.dir, "..", "src/helpers/configure_executor_server.js"))}, () => ({ configureExecutorServer: async () => { calls.push("serverExecutor"); return true; } }));
 			const record = (feature, result) => async () => {
 				calls.push(feature);
 				return result;
@@ -366,6 +370,13 @@ describe("default-run reachability", () => {
 		defaultCallsByPath.set("debian-server", new Set(runDebianDefaultPath()));
 	});
 
+	it.each([
+		"arch",
+		"debian-server",
+	])("keeps Executor provisioning opt-in on %s", (pathName) => {
+		expect(defaultCallsByPath.get(pathName).has("serverExecutor")).toBe(false);
+	});
+
 	it("leaves git configuration to Omarchy without a prompt or helper call", () => {
 		expect({
 			gitCalls: archDefaultResult.calls.filter((call) => call === "git").length,
@@ -374,7 +385,10 @@ describe("default-run reachability", () => {
 		expect(defaultCallsByPath.get("arch").has("prWatch")).toBe(false);
 	});
 
-	it.each([true, false])("offers git configuration on non-Omarchy Arch (answer=%s)", (gitAnswer) => {
+	it.each([
+		true,
+		false,
+	])("offers git configuration on non-Omarchy Arch (answer=%s)", (gitAnswer) => {
 		const result = runArchDefaultPath({ isOmarchy: false, gitAnswer });
 		expect({
 			gitCalls: result.calls.filter((call) => call === "git").length,

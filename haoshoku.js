@@ -29,6 +29,10 @@ import {
 	backupCodexConfig,
 	syncCodexConfig,
 } from "./src/helpers/configure_codex.js";
+import {
+	configureExecutorServer,
+	parseExecutorOrigin,
+} from "./src/helpers/configure_executor_server.js";
 import { configureDiscordTheme } from "./src/helpers/configure_discord_theme.js";
 import {
 	ensureGamingConfig,
@@ -95,6 +99,52 @@ if (retiredOption) {
 	process.exit(2);
 }
 
+const executorArgs = process.argv.slice(2);
+const executorIndex = executorArgs.findIndex(
+	(arg) => arg.split("=")[0] === "--server-executor",
+);
+let executorOrigin;
+if (executorIndex !== -1 && !executorArgs.includes("--help")) {
+	const flag = executorArgs[executorIndex];
+	const value = flag.includes("=")
+		? flag.slice(flag.indexOf("=") + 1)
+		: executorArgs[executorIndex + 1];
+	executorOrigin = parseExecutorOrigin(value);
+	const extra = executorArgs.some(
+		(arg, index) =>
+			index !== executorIndex &&
+			index !== executorIndex + (flag.includes("=") ? 0 : 1) &&
+			!arg.startsWith("-") &&
+			executorArgs[index - 1] !== "--os",
+	);
+	if (
+		!executorOrigin ||
+		extra ||
+		executorArgs.filter((arg) => arg.split("=")[0] === "--server-executor")
+			.length !== 1
+	) {
+		console.error(
+			"Usage: haoshoku --server-executor <https-origin>. Supply HTTPS, a host and optional port only; no credentials, paths, query or fragment.",
+		);
+		process.exit(2);
+	}
+	const osOption = executorArgs.find((arg) => arg.startsWith("--os="));
+	const explicitOS = osOption
+		? osOption.slice(5)
+		: executorArgs.includes("--os")
+			? executorArgs[executorArgs.indexOf("--os") + 1]
+			: undefined;
+	if (
+		detectOS() !== "debian-server" ||
+		(explicitOS !== undefined && explicitOS !== "debian-server")
+	) {
+		console.error(
+			"--server-executor requires a Debian-family host; configure external DNS/TLS/nginx first.",
+		);
+		process.exit(2);
+	}
+}
+
 const program = new Command();
 
 function parseEnabledState(value) {
@@ -118,7 +168,18 @@ const informational = process.argv
 	);
 const runLog = informational
 	? null
-	: startRunLog({ version: program.version() });
+	: startRunLog({
+			version: program.version(),
+			argv:
+				executorIndex === -1
+					? process.argv
+					: [
+							process.argv[0],
+							process.argv[1],
+							"--server-executor",
+							"[public-origin]",
+						],
+		});
 if (runLog) process.once("exit", (code) => runLog.finish(code));
 
 program
@@ -159,6 +220,10 @@ program
 		"Configure Tailscale login and T3 Code phone access on Arch",
 	)
 	.option("--server-hermes-relay", "Configure Hermes relay transport on Debian")
+	.option(
+		"--server-executor <https-origin>",
+		"Provision Executor on Debian (opt-in; external HTTPS proxy required)",
+	)
 	.option(
 		"--gh-stack",
 		"Install GitHub's gh-stack extension for stacked pull requests",
@@ -268,6 +333,11 @@ async function runAction(options) {
 			`--${activeFlags[0]} and --${activeFlags[1]} are mutually exclusive — pass exactly one mode flag`,
 		);
 		process.exit(2);
+	}
+
+	if (options.serverExecutor) {
+		if (!(await configureExecutorServer(executorOrigin))) process.exitCode = 1;
+		return;
 	}
 
 	if (options.shareLog) {
