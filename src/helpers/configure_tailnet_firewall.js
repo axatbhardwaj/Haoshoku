@@ -99,18 +99,28 @@ async function savedPublicSsh(added, resolveProfile) {
 			throw new Error("Cannot verify UFW saved rules");
 		if (routed || ["deny", "reject"].includes(action) || words[0] === "out")
 			continue;
+		let interfaceName;
 		if (words[0] === "in") {
 			words.shift();
 			if (words[0] === "on") {
 				words.shift();
-				if (words.shift() === "tailscale0") continue;
+				interfaceName = words.shift();
+				if (
+					!interfaceName ||
+					interfaceName.length > 15 ||
+					[".", ".."].includes(interfaceName) ||
+					!/^[a-zA-Z0-9_\-.+,=%@]+$/.test(interfaceName)
+				)
+					throw new Error("Invalid UFW interface name");
 			}
 		}
 		if (["log", "log-all"].includes(words[0])) words.shift();
 		let port;
 		let profile = false;
 		let serviceName = false;
-		if (["from", "to", "proto"].includes(words[0])) {
+		if (interfaceName && words.length === 0) {
+			port = "any";
+		} else if (["from", "to", "proto"].includes(words[0])) {
 			const proto = words.indexOf("proto");
 			if (proto >= 0 && words.lastIndexOf("proto") !== proto)
 				throw new Error("Ambiguous UFW protocol");
@@ -149,10 +159,12 @@ async function savedPublicSsh(added, resolveProfile) {
 			serviceName = true;
 		}
 		if (!port) throw new Error("Cannot verify UFW destination port/profile");
+		if (profile && interfaceName === "tailscale0") continue;
 		if (
-			await (profile
+			(await (profile
 				? resolveProfile(port)
-				: includesSshPort(port, resolveProfile, serviceName))
+				: includesSshPort(port, resolveProfile, serviceName))) &&
+			interfaceName !== "tailscale0"
 		)
 			publicSsh = true;
 	}
