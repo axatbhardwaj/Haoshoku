@@ -22,19 +22,11 @@ Use `--claude-backup` and `--codex-backup` after changing the live policy; use
 
 ## Skills
 
-`configure_skills.js` delegates skill installation to the upstream Skills CLI.
-Haoshoku installs `mattpocock/skills` for Claude Code and Codex; it does not
-maintain its own clone or wrapper.
-
-- `--skills` and `--skills-update` reconcile the Matt Pocock source.
-- `--skills-list` prints the Skills CLI global inventory.
-- Full Arch and Debian setup performs the same reconciliation after Codex.
-
-`configure_agent_skills.js` separately syncs the pinned upstream
-`visual-explainer` with portable Claude/Codex links. It archives retired bundled
-skills and removes only their managed links. Agent-specific real directories,
-non-managed links, and other local/system skills are preserved. Routing and
-review policy are managed by Axstack; agent-skill backup is no longer supported.
+Haoshoku no longer installs Matt Pocock skills or visual-explainer. The retired
+`--skills`, `--skills-update`, `--skills-list`, `--agent-skills`, and
+`--explainer-theme` commands fail before setup or run logging. Manage independent
+skills separately. Default setup preserves all existing skill directories,
+links, and theme preferences. Workflow skills are managed through Axstack.
 
 ## Headless T3 Code
 

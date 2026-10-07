@@ -105,7 +105,7 @@ The Arch setup:
   so `haoshoku --device-type pc|laptop` remains the explicit override. Only
   ambiguous hardware falls back to the interactive selector; Skip persists
   nothing and leaves device-specific audio unset;
-- keeps PR watch and the Matt Pocock skill set as portable setup steps. Without
+- keeps PR watch as a portable setup step. Without
   interactive confirmation—including piped stdin—Haoshoku declines real
   user decisions immediately and does not treat input as answers;
 - adds a device-routed behavior-only Lua workspace overlay. The hyprmoncfg
@@ -226,10 +226,8 @@ therefore reverted on the next deploy. Every other top-level key — including
 
 ## Agent and orchestration policy
 
-Haoshoku deploys the compact Claude/Codex instructions and installs Matt
-Pocock skills through the Skills CLI with `--skills` or `--skills-update`.
-`--agent-skills` syncs the pinned upstream `visual-explainer` payload and its
-portable Claude/Codex links. Routing and review workflow policy live in Axstack.
+Haoshoku deploys the compact Claude/Codex instructions. Routing and review
+workflow policy live in Axstack. Independent skills are managed separately.
 Back up live instruction edits with:
 
 ```bash
@@ -260,21 +258,18 @@ these artifacts until you remove them manually:
 - `~/.config/haoshoku/{hermes-relay,paseo-tasks,paseo-schedules}.json`.
 
 Retiring these host artifacts needs a separate manual migration after checking
-active consumers and preserving private recovery data. Haoshoku's agent-skill
-sync archives the retired bundled `model-routing`, `paseo-pr-babysit`, and
-`paseo-pr-review` skills with their live edits. It removes only managed
-Claude/Codex links; agent-specific directories and non-managed links stay intact.
+active consumers and preserving private recovery data. Normal and repeated
+setup leaves existing skill directories, managed links, and theme preferences
+untouched. Any existing-host skill migration is manual and separately scoped.
 
-### Visual explainer and skills
+### Retired skill commands
 
-The visual explainer defaults to a fixed dark theme. Set and persist a different
-preference with `haoshoku --explainer-theme dark|light|system`; an explicit
-theme in a request takes precedence. Fixed dark or light output uses the full
-upstream renderer, while the system theme may use quick mode. On the first
-sync after this migration, Haoshoku archives the retired shared
-`html-deliverables` skill under `~/.config/haoshoku/retired-agent-skills/`
-before removing only its managed Claude/Codex links. Haoshoku no longer
-supports `--agent-skills-backup`; existing upstream skills remain untouched.
+Haoshoku no longer installs Matt Pocock skills or visual-explainer, and no
+longer provides skill inventory, agent-skill sync, or theme configuration.
+`--skills`, `--skills-update`, `--skills-list`, `--agent-skills`, and
+`--explainer-theme <theme>` exit nonzero with guidance before setup runs.
+Manage independent skills separately; use `haoshoku --axstack` for Axstack
+workflows. Existing user-owned skills and configuration remain in place.
 
 ## Claude Remote Control
 
@@ -362,11 +357,6 @@ haoshoku --audio
 haoshoku --audio-backup
 haoshoku --mimeapps
 haoshoku --mimeapps-backup
-haoshoku --skills
-haoshoku --skills-update
-haoshoku --skills-list
-haoshoku --agent-skills
-haoshoku --explainer-theme dark
 haoshoku --gh-stack
 haoshoku --claude-stay-awake
 haoshoku --pr-watch
@@ -417,8 +407,8 @@ haoshoku --os debian-server
 ```
 
 The Debian path remains deliberately headless. In addition to server hardening,
-it installs the portable Claude/Codex policy, Matt Pocock skills, the pinned
-visual-explainer, Axstack, PR-watch, and Hermes Telegram transport.
+it installs the portable Claude/Codex policy, Axstack, PR-watch, and Hermes
+Telegram transport.
 T3 Code is required and runs without a prompt; an incomplete T3 setup fails
 Debian setup. `haoshoku --server-t3-code` runs the same step on its own.
 
@@ -463,8 +453,7 @@ a rerun may fail; inspect `t3 --version` and retry once the nightly tag catches
 up.
 
 The full Debian path asks about Git, Claude stay-awake, Claude Remote Control,
-and automatic worktree cleanup. `haoshoku --skills` refreshes Matt Pocock
-skills using Bun's `bunx` runner.
+and automatic worktree cleanup.
 
 ### VPS Hermes Telegram transport
 

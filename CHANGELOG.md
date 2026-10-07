@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Removed
+
+- Future Arch and Debian setup no longer installs Matt Pocock skills or
+  visual-explainer. Retired skill installation, inventory, agent-skill sync,
+  and explainer-theme flags fail before setup; existing skills, links, and
+  theme preferences remain untouched. Independent skills are managed separately.
+
 ## 12.2.2 - 2026-10-07
 
 ### Fixed

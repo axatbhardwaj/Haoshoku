@@ -51,9 +51,9 @@ service over Tailscale and Hermes Telegram transport. Omarchy binds `Super+T`
 to launch or focus T3 Code Nightly. See the [migration note](../README.md#existing-host-migration)
 for existing host artifacts that require manual retirement.
 
-`--skills` and `--skills-update` install Matt Pocock skills for Claude Code and
-Codex. `--agent-skills` syncs the pinned visual-explainer payload and archives
-retired bundled routing skills under `~/.config/haoshoku/retired-agent-skills/`,
-removing only managed Claude/Codex links. Routing policy lives in Axstack;
-Haoshoku no longer provides agent-skill backup. Existing upstream skills remain
-untouched.
+Matt Pocock skills and visual-explainer are retired from future setup.
+`--skills`, `--skills-update`, `--skills-list`, `--agent-skills`, and
+`--explainer-theme <theme>` fail with guidance before setup runs. Manage
+independent skills separately. Normal and repeated setup preserves existing
+skill directories, links, and theme preferences; existing-host migration is
+manual. Axstack continues to supply workflow skills through `--axstack`.

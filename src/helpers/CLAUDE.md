@@ -14,9 +14,6 @@ Standalone setup scripts for specific tools.
 | `configure_claude_remote_control.js` | Claude Remote Control trust/disclaimer seed, supervisor + user-unit deploy/enable/backup | Adding or debugging persistent Claude Remote Control sessions |
 | `configure_axstack.js` | Latest npm Axstack release install with registry SHA-512 integrity verification under `~/.local/share/axstack/releases/<version>` with the `~/.local/bin/axstack` shim, no silent downgrade, then `axstack install --harness claude\|codex`; `checkAxstack` reports shim/version/harness state and both roles.json paths; Arch links missing t3 to t3-nightly without replacing a local t3 | Changing registry resolution or install verification, or debugging `--axstack`/`--axstack-check` |
 | `configure_codex.js` | Codex CLI plus personal config sync/backup | Adding Codex setup features or debugging config sync |
-| `configure_skills.js` | Matt Pocock skill installation through the upstream Skills CLI | Updating the shared Claude/Codex skill sources |
-| `configure_agent_skills.js` | Pinned-upstream skill sync, safe retirement, and shared agent links | Adding or debugging managed skill sync |
-| `configure_visual_explainer.js` | Validated visual-explainer theme preference with dark default and atomic persistence | Changing visual-explainer theme configuration |
 | `configure_gh_stack.js` | Idempotent `github/gh-stack` extension install | Adding or debugging stacked-PR tooling setup |
 | `configure_pr_watch.js` | pr-watch PR watcher sync/backup | Adding or debugging the PR watcher deploy |
 | `configure_hermes_relay.js` | Pinned bootstrap when Hermes is absent plus plugin-free Telegram and running-gateway readiness probes | Adding or debugging Debian Hermes transport |
