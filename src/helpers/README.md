@@ -34,12 +34,13 @@ links, and theme preferences. Workflow skills are managed through Axstack.
 | --- | --- |
 | `configure_t3_code_server.js` | Debian runtime, CLI installation, Connect disablement and user service |
 | `configure_tailscale_t3.js` | Arch package, daemon, browser login, operator and user-service setup |
+| `t3_desktop_preflight.js` | Shared read-only desktop/backend guard before service changes and on reruns |
 | `t3_tailscale.js` | Shared CLI floor, drop-in, tailnet HTTPS readiness and pairing guidance |
 
 `configure_tailscale_t3.js` runs after Arch installs T3 and configures the
 user's CLI. It installs missing Tailscale, enables its system daemon, waits
 for `tailscale up` browser login only for `NeedsLogin`, and sets the current
-user as operator. It uses `t3 service install --base-dir ~/.t3` for a missing
+user as operator. It uses `t3 service install --base-dir <checked-base>` for a missing
 boot service, then reconciles service enablement and the HTTPS environment
 drop-in. Already-configured machines need no commands that change state or
 file rewrites. Failures warn and full setup continues; `--tailscale-t3` reruns
@@ -52,6 +53,10 @@ writes the account's service drop-ins, and verifies service and tailnet HTTPS
 readiness. Tailscale login, provider authentication, and phone pairing remain
 manual prerequisites or follow-up steps. `configure_hermes_relay.js` verifies
 Hermes Telegram transport without deploying a relay plugin.
+
+Both entrypoints enforce the [single-backend preflight](../../README.md#t3-single-backend-preflight)
+before service writes or operations, including no-op reruns. Desktop settings and
+pairing tokens remain untouched; failed evidence probes cannot establish headless state.
 
 See the [migration note](../../README.md#existing-host-migration) for host artifacts
 that Haoshoku leaves for manual retirement.

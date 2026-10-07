@@ -81,7 +81,8 @@ The Arch setup:
 - installs Tailscale, enables `tailscaled.service`, and configures the T3 user
   service for tailnet HTTPS phone access after T3 is installed. Logged-out nodes
   print a browser login URL and wait; logged-in nodes skip login. Matching
-  service drop-ins are left untouched. Failures warn and setup continues;
+  service drop-ins are left untouched. The [single-backend preflight](#t3-single-backend-preflight)
+  must pass before T3 service changes. Failures warn and setup continues;
 - prints the verified HTTPS URL and `t3 pair --tailscale` phone pairing hint.
   Rerun this step alone with `haoshoku --tailscale-t3` on Arch. System changes
   use `sudo -n`; standalone runs require an existing sudo authorization
@@ -383,6 +384,31 @@ it installs the portable Claude/Codex policy, Axstack, and Hermes
 Telegram transport.
 T3 Code is required and runs without a prompt; an incomplete T3 setup fails
 Debian setup. `haoshoku --server-t3-code` runs the same step on its own.
+
+### T3 single-backend preflight
+
+Both `--tailscale-t3` on Arch and `--server-t3-code` on Debian check desktop
+Local environment before writing T3 service configuration, installing, starting,
+or restarting the service. This check also runs on an already configured rerun.
+
+Haoshoku reads `desktop-settings.json` under the effective T3 base directory's
+`userdata` folder, normally `~/.t3/userdata`. It checks the service's effective
+`T3CODE_HOME`, pending unit configuration, and desktop installation, unit and
+process evidence. Only an explicit JSON `localEnvironmentEnabled: false` proves
+Local environment is disabled. A missing key means enabled. Missing settings
+are safe only when no desktop installation, unit or process is detected; an
+unused listening port does not prove a headless setup.
+
+Enabled, malformed, unreadable or conflicting directory/settings evidence, and
+failed probes, return incomplete setup before T3 service changes. Disable
+**Local environment** in the T3 Code desktop, then pair the desktop to the
+existing service. Resolve directory conflicts or unreadable evidence and retry.
+Haoshoku never rewrites desktop settings or reads, changes or displays pairing
+tokens. Explicitly disabled desktops and genuinely headless setups can proceed;
+service installation/restart uses the checked base directory. Environment-file
+and unsupported launch-directory overrides require manual reconciliation.
+
+### Debian T3 service setup
 
 Before setup, install Tailscale yourself and log in to your tailnet. Confirm
 that `tailscale status` succeeds. Enable HTTPS certificates in the tailnet

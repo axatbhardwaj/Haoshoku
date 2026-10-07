@@ -48,7 +48,8 @@ The project is built using modern JavaScript (ES Modules) and runs on Bun.
 
 T3 Code owns agent orchestration. Debian server setup requires its nightly
 service over Tailscale and Hermes Telegram transport. Omarchy binds `Super+T`
-to launch or focus T3 Code Nightly. See the [migration note](../README.md#existing-host-migration)
+to launch or focus T3 Code Nightly. Both T3 setup helpers enforce the
+[single-backend preflight](../README.md#t3-single-backend-preflight), including reruns. See the [migration note](../README.md#existing-host-migration)
 for existing host artifacts that require manual retirement.
 
 See the [retired skill commands](../README.md#retired-skill-commands) and

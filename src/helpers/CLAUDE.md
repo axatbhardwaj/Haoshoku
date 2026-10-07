@@ -16,6 +16,7 @@ Standalone setup scripts for specific tools.
 | `configure_hermes_relay.js` | Pinned bootstrap when Hermes is absent plus plugin-free Telegram and running-gateway readiness probes | Adding or debugging Debian Hermes transport |
 | `configure_t3_code_server.js` | Required Debian nightly T3 service over Tailscale; disables Connect and verifies HTTPS readiness | Changing CLI floor checks, service drop-ins, Tailscale mapping, or pairing guidance |
 | `configure_tailscale_t3.js` | Arch Tailscale package, browser login, operator and T3 user-service reconciliation | Debugging `--tailscale-t3` or Arch phone access |
+| `t3_desktop_preflight.js` | Read-only desktop Local environment and effective-directory guard shared by both T3 entrypoints | Changing safe service preflight or desktop evidence probes |
 | `t3_tailscale.js` | Shared CLI floor, Tailscale drop-in, HTTPS mapping/readiness and pairing output | Changing common T3/Tailscale behavior across Arch and Debian |
 | `configure_git.js`    | Git user and signing setup             | Modifying automated git configuration         |
 | `configure_hyprmoncfg.js` | Profile JSON sync/backup plus hyprmoncfg package and `hyprmoncfgd.service` setup; never writes `monitors.lua` | Modifying monitor-profile deployment or the hyprmoncfg ownership boundary |
