@@ -29,6 +29,20 @@ function words(value) {
 	return result;
 }
 
+// systemd omits empty optional properties, including all selected properties
+// for transient scopes. Nonempty output must still be unambiguous show data.
+function showProperties(output) {
+	const properties = {};
+	for (const line of output.split("\n").filter(Boolean)) {
+		const match =
+			/^(LoadState|Environment|ExecStart|EnvironmentFiles)=(.*)$/.exec(line);
+		if (!match || Object.hasOwn(properties, match[1]))
+			throw new Error("invalid systemd property evidence");
+		properties[match[1]] = match[2];
+	}
+	return properties;
+}
+
 export async function preflightT3Desktop({
 	home,
 	env,
@@ -92,29 +106,21 @@ export async function preflightT3Desktop({
 		const service = await probe(
 			"systemctl --user show t3code.service --property=LoadState,Environment,ExecStart,EnvironmentFiles",
 		);
-		const properties = Object.fromEntries(
-			service.split("\n").map((line) => {
-				const equals = line.indexOf("=");
-				return [line.slice(0, equals), line.slice(equals + 1)];
-			}),
-		);
-		if (
-			!["loaded", "not-found"].includes(properties.LoadState) ||
-			properties.EnvironmentFiles === undefined ||
-			properties.Environment === undefined ||
-			properties.ExecStart === undefined
-		)
+		const properties = showProperties(service);
+		if (!["loaded", "not-found"].includes(properties.LoadState))
 			throw new Error("unknown effective T3 service directory");
 		if (
 			properties.EnvironmentFiles ||
-			properties.ExecStart.includes("--base-dir")
+			properties.ExecStart?.includes("--base-dir") ||
+			(properties.LoadState === "not-found" &&
+				(properties.Environment || properties.ExecStart))
 		)
 			throw new Error("ambiguous service directory overrides");
 		const environmentBases = (value) =>
 			words(value)
 				.filter((word) => word.startsWith("T3CODE_HOME="))
 				.map((word) => directory(word.slice(12), true));
-		const bases = environmentBases(properties.Environment);
+		const bases = environmentBases(properties.Environment ?? "");
 		if (properties.LoadState === "loaded" && bases.length !== 1)
 			throw new Error("unknown effective T3 service directory");
 		const baseDir = bases[0] ?? desktopBase;
@@ -201,18 +207,25 @@ export async function preflightT3Desktop({
 			const detail = await probe(
 				`systemctl --user show ${shellQuote(unit)} --property=Environment,ExecStart,EnvironmentFiles`,
 			);
-			const environment = /^Environment=(.*)$/m.exec(detail)?.[1];
+			const properties = showProperties(detail);
+			const isScope = unit.endsWith(".scope");
 			if (
-				environment === undefined ||
-				!/^EnvironmentFiles=$/m.test(detail) ||
-				!/^ExecStart=/m.test(detail) ||
+				(!isScope && !detail) ||
+				properties.LoadState !== undefined ||
+				properties.EnvironmentFiles ||
 				/--base-dir|^ExecStart=.*T3CODE_HOME|T3CODE_.*DEV_SERVER_URL/m.test(
 					detail,
 				)
 			)
 				throw new Error("ambiguous desktop unit directory");
-			const unitBases = environmentBases(environment);
-			if (unitBases.length > 1 || (unitBases[0] ?? defaultBase) !== desktopBase)
+			const unitBases = environmentBases(properties.Environment ?? "");
+			// A scope signals desktop presence but carries no launch environment;
+			// retain the process check below instead of inventing a default base.
+			const unitBase = unitBases[0] ?? (isScope ? undefined : defaultBase);
+			if (
+				unitBases.length > 1 ||
+				(unitBase !== undefined && unitBase !== desktopBase)
+			)
 				throw new Error("conflicting desktop unit directory");
 		}
 		const processes = await probe("ps -eo pid=,comm=,args=");

@@ -74,9 +74,7 @@ function fixture({
 				return typeof value === "function" ? value() : value;
 			}
 			if (command.startsWith("systemctl --user show "))
-				return response(
-					"LoadState=not-found\nEnvironment=\nExecStart=\nEnvironmentFiles=",
-				);
+				return response("LoadState=not-found\nEnvironment=\n");
 			if (
 				command.startsWith("systemctl --user list-") ||
 				command === "ps -eo pid=,comm=,args="

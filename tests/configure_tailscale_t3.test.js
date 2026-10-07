@@ -69,8 +69,8 @@ function fixture({ fresh = false, loggedOut = fresh } = {}) {
 			let exitCode = 0;
 			if (command.startsWith("systemctl --user show "))
 				stdout = fresh
-					? "LoadState=not-found\nEnvironment=\nExecStart=\nEnvironmentFiles="
-					: "LoadState=loaded\nEnvironment=T3CODE_HOME=/home/test/.t3\nExecStart=\nEnvironmentFiles=";
+					? "LoadState=not-found\nEnvironment=\n"
+					: "LoadState=loaded\nExecStart={ path=/home/test/.t3/runtime/versions/1/t3 ; argv[]=/home/test/.t3/runtime/versions/1/t3 __service-launcher ; }\nEnvironment=T3CODE_HOME=/home/test/.t3\n";
 			else if (
 				command.startsWith("systemctl --user list-") ||
 				command === "ps -eo pid=,comm=,args="

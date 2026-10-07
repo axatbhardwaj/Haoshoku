@@ -7,6 +7,34 @@ import { configureT3CodeServer } from "../src/helpers/configure_t3_code_server.j
 import { configureTailscaleT3 } from "../src/helpers/configure_tailscale_t3.js";
 
 const homes = [];
+const serviceShow =
+	"systemctl --user show t3code.service --property=LoadState,Environment,ExecStart,EnvironmentFiles";
+const scope = "app-com.t3tools.T3Code-3550208.scope";
+const scopeShow = `systemctl --user show '${scope}' --property=Environment,ExecStart,EnvironmentFiles`;
+// Recorded systemd 261 formats: empty EnvironmentFiles is omitted; an absent
+// service omits ExecStart too, and a transient scope has no selected properties.
+function loadedService(base, environment = `T3CODE_HOME=${base}`) {
+	return `LoadState=loaded\nExecStart={ path=${base}/runtime/versions/1/t3 ; argv[]=${base}/runtime/versions/1/t3 __service-launcher ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }\nEnvironment=${environment}\n`;
+}
+function runningDesktopScope(f, base = f.base) {
+	f.overrides.set("systemctl --user list-units --all --no-legend --no-pager", {
+		exitCode: 0,
+		stdout: `  ${scope} loaded active running ${scope}\n  t3code.service loaded active running T3 Code server\n`,
+	});
+	f.overrides.set("systemctl --user list-unit-files --no-legend --no-pager", {
+		exitCode: 0,
+		stdout: `${scope} transient -\nt3code.service enabled enabled\n`,
+	});
+	f.overrides.set(scopeShow, { exitCode: 0, stdout: "" });
+	f.overrides.set("ps -eo pid=,comm=,args=", {
+		exitCode: 0,
+		stdout: "42 t3code /usr/lib/t3code-nightly/t3code\n",
+	});
+	f.overrides.set(
+		"/proc/42/environ",
+		`PATH=/usr/bin\0HOME=${f.home}\0${base === f.base ? "" : `T3CODE_HOME=${base}\0`}`,
+	);
+}
 afterEach(() => {
 	for (const home of homes.splice(0)) fs.rmSync(home, { recursive: true });
 });
@@ -88,10 +116,10 @@ function fixture(entrypoint) {
 				command.startsWith("systemctl --user show ") &&
 				!command.includes("show t3code.service")
 			)
-				stdout = "Environment=\nExecStart=\nEnvironmentFiles=\n";
-			else if (command.startsWith("systemctl --user show "))
 				stdout =
-					"LoadState=not-found\nEnvironment=\nExecStart=\nEnvironmentFiles=\n";
+					"Environment=\nExecStart={ path=/usr/bin/t3code ; argv[]=/usr/bin/t3code ; }\n";
+			else if (command.startsWith("systemctl --user show "))
+				stdout = "LoadState=not-found\nEnvironment=\n";
 			else if (command.startsWith("systemctl --user list-")) stdout = "";
 			else if (command === "ps -eo pid=,comm=,args=") stdout = "";
 			else if (command === "command -v t3code t3code-nightly") exitCode = 1;
@@ -160,6 +188,118 @@ for (const [name, entrypoint] of [
 	["Debian --server-t3-code", configureT3CodeServer],
 ]) {
 	describe(`${name} desktop preflight`, () => {
+		it("permits loaded disabled service setup and rerun with omitted optional properties", async () => {
+			const f = fixture(entrypoint);
+			const value = '{"localEnvironmentEnabled":false}';
+			f.write(f.settings, value);
+			f.write(f.unit, `[Service]\nEnvironment=T3CODE_HOME=${f.base}\n`);
+			f.overrides.set(serviceShow, {
+				exitCode: 0,
+				stdout: loadedService(f.base),
+			});
+			for (let invocation = 0; invocation < 2; invocation++) {
+				f.effects.length = 0;
+				expect(await f.run(), JSON.stringify(f.messages)).toBe(true);
+				if (invocation === 0)
+					expect(
+						f.effects.some((effect) =>
+							/service (install|restart)/.test(effect),
+						),
+					).toBe(true);
+				else if (name.startsWith("Arch")) expect(f.effects).toEqual([]);
+				expect(fs.readFileSync(f.settings, "utf8")).toBe(value);
+				expect(fs.readFileSync(f.token, "utf8")).toBe("fixture-pairing-secret");
+				expect(f.reads).not.toContain(f.token);
+				expect(f.messages.join(" ")).not.toContain("fixture-pairing-secret");
+			}
+			expect(
+				f.probes.filter((command) => command === serviceShow),
+			).toHaveLength(2);
+		});
+
+		it.each([
+			"default",
+			"custom",
+		])("permits a running desktop scope with disabled %s settings", async (directory) => {
+			const f = fixture(entrypoint);
+			const base =
+				directory === "custom" ? path.join(f.home, "custom-t3") : f.base;
+			if (directory === "custom") f.options.env.T3CODE_HOME = base;
+			const settings = path.join(base, "userdata/desktop-settings.json");
+			const value = '{"localEnvironmentEnabled":false}';
+			f.write(settings, value);
+			f.overrides.set(serviceShow, {
+				exitCode: 0,
+				stdout: loadedService(base),
+			});
+			runningDesktopScope(f, base);
+			expect(await f.run(), JSON.stringify(f.messages)).toBe(true);
+			expect(
+				f.effects.some((effect) => effect.includes("service install")),
+			).toBe(true);
+			expect(f.probes).toContain(scopeShow);
+			expect(f.reads).toContain("/proc/42/environ");
+			expect(fs.readFileSync(settings, "utf8")).toBe(value);
+			expect(fs.readFileSync(f.token, "utf8")).toBe("fixture-pairing-secret");
+			expect(f.reads).not.toContain(f.token);
+			expect(f.messages.join(" ")).not.toContain("fixture-pairing-secret");
+		});
+
+		it("refuses missing settings when an empty transient scope signals desktop presence", async () => {
+			const f = fixture(entrypoint);
+			runningDesktopScope(f);
+			f.overrides.set("ps -eo pid=,comm=,args=", { exitCode: 0, stdout: "" });
+			expect(await f.run()).toBe(false);
+			expect(f.effects).toEqual([]);
+			expect(fs.existsSync(f.settings)).toBe(false);
+			expect(f.probes).toContain(scopeShow);
+			expect(f.reads).toContain(f.settings);
+			expect(f.reads).not.toContain(f.token);
+		});
+
+		it.each([
+			["failed probe", { exitCode: 1, stdout: "" }],
+			["malformed output", { exitCode: 0, stdout: "not a property" }],
+			[
+				"environment file",
+				{ exitCode: 0, stdout: "EnvironmentFiles=/tmp/desktop.env" },
+			],
+			[
+				"directory override",
+				{
+					exitCode: 0,
+					stdout: "ExecStart={ argv[]=t3code --base-dir /other ; }",
+				},
+			],
+			[
+				"duplicate environment",
+				{ exitCode: 0, stdout: "Environment=\nEnvironment=T3CODE_HOME=/other" },
+			],
+		])("refuses %s for a desktop scope before mutation", async (_kind, result) => {
+			const f = fixture(entrypoint);
+			f.write(f.settings, '{"localEnvironmentEnabled":false}');
+			runningDesktopScope(f);
+			f.overrides.set(scopeShow, result);
+			expect(await f.run()).toBe(false);
+			expect(f.effects).toEqual([]);
+			expect(f.probes).toContain(scopeShow);
+		});
+
+		it.each([
+			"",
+			"Environment=",
+			"LoadState=failed",
+			"LoadState=not-found\nbroken property",
+			"LoadState=not-found\nLoadState=not-found\nEnvironment=\nExecStart=\nEnvironmentFiles=",
+			"LoadState=not-found\nEnvironment=T3CODE_HOME=/other",
+			"LoadState=not-found\nExecStart={ argv[]=t3 __service-launcher ; }",
+		])("refuses invalid required service state or ambiguous output: %s", async (stdout) => {
+			const f = fixture(entrypoint);
+			f.write(f.settings, '{"localEnvironmentEnabled":false}');
+			f.overrides.set(serviceShow, { exitCode: 0, stdout });
+			expect(await f.run()).toBe(false);
+			expect(f.effects).toEqual([]);
+		});
 		it.each([
 			["enabled", '{"localEnvironmentEnabled":true}'],
 			["default enabled", "{}"],
@@ -280,7 +420,14 @@ for (const [name, entrypoint] of [
 					"systemctl --user show t3code.service --property=LoadState,Environment,ExecStart,EnvironmentFiles",
 					{
 						exitCode: 0,
-						stdout: `LoadState=loaded\nEnvironment=${kind === "unresolved service" ? "" : `T3CODE_HOME=${other}`}\nExecStart=\nEnvironmentFiles=${kind === "environment file" ? "/tmp/custom.env" : ""}\n`,
+						stdout:
+							loadedService(
+								other,
+								kind === "unresolved service" ? "" : `T3CODE_HOME=${other}`,
+							) +
+							(kind === "environment file"
+								? "EnvironmentFiles=/tmp/custom.env\n"
+								: ""),
 					},
 				);
 			}
@@ -301,7 +448,7 @@ for (const [name, entrypoint] of [
 				"systemctl --user show t3code.service --property=LoadState,Environment,ExecStart,EnvironmentFiles",
 				{
 					exitCode: 0,
-					stdout: `LoadState=loaded\nEnvironment=T3CODE_HOME=${other}\nExecStart=\nEnvironmentFiles=\n`,
+					stdout: loadedService(other),
 				},
 			);
 			expect(await f.run()).toBe(true);
@@ -327,7 +474,7 @@ for (const [name, entrypoint] of [
 				"systemctl --user show 't3code-desktop.service' --property=Environment,ExecStart,EnvironmentFiles",
 				{
 					exitCode: 0,
-					stdout: `Environment=T3CODE_HOME=${f.home}/other\nExecStart=\nEnvironmentFiles=\n`,
+					stdout: `Environment=T3CODE_HOME=${f.home}/other\nExecStart={ path=/usr/bin/t3code ; argv[]=/usr/bin/t3code ; }\n`,
 				},
 			);
 			expect(await f.run(), JSON.stringify(f.effects)).toBe(false);
@@ -352,6 +499,7 @@ for (const [name, entrypoint] of [
 		])("checks running desktop directory: %s", async (kind) => {
 			const f = fixture(entrypoint);
 			f.write(f.settings, '{"localEnvironmentEnabled":false}');
+			runningDesktopScope(f);
 			f.overrides.set("ps -eo pid=,comm=,args=", {
 				exitCode: 0,
 				stdout: "123 electron /opt/custom/t3code/resources/app.asar",
@@ -401,7 +549,7 @@ for (const [name, entrypoint] of [
 				"systemctl --user show t3code.service --property=LoadState,Environment,ExecStart,EnvironmentFiles",
 				{
 					exitCode: 0,
-					stdout: `LoadState=loaded\nEnvironment="T3CODE_HOME=${other}"\nExecStart=\nEnvironmentFiles=\n`,
+					stdout: loadedService(other, `"T3CODE_HOME=${other}"`),
 				},
 			);
 			expect(await f.run()).toBe(true);
@@ -445,13 +593,16 @@ for (const [name, entrypoint] of [
 			expect(f.effects).toEqual([]);
 		});
 
-		it("permits genuinely headless setup", async () => {
+		it("permits fresh not-found genuinely headless setup with omitted properties", async () => {
 			const f = fixture(entrypoint);
 			expect(await f.run()).toBe(true);
 			expect(
 				f.effects.some((command) => command.includes("service install")),
 			).toBe(true);
 			expect(fs.existsSync(f.settings)).toBe(false);
+			expect(f.reads).not.toContain(f.token);
+			expect(fs.readFileSync(f.token, "utf8")).toBe("fixture-pairing-secret");
+			expect(f.messages.join(" ")).not.toContain("fixture-pairing-secret");
 		});
 
 		it("checks desktop settings again on an already configured rerun", async () => {
@@ -459,6 +610,10 @@ for (const [name, entrypoint] of [
 			f.write(f.settings, '{"localEnvironmentEnabled":false}');
 			expect(await f.run()).toBe(true);
 			f.write(f.unit, `[Service]\nEnvironment=T3CODE_HOME=${f.base}\n`);
+			f.overrides.set(serviceShow, {
+				exitCode: 0,
+				stdout: loadedService(f.base),
+			});
 			f.write(f.settings, "{}");
 			f.effects.length = 0;
 			expect(await f.run(), JSON.stringify(f.effects)).toBe(false);
