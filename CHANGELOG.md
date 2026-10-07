@@ -4,6 +4,10 @@
 
 ### Fixed
 
+- Arch T3 services prioritize real agent CLIs before mise shims; both setup
+  paths write service drop-ins only when content changes. Debian root services
+  disable the browser sandbox and remove that override for non-root users.
+
 - T3 setup shares idempotent Tailscale operator configuration across Arch and
   non-root Debian, selects the invoking desktop user under sudo, and warns
   before replacing an operator or when permission setup fails. Non-root Debian

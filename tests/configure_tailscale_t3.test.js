@@ -4,6 +4,10 @@ import { configureTailscaleT3 } from "../src/helpers/configure_tailscale_t3.js";
 const dropIn =
 	"/home/test/.config/systemd/user/t3code.service.d/axstack-tailscale.conf";
 const content = '[Service]\nEnvironment="T3CODE_TAILSCALE_SERVE=true"\n';
+const pathDropIn =
+	"/home/test/.config/systemd/user/t3code.service.d/axstack-path.conf";
+const pathContent =
+	'[Service]\nEnvironment="PATH=%h/.local/bin:%h/.bun/bin:%h/.local/share/mise/shims:/usr/local/bin:/usr/bin:/bin"\n';
 const url = "https://laptop.tail123.ts.net";
 const serve = {
 	TCP: { 443: { HTTPS: true } },
@@ -24,6 +28,7 @@ function fixture({ fresh = false, loggedOut = fresh } = {}) {
 			? []
 			: [
 					[dropIn, content],
+					[pathDropIn, pathContent],
 					["/home/test/.config/systemd/user/t3code.service", "installed"],
 				],
 	);
@@ -104,9 +109,11 @@ describe("Arch T3 over Tailscale", () => {
 			"sudo -n tailscale up",
 			"sudo -n tailscale set --operator='test'",
 			`write ${dropIn}`,
+			`write ${pathDropIn}`,
 			"t3 service install --base-dir '/home/test/.t3'",
 		]);
 		expect(f.files.get(dropIn)).toBe(content);
+		expect(f.files.get(pathDropIn)).toBe(pathContent);
 		expect(f.events.at(-1)).toBe(url);
 		expect(f.messages.join(" ")).toContain(url);
 		expect(f.messages.join(" ")).toContain("t3 pair --tailscale");
@@ -272,7 +279,6 @@ describe("Tailscale operator reconciliation", () => {
 	});
 });
 
-
 describe("Arch Tailscale operator remediation", () => {
 	it("names the invoking user's exact manual command on failure", async () => {
 		const f = fixture();
@@ -291,4 +297,23 @@ describe("Arch Tailscale operator remediation", () => {
 	});
 });
 
-
+describe("Arch T3 agent PATH drop-in", () => {
+	it.each([
+		null,
+		"stale",
+	])("reconciles missing or stale PATH content %s and restarts", async (value) => {
+		const f = fixture();
+		if (value === null) f.files.delete(pathDropIn);
+		else f.files.set(pathDropIn, value);
+		expect(await configureTailscaleT3(f.options)).toBe(true);
+		expect(f.files.get(pathDropIn)).toBe(pathContent);
+		expect(f.mutations.filter((event) => !event.startsWith("mkdir"))).toEqual([
+			`write ${pathDropIn}`,
+			"systemctl --user daemon-reload",
+			"t3 service restart",
+		]);
+		f.mutations.length = 0;
+		expect(await configureTailscaleT3(f.options)).toBe(true);
+		expect(f.mutations).toEqual([]);
+	});
+});

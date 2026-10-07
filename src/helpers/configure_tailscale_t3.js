@@ -10,7 +10,7 @@ import {
 	shellQuote,
 	T3_VERSION_FLOOR,
 	waitForT3Tailscale,
-	writeTailscaleDropIn,
+	writeServiceDropIn,
 } from "./t3_tailscale.js";
 
 /** Configure tailnet-only phone access after the Arch T3 package is installed. */
@@ -88,7 +88,19 @@ export async function configureTailscaleT3({
 			);
 		}
 
-		const changed = writeTailscaleDropIn(home, fsImpl);
+		let changed = writeServiceDropIn(
+			home,
+			"axstack-tailscale.conf",
+			'[Service]\nEnvironment="T3CODE_TAILSCALE_SERVE=true"\n',
+			fsImpl,
+		);
+		changed =
+			writeServiceDropIn(
+				home,
+				"axstack-path.conf",
+				'[Service]\nEnvironment="PATH=%h/.local/bin:%h/.bun/bin:%h/.local/share/mise/shims:/usr/local/bin:/usr/bin:/bin"\n',
+				fsImpl,
+			) || changed;
 		let installed = true;
 		try {
 			fsImpl.readFileSync(

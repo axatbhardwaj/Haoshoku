@@ -279,11 +279,17 @@ describe("T3 server over Tailscale", () => {
 		expect(
 			fs.readFileSync(path.join(f.dropIns, "axstack-sandbox.conf"), "utf8"),
 		).toBe("[Service]\nEnvironment=IS_SANDBOX=1\n");
+		expect(
+			fs.readFileSync(path.join(f.dropIns, "browser-sandbox.conf"), "utf8"),
+		).toBe("[Service]\nEnvironment=T3CODE_SERVER_BROWSER_SANDBOX=0\n");
 		expect(fs.readFileSync(path.join(f.dropIns, "custom.conf"), "utf8")).toBe(
 			"custom",
 		);
 		f.options.uid = 1000;
 		expect(await configureT3CodeServer(f.options)).toBe(true);
+		expect(fs.existsSync(path.join(f.dropIns, "browser-sandbox.conf"))).toBe(
+			false,
+		);
 		expect(fs.existsSync(path.join(f.dropIns, "axstack-sandbox.conf"))).toBe(
 			false,
 		);
@@ -568,5 +574,38 @@ describe("Debian Tailscale operator reconciliation", () => {
 			expect(messages).toEqual([]);
 			expect(f.errors.join(" ")).toContain("HTTPS");
 		}
+	});
+});
+
+describe("Debian T3 drop-in idempotency", () => {
+	it("writes each root drop-in once, repairs changed PATH, and leaves the generated unit alone", async () => {
+		const f = fixture();
+		f.options.uid = 0;
+		const writes = [];
+		f.options.fsImpl = {
+			...fs,
+			writeFileSync: (file, value) => {
+				writes.push(path.basename(file));
+				fs.writeFileSync(file, value);
+			},
+		};
+		expect(await configureT3CodeServer(f.options)).toBe(true);
+		expect(writes.sort()).toEqual([
+			"axstack-path.conf",
+			"axstack-sandbox.conf",
+			"axstack-tailscale.conf",
+			"browser-sandbox.conf",
+		]);
+		writes.length = 0;
+		expect(await configureT3CodeServer(f.options)).toBe(true);
+		expect(writes).toEqual([]);
+		fs.writeFileSync(path.join(f.dropIns, "axstack-path.conf"), "stale");
+		expect(await configureT3CodeServer(f.options)).toBe(true);
+		expect(writes).toEqual(["axstack-path.conf"]);
+		expect(
+			fs.readFileSync(path.join(f.dropIns, "axstack-path.conf"), "utf8"),
+		).toBe(
+			'[Service]\nEnvironment="PATH=%h/.local/bin:%h/.bun/bin:%h/.grok/bin:/usr/local/bin:/usr/bin:/bin"\n',
+		);
 	});
 });

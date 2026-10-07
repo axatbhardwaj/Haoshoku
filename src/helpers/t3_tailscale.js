@@ -77,13 +77,9 @@ function tailscaleHttpsUrl(config) {
 	return null;
 }
 
-export function writeTailscaleDropIn(
-	home,
-	fsImpl = fs,
-	content = '[Service]\nEnvironment="T3CODE_TAILSCALE_SERVE=true"\n',
-) {
+export function writeServiceDropIn(home, name, content, fsImpl = fs) {
 	const directory = path.join(home, ".config/systemd/user/t3code.service.d");
-	const file = path.join(directory, "axstack-tailscale.conf");
+	const file = path.join(directory, name);
 	try {
 		if (fsImpl.readFileSync(file, "utf8") === content) return false;
 	} catch (error) {
