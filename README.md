@@ -427,8 +427,11 @@ setup incomplete with retry guidance.
 Existing public SSH allow/limit rules are preserved and reported as incomplete
 hardening, including IPv6 rules and saved rules on inactive UFW. Confirm working
 tailnet access, then separately inspect and migrate/remove broad rules as the
-operator before retrying. Unknown application profiles or ambiguous inspection
-output require manual inspection; Haoshoku does not guess that they are safe.
+operator before retrying. Named application profiles are resolved through
+read-only `ufw app info` port inspection, so web/mail profiles can coexist with
+tailnet SSH. Failed, malformed or unresolved profile inspection remains
+incomplete; correct the profile or inspection prerequisite and retry. Haoshoku
+does not guess that an unknown profile is safe.
 It never enables Tailscale SSH, disables sshd, changes tailnet ACLs, or deletes
 existing firewall rules. Custom rules outside UFW's managed rules require a
 separate operator audit.

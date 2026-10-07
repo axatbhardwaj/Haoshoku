@@ -155,6 +155,12 @@ function runDefaultSetupWithSafeDoubles({
 			runCommandCapture: async (command) => {
 				events.push({ type: "probe", command });
 				if (${JSON.stringify(missingTailscale)}) return { exitCode: 127, failed: true, stdout: "", stderr: "tailscale: command not found" };
+				if (Array.isArray(command)) {
+					const profiles = ${JSON.stringify(firewall.profiles ?? {})};
+					if (command.slice(0, 4).join(" ") !== "sudo ufw app info") throw new Error("Unexpected argv probe");
+					const stdout = profiles[command[4]];
+					return { exitCode: stdout === undefined ? 1 : 0, failed: stdout === undefined, stdout: stdout ?? "", stderr: "" };
+				}
 				const stdout = {
 					"tailscale status --json": ${JSON.stringify(JSON.stringify(tailnetStatus))},
 					"ip -j address show dev tailscale0": ${JSON.stringify(JSON.stringify(tailnetInterface))},
@@ -963,4 +969,359 @@ it("accepts UFW's genuine empty saved rules report", async () => {
 	});
 	expect(result).toMatchObject({ ok: true });
 	expect(calls[0]).toBe(sshRule);
+});
+
+// UFW's non-verbose get_status formatter: incoming action has no IN suffix.
+const ufwRow = (to, from = "Anywhere") =>
+	`${to.padEnd(26)} ${"ALLOW".padEnd(12)}${from}`;
+const realTailnetStatus = activeFirewall.replaceAll("ALLOW IN", "ALLOW   ");
+const profileInfo = (name, ports) =>
+	`Profile: ${name}\nTitle: Fixture application\nDescription: Fixture service ports\n\n${ports.length > 1 || ports[0]?.includes(",") ? "Ports" : "Port"}:\n${ports.map((port) => `  ${port}`).join("\n")}\n`;
+function f1Capture({
+	rows = [],
+	rules = "(None)\n",
+	profiles = {},
+	active = true,
+} = {}) {
+	const status =
+		realTailnetStatus +
+		rows.map(([to, from]) => ufwRow(to, from)).join("\n") +
+		"\n";
+	const base = makeFakeCapture({
+		"sudo ufw show added": probeOutput(addedHeader + rules),
+	});
+	const probes = [];
+	let statuses = 0;
+	const capture = async (command, options) => {
+		probes.push(command);
+		if (Array.isArray(command)) {
+			expect(command.slice(0, 4)).toEqual(["sudo", "ufw", "app", "info"]);
+			expect(command).toHaveLength(5);
+			const response = profiles[command[4]];
+			if (response instanceof Error) throw response;
+			return response ?? probeOutput("", 1);
+		}
+		if (command === "sudo ufw status")
+			return probeOutput(
+				++statuses === 1 && !active ? "Status: inactive\n" : status,
+			);
+		return base.capture(command, options);
+	};
+	return { capture, probes };
+}
+
+describe("F1 legitimate firewall coexistence", () => {
+	for (const [name, ports] of [
+		["Nginx Full", ["80,443/tcp"]],
+		["Apache Full", ["80/tcp", "443/tcp"]],
+		["Postfix", ["25/tcp"]],
+	]) {
+		for (const active of [true, false])
+			it(`completes with ${name} profile on ${active ? "active" : "inactive"} UFW`, async () => {
+				const { run, calls } = makeFakeRun();
+				const { capture, probes } = f1Capture({
+					active,
+					rows: active ? [[name], [name + " (v6)", "Anywhere (v6)"]] : [],
+					rules: `ufw allow '${name}'\n`,
+					profiles: { [name]: probeOutput(profileInfo(name, ports)) },
+				});
+				const result = await setupFirewall({
+					run,
+					capture,
+					prompt: async () => true,
+				});
+				expect(result).toMatchObject({ ok: true });
+				expect(calls).toEqual([
+					sshRule,
+					"sudo ufw default deny incoming",
+					"sudo ufw default allow outgoing",
+					"sudo ufw allow http",
+					"sudo ufw allow https",
+					"sudo ufw enable",
+				]);
+				expect(probes.filter(Array.isArray)).toContainEqual([
+					"sudo",
+					"ufw",
+					"app",
+					"info",
+					name,
+				]);
+			});
+	}
+	for (const [destination, ports] of [
+		["203.0.113.5", "80/tcp"],
+		["2001:db8::5", "443/tcp"],
+		["203.0.113.0/24", "80,443/tcp"],
+	])
+		it(`completes with non-SSH destination ${destination} ${ports}`, async () => {
+			const { run, calls } = makeFakeRun();
+			const { capture } = f1Capture({
+				rows: [[`${destination} ${ports}`]],
+				rules: `ufw allow from any to ${destination} port ${ports.replace("/tcp", "")} proto tcp\n`,
+			});
+			expect(
+				await setupFirewall({ run, capture, prompt: async () => false }),
+			).toMatchObject({ ok: true });
+			expect(calls[0]).toBe(sshRule);
+		});
+	it("resolves a destination-address application profile", async () => {
+		const { run } = makeFakeRun();
+		const { capture } = f1Capture({
+			rows: [["203.0.113.5 Nginx Full"]],
+			rules: "ufw allow from any to 203.0.113.5 app 'Nginx Full'\n",
+			profiles: {
+				"Nginx Full": probeOutput(profileInfo("Nginx Full", ["80,443/tcp"])),
+			},
+		});
+		expect(
+			await setupFirewall({ run, capture, prompt: async () => true }),
+		).toMatchObject({ ok: true });
+	});
+	for (const logMode of ["log", "log-all"])
+		it(`does not label ${logMode} web rules as public SSH`, async () => {
+			const { run, calls } = makeFakeRun();
+			const { capture } = f1Capture({
+				rows: [["80/tcp", "Anywhere (log) # web to 22"]],
+				rules: `ufw allow ${logMode} 80/tcp comment 'SSH stays on tailscale0'\n`,
+			});
+			expect(
+				await setupFirewall({ run, capture, prompt: async () => true }),
+			).toMatchObject({ ok: true });
+			expect(calls).not.toContain("sudo ufw delete 80/tcp");
+		});
+	it("propagates legitimate web coexistence to successful overall Debian setup", () => {
+		const { result, events } = runDefaultSetupWithSafeDoubles({
+			firewall: {
+				status:
+					realTailnetStatus +
+					ufwRow("Nginx Full") +
+					"\n" +
+					ufwRow("203.0.113.5 80/tcp") +
+					"\n",
+				rules: "ufw allow 'Nginx Full'\nufw allow log-all 80/tcp\n",
+				profiles: { "Nginx Full": profileInfo("Nginx Full", ["80,443/tcp"]) },
+			},
+		});
+		expect(result).toBe(true);
+		expect(events).toContainEqual({
+			type: "success",
+			message: "Debian Server setup finished.",
+		});
+	});
+});
+
+describe("F1 profile inspection safety", () => {
+	const name = "Web app.v2+TLS";
+	for (const [label, response] of [
+		["lookup failure", probeOutput("", 1)],
+		["lookup throw", new Error("fixture unavailable")],
+		[
+			"missing ports",
+			probeOutput(`Profile: ${name}\nTitle: Web\nDescription: Web\n`),
+		],
+		["wrong profile", probeOutput(profileInfo("Other", ["80/tcp"]))],
+		[
+			"ambiguous profiles",
+			probeOutput(
+				profileInfo(name, ["80/tcp"]) + profileInfo("OpenSSH", ["22/tcp"]),
+			),
+		],
+		["unparseable ports", probeOutput(profileInfo(name, ["not-ports"]))],
+		[
+			"SSH then malformed",
+			probeOutput(profileInfo(name, ["22/tcp", "bad/udp"])),
+		],
+		["empty ports", probeOutput(profileInfo(name, []))],
+		["zero port", probeOutput(profileInfo(name, ["0/tcp"]))],
+		["out-of-range port", probeOutput(profileInfo(name, ["65536/tcp"]))],
+		["reversed range", probeOutput(profileInfo(name, ["443:80/tcp"]))],
+	])
+		it(`fails closed with specific profile guidance on ${label}`, async () => {
+			const { run, calls } = makeFakeRun();
+			const { capture, probes } = f1Capture({
+				active: false,
+				rules: `ufw allow '${name}'\n`,
+				profiles: { [name]: response },
+			});
+			const result = await setupFirewall({
+				run,
+				capture,
+				prompt: async () => true,
+			});
+			expect(probes.filter(Array.isArray)).toEqual([
+				["sudo", "ufw", "app", "info", name],
+			]);
+			expect(result).toMatchObject({ ok: false });
+			expect(result.reason).toContain(name);
+			expect(result.reason).toMatch(/inspection.*retry/i);
+			expect(calls).toEqual([]);
+		});
+	it("passes a valid spaced profile name as one argument, not shell text", async () => {
+		const { run } = makeFakeRun();
+		const { capture, probes } = f1Capture({
+			rules: `ufw allow '${name}'\n`,
+			profiles: {
+				[name]: probeOutput(profileInfo(name, ["80/tcp", "443/udp"])),
+			},
+		});
+		expect(
+			await setupFirewall({ run, capture, prompt: async () => false }),
+		).toMatchObject({ ok: true });
+		expect(probes.filter(Array.isArray)).toContainEqual([
+			"sudo",
+			"ufw",
+			"app",
+			"info",
+			name,
+		]);
+	});
+	for (const malicious of [
+		"Web;touch /tmp/escape",
+		"Web$(id)",
+		"Web`id`",
+		"-all",
+		"all",
+		"Web\nPorts: 80/tcp",
+	])
+		it(`refuses invalid profile name ${JSON.stringify(malicious)} without a lookup`, async () => {
+			const { run, calls } = makeFakeRun();
+			const { capture, probes } = f1Capture({
+				rules: `ufw allow '${malicious}'\n`,
+			});
+			expect(
+				await setupFirewall({ run, capture, prompt: async () => true }),
+			).toMatchObject({ ok: false });
+			expect(probes.filter(Array.isArray)).toEqual([]);
+			expect(calls).toEqual([]);
+		});
+});
+
+describe("F1 destination grammar validation", () => {
+	for (const address of [
+		"203.0.113.5/33",
+		"2001:db8::5/129",
+		"203.0.113.5/garbage",
+		"2001:db8::5/64/extra",
+	])
+		it(`refuses malformed status destination ${address} before mutation`, async () => {
+			const { run, calls } = makeFakeRun();
+			const { capture } = f1Capture({ rows: [[`${address} 80/tcp`]] });
+			expect(
+				await setupFirewall({ run, capture, prompt: async () => true }),
+			).toMatchObject({ ok: false });
+			expect(calls).toEqual([]);
+		});
+	for (const address of ["banana", "203.0.113.5/33", "2001:db8::5/129"])
+		it(`refuses malformed saved destination ${address} before mutation`, async () => {
+			const { run, calls } = makeFakeRun();
+			const { capture } = f1Capture({
+				rules: `ufw allow from any to ${address} port 80 proto tcp\n`,
+			});
+			expect(
+				await setupFirewall({ run, capture, prompt: async () => true }),
+			).toMatchObject({ ok: false });
+			expect(calls).toEqual([]);
+		});
+});
+
+describe("F1 SSH-bearing profile detection", () => {
+	for (const [name, rule, rows] of [
+		["HTTP", "ufw allow HTTP\n", [["HTTP"], ["HTTP (v6)", "Anywhere (v6)"]]],
+		["https", "ufw allow to any app https\n", []],
+	])
+		it(`does not guess an application called ${name} is a safe web alias`, async () => {
+			const { run, calls } = makeFakeRun();
+			const { capture, probes } = f1Capture({
+				rows,
+				rules: rule,
+				profiles: {
+					[name]: probeOutput(profileInfo(name, ["80/tcp", "22/tcp"])),
+				},
+			});
+			const result = await setupFirewall({
+				run,
+				capture,
+				prompt: async () => true,
+			});
+			expect(result).toMatchObject({ ok: false });
+			expect(result.reason).toMatch(/public SSH/i);
+			expect(probes.filter(Array.isArray)).toContainEqual([
+				"sudo",
+				"ufw",
+				"app",
+				"info",
+				name,
+			]);
+			expect(calls[0]).toBe(sshRule);
+		});
+	for (const ports of [
+		["22/tcp"],
+		["80,22,443/tcp"],
+		["20:25/tcp"],
+		["22/udp", "20:25/tcp"],
+	])
+		it(`preserves and reports actual SSH-bearing profile ports ${ports}`, async () => {
+			const name = "SSH out of band";
+			const { run, calls } = makeFakeRun();
+			const { capture } = f1Capture({
+				active: false,
+				rules: `ufw allow log-all '${name}'\n`,
+				profiles: { [name]: probeOutput(profileInfo(name, ports)) },
+			});
+			for (let i = 0; i < 2; i++) {
+				const result = await setupFirewall({
+					run,
+					capture,
+					prompt: async () => true,
+				});
+				expect(result).toMatchObject({ ok: false });
+				expect(result.reason).toMatch(/public SSH.*operator.*retry/i);
+			}
+			expect(calls.filter((c) => c === sshRule)).toHaveLength(2);
+			expect(calls.some((c) => /delete|reset/.test(c))).toBe(false);
+		});
+	it("keeps profile UDP 22 separate from TCP SSH", async () => {
+		const name = "UDP and web";
+		const { run } = makeFakeRun();
+		const { capture } = f1Capture({
+			rules: `ufw allow log "${name}"\n`,
+			profiles: {
+				[name]: probeOutput(profileInfo(name, ["22/udp", "80,443/tcp"])),
+			},
+		});
+		expect(
+			await setupFirewall({ run, capture, prompt: async () => false }),
+		).toMatchObject({ ok: true });
+	});
+	for (const [address, port] of [
+		["203.0.113.5", "22/tcp"],
+		["2001:db8::5", "20:25/tcp"],
+	])
+		it(`reports existing SSH at ${address}`, async () => {
+			const { run, calls } = makeFakeRun();
+			const { capture } = f1Capture({
+				rows: [[`${address} ${port}`]],
+				rules: `ufw allow log-all from any to ${address} port ${port.replace("/tcp", "")} proto tcp\n`,
+			});
+			const result = await setupFirewall({
+				run,
+				capture,
+				prompt: async () => true,
+			});
+			expect(result).toMatchObject({ ok: false });
+			expect(result.reason).toMatch(/public SSH/i);
+			expect(calls.some((c) => /delete|reset/.test(c))).toBe(false);
+		});
+	it("propagates profile lookup failure into overall incomplete setup", () => {
+		const { result, events } = runDefaultSetupWithSafeDoubles({
+			firewall: { rules: "ufw allow 'Nginx Full'\n" },
+		});
+		expect(result).toBe(false);
+		expect(events).toContainEqual({
+			type: "error",
+			message: expect.stringMatching(
+				/firewall.*incomplete.*Nginx Full.*retry/i,
+			),
+		});
+	});
 });

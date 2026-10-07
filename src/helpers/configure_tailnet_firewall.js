@@ -6,50 +6,131 @@ import {
 	runCommandCapture,
 } from "../common/utils.js";
 
-// Unknown application profiles require operator inspection; guessing could hide SSH.
-function includesSshPort(value) {
-	const port = value.toLowerCase().replace(/['"]/g, "");
-	if (["openssh", "ssh", "any", "anywhere"].includes(port)) return true;
-	if (["http", "https"].includes(port) || port.endsWith("/udp")) return false;
-	if (!/^\d+(?::\d+)?(?:,\d+(?::\d+)?)*(?:\/tcp)?$/.test(port))
-		throw new Error(
-			"Cannot verify a UFW application/port rule; operator inspection required",
-		);
-	return port
-		.replace(/\/tcp$/, "")
+function numericSshPort(value) {
+	if (!/^\d+(?::\d+)?(?:,\d+(?::\d+)?)*(?:\/(?:tcp|udp))?$/.test(value))
+		return null;
+	const ranges = value
+		.replace(/\/(?:tcp|udp)$/, "")
 		.split(",")
-		.some((range) => {
+		.map((range) => {
 			const [start, end = start] = range.split(":").map(Number);
-			return start <= 22 && end >= 22;
+			if (start < 1 || end > 65535 || start > end)
+				throw new Error("Invalid UFW port range");
+			return [start, end];
 		});
+	return (
+		!value.endsWith("/udp") &&
+		ranges.some(([start, end]) => start <= 22 && end >= 22)
+	);
 }
 
-function savedPublicSsh(added) {
+async function includesSshPort(value, resolveProfile, serviceName = false) {
+	const port = value.toLowerCase();
+	if (
+		["openssh", "ssh", "any", "anywhere", "any/tcp", "anywhere/tcp"].includes(
+			port,
+		)
+	)
+		return true;
+	if (["any/udp", "anywhere/udp"].includes(port)) return false;
+	if (
+		serviceName &&
+		value === port &&
+		["http", "https", "http/tcp", "https/tcp"].includes(port)
+	)
+		return false;
+	const numeric = numericSshPort(port);
+	return numeric ?? resolveProfile(value);
+}
+
+function destinationFamily(value, status = false) {
+	const [address, suffix, ...extra] = value.split("/");
+	const family = isIP(address);
+	if (
+		family &&
+		(extra.length ||
+			(suffix !== undefined &&
+				!(status && ["tcp", "udp"].includes(suffix)) &&
+				(!/^\d+$/.test(suffix) || Number(suffix) > (family === 4 ? 32 : 128))))
+	)
+		throw new Error("Invalid UFW destination address");
+	return family;
+}
+
+// Read only UFW's normalized saved-rule syntax, including quoted profile names.
+function savedRuleWords(line) {
+	const text = line.trim();
+	const pattern = /\s*(?:'([^']*)'|"([^"]*)"|([^\s'"]+))(?=\s|$)/gy;
+	const words = [];
+	while (pattern.lastIndex < text.length) {
+		const match = pattern.exec(text);
+		if (!match) throw new Error("Cannot verify UFW saved-rule quoting");
+		const word = match[1] ?? match[2] ?? match[3];
+		if (word === "comment") break;
+		words.push(word);
+	}
+	return words;
+}
+
+async function savedPublicSsh(added, resolveProfile) {
 	let publicSsh = false;
 	const lines = added.trim().split("\n").slice(1);
 	if (lines.length === 1 && lines[0] === "(None)") return false;
 	for (const line of lines) {
 		if (!line.trim()) continue;
-		const rule = line.split(/\s+comment\s+/)[0];
-		if (!/^ufw (?:route )?(allow|limit|deny|reject)\b/.test(rule))
+		const words = savedRuleWords(line);
+		if (words.shift() !== "ufw")
 			throw new Error("Cannot verify UFW saved rules");
-		if (
-			/^ufw (?:route |deny |reject )/.test(rule) ||
-			/\bout\b|\bproto udp\b|\bin on tailscale0\b/.test(rule)
-		)
+		const routed = words[0] === "route";
+		if (routed) words.shift();
+		const action = words.shift();
+		if (!["allow", "limit", "deny", "reject"].includes(action))
+			throw new Error("Cannot verify UFW saved rules");
+		if (routed || ["deny", "reject"].includes(action) || words[0] === "out")
 			continue;
-		const destination = rule.split(/\bto\s+/)[1];
-		const port = destination
-			? (destination.match(/\b(?:port|app)\s+(\S+)/)?.[1] ?? "any")
-			: (rule.match(
-					/^ufw (?:allow|limit)\s+(?!in\b|from\b|proto\b|log\b)(\S+)/,
-				)?.[1] ?? "any");
-		if (includesSshPort(port)) publicSsh = true;
+		if (words[0] === "in") {
+			words.shift();
+			if (words[0] === "on") {
+				words.shift();
+				if (words.shift() === "tailscale0") continue;
+			}
+		}
+		if (["log", "log-all"].includes(words[0])) words.shift();
+		let port;
+		let profile = false;
+		let serviceName = false;
+		if (["from", "to", "proto"].includes(words[0])) {
+			const proto = words.indexOf("proto");
+			if (proto >= 0 && words[proto + 1] === "udp") continue;
+			const to = words.indexOf("to");
+			if (
+				to >= 0 &&
+				words[to + 1] !== "any" &&
+				!destinationFamily(words[to + 1] ?? "")
+			)
+				throw new Error("Invalid UFW destination address");
+			profile = to >= 0 && words[to + 2] === "app";
+			port =
+				to >= 0 && ["port", "app"].includes(words[to + 2])
+					? words[to + 3]
+					: "any";
+		} else {
+			if (words.length !== 1) throw new Error("Cannot verify UFW short rule");
+			port = words[0];
+			serviceName = true;
+		}
+		if (!port) throw new Error("Cannot verify UFW destination port/profile");
+		if (
+			await (profile
+				? resolveProfile(port)
+				: includesSshPort(port, resolveProfile, serviceName))
+		)
+			publicSsh = true;
 	}
 	return publicSsh;
 }
 
-function firewallStatus(output) {
+async function firewallStatus(output, resolveProfile) {
 	const states = [...output.matchAll(/^Status: (active|inactive)$/gm)];
 	if (states.length !== 1) throw new Error("Ambiguous UFW status");
 	const rules = [];
@@ -64,11 +145,15 @@ function firewallStatus(output) {
 		)
 			continue;
 		const to = row[1].replace(/\(v6\)/g, "").trim();
-		const port = to.replace(/\s+on\s+\S+$/, "");
-		if (includesSshPort(port))
+		let port = to.replace(/\s+on\s+\S+$/, "");
+		const [address, ...rest] = port.split(/\s+/);
+		const family = destinationFamily(address, true);
+		if (family)
+			port = rest.join(" ") || (address.endsWith("/udp") ? "any/udp" : "any");
+		if (await includesSshPort(port, resolveProfile))
 			rules.push({
 				tailnet: /\bon tailscale0$/.test(to),
-				ipv6: /\(v6\)/.test(line),
+				ipv6: family === 6 || /\(v6\)/.test(line),
 			});
 	}
 	return { active: states[0][1] === "active", rules };
@@ -96,6 +181,34 @@ export async function setupFirewall({
 		)
 			throw new Error(`Cannot inspect ${command}`);
 		return result.stdout;
+	};
+	const profileCache = new Map();
+	const resolveProfile = async (name) => {
+		if (name === "all" || !/^[a-zA-Z0-9][a-zA-Z0-9 _\-.+]*$/.test(name))
+			throw new Error("Invalid UFW profile name; operator inspection required");
+		if (profileCache.has(name)) return profileCache.get(name);
+		try {
+			// An argv array keeps a spaced name out of shell parsing entirely.
+			const output = await inspect(["sudo", "ufw", "app", "info", name]);
+			const names = [...output.matchAll(/^Profile: (.+)$/gm)];
+			const sections = [...output.matchAll(/^Ports?:\s*$/gm)];
+			if (names.length !== 1 || names[0][1] !== name || sections.length !== 1)
+				throw new Error("Ambiguous profile report");
+			const entries = output
+				.slice(sections[0].index + sections[0][0].length)
+				.trim()
+				.split("\n");
+			const ports = entries.map((entry) => numericSshPort(entry.trim()));
+			if (!ports.length || ports.some((port) => port === null))
+				throw new Error("Invalid profile ports");
+			const ssh = ports.some(Boolean);
+			profileCache.set(name, ssh);
+			return ssh;
+		} catch (error) {
+			throw new Error(
+				`Cannot verify UFW profile ${name}; operator inspection required (${error.message})`,
+			);
+		}
 	};
 	let prerequisite = "Tailscale";
 	try {
@@ -151,7 +264,7 @@ export async function setupFirewall({
 	let publicSsh;
 	try {
 		const status = await inspect("sudo ufw status");
-		const current = firewallStatus(status);
+		const current = await firewallStatus(status, resolveProfile);
 		active = current.active;
 		publicSsh = current.rules.some((rule) => !rule.tailnet);
 		const added = await inspect("sudo ufw show added");
@@ -161,7 +274,7 @@ export async function setupFirewall({
 			)
 		)
 			throw new Error("Ambiguous UFW rule report");
-		publicSsh = savedPublicSsh(added) || publicSsh;
+		publicSsh = (await savedPublicSsh(added, resolveProfile)) || publicSsh;
 		const config = await inspect("sudo cat /etc/default/ufw");
 		const ipv6 = [...config.matchAll(/^IPV6=(.*)$/gm)];
 		if (ipv6.length !== 1 || ipv6[0][1] !== "yes")
@@ -196,7 +309,7 @@ export async function setupFirewall({
 			);
 		}
 		const finalStatus = await inspect("sudo ufw status");
-		const verified = firewallStatus(finalStatus);
+		const verified = await firewallStatus(finalStatus, resolveProfile);
 		if (
 			!verified.active ||
 			![false, true].every((ipv6) =>
