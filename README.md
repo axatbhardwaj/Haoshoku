@@ -637,7 +637,7 @@ It is separate from server provisioning and never creates accounts, keys, policy
 rules, or integrations. It is not part of default OS setup and cannot be combined
 with another mode or `--os`.
 
-Configuration locations follow the harness user contracts:
+Supported configuration locations:
 
 - Claude Code: `$HOME/.claude.json`, or `$CLAUDE_CONFIG_DIR/.claude.json` when that
   override is nonempty. The entry lives in the top-level `mcpServers` map (user
@@ -645,6 +645,22 @@ Configuration locations follow the harness user contracts:
 - Codex: `$CODEX_HOME/config.toml`, defaulting to `$HOME/.codex/config.toml`.
   The `[mcp_servers.executor]` table uses
   `env_http_headers = { Authorization = "EXECUTOR_AUTHORIZATION" }`.
+
+Claude's legacy `$HOME/.claude/.config.json` or
+`$CLAUDE_CONFIG_DIR/.config.json` takes precedence over the standard file.
+If that path exists (including a link), or its layout cannot be safely inspected,
+setup refuses before writing either client. It never reads, adopts or rewrites
+the legacy file. Use manual user-scope MCP setup in the intended Claude/Codex
+environment for these layouts. An explicitly empty `CLAUDE_CONFIG_DIR` is
+ambiguous for legacy lookup; unset it for the default home or set an absolute home.
+
+Nonempty `CLAUDE_CODE_CUSTOM_OAUTH_URL`, `USE_STAGING_OAUTH` or `USE_LOCAL_OAUTH`
+also causes refusal before either write; use manual setup with that environment.
+Custom OAuth selects `.claude-custom-oauth.json`. The installed production Claude
+2.1.292 fixes its staging/local filename selector to production; other builds'
+`.claude-staging-oauth.json` / `.claude-local-oauth.json` targets are unsupported.
+The switches are refused conservatively for any nonempty value, including `0`
+or `false`; setup does not interpret their value semantics or change them.
 
 Use absolute homes for the intended non-root user; `XDG_CONFIG_HOME` does not
 redirect these MCP files. Auth references are resolved from the harness environment

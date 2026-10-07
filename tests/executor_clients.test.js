@@ -16,7 +16,7 @@ function fixture() {
 			...process.env,
 			HOME: home,
 			CODEX_HOME: "",
-			CLAUDE_CONFIG_DIR: "",
+			CLAUDE_CONFIG_DIR: undefined,
 			XDG_CONFIG_HOME: path.join(home, "config"),
 			XDG_STATE_HOME: path.join(home, "state"),
 			EXECUTOR_AUTHORIZATION: auth,
@@ -407,4 +407,137 @@ it("removes its new config if descriptor inspection fails before any content wri
 	expect(result.ok).toBe(false);
 	expect(fs.existsSync(f.claude)).toBe(false);
 	expect(fs.existsSync(f.codex)).toBe(false);
+});
+
+// F1: Claude's legacy selector must never leave a successful inactive entry.
+function configSnapshot(f) {
+	return fs
+		.readdirSync(f.home, { recursive: true })
+		.sort()
+		.filter((rel) => rel !== "state" && !rel.startsWith(`state${path.sep}`))
+		.map((rel) => {
+			const file = path.join(f.home, rel);
+			const stat = fs.lstatSync(file);
+			return [
+				rel,
+				stat.ino,
+				stat.mode,
+				stat.mtimeMs,
+				stat.isSymbolicLink()
+					? fs.readlinkSync(file)
+					: stat.isFile()
+						? Bun.hash(fs.readFileSync(file)).toString()
+						: null,
+			];
+		});
+}
+function preserved(f, before, result, opaque) {
+	expect(JSON.stringify(configSnapshot(f)) === JSON.stringify(before)).toBe(
+		true,
+	);
+	expect(result.output.includes(auth)).toBe(false);
+	expect(result.output.includes(opaque)).toBe(false);
+	for (const rel of fs.readdirSync(f.home, { recursive: true })) {
+		const file = path.join(f.home, rel);
+		if (!fs.lstatSync(file).isFile()) continue;
+		const bytes = fs.readFileSync(file, "utf8");
+		expect(bytes.includes(auth)).toBe(false);
+		if (!before.some(([original]) => original === rel))
+			expect(bytes.includes(opaque)).toBe(false);
+	}
+}
+it.each([
+	false,
+	true,
+])("refuses Claude legacy config before either client changes (custom=%s)", (custom) => {
+	const f = fixture();
+	const configHome = path.join(f.home, custom ? "custom-claude" : ".claude");
+	if (custom) {
+		f.env.CLAUDE_CONFIG_DIR = configHome;
+		f.claude = path.join(configHome, ".claude.json");
+	}
+	const opaque = Buffer.from("legacy original credential").toString("hex");
+	seed(path.join(configHome, ".config.json"), `{"opaque":"${opaque}"}`);
+	seed(
+		f.codex,
+		'# independent Codex original\nmodel = "fixture"\n',
+	);
+	// Default fixture has an existing inactive file; custom fixture has no target.
+	if (!custom) seed(f.claude, '{"keep":"inactive original"}');
+	const before = configSnapshot(f);
+	const result = run(f);
+	expect(result.code).toBe(1);
+	expect(result.output).toContain("legacy .config.json");
+	expect(result.output).toContain("manual user-scope MCP setup");
+	preserved(f, before, result, opaque);
+});
+it("refuses an unsafe default Claude config home before creating client files", () => {
+	const f = fixture();
+	const target = path.join(f.home, "owned");
+	fs.mkdirSync(target);
+	fs.symlinkSync(target, path.join(f.home, ".claude"));
+	const before = configSnapshot(f);
+	const result = run(f);
+	expect(result.code).toBe(1);
+	expect(result.output).toContain("unsafe config path");
+	preserved(f, before, result, "opaque-unused");
+});
+it("fails closed on a legacy existence-check error without reading configs or leaking it", () => {
+	const f = fixture();
+	seed(f.claude, '{"keep":true}');
+	seed(f.codex, "# independent original\n");
+	const before = configSnapshot(f);
+	let reads = 0;
+	const result = setupWith(f, {
+		...fs,
+		lstatSync(file) {
+			if (file === path.join(f.home, ".claude/.config.json"))
+				throw Object.assign(new Error(auth), { code: "EACCES" });
+			return fs.lstatSync(file);
+		},
+		readFileSync(...args) {
+			reads++;
+			return fs.readFileSync(...args);
+		},
+	});
+	expect(result.ok).toBe(false);
+	expect(result.output).toContain("manual user-scope MCP setup");
+	expect(reads).toBe(0);
+	preserved(f, before, result, "opaque-unused");
+});
+
+it.each([
+	["CLAUDE_CODE_CUSTOM_OAUTH_URL", "https://claude.fedstart.com"],
+	["USE_STAGING_OAUTH", "1"],
+	["USE_LOCAL_OAUTH", "1"],
+])("refuses unsupported Claude OAuth environment %s before either write", (variable, value) => {
+	for (const existing of [false, true]) {
+		const f = fixture();
+		f.env[variable] = value;
+		const opaque = Buffer.from("variant original credential").toString("hex");
+		if (existing) {
+			f.env.CLAUDE_CONFIG_DIR = path.join(f.home, "custom-claude");
+			f.claude = path.join(f.env.CLAUDE_CONFIG_DIR, ".claude.json");
+			seed(f.claude, `{"opaque":"${opaque}"}`);
+			seed(f.codex, "# independent Codex original\n");
+		}
+		const before = configSnapshot(f);
+		const result = run(f);
+		expect(result.code).toBe(1);
+		expect(result.output).toContain("Claude OAuth environment is unsupported");
+		expect(result.output).toContain("manual user-scope MCP setup");
+		preserved(f, before, result, opaque);
+	}
+});
+
+it("refuses an explicitly empty Claude config home rather than assuming default legacy lookup", () => {
+	const f = fixture();
+	f.env.CLAUDE_CONFIG_DIR = "";
+	seed(f.claude, '{"keep":true}');
+	seed(f.codex, "# independent original\n");
+	const before = configSnapshot(f);
+	const result = run(f);
+	expect(result.code).toBe(1);
+	expect(result.output).toContain("Unset empty CLAUDE_CONFIG_DIR");
+	preserved(f, before, result, "opaque-unused");
 });

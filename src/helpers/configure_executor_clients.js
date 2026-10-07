@@ -12,6 +12,46 @@ import {
 export const EXECUTOR_CLIENT_USAGE =
 	"Usage: haoshoku --executor-clients <https-endpoint> (standalone). Export EXECUTOR_AUTHORIZATION with the complete Bearer authorization value; no credentials, query or fragment in the HTTPS URL.";
 
+function refuseLegacyClaudeConfig(configHome, fsImpl) {
+	const guidance =
+		"Use manual user-scope MCP setup for Claude and Codex in the intended harness environment. Both configs left intact.";
+	try {
+		// Inspect metadata only: never read or adopt a legacy secret-bearing file.
+		for (let dir = configHome; ; dir = path.dirname(dir)) {
+			let stat;
+			try {
+				stat = fsImpl.lstatSync(dir);
+			} catch (error) {
+				if (error.code !== "ENOENT") throw error;
+			}
+			if (
+				stat &&
+				(!stat.isDirectory() ||
+					stat.isSymbolicLink() ||
+					![0, process.getuid()].includes(stat.uid) ||
+					(stat.mode & 0o022 && !(stat.uid === 0 && stat.mode & 0o1000)))
+			)
+				throw new ExecutorClientError(`unsafe config path; ${guidance}`);
+			if (dir === path.dirname(dir)) break;
+		}
+		let legacy;
+		try {
+			legacy = fsImpl.lstatSync(path.join(configHome, ".config.json"));
+		} catch (error) {
+			if (error.code !== "ENOENT") throw error;
+		}
+		if (legacy)
+			throw new ExecutorClientError(
+				`Claude legacy .config.json layout is unsupported. ${guidance}`,
+			);
+	} catch (error) {
+		if (error instanceof ExecutorClientError) throw error;
+		throw new ExecutorClientError(
+			`Cannot inspect Claude config layout. ${guidance}`,
+		);
+	}
+}
+
 export function validateExecutorClientInput(endpoint, env = process.env) {
 	if (
 		typeof endpoint !== "string" ||
@@ -45,6 +85,18 @@ export function configureExecutorClients(
 ) {
 	try {
 		const url = validateExecutorClientInput(endpoint, env);
+		if (env.CLAUDE_CONFIG_DIR === "")
+			throw new ExecutorClientError(
+				"Unset empty CLAUDE_CONFIG_DIR to use the default home, or supply an absolute config home, then retry. Both configs left intact.",
+			);
+		if (
+			env.CLAUDE_CODE_CUSTOM_OAUTH_URL ||
+			env.USE_STAGING_OAUTH ||
+			env.USE_LOCAL_OAUTH
+		)
+			throw new ExecutorClientError(
+				"Claude OAuth environment is unsupported. Use manual user-scope MCP setup for Claude and Codex in the intended harness environment. Both configs left intact.",
+			);
 		if (!env.HOME || !path.isAbsolute(env.HOME))
 			throw new ExecutorClientError(
 				"Use an absolute HOME for the intended agent user.",
@@ -58,6 +110,10 @@ export function configureExecutorClients(
 		);
 		if ([claude, codex].some((file) => !path.isAbsolute(file)))
 			throw new ExecutorClientError("Use absolute harness config homes.");
+		refuseLegacyClaudeConfig(
+			env.CLAUDE_CONFIG_DIR || path.join(env.HOME, ".claude"),
+			fsImpl,
+		);
 		const plans = [
 			["Claude Code", claude],
 			["Codex", codex],
