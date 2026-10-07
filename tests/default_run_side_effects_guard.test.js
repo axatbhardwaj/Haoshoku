@@ -74,8 +74,6 @@ const TEST_CALLER_CONTRACTS = new Map([
 			"configureCodexImpl",
 			"syncAgentsConfigImpl",
 			"configureAxstackImpl",
-			"configureSkillsImpl",
-			"syncAgentSkillsImpl",
 		],
 	],
 	[

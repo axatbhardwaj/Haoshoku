@@ -12,12 +12,6 @@ const CLAUDE_HELPER_PATH = path.join(
 	"helpers",
 	"configure_claude.js",
 );
-const SKILLS_HELPER_PATH = path.join(
-	PROJECT_ROOT,
-	"src",
-	"helpers",
-	"configure_skills.js",
-);
 const CLI_UTILS_PATH = path.join(PROJECT_ROOT, "src", "common", "cli_utils.js");
 const ARCH_SETUP_PATH = path.join(
 	PROJECT_ROOT,
@@ -52,13 +46,6 @@ function runCli(args, { defaultSetup = false } = {}) {
 			backupClaudeConfig: async () => {},
 			configureClaude: async () => {},
 			syncClaudeConfig: async () => calls.push("claude"),
-		}));
-		mock.module(${JSON.stringify(SKILLS_HELPER_PATH)}, () => ({
-			configureSkills: async () => {
-				calls.push("skills");
-				return true;
-			},
-			listSkills: async () => true,
 		}));
 		process.argv = [process.execPath, ${JSON.stringify(CLI_PATH)}, ...${JSON.stringify(args)}];
 		await import(${JSON.stringify(CLI_PATH)});

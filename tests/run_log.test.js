@@ -34,7 +34,7 @@ function fixture() {
 		env: { ...process.env, HOME: root, XDG_STATE_HOME: root, FORCE_COLOR: "1" },
 	};
 }
-async function cli(f, args = ["--explainer-theme", "dark"]) {
+async function cli(f, args = ["--gaming-steam-autostart", "enabled"]) {
 	const child = Bun.spawn([process.execPath, "haoshoku.js", ...args], {
 		env: f.env,
 		stdout: "pipe",
@@ -67,7 +67,7 @@ test("setup creates a private UTC log with device and invocation metadata", asyn
 	expect(fs.statSync(file).mode & 0o777).toBe(0o600);
 	for (const value of [
 		`Haoshoku ${packageVersion}`,
-		"--explainer-theme",
+		"--gaming-steam-autostart",
 		"Date:",
 		"OS NAME:",
 		"OS VERSION:",
@@ -101,7 +101,7 @@ for (const secret of [
 
 test("captures log.* errors and strips ANSI", async () => {
 	const f = fixture();
-	const result = await cli(f, ["--explainer-theme", "invalid"]);
+	const result = await cli(f, ["--gaming-steam-autostart", "invalid"]);
 	expect(result.exitCode).toBe(1);
 	const { text } = readLog(f);
 	expect(text).toContain("invalid");
@@ -143,7 +143,7 @@ test("unwritable state warns once and preserves the run result", async () => {
 	const blocked = path.join(f.root, "blocked");
 	fs.writeFileSync(blocked, "not a directory");
 	f.env.XDG_STATE_HOME = blocked;
-	const result = await cli(f, ["--explainer-theme", "invalid"]);
+	const result = await cli(f, ["--gaming-steam-autostart", "invalid"]);
 	expect(result.exitCode).toBe(1);
 	expect(
 		`${result.stdout}${result.stderr}`.match(/Run logging unavailable/g)
@@ -154,7 +154,7 @@ test("unwritable state warns once and preserves the run result", async () => {
 test("redacts credentials in the on-disk header without damaging safe argv", async () => {
 	const f = fixture();
 	await cli(f, [
-		"--explainer-theme",
+		"--gaming-steam-autostart",
 		"invalid",
 		"password=private123",
 		"safe-value",
@@ -221,7 +221,7 @@ test("quoted credential values are redacted even inside serialized argv", async 
 	expect(redactLog(secret)).not.toContain("private value");
 	expect(redactLog(JSON.stringify(secret))).not.toContain("private value");
 	const f = fixture();
-	await cli(f, ["--explainer-theme", "invalid", secret]);
+	await cli(f, ["--gaming-steam-autostart", "invalid", secret]);
 	expect(readLog(f).text).not.toContain("private value");
 });
 
@@ -232,7 +232,7 @@ test("a normal run never invokes the sharing helper", async () => {
 	const script = `
 		import { mock } from "bun:test";
 		mock.module(${JSON.stringify(helperPath)}, () => ({ shareLog: async () => { console.log("UPLOAD_CALLED"); return true; } }));
-		process.argv = [process.execPath, ${JSON.stringify(cliPath)}, "--explainer-theme", "dark"];
+		process.argv = [process.execPath, ${JSON.stringify(cliPath)}, "--gaming-steam-autostart", "enabled"];
 		await import(${JSON.stringify(cliPath)});
 	`;
 	const result = Bun.spawnSync([process.execPath, "--eval", script], {
@@ -247,11 +247,11 @@ test("a normal run never invokes the sharing helper", async () => {
 	expect(
 		JSON.parse(
 			fs.readFileSync(
-				path.join(f.root, ".config/haoshoku/visual-explainer.json"),
+				path.join(f.root, ".config/haoshoku/gaming.json"),
 				"utf8",
 			),
-		).theme,
-	).toBe("dark");
+		).steamAutostart,
+	).toBe(true);
 });
 
 for (const args of [

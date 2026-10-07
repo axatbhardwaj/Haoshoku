@@ -19,7 +19,7 @@ const CODEX_NPM_PACKAGE = "@openai/codex";
 
 // ~/.codex also holds runtime state (auth.json, *.sqlite, history.jsonl) —
 // only AGENTS.md is reproducible personal config. Skills are owned by the
-// external Skills CLI and shared through ~/.agents/skills/.
+// user or their separately installed skill tooling.
 // Exported for the manifest test.
 export const CODEX_PERSONAL_FILES = [{ src: "AGENTS.md" }];
 

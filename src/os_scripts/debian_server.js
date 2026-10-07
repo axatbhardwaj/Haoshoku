@@ -10,7 +10,6 @@ import {
 	runCommand,
 	safeCopyFile,
 } from "../common/utils.js";
-import { syncAgentSkills } from "../helpers/configure_agent_skills.js";
 import { syncAgentsConfig } from "../helpers/configure_agents.js";
 import { configureAxstack } from "../helpers/configure_axstack.js";
 import { configureClaude } from "../helpers/configure_claude.js";
@@ -21,7 +20,6 @@ import { installGhStack } from "../helpers/configure_gh_stack.js";
 import { configureGit } from "../helpers/configure_git.js";
 import { configureHermesRelay } from "../helpers/configure_hermes_relay.js";
 import { configurePrWatch } from "../helpers/configure_pr_watch.js";
-import { configureSkills } from "../helpers/configure_skills.js";
 import { configureT3CodeServer } from "../helpers/configure_t3_code_server.js";
 import { syncWorktreeCleanup } from "../helpers/configure_worktree_cleanup.js";
 
@@ -373,16 +371,6 @@ export async function runDebianServerSetup({
 	} catch (error) {
 		log.warning(
 			`Shared agent profile sync failed (${error?.message ?? error}).`,
-		);
-	}
-	if (!(await configureSkills())) {
-		log.warning(
-			"External skills were not fully installed — continuing. Retry with: haoshoku --skills",
-		);
-	}
-	if (!(await syncAgentSkills())) {
-		log.warning(
-			"Haoshoku-owned agent skills were not fully synced — continuing. Retry with: haoshoku --agent-skills",
 		);
 	}
 	let axstackConfigured = false;

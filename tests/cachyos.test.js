@@ -47,8 +47,6 @@ describe("user app configuration", () => {
 				events.push("axstack");
 				return { ok: true };
 			},
-			configureSkillsImpl: record("skills"),
-			syncAgentSkillsImpl: record("agent-skills"),
 		});
 
 		expect(events).toEqual([
@@ -66,8 +64,6 @@ describe("user app configuration", () => {
 			"codex",
 			"agents",
 			"axstack",
-			"skills",
-			"agent-skills",
 		]);
 		expect(prompts).toEqual([{ message: "Configure git?", initial: true }]);
 	});
@@ -101,8 +97,6 @@ describe("user app configuration", () => {
 				}),
 				syncAgentsConfigImpl: noop,
 				configureAxstackImpl: async () => ({ ok: true }),
-				configureSkillsImpl: async () => true,
-				syncAgentSkillsImpl: async () => true,
 			});
 
 			expect(warnings).toContainEqual(
@@ -148,21 +142,8 @@ describe("user app configuration", () => {
 					events.push("axstack");
 					return { ok: true };
 				},
-				configureSkillsImpl: async () => {
-					events.push("skills");
-					return true;
-				},
-				syncAgentSkillsImpl: async () => {
-					events.push("agent-skills");
-					return true;
-				},
 			});
-			expect(events).toEqual([
-				"agents",
-				"axstack",
-				"skills",
-				"agent-skills",
-			]);
+			expect(events).toEqual(["agents", "axstack"]);
 			expect(warnings).toContainEqual(
 				expect.stringContaining("Ambiguous multiline TOML"),
 			);

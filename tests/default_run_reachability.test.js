@@ -38,9 +38,6 @@ function deployModeFeaturesFromCli() {
 		// Log sharing is explicit and must never upload during default setup.
 		"--share-log",
 		"--claude-update",
-		// The default setup persists dark through agent-skills sync. This flag is
-		// only an explicit preference override, not another deploy capability.
-		"--explainer-theme",
 		// The workspaces deploy ensures the gaming autostart defaults. These
 		// flags only create or override that preference outside the default
 		// setup path.
@@ -51,8 +48,6 @@ function deployModeFeaturesFromCli() {
 		// prompt, never on an unattended default run.
 		"--gaming-split-lock",
 		"--axstack-check",
-		"--skills",
-		"--skills-update",
 		"--3-4-migrate",
 		// Discord theming follows the Omarchy appearance checkout only when
 		// explicitly requested; normal setup leaves Vesktop/Vencord untouched.
@@ -223,8 +218,6 @@ function runArchDefaultPath({ isOmarchy = true, gitAnswer = true } = {}) {
 					configureCodexImpl: record("codex"),
 					syncAgentsConfigImpl: record("agents", true),
 					configureAxstackImpl: record("axstack", { ok: true }),
-					configureSkillsImpl: record("skills", true),
-					syncAgentSkillsImpl: record("agentSkills", true),
 				}),
 				configureBraveManagedPoliciesImpl: record("braveManagedPolicies", true),
 				configureHyprmoncfgImpl: record("monitors"),
@@ -306,12 +299,6 @@ function runDebianDefaultPath() {
 			mock.module(${JSON.stringify(helperPath("configure_axstack.js"))}, () => ({
 				configureAxstack: record("axstack", { ok: true }),
 			}));
-			mock.module(${JSON.stringify(helperPath("configure_skills.js"))}, () => ({
-				configureSkills: record("skills", true),
-			}));
-			mock.module(${JSON.stringify(helperPath("configure_agent_skills.js"))}, () => ({
-				syncAgentSkills: record("agentSkills", true),
-			}));
 			mock.module(${JSON.stringify(helperPath("configure_hermes_relay.js"))}, () => ({
 				configureHermesRelay: record("serverHermesRelay", true),
 			}));
@@ -386,8 +373,6 @@ function userAppDoubles(overrides = {}) {
 		configureCodexImpl: async () => {},
 		syncAgentsConfigImpl: async () => {},
 		configureAxstackImpl: async () => ({ ok: true }),
-		configureSkillsImpl: async () => true,
-		syncAgentSkillsImpl: async () => true,
 		...overrides,
 	};
 }

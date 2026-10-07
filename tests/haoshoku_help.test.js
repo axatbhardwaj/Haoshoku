@@ -70,19 +70,18 @@ describe("haoshoku CLI help", () => {
 		}
 	});
 
-	it("offers Matt Pocock skills without legacy orchestration modes", () => {
-		const help = output(["--help"]).replace(/\s+/g, " ");
-		expect(help).toContain(
-			"Install Matt Pocock skills for Claude Code and Codex",
-		);
-		expect(help).toContain("Refresh Matt Pocock skills");
-		expect(help).toContain("--agent-skills");
-		expect(help).not.toContain("--agent-skills-backup");
-		expect(help).not.toContain("--paseo-profiles");
-		expect(help).not.toContain("--paseo-profiles-backup");
-		for (const flag of ["--superpowers", "--agent-os", "--claude-bootstrap"]) {
+	it("omits retired skill modes while retaining Axstack", () => {
+		const help = output(["--help"]);
+		for (const flag of [
+			"--skills",
+			"--skills-update",
+			"--skills-list",
+			"--agent-skills",
+			"--explainer-theme",
+		])
 			expect(help).not.toContain(flag);
-		}
+		expect(help).toContain("--axstack");
+		expect(help).toContain("--axstack-check");
 	});
 
 	it("documents the Debian-only T3 Code server mode", () => {

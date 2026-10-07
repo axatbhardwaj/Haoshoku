@@ -22,8 +22,6 @@ function userAppDoubles(overrides = {}) {
 		configureCodexImpl: async () => {},
 		syncAgentsConfigImpl: async () => {},
 		configureAxstackImpl: async () => ({ ok: true }),
-		configureSkillsImpl: async () => true,
-		syncAgentSkillsImpl: async () => true,
 		...overrides,
 	};
 }
@@ -61,7 +59,6 @@ describe("CachyOS browser integration", () => {
 				configurePrWatchImpl: record("pr-watch"),
 				configureCodexImpl: record("codex"),
 				configureAxstackImpl: async () => ({ ok: true }),
-				configureSkillsImpl: record("skills"),
 			}),
 		);
 

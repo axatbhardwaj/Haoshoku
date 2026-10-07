@@ -7,7 +7,6 @@ import { detectOS, findActiveModeFlags } from "./src/common/cli_utils.js";
 import { promptDeviceType } from "./src/common/device_type.js";
 import { getBanner, showBanner } from "./src/common/ui.js";
 import { log, promptUser, runCommand } from "./src/common/utils.js";
-import { syncAgentSkills } from "./src/helpers/configure_agent_skills.js";
 import {
 	backupAgentsConfig,
 	syncAgentsConfig,
@@ -66,10 +65,8 @@ import {
 	backupPrWatch,
 	syncPrWatch,
 } from "./src/helpers/configure_pr_watch.js";
-import { configureSkills, listSkills } from "./src/helpers/configure_skills.js";
 import { configureTailscaleT3 } from "./src/helpers/configure_tailscale_t3.js";
 import { configureT3CodeServer } from "./src/helpers/configure_t3_code_server.js";
-import { setExplainerTheme } from "./src/helpers/configure_visual_explainer.js";
 import {
 	backupWorktreeCleanup,
 	syncWorktreeCleanup,
@@ -78,6 +75,26 @@ import { installUserScripts } from "./src/helpers/install_user_scripts.js";
 import { shareLog } from "./src/helpers/share_log.js";
 import { runCachyOSSetup } from "./src/os_scripts/cachyos.js";
 import { runDebianServerSetup } from "./src/os_scripts/debian_server.js";
+
+// Check raw arguments before parsing or starting logs so retired commands cannot
+// fall through to setup, including malformed values and combined modes.
+const retiredSkillOption = process.argv
+	.slice(2)
+	.find((arg) =>
+		[
+			"--skills",
+			"--skills-update",
+			"--skills-list",
+			"--agent-skills",
+			"--explainer-theme",
+		].includes(arg.split("=")[0]),
+	);
+if (retiredSkillOption) {
+	console.error(
+		`${retiredSkillOption.split("=")[0]} has been retired from Haoshoku. Manage independent skills separately; existing skills are left untouched. Use haoshoku --axstack for Axstack workflows.`,
+	);
+	process.exit(2);
+}
 
 const program = new Command();
 
@@ -151,14 +168,6 @@ program
 		"Configure Tailscale login and T3 Code phone access on Arch",
 	)
 	.option("--server-hermes-relay", "Configure Hermes relay transport on Debian")
-	.option("--skills", "Install Matt Pocock skills for Claude Code and Codex")
-	.option("--skills-update", "Refresh Matt Pocock skills")
-	.option("--skills-list", "List globally installed skills")
-	.option("--agent-skills", "Deploy Haoshoku agent skills")
-	.option(
-		"--explainer-theme <theme>",
-		"Set visual-explainer theme (dark, light, system)",
-	)
 	.option(
 		"--gh-stack",
 		"Install GitHub's gh-stack extension for stacked pull requests",
@@ -381,31 +390,6 @@ async function runAction(options) {
 		if (result !== "installed" && result !== "already-installed") {
 			process.exitCode = 1;
 		}
-		return;
-	}
-
-	if (options.skillsUpdate) {
-		if (!(await configureSkills())) process.exit(1);
-		return;
-	}
-
-	if (options.skills) {
-		if (!(await configureSkills())) process.exit(1);
-		return;
-	}
-
-	if (options.skillsList) {
-		if (!(await listSkills())) process.exit(1);
-		return;
-	}
-
-	if (options.agentSkills) {
-		if (!syncAgentSkills()) process.exit(1);
-		return;
-	}
-
-	if (options.explainerTheme) {
-		if (!setExplainerTheme(options.explainerTheme)) process.exitCode = 1;
 		return;
 	}
 
