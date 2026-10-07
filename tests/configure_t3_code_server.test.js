@@ -49,6 +49,19 @@ function fixture({
 		home,
 		uid: 1000,
 		user: "test",
+		env: {},
+		fsImpl: {
+			...fs,
+			statSync(file, ...args) {
+				if (file.startsWith("/usr/") || file.startsWith("/opt/"))
+					throw Object.assign(new Error("absent fixture"), { code: "ENOENT" });
+				return fs.statSync(file, ...args);
+			},
+			readdirSync(directory, ...args) {
+				if (directory === "/usr/share/applications") return [];
+				return fs.readdirSync(directory, ...args);
+			},
+		},
 		ensureNodeImpl: async () => {
 			events.push("node");
 			return true;
@@ -60,6 +73,17 @@ function fixture({
 				if (value instanceof Error) throw value;
 				return typeof value === "function" ? value() : value;
 			}
+			if (command.startsWith("systemctl --user show "))
+				return response(
+					"LoadState=not-found\nEnvironment=\nExecStart=\nEnvironmentFiles=",
+				);
+			if (
+				command.startsWith("systemctl --user list-") ||
+				command === "ps -eo pid=,comm=,args="
+			)
+				return response();
+			if (command === "command -v t3code t3code-nightly")
+				return response("", 1);
 			if (command === listenerCommand)
 				return response("LISTEN 0 128 127.0.0.1:3773 0.0.0.0:*");
 			if (command === "tailscale status") return response("logged in");
@@ -78,7 +102,7 @@ function fixture({
 		runCommandImpl: async (command) => {
 			events.push(command);
 			if (command.endsWith("connect unlink")) desired = false;
-			if (command.endsWith("service install")) {
+			if (command.includes(" service install")) {
 				expect(
 					fs.readFileSync(path.join(dropIns, "axstack-path.conf"), "utf8"),
 				).toBe(
@@ -144,9 +168,14 @@ describe("T3 server over Tailscale", () => {
 			"tailscale status",
 			"node",
 			"t3 --version",
+			"systemctl --user show t3code.service --property=LoadState,Environment,ExecStart,EnvironmentFiles",
+			"command -v t3code t3code-nightly",
+			"systemctl --user list-unit-files --no-legend --no-pager",
+			"systemctl --user list-units --all --no-legend --no-pager",
+			"ps -eo pid=,comm=,args=",
 			"t3 connect status --json",
 			"tailscale debug prefs",
-			"t3 service install",
+			`t3 service install --base-dir '${f.home}/.t3'`,
 			"systemctl --user is-active --quiet t3code.service",
 			"tailscale serve status --json",
 			"https://server.tail123.ts.net",
@@ -165,7 +194,7 @@ describe("T3 server over Tailscale", () => {
 	])("accepts supported version output without reinstalling: %s", async (version) => {
 		const f = fixture({ version });
 		expect(await configureT3CodeServer(f.options)).toBe(true);
-		expect(f.events).toContain("t3 service install");
+		expect(f.events).toContain(`t3 service install --base-dir '${f.home}/.t3'`);
 		expect(f.events.some((event) => event.startsWith("npm "))).toBe(false);
 	});
 
@@ -188,8 +217,12 @@ describe("T3 server over Tailscale", () => {
 			`npm --global --prefix '${f.home}/.local' install t3@nightly`,
 		);
 		expect(f.events).toContain(`${f.installedT3} --version`);
-		expect(f.events).toContain(`${f.installedT3} service install`);
-		expect(f.events).not.toContain("t3 service install");
+		expect(f.events).toContain(
+			`${f.installedT3} service install --base-dir '${f.home}/.t3'`,
+		);
+		expect(f.events).not.toContain(
+			`t3 service install --base-dir '${f.home}/.t3'`,
+		);
 	});
 
 	it.each([
@@ -232,12 +265,12 @@ describe("T3 server over Tailscale", () => {
 	it("unlinks enabled Connect and confirms disabled before installing the service", async () => {
 		const f = fixture({ desired: true });
 		expect(await configureT3CodeServer(f.options)).toBe(true);
-		expect(f.events.slice(3, 8)).toEqual([
+		expect(f.events.slice(8, 13)).toEqual([
 			"t3 connect status --json",
 			"t3 connect unlink",
 			"t3 connect status --json",
 			"tailscale debug prefs",
-			"t3 service install",
+			`t3 service install --base-dir '${f.home}/.t3'`,
 		]);
 		expect(
 			f.events.some((event) =>
@@ -304,7 +337,9 @@ describe("T3 server over Tailscale", () => {
 		fs.mkdirSync(path.dirname(f.dropIns), { recursive: true });
 		fs.writeFileSync(f.dropIns, "blocked");
 		expect(await configureT3CodeServer(f.options)).toBe(false);
-		expect(f.events).not.toContain("t3 service install");
+		expect(f.events).not.toContain(
+			`t3 service install --base-dir '${f.home}/.t3'`,
+		);
 		expect(f.errors.join(" ")).toContain("drop-in");
 	});
 
@@ -313,7 +348,11 @@ describe("T3 server over Tailscale", () => {
 		"systemctl --user is-active --quiet t3code.service",
 	])("fails when %s fails", async (command) => {
 		const f = fixture();
-		f.overrides.set(command, false);
+		const actualCommand =
+			command === "t3 service install"
+				? `t3 service install --base-dir '${f.home}/.t3'`
+				: command;
+		f.overrides.set(actualCommand, false);
 		expect(await configureT3CodeServer(f.options)).toBe(false);
 		expect(f.events).not.toContain("https://server.tail123.ts.net");
 		expect(f.errors.join(" ")).toContain(command);
@@ -394,7 +433,9 @@ describe("T3 server over Tailscale", () => {
 		f.overrides.set(command, new Error("missing executable"));
 		if (command === "t3 --version") {
 			expect(await configureT3CodeServer(f.options)).toBe(true);
-			expect(f.events).toContain(`${f.installedT3} service install`);
+			expect(f.events).toContain(
+				`${f.installedT3} service install --base-dir '${f.home}/.t3'`,
+			);
 		} else {
 			expect(await configureT3CodeServer(f.options)).toBe(false);
 			expect(f.errors.length).toBeGreaterThan(0);
@@ -566,7 +607,7 @@ describe("Debian Tailscale operator reconciliation", () => {
 			f.options.fetchImpl = async () =>
 				new Response("not ready", { status: 503 });
 		expect(await configureT3CodeServer(f.options)).toBe(ready);
-		expect(f.events).toContain("t3 service install");
+		expect(f.events).toContain(`t3 service install --base-dir '${f.home}/.t3'`);
 		expect(f.events).toContain(
 			"systemctl --user is-active --quiet t3code.service",
 		);
@@ -587,7 +628,7 @@ describe("Debian T3 drop-in idempotency", () => {
 		f.options.uid = 0;
 		const writes = [];
 		f.options.fsImpl = {
-			...fs,
+			...f.options.fsImpl,
 			writeFileSync: (file, value) => {
 				writes.push(path.basename(file));
 				fs.writeFileSync(file, value);

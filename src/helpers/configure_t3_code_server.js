@@ -3,6 +3,7 @@ import { homedir, userInfo } from "node:os";
 import path from "node:path";
 import { ensureNode24Runtime } from "../common/node_24_runtime.js";
 import { log, runCommand, runCommandCapture } from "../common/utils.js";
+import { preflightT3Desktop } from "./t3_desktop_preflight.js";
 import {
 	ensureTailscaleOperator,
 	T3_VERSION_FLOOR,
@@ -92,6 +93,7 @@ export async function configureT3CodeServer({
 	home = homedir(),
 	uid = process.getuid(),
 	user = userInfo().username,
+	env = process.env,
 	fsImpl = fs,
 	ensureNodeImpl = ensureT3NodeRuntime,
 	captureCommandImpl = runCommandCapture,
@@ -135,6 +137,14 @@ export async function configureT3CodeServer({
 		}
 	}
 
+	const desktop = await preflightT3Desktop({
+		home,
+		env,
+		fsImpl,
+		captureCommandImpl,
+		fail,
+	});
+	if (!desktop) return false;
 	const connectStatusCommand = `${t3} connect status --json`;
 	const connect = parseJson(await probe(connectStatusCommand));
 	if (typeof connect?.desired !== "boolean") {
@@ -174,7 +184,7 @@ export async function configureT3CodeServer({
 			`Cannot write T3 service drop-ins: ${error.message}. Fix permissions and retry haoshoku --server-t3-code.`,
 		);
 	}
-	const serviceInstall = `${t3} service install`;
+	const serviceInstall = `${t3} service install --base-dir ${shellQuote(desktop.baseDir)}`;
 	if (!(await runCommandImpl(serviceInstall))) {
 		return fail(
 			`T3 service installation failed. Retry with: ${serviceInstall}`,

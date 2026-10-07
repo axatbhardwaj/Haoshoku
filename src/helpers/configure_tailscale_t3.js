@@ -2,6 +2,7 @@ import fs from "node:fs";
 import { homedir, userInfo } from "node:os";
 import path from "node:path";
 import { log, runCommand, runCommandCapture } from "../common/utils.js";
+import { preflightT3Desktop } from "./t3_desktop_preflight.js";
 import {
 	ensureTailscaleOperator,
 	meetsT3Floor,
@@ -103,6 +104,14 @@ export async function configureTailscaleT3({
 			);
 		}
 
+		const desktop = await preflightT3Desktop({
+			home,
+			env,
+			fsImpl,
+			captureCommandImpl,
+			fail,
+		});
+		if (!desktop) return false;
 		let changed = writeServiceDropIn(
 			home,
 			"axstack-tailscale.conf",
@@ -127,9 +136,7 @@ export async function configureTailscaleT3({
 			installed = false;
 		}
 		if (!installed) {
-			await run(
-				`t3 service install --base-dir ${shellQuote(path.join(home, ".t3"))}`,
-			);
+			await run(`t3 service install --base-dir ${shellQuote(desktop.baseDir)}`);
 		} else {
 			if (changed) await run("systemctl --user daemon-reload");
 			const enabled = await probe(
@@ -139,7 +146,10 @@ export async function configureTailscaleT3({
 			if (enabled === null || active === null) {
 				await run("systemctl --user enable --now t3code.service");
 			}
-			if (changed && active !== null) await run("t3 service restart");
+			if (changed && active !== null)
+				await run(
+					`t3 service restart --base-dir ${shellQuote(desktop.baseDir)}`,
+				);
 		}
 		if ((await probe(SERVICE_ACTIVE_COMMAND)) === null) {
 			return fail(
