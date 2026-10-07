@@ -395,7 +395,6 @@ it.each([
 	"redirect",
 	"wrong-response-url",
 	"slow-body",
-	"oversized-body",
 ])("reports incomplete verification for %s without leaking response details", async (kind) => {
 	const f = fixture();
 	let probes = 0;
@@ -416,11 +415,6 @@ it.each([
 			return new Response(new ReadableStream({ start() {} }), {
 				headers: { "content-type": "application/json" },
 			});
-		if (kind === "oversized-body")
-			return new Response(
-				JSON.stringify({ status: "ok", padding: "secret".repeat(3000) }),
-				{ headers: { "content-type": "application/json" } },
-			);
 		if (kind === "malformed" || kind === "proxy-html")
 			return new Response(
 				kind === "malformed" ? "{bad-secret" : "<html>proxy-secret</html>",
@@ -461,6 +455,79 @@ it.each([
 	expect(f.messages.join("\n")).not.toContain("secret");
 	expect(probes).toBeLessThanOrEqual(8);
 });
+for (const [location, base] of [
+	["local", "http://127.0.0.1:4788"],
+	["public", origin],
+]) {
+	for (const [document, route] of [
+		["health", "/api/health"],
+		["metadata", "/.well-known/oauth-authorization-server"],
+	]) {
+		for (const [bytes, accepted] of [
+			[16_384, true],
+			[16_385, false],
+		]) {
+			it(`readiness ${accepted ? "accepts" : "refuses"} ${bytes}-byte ${location} ${document}`, async () => {
+				const f = fixture();
+				const original = f.options.fetchImpl;
+				const target = `${base}${route}`;
+				f.options.readinessAttempts = 1;
+				f.options.probeTimeoutMs = 1_000;
+				f.options.fetchImpl = async (url, options) => {
+					const response = await original(url, options);
+					if (url !== target) return response;
+					const body = { ...(await response.json()), padding: "" };
+					const remaining = bytes - Buffer.byteLength(JSON.stringify(body));
+					body.padding =
+						"é".repeat(Math.floor(remaining / 2)) + "x".repeat(remaining % 2);
+					const encoded = new TextEncoder().encode(JSON.stringify(body));
+					expect(encoded.byteLength).toBe(bytes);
+					return new Response(
+						new ReadableStream({
+							start(controller) {
+								controller.enqueue(encoded.slice(0, 8_192));
+								controller.enqueue(encoded.slice(8_192));
+								controller.close();
+							},
+						}),
+						{ headers: { "content-type": "application/json" } },
+					);
+				};
+				expect(await configureExecutorServer(origin, f.options)).toBe(accepted);
+				const probes = f.events.filter((e) => e[0] === "GET");
+				expect(probes.some((e) => e[1] === target)).toBe(true);
+				if (accepted) expect(probes).toHaveLength(4);
+				else {
+					expect(probes.at(-1)[1]).toBe(target);
+					expect(f.messages.at(-1)).toContain(
+						"application and public-origin verification",
+					);
+					expect(f.messages.join("\n")).not.toContain("container ready");
+				}
+			});
+		}
+	}
+	for (const endpoint of ["token_endpoint", "registration_endpoint"]) {
+		it(`refuses wrong ${location} ${endpoint} with all other discovery fields valid`, async () => {
+			const f = fixture();
+			const original = f.options.fetchImpl;
+			f.options.readinessAttempts = 1;
+			f.options.fetchImpl = async (url, options) => {
+				const response = await original(url, options);
+				if (url !== `${base}/.well-known/oauth-authorization-server`)
+					return response;
+				const body = await response.json();
+				body[endpoint] = `${origin}/unexpected`;
+				return Response.json(body);
+			};
+			expect(await configureExecutorServer(origin, f.options)).toBe(false);
+			expect(f.messages.at(-1)).toContain(
+				"application and public-origin verification",
+			);
+			expect(f.messages.join("\n")).not.toContain("container ready");
+		});
+	}
+}
 it("retries transient readiness and checks local plus public application contracts", async () => {
 	const f = fixture();
 	const original = f.options.fetchImpl;
