@@ -15,13 +15,13 @@ Standalone setup scripts for specific tools.
 | `configure_gh_stack.js` | Idempotent `github/gh-stack` extension install | Adding or debugging stacked-PR tooling setup |
 | `configure_executor_clients.js` | Explicit Claude/Codex user-scope Executor registration, endpoint/auth validation and truthful config-only result | Changing `--executor-clients` |
 | `executor_client_config.js` | Byte-preserving JSON insertion and TOML append with duplicate/unsupported/conflict refusals | Changing supported client config contracts |
-| `executor_client_files.js` | Owned-path preflight, no-op detection, changed-input checks and in-memory write recovery without backups | Changing client file preservation |
+| `executor_client_files.js` | Actual write-parent trust checks (distinct from default Claude legacy lookup), no-op detection, changed-input checks and in-memory recovery without backups | Changing client file preservation |
 | `configure_executor_server.js` | Opt-in Debian Executor prerequisites, image digest pinning and truthful provisioning result | Changing `--server-executor` or its injected process boundary |
 | `executor_deployment.js` | Managed compose generation and read-only filesystem/container/port preservation checks | Changing Executor deployment identity or data ownership rules |
-| `executor_readiness.js` | Bounded local/public health and OAuth metadata probes | Changing Executor application/origin verification |
+| `executor_readiness.js` | Local/public health and OAuth metadata probes: at most five attempts, four retries | Changing Executor application/origin verification |
 | `configure_hermes_relay.js` | Pinned bootstrap when Hermes is absent plus plugin-free Telegram and running-gateway readiness probes | Adding or debugging Debian Hermes transport |
 | `configure_tailnet_firewall.js` | Debian UFW tailnet prerequisites, interface OpenSSH rule, dual-stack verification and incomplete hardening result | Changing Debian firewall safety or command probes |
-| `configure_t3_code_server.js` | Required Debian nightly T3 service over Tailscale; disables Connect and verifies HTTPS readiness | Changing CLI floor checks, service drop-ins, Tailscale mapping, or pairing guidance |
+| `configure_t3_code_server.js` | Debian nightly T3 service over Tailscale; runtime/CLI prerequisites can precede desktop preflight; service changes require it; disables Connect and verifies HTTPS readiness | Changing CLI floor checks, service drop-ins, Tailscale mapping, or pairing guidance |
 | `configure_tailscale_t3.js` | Arch Tailscale package, browser login, operator and T3 user-service reconciliation | Debugging `--tailscale-t3` or Arch phone access |
 | `t3_desktop_preflight.js` | Read-only desktop Local environment and effective-directory guard shared by both T3 entrypoints | Changing safe service preflight or desktop evidence probes |
 | `t3_tailscale.js` | Shared CLI floor, Tailscale drop-in, HTTPS mapping/readiness and pairing output | Changing common T3/Tailscale behavior across Arch and Debian |

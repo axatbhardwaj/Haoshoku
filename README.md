@@ -244,6 +244,23 @@ remains responsible for orchestration.
 T3 Code owns agent orchestration, and Axstack supplies routing policy.
 Claude/Codex runtime state and `settings.json` remain machine-local.
 
+### Current reconciliation and authority
+
+The approved [setup reconciliation r2 and Claude/Codex addendum](docs/specs/2026-10-07-setup-reconciliation-r2.md)
+remain the implementation baseline for [#63](https://github.com/axatbhardwaj/Haoshoku/issues/63)
+and [#65](https://github.com/axatbhardwaj/Haoshoku/issues/65)/[#66](https://github.com/axatbhardwaj/Haoshoku/issues/66).
+The subsequent instruction to complete the work and release authorizes the T3
+driver to complete reviewed merges and the GitHub, npm and Linux binary release
+after T1–T7. It supersedes the historical human-only merge and no-release gates
+in dated specs and plans. Their original bodies and approvals remain historical.
+Release authorization does not authorize installation, migration or configuration
+on live hosts. See the [runbook's current gate](docs/runbooks/axstack-migration.md#release-and-execution-gate).
+
+Repository tests and package checks establish the candidate's source behavior.
+They do not prove publication, live Debian compatibility, desktop pairing,
+Executor authentication or future T3 session inheritance. The Unreleased entry
+describes candidate changes, not a completed release or installation.
+
 ### Existing-host migration
 
 Haoshoku no longer installs, configures, or launches Paseo. Existing hosts keep
@@ -268,8 +285,11 @@ Haoshoku no longer installs Matt Pocock skills or visual-explainer, and no
 longer provides skill inventory, agent-skill sync, or theme configuration.
 `--skills`, `--skills-update`, `--skills-list`, `--agent-skills`, and
 `--explainer-theme <theme>` exit nonzero with guidance before setup runs.
-Manage independent skills separately; use `haoshoku --axstack` for Axstack
-workflows. Existing user-owned skills and configuration remain in place.
+The whole legacy `--agent-skills` route is retired, including archive/unlink
+and sync behavior. Boolean, value-bearing `--flag=value`, malformed and combined
+retired forms are refused before logging or setup; they cannot fall through to
+full OS setup. Manage independent skills separately; use `haoshoku --axstack`
+for Axstack workflows. Existing user-owned skills and configuration remain in place.
 
 ### Retired service and watcher commands
 
@@ -393,6 +413,10 @@ Debian setup. `haoshoku --server-t3-code` runs the same step on its own.
 Both `--tailscale-t3` on Arch and `--server-t3-code` on Debian check desktop
 Local environment before writing T3 service configuration, installing, starting,
 or restarting the service. This check also runs on an already configured rerun.
+Runtime and CLI installation can precede this guard; refusal does not mean that
+no prerequisite work occurred. The intended workstation topology is one service
+backend shared by the desktop and phone, with desktop Local environment disabled.
+The operator pairs each client separately; source checks do not prove pairing.
 
 Haoshoku reads `desktop-settings.json` under the effective T3 base directory's
 `userdata` folder, normally `~/.t3/userdata`. It checks the service's effective
@@ -415,7 +439,8 @@ and unsupported launch-directory overrides require manual reconciliation.
 
 Debian setup keeps OpenSSH and its existing key/deploy behavior. Before any UFW
 change, it requires logged-in, running Tailscale with kernel networking and a
-working `tailscale0` carrying the reported tailnet addresses. Install Tailscale,
+working, UP `tailscale0` carrying every reported valid IPv4/IPv6 tailnet address.
+Missing addresses, a userspace-only interface or unreadable state fail preflight. Install Tailscale,
 log in and verify `tailscale status --json` and
 `ip -j address show dev tailscale0`, then retry Debian setup.
 
@@ -604,7 +629,8 @@ Readiness checks require `/api/health` JSON with `status: "ok"` and Executor's
 OAuth authorization-server metadata advertising the configured origin and
 `/api/auth/mcp` endpoints, on both loopback and the public HTTPS origin. Each
 request, including its body, has a five-second deadline and a 16 KiB limit;
-verification retries at most five times. Redirects, proxy HTML, generic error
+verification makes at most five attempts, with one second between failed attempts
+(at most four retries). Redirects, proxy HTML, generic error
 responses and wrong metadata fail. A failed step exits nonzero and preserves
 partial state for manual inspection; rerunning never tries destructive repair.
 
@@ -651,7 +677,7 @@ Claude's legacy `$HOME/.claude/.config.json` or
 If that path exists (including a link), or its layout cannot be safely inspected,
 setup refuses before writing either client. A default `$HOME/.claude` directory
 with group write permissions or a resolvable symlink is supported when no legacy
-file exists; it is only a lookup path. Actual write-target ownership, permissions
+file exists and lookup succeeds; it is only a lookup path. Actual write-target ownership, permissions
 and link checks still apply, including to an explicit `CLAUDE_CONFIG_DIR`.
 It never reads, adopts or rewrites the legacy file. Use manual user-scope MCP
 setup in the intended Claude/Codex environment for these layouts. An explicitly empty `CLAUDE_CONFIG_DIR` is
@@ -674,7 +700,11 @@ This contract was checked against Claude Code **2.1.292**, Codex **0.160.1**, an
 [Claude environment settings](https://code.claude.com/docs/en/env-vars), and
 [Codex MCP](https://developers.openai.com/codex/mcp) /
 [config-home documentation](https://developers.openai.com/codex/config-advanced).
-Other harnesses and older versions are unverified.
+Actual native offline readback with Claude **2.1.292** and Codex **0.160.1**
+confirmed the helper-written user entries and environment header references.
+That readback did not authenticate or discover tools. Live client access and T3
+inheritance remain unverified. Other clients require their own supported
+configuration contracts; older versions and other Claude builds are unverified.
 
 Both files are inspected before writes. A matching entry is a config no-op,
 including file permissions and timestamps. A differing or unknown `executor`

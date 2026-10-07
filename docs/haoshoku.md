@@ -79,3 +79,16 @@ perform no config writes. No server provisioning or authenticated discovery runs
 See [Executor client prerequisites and session inheritance](../README.md#opt-in-executor-clients)
 for auth syntax, effective user/config homes, conservative unsupported shapes,
 T3 environment inheritance, and the crash/verification limits.
+
+The [current reconciliation notice](../README.md#current-reconciliation-and-authority)
+records the later driver merge/release authorization without rewriting historical
+specifications or plans. The [migration runbook](runbooks/axstack-migration.md)
+separates unmerged source candidates, release-byte verification and deferred host
+work. It retains the selected npm identity through actual SHA-512 tarball checks.
+Runtime/CLI prerequisites may precede T3's service guard. Service readiness is not
+pairing proof; firewall fixtures are not live Debian compatibility proof.
+
+Executor's server readiness makes at most five attempts, not five retries.
+Native offline Claude 2.1.292 and Codex 0.160.1 readback proves local client config
+selection and auth references. It does not prove live authentication, tools or
+future T3 inheritance; other clients need their own supported contract.
