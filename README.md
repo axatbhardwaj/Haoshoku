@@ -408,6 +408,31 @@ tokens. Explicitly disabled desktops and genuinely headless setups can proceed;
 service installation/restart uses the checked base directory. Environment-file
 and unsupported launch-directory overrides require manual reconciliation.
 
+### Debian tailnet SSH firewall
+
+Debian setup keeps OpenSSH and its existing key/deploy behavior. Before any UFW
+change, it requires logged-in, running Tailscale with kernel networking and a
+working `tailscale0` carrying the reported tailnet addresses. Install Tailscale,
+log in and verify `tailscale status --json` and
+`ip -j address show dev tailscale0`, then retry Debian setup.
+
+Setup adds `ufw allow in on tailscale0 to any app OpenSSH` before changing
+defaults, retains HTTP/HTTPS rules, and keeps the **Enable UFW now?** confirmation.
+UFW IPv6 support must already be enabled (`IPV6=yes` in `/etc/default/ufw`);
+Haoshoku verifies active IPv4 and IPv6 tailnet SSH rules. Active UFW follows the
+same checks and ordering without reset. Declining enable on inactive UFW,
+skipping or failing configuration, or failing verification makes overall Debian
+setup incomplete with retry guidance.
+
+Existing public SSH allow/limit rules are preserved and reported as incomplete
+hardening, including IPv6 rules and saved rules on inactive UFW. Confirm working
+tailnet access, then separately inspect and migrate/remove broad rules as the
+operator before retrying. Unknown application profiles or ambiguous inspection
+output require manual inspection; Haoshoku does not guess that they are safe.
+It never enables Tailscale SSH, disables sshd, changes tailnet ACLs, or deletes
+existing firewall rules. Custom rules outside UFW's managed rules require a
+separate operator audit.
+
 ### Debian T3 service setup
 
 Before setup, install Tailscale yourself and log in to your tailnet. Confirm

@@ -14,6 +14,7 @@ Standalone setup scripts for specific tools.
 | `configure_codex.js` | Codex CLI plus personal config sync/backup | Adding Codex setup features or debugging config sync |
 | `configure_gh_stack.js` | Idempotent `github/gh-stack` extension install | Adding or debugging stacked-PR tooling setup |
 | `configure_hermes_relay.js` | Pinned bootstrap when Hermes is absent plus plugin-free Telegram and running-gateway readiness probes | Adding or debugging Debian Hermes transport |
+| `configure_tailnet_firewall.js` | Debian UFW tailnet prerequisites, interface OpenSSH rule, dual-stack verification and incomplete hardening result | Changing Debian firewall safety or command probes |
 | `configure_t3_code_server.js` | Required Debian nightly T3 service over Tailscale; disables Connect and verifies HTTPS readiness | Changing CLI floor checks, service drop-ins, Tailscale mapping, or pairing guidance |
 | `configure_tailscale_t3.js` | Arch Tailscale package, browser login, operator and T3 user-service reconciliation | Debugging `--tailscale-t3` or Arch phone access |
 | `t3_desktop_preflight.js` | Read-only desktop Local environment and effective-directory guard shared by both T3 entrypoints | Changing safe service preflight or desktop evidence probes |
