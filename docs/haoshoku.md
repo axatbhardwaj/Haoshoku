@@ -59,3 +59,12 @@ See the [retired skill commands](../README.md#retired-skill-commands) and
 [retired service and watcher commands](../README.md#retired-service-and-watcher-commands)
 for refusal guidance and existing-installation preservation. Axstack continues
 to supply workflow skills through `--axstack`.
+
+Executor server provisioning is a separate, opt-in Debian command:
+`haoshoku --server-executor <https-origin>`. It requires root, Docker Compose v2,
+`ss`, and independently provisioned public DNS/TLS/nginx. It preserves unmanaged
+or conflicting deployments and verifies an identical managed rerun without
+updating it. The focused helpers separate process/filesystem preflight from
+bounded application and origin probes. See [Executor server prerequisites and
+preservation](../README.md#opt-in-executor-server) for the image, data ownership,
+verification limits and manual owner/authentication steps.

@@ -9,6 +9,8 @@
 | `skills_retirement.test.js` | All five retired families: CLI forms, default setup and repeated-run preservation with retained tools | Changing integration retirement boundaries |
 | `skills_packaging.test.js` | npm payload excludes all five retired families of helpers and assets while retaining agent tools | Changing package contents |
 | `cli_removed_flags.test.js` | Unknown-option rejection of retired CLI flags before helpers, processes, or services run | Extending the removed-flag table |
+| `cli_server_executor_flag.test.js` | Explicit HTTPS origin, opt-in route, host/mode refusals and safe run logs | Changing Executor CLI behavior |
+| `configure_executor_server.test.js` | Disposable data/command/probe fixtures for fresh, rerun, conflict and incomplete Executor setup | Changing Executor provisioning, preservation or readiness |
 | `cli_server_hermes_relay_flag.test.js` | Debian-only Hermes relay CLI routing and failure propagation | Changing `--server-hermes-relay` |
 | `configure_hermes_relay.test.js` | Hermes bootstrap, plugin-free readiness, preservation, and failure behavior | Changing the Hermes relay helper |
 | `configure_axstack.test.js` | Axstack tarball verification, release layout, shim, no-downgrade, and harness install | Changing the Axstack pin or installer |
