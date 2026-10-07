@@ -6,6 +6,18 @@ import {
 	runCommandCapture,
 } from "../common/utils.js";
 
+// UFW's supported protocol grammar, including its IPv4-only/portless limits.
+function includesSshProtocol(protocol, ipv6 = false, hasPorts = false) {
+	const portless = ["esp", "ah", "gre", "ipv6", "igmp", "vrrp"];
+	if (
+		!["any", "tcp", "udp", ...portless].includes(protocol) ||
+		(ipv6 && ["ipv6", "igmp"].includes(protocol)) ||
+		(hasPorts && portless.includes(protocol))
+	)
+		throw new Error("Invalid UFW protocol or port/address combination");
+	return ["any", "tcp"].includes(protocol);
+}
+
 function numericSshPort(value) {
 	if (!/^\d+(?::\d+)?(?:,\d+(?::\d+)?)*(?:\/(?:tcp|udp))?$/.test(value))
 		return null;
@@ -43,14 +55,13 @@ async function includesSshPort(value, resolveProfile, serviceName = false) {
 	return numeric ?? resolveProfile(value);
 }
 
-function destinationFamily(value, status = false) {
+function destinationFamily(value) {
 	const [address, suffix, ...extra] = value.split("/");
 	const family = isIP(address);
 	if (
 		family &&
 		(extra.length ||
 			(suffix !== undefined &&
-				!(status && ["tcp", "udp"].includes(suffix)) &&
 				(!/^\d+$/.test(suffix) || Number(suffix) > (family === 4 ? 32 : 128))))
 	)
 		throw new Error("Invalid UFW destination address");
@@ -101,19 +112,37 @@ async function savedPublicSsh(added, resolveProfile) {
 		let serviceName = false;
 		if (["from", "to", "proto"].includes(words[0])) {
 			const proto = words.indexOf("proto");
-			if (proto >= 0 && words[proto + 1] === "udp") continue;
+			if (proto >= 0 && words.lastIndexOf("proto") !== proto)
+				throw new Error("Ambiguous UFW protocol");
+			const protocol = proto >= 0 ? words[proto + 1] : "any";
 			const to = words.indexOf("to");
-			if (
-				to >= 0 &&
-				words[to + 1] !== "any" &&
-				!destinationFamily(words[to + 1] ?? "")
-			)
-				throw new Error("Invalid UFW destination address");
 			profile = to >= 0 && words[to + 2] === "app";
 			port =
 				to >= 0 && ["port", "app"].includes(words[to + 2])
 					? words[to + 3]
 					: "any";
+			let ipv6 = false;
+			let hasPorts = false;
+			for (const direction of ["from", "to"]) {
+				const index = words.indexOf(direction);
+				if (index < 0) continue;
+				const address = words[index + 1];
+				const family = address === "any" ? 0 : destinationFamily(address ?? "");
+				if (address !== "any" && !family)
+					throw new Error("Invalid UFW destination address");
+				ipv6 ||= family === 6;
+				if (words[index + 2] === "app" && protocol !== "any")
+					throw new Error("Invalid UFW application protocol");
+				if (words[index + 2] === "port" && words[index + 3] !== "any") {
+					hasPorts = true;
+					if (
+						(words[index + 3] ?? "").includes("/") ||
+						numericSshPort(words[index + 3] ?? "") === null
+					)
+						throw new Error("Invalid UFW protocol port");
+				}
+			}
+			if (!includesSshProtocol(protocol, ipv6, hasPorts)) continue;
 		} else {
 			if (words.length !== 1) throw new Error("Cannot verify UFW short rule");
 			port = words[0];
@@ -147,9 +176,41 @@ async function firewallStatus(output, resolveProfile) {
 		const to = row[1].replace(/\(v6\)/g, "").trim();
 		let port = to.replace(/\s+on\s+\S+$/, "");
 		const [address, ...rest] = port.split(/\s+/);
-		const family = destinationFamily(address, true);
-		if (family)
-			port = rest.join(" ") || (address.endsWith("/udp") ? "any/udp" : "any");
+		const ipv6 = isIP(address.split("/")[0]) === 6 || /\(v6\)/.test(line);
+		let protocol = "any";
+		// The renderer may put the protocol only on From when a source port is set.
+		const from = row[4]
+			.split(/\s+#/)[0]
+			.replace(/\s+\((?:v6|log|log-all)\)/g, "")
+			.replace(/\s+on\s+\S+$/, "")
+			.trim();
+		for (const value of [address, port, from]) {
+			const token = value.split(/\s+/).at(-1);
+			const parts = token.split("/");
+			if (parts.length < 2 || /^\d+$/.test(parts.at(-1))) continue;
+			const suffix = parts.pop();
+			includesSshProtocol(
+				suffix,
+				ipv6,
+				numericSshPort(parts.join("/")) !== null,
+			);
+			if (protocol !== "any" && suffix !== protocol)
+				throw new Error("Conflicting UFW status protocols");
+			protocol = suffix;
+		}
+		const addressParts = address.split("/");
+		if (addressParts.length > 1 && !/^\d+$/.test(addressParts.at(-1)))
+			addressParts.pop();
+		const location = addressParts.join("/");
+		const family = destinationFamily(location);
+		if (family) port = rest.join(" ") || "any";
+		else if (location.toLowerCase() === "anywhere") port = "any";
+		// Validate ports before excluding non-TCP traffic; malformed output is unknown.
+		if (!includesSshProtocol(protocol)) {
+			if (port !== "any" && numericSshPort(port) === null)
+				throw new Error("Invalid UFW protocol port");
+			continue;
+		}
 		if (await includesSshPort(port, resolveProfile))
 			rules.push({
 				tailnet: /\bon tailscale0$/.test(to),
