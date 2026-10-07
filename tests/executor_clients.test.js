@@ -471,11 +471,13 @@ it.each([
 	expect(result.output).toContain("manual user-scope MCP setup");
 	preserved(f, before, result, opaque);
 });
-it("refuses an unsafe default Claude config home before creating client files", () => {
-	const f = fixture();
-	const target = path.join(f.home, "owned");
-	fs.mkdirSync(target);
-	fs.symlinkSync(target, path.join(f.home, ".claude"));
+it.each([
+	"0775",
+	"symlink",
+])("refuses unsafe custom Claude write home %s and preserves both clients", (kind) => {
+	const f = defaultLookupFixture(kind);
+	f.env.CLAUDE_CONFIG_DIR = f.lookup;
+	seed(f.codex, "# independent Codex original\n");
 	const before = configSnapshot(f);
 	const result = run(f);
 	expect(result.code).toBe(1);
@@ -540,4 +542,90 @@ it("refuses an explicitly empty Claude config home rather than assuming default 
 	expect(result.code).toBe(1);
 	expect(result.output).toContain("Unset empty CLAUDE_CONFIG_DIR");
 	preserved(f, before, result, "opaque-unused");
+});
+
+// F-D1: default .claude is a legacy lookup path, not a write ancestor.
+function defaultLookupFixture(kind) {
+	const f = fixture();
+	const lookup = path.join(f.home, ".claude");
+	const target = kind === "symlink" ? path.join(f.home, "dotfiles") : lookup;
+	fs.mkdirSync(target);
+	if (kind === "symlink") fs.symlinkSync(target, lookup);
+	else fs.chmodSync(target, 0o775);
+	return { ...f, lookup, target };
+}
+it.each([
+	"0775",
+	"symlink",
+])("supports default Claude legacy lookup through %s when no legacy exists", (kind) => {
+	const f = defaultLookupFixture(kind);
+	const opaque = Buffer.from("lookup original credential").toString("hex");
+	const unrelated = path.join(f.target, "unrelated.json");
+	seed(unrelated, `{"opaque":"${opaque}"}`);
+	const lookupStat = fs.lstatSync(f.lookup);
+	const targetStat = fs.statSync(f.target);
+	const result = run(f);
+	expect(result.code).toBe(0);
+	expect(result.output).toContain("Configuration written");
+	expect(
+		JSON.parse(fs.readFileSync(f.claude, "utf8")).mcpServers.executor.url,
+	).toBe(endpoint);
+	expect(
+		Bun.TOML.parse(fs.readFileSync(f.codex, "utf8")).mcp_servers.executor.url,
+	).toBe(endpoint);
+	expect(fs.readFileSync(unrelated, "utf8") === `{"opaque":"${opaque}"}`).toBe(
+		true,
+	);
+	for (const [file, before] of [
+		[f.lookup, lookupStat],
+		[f.target, targetStat],
+	]) {
+		const after = fs.lstatSync(file);
+		expect([after.ino, after.mode, after.mtimeMs]).toEqual([
+			before.ino,
+			before.mode,
+			before.mtimeMs,
+		]);
+	}
+	expect(result.output.includes(opaque)).toBe(false);
+	const before = configSnapshot(f);
+	const repeat = run(f);
+	expect(repeat.code).toBe(0);
+	expect(repeat.output).toContain("already matches");
+	preserved(f, before, repeat, opaque);
+});
+it.each([
+	"0775",
+	"symlink",
+])("refuses legacy presence behind default %s without changing either client", (kind) => {
+	const f = defaultLookupFixture(kind);
+	const opaque = Buffer.from("lookup legacy original credential").toString(
+		"hex",
+	);
+	seed(path.join(f.target, ".config.json"), `{"opaque":"${opaque}"}`);
+	seed(f.claude, '{"keep":"independent Claude original"}');
+	seed(f.codex, "# independent Codex original\n");
+	const before = configSnapshot(f);
+	const result = run(f);
+	expect(result.code).toBe(1);
+	expect(result.output).toContain("manual user-scope MCP setup");
+	preserved(f, before, result, opaque);
+});
+it("refuses an unresolvable default legacy lookup before touching either client", () => {
+	const f = fixture();
+	fs.symlinkSync(".claude", path.join(f.home, ".claude"));
+	seed(f.claude, '{"keep":"independent Claude original"}');
+	seed(f.codex, "# independent Codex original\n");
+	const files = [f.claude, f.codex];
+	const originals = files.map((file) => fs.readFileSync(file));
+	const entries = fs.readdirSync(f.home).sort();
+	const result = setupWith(f, fs);
+	expect(result.ok).toBe(false);
+	expect(result.output).toContain("manual user-scope MCP setup");
+	for (const [i, file] of files.entries())
+		expect(fs.readFileSync(file).equals(originals[i])).toBe(true);
+	expect(fs.readdirSync(f.home).sort()).toEqual(entries);
+	expect(fs.readdirSync(path.dirname(f.codex))).toEqual(["config.toml"]);
+	expect(fs.readlinkSync(path.join(f.home, ".claude"))).toBe(".claude");
+	expect(result.output.includes(auth)).toBe(false);
 });

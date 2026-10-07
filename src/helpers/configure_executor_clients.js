@@ -17,39 +17,16 @@ function refuseLegacyClaudeConfig(configHome, fsImpl) {
 		"Use manual user-scope MCP setup for Claude and Codex in the intended harness environment. Both configs left intact.";
 	try {
 		// Inspect metadata only: never read or adopt a legacy secret-bearing file.
-		for (let dir = configHome; ; dir = path.dirname(dir)) {
-			let stat;
-			try {
-				stat = fsImpl.lstatSync(dir);
-			} catch (error) {
-				if (error.code !== "ENOENT") throw error;
-			}
-			if (
-				stat &&
-				(!stat.isDirectory() ||
-					stat.isSymbolicLink() ||
-					![0, process.getuid()].includes(stat.uid) ||
-					(stat.mode & 0o022 && !(stat.uid === 0 && stat.mode & 0o1000)))
-			)
-				throw new ExecutorClientError(`unsafe config path; ${guidance}`);
-			if (dir === path.dirname(dir)) break;
-		}
-		let legacy;
-		try {
-			legacy = fsImpl.lstatSync(path.join(configHome, ".config.json"));
-		} catch (error) {
-			if (error.code !== "ENOENT") throw error;
-		}
-		if (legacy)
-			throw new ExecutorClientError(
-				`Claude legacy .config.json layout is unsupported. ${guidance}`,
-			);
+		fsImpl.lstatSync(path.join(configHome, ".config.json"));
 	} catch (error) {
-		if (error instanceof ExecutorClientError) throw error;
+		if (error.code === "ENOENT") return;
 		throw new ExecutorClientError(
 			`Cannot inspect Claude config layout. ${guidance}`,
 		);
 	}
+	throw new ExecutorClientError(
+		`Claude legacy .config.json layout is unsupported. ${guidance}`,
+	);
 }
 
 export function validateExecutorClientInput(endpoint, env = process.env) {

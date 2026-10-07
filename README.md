@@ -649,9 +649,12 @@ Supported configuration locations:
 Claude's legacy `$HOME/.claude/.config.json` or
 `$CLAUDE_CONFIG_DIR/.config.json` takes precedence over the standard file.
 If that path exists (including a link), or its layout cannot be safely inspected,
-setup refuses before writing either client. It never reads, adopts or rewrites
-the legacy file. Use manual user-scope MCP setup in the intended Claude/Codex
-environment for these layouts. An explicitly empty `CLAUDE_CONFIG_DIR` is
+setup refuses before writing either client. A default `$HOME/.claude` directory
+with group write permissions or a resolvable symlink is supported when no legacy
+file exists; it is only a lookup path. Actual write-target ownership, permissions
+and link checks still apply, including to an explicit `CLAUDE_CONFIG_DIR`.
+It never reads, adopts or rewrites the legacy file. Use manual user-scope MCP
+setup in the intended Claude/Codex environment for these layouts. An explicitly empty `CLAUDE_CONFIG_DIR` is
 ambiguous for legacy lookup; unset it for the default home or set an absolute home.
 
 Nonempty `CLAUDE_CODE_CUSTOM_OAUTH_URL`, `USE_STAGING_OAUTH` or `USE_LOCAL_OAUTH`
