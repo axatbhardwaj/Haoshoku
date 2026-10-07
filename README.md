@@ -379,7 +379,7 @@ haoshoku --os debian-server
 ```
 
 The Debian path remains deliberately headless. In addition to server hardening,
-it installs the portable Claude/Codex policy, Axstack, PR-watch, and Hermes
+it installs the portable Claude/Codex policy, Axstack, and Hermes
 Telegram transport.
 T3 Code is required and runs without a prompt; an incomplete T3 setup fails
 Debian setup. `haoshoku --server-t3-code` runs the same step on its own.
