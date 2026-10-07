@@ -10,12 +10,9 @@ Standalone setup scripts for specific tools.
 | `configure_brave_managed_policies.js` | Brave theme/default-browser managed policies plus policy-tree repair | Modifying browser policies, theme color sync, or policy ownership |
 | `configure_chromium_profiles.js` | Validated shared browser-profile registry seeding in `~/.haoshoku.json` | Modifying managed browser profiles or session-name validation |
 | `configure_claude.js` | Claude config sync, backup, update     | Adding Claude config features, debugging sync |
-| `configure_claude_stay_awake.js` | claude-stay-awake sleep inhibitor deploy/enable/backup | Adding or debugging the Claude sleep inhibitor |
-| `configure_claude_remote_control.js` | Claude Remote Control trust/disclaimer seed, supervisor + user-unit deploy/enable/backup | Adding or debugging persistent Claude Remote Control sessions |
 | `configure_axstack.js` | Latest npm Axstack release install with registry SHA-512 integrity verification under `~/.local/share/axstack/releases/<version>` with the `~/.local/bin/axstack` shim, no silent downgrade, then `axstack install --harness claude\|codex`; `checkAxstack` reports shim/version/harness state and both roles.json paths; Arch links missing t3 to t3-nightly without replacing a local t3 | Changing registry resolution or install verification, or debugging `--axstack`/`--axstack-check` |
 | `configure_codex.js` | Codex CLI plus personal config sync/backup | Adding Codex setup features or debugging config sync |
 | `configure_gh_stack.js` | Idempotent `github/gh-stack` extension install | Adding or debugging stacked-PR tooling setup |
-| `configure_pr_watch.js` | pr-watch PR watcher sync/backup | Adding or debugging the PR watcher deploy |
 | `configure_hermes_relay.js` | Pinned bootstrap when Hermes is absent plus plugin-free Telegram and running-gateway readiness probes | Adding or debugging Debian Hermes transport |
 | `configure_t3_code_server.js` | Required Debian nightly T3 service over Tailscale; disables Connect and verifies HTTPS readiness | Changing CLI floor checks, service drop-ins, Tailscale mapping, or pairing guidance |
 | `configure_tailscale_t3.js` | Arch Tailscale package, browser login, operator and T3 user-service reconciliation | Debugging `--tailscale-t3` or Arch phone access |

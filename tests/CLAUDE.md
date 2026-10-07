@@ -6,9 +6,8 @@
 | ------------------ | ----------------------------- | ----------------------------------------- |
 | `cachyos.test.js`  | CachyOS setup tests           | Testing Arch setup, debugging failures    |
 | `common.test.js`   | Common module tests           | Testing shared functionality              |
-| `configure_claude_remote_control.test.js` | Claude Remote Control state, deployment, supervisor, linger, and backup tests | Changing Remote Control setup or service lifecycle |
-| `skills_retirement.test.js` | Retired skill CLI forms, default setup and repeated-run preservation with retained tools | Changing skill retirement boundaries |
-| `skills_packaging.test.js` | npm payload excludes retired skill helpers and assets while retaining agent tools | Changing package contents |
+| `skills_retirement.test.js` | All five retired families: CLI forms, default setup and repeated-run preservation with retained tools | Changing integration retirement boundaries |
+| `skills_packaging.test.js` | npm payload excludes all five retired families of helpers and assets while retaining agent tools | Changing package contents |
 | `cli_removed_flags.test.js` | Unknown-option rejection of retired CLI flags before helpers, processes, or services run | Extending the removed-flag table |
 | `cli_server_hermes_relay_flag.test.js` | Debian-only Hermes relay CLI routing and failure propagation | Changing `--server-hermes-relay` |
 | `configure_hermes_relay.test.js` | Hermes bootstrap, plugin-free readiness, preservation, and failure behavior | Changing the Hermes relay helper |

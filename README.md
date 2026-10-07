@@ -105,8 +105,7 @@ The Arch setup:
   so `haoshoku --device-type pc|laptop` remains the explicit override. Only
   ambiguous hardware falls back to the interactive selector; Skip persists
   nothing and leaves device-specific audio unset;
-- keeps PR watch as a portable setup step. Without
-  interactive confirmation—including piped stdin—Haoshoku declines real
+- without interactive confirmation—including piped stdin—Haoshoku declines real
   user decisions immediately and does not treat input as answers;
 - adds a device-routed behavior-only Lua workspace overlay. The hyprmoncfg
   plugin owns the generated `~/.config/hypr/monitors.lua`; Haoshoku owns only
@@ -271,11 +270,18 @@ longer provides skill inventory, agent-skill sync, or theme configuration.
 Manage independent skills separately; use `haoshoku --axstack` for Axstack
 workflows. Existing user-owned skills and configuration remain in place.
 
-## Claude Remote Control
+### Retired service and watcher commands
 
-The optional Claude Remote Control setup runs persistent Claude sessions from
-three fixed roots: `haki` at `$HOME`, `dev` at `$HOME/dev`, and `work` at
-`$HOME/Work`. Instances whose roots do not exist are skipped with a warning.
+Claude Remote Control, Claude stay-awake, and PR watch are retired from future
+Arch and Debian setup. `--claude-remote-control`,
+`--claude-remote-control-backup`, `--claude-stay-awake`,
+`--claude-stay-awake-backup`, `--pr-watch`, and `--pr-watch-backup` exit nonzero
+with guidance before logging or setup runs. Manage existing services and
+watchers separately; normal and repeated setup leaves their scripts, units,
+enablement links, state, and Claude acceptance settings untouched.
+
+## Haki launcher
+
 On Omarchy, `haoshoku-special-workspace haki` opens the tagged Ghostty `haki`
 split on its special workspace, with Claude above a fresh Codex pane below;
 it has no default keybinding. KDE uses its own Warp `agents` route.
@@ -284,39 +290,9 @@ Set `claudeSessionName` in
 value starts plain Claude; a
 syntactically invalid value is preserved, reported, and ignored. A valid name is
 passed as one literal argument to `claude -r`, but it resumes directly only when
-the name resolves uniquely; otherwise Claude may open its picker. This
-Haki launcher never attaches to tmux
-or calls systemd.
-
-These sessions run Claude Remote Control in **server mode**
-(`claude remote-control --spawn same-dir --capacity 5`): each is a persistent
-host that spawns up to five on-demand sessions in its own directory, launched
-with `--permission-mode bypassPermissions`. Debian server setup calls this out
-before installation. The user services enable
-systemd lingering when possible so sessions can survive logout; if lingering
-cannot be enabled automatically, setup prints the exact `loginctl` command to
-run.
-
-Installation sets `bypassPermissionsModeAccepted: true` in `~/.claude.json`.
-This machine-wide acceptance affects every Claude Code session, not only the
-three managed services, and persists until manually reverted. To undo it, edit
-`~/.claude.json` and remove `bypassPermissionsModeAccepted` or set it to
-`false`.
-
-Attach to any enabled managed session from a terminal with:
-
-```bash
-~/.local/bin/haoshoku-claude-remote-control attach haki
-~/.local/bin/haoshoku-claude-remote-control attach dev
-~/.local/bin/haoshoku-claude-remote-control attach work
-```
-
-Deploy or snapshot the supervisor and user unit independently with:
-
-```bash
-haoshoku --claude-remote-control
-haoshoku --claude-remote-control-backup
-```
+the name resolves uniquely; otherwise Claude may open its picker. This Haki
+launcher uses local Claude/Codex sessions without the retired Remote Control
+services.
 
 ## Gaming
 
@@ -345,8 +321,6 @@ configuration. Machine-local secrets can be stored in
 ```bash
 haoshoku --claude
 haoshoku --claude-backup
-haoshoku --claude-remote-control
-haoshoku --claude-remote-control-backup
 haoshoku --claude-update
 haoshoku --codex
 haoshoku --codex-backup
@@ -358,8 +332,6 @@ haoshoku --audio-backup
 haoshoku --mimeapps
 haoshoku --mimeapps-backup
 haoshoku --gh-stack
-haoshoku --claude-stay-awake
-haoshoku --pr-watch
 haoshoku --worktree-cleanup
 haoshoku --workspaces
 haoshoku --gaming
@@ -452,8 +424,7 @@ of this flow. If a service self-update has advanced past npm's nightly tag,
 a rerun may fail; inspect `t3 --version` and retry once the nightly tag catches
 up.
 
-The full Debian path asks about Git, Claude stay-awake, Claude Remote Control,
-and automatic worktree cleanup.
+The full Debian path asks about Git and automatic worktree cleanup.
 
 ### VPS Hermes Telegram transport
 

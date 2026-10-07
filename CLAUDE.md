@@ -52,8 +52,8 @@ haoshoku
 
 ## Arch app setup
 
-Arch app setup keeps PR watch. Retired integrations are documented in
-CHANGELOG.md; rerunning setup does not uninstall previously deployed services.
+Arch app setup keeps portable CLI configuration. Retired integrations are
+documented in CHANGELOG.md; rerunning setup does not uninstall previously deployed services.
 
 ## Test
 

@@ -4,6 +4,12 @@
 
 ### Removed
 
+- Future Arch and Debian setup no longer deploys Claude Remote Control,
+  Claude stay-awake, or PR watch. Their deploy and backup flags fail before
+  logging or setup; packaged helpers and payloads are removed. Existing host
+  services, scripts, units, enablement links, watcher state, and Claude settings
+  remain untouched.
+
 - Future Arch and Debian setup no longer installs Matt Pocock skills or
   visual-explainer. Retired skill installation, inventory, agent-skill sync,
   and explainer-theme flags fail before setup; existing skills, links, and

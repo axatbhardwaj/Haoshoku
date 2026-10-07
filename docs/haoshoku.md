@@ -51,9 +51,7 @@ service over Tailscale and Hermes Telegram transport. Omarchy binds `Super+T`
 to launch or focus T3 Code Nightly. See the [migration note](../README.md#existing-host-migration)
 for existing host artifacts that require manual retirement.
 
-Matt Pocock skills and visual-explainer are retired from future setup.
-`--skills`, `--skills-update`, `--skills-list`, `--agent-skills`, and
-`--explainer-theme <theme>` fail with guidance before setup runs. Manage
-independent skills separately. Normal and repeated setup preserves existing
-skill directories, links, and theme preferences; existing-host migration is
-manual. Axstack continues to supply workflow skills through `--axstack`.
+See the [retired skill commands](../README.md#retired-skill-commands) and
+[retired service and watcher commands](../README.md#retired-service-and-watcher-commands)
+for refusal guidance and existing-installation preservation. Axstack continues
+to supply workflow skills through `--axstack`.
