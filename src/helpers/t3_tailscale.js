@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { isIP } from "node:net";
 import path from "node:path";
 
 export const T3_VERSION_FLOOR = "0.0.46-nightly.20261003.2610";
@@ -30,6 +31,40 @@ export function parseJson(output) {
 	}
 }
 
+export async function ensureTailscaleOperator({
+	user,
+	probe,
+	runCommandImpl,
+	logger,
+	retryFlag = "--server-t3-code",
+}) {
+	try {
+		const prefs = parseJson(await probe("tailscale debug prefs"));
+		if (!prefs || typeof prefs.OperatorUser !== "string") {
+			throw new Error("Cannot verify Tailscale operator preferences");
+		}
+		if (prefs.OperatorUser === user) return true;
+		if (prefs.OperatorUser) {
+			logger.warning(
+				`Replacing Tailscale operator ${prefs.OperatorUser} with ${user}`,
+			);
+		}
+		if (
+			!(await runCommandImpl(
+				`sudo -n tailscale set --operator=${shellQuote(user)}`,
+			))
+		) {
+			throw new Error(`Cannot set Tailscale operator to ${user}`);
+		}
+		return true;
+	} catch (error) {
+		logger.warning(
+			`Tailscale operator configuration failed: ${error.message}. Run sudo tailscale set --operator=${shellQuote(user)}, then retry haoshoku ${retryFlag}.`,
+		);
+		return false;
+	}
+}
+
 function tailscaleHttpsUrl(config) {
 	if (config?.TCP?.[443]?.HTTPS !== true) return null;
 	for (const [hostPort, web] of Object.entries(config.Web ?? {})) {
@@ -43,13 +78,9 @@ function tailscaleHttpsUrl(config) {
 	return null;
 }
 
-export function writeTailscaleDropIn(
-	home,
-	fsImpl = fs,
-	content = '[Service]\nEnvironment="T3CODE_TAILSCALE_SERVE=true"\n',
-) {
+export function writeServiceDropIn(home, name, content, fsImpl = fs) {
 	const directory = path.join(home, ".config/systemd/user/t3code.service.d");
-	const file = path.join(directory, "axstack-tailscale.conf");
+	const file = path.join(directory, name);
 	try {
 		if (fsImpl.readFileSync(file, "utf8") === content) return false;
 	} catch (error) {
@@ -57,6 +88,36 @@ export function writeTailscaleDropIn(
 	}
 	fsImpl.mkdirSync(directory, { recursive: true });
 	fsImpl.writeFileSync(file, content);
+	return true;
+}
+
+async function verifyT3Loopback(probe, logger, fail) {
+	let listeners;
+	try {
+		listeners = await probe("ss -Hltn 'sport = :3773'");
+	} catch {
+		// ss may be absent on an otherwise ready machine.
+	}
+	if (!listeners) {
+		logger.warning(
+			"T3 bind could not be verified: ss is unavailable or reports no listeners on port 3773",
+		);
+		return true;
+	}
+	for (const line of listeners.split("\n")) {
+		const local = line.trim().split(/\s+/)[3] ?? "";
+		const address = local.replace(/:3773$/, "").replace(/^\[(.*)\]$/, "$1");
+		if (
+			!(
+				address === "::1" ||
+				(isIP(address) === 4 && address.startsWith("127."))
+			)
+		) {
+			return fail(
+				`T3 listener ${local || line} is not loopback. T3 must listen on 127.0.0.1 and be exposed only via Tailscale Serve.`,
+			);
+		}
+	}
 	return true;
 }
 
@@ -89,6 +150,7 @@ export async function waitForT3Tailscale({
 				});
 				await response.body?.cancel();
 				if (response.ok) {
+					if (!(await verifyT3Loopback(probe, logger, fail))) return false;
 					logger.success(
 						`T3 Code service and Tailscale HTTPS are ready: ${url}`,
 					);

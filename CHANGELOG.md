@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Both T3 setup paths verify port 3773 listeners after HTTPS readiness and
+  reject non-loopback binds; unavailable listener checks report uncertainty.
+  Arch warns about shadowing T3 binaries and coinstalled stable/nightly packages.
+
+- Arch T3 services prioritize real agent CLIs before mise shims; both setup
+  paths write service drop-ins only when content changes. Debian root services
+  disable the browser sandbox and remove that override for non-root users.
+
+- T3 setup shares idempotent Tailscale operator configuration across Arch and
+  non-root Debian, selects the invoking desktop user under sudo, and warns
+  before replacing an operator or when permission setup fails. Non-root Debian
+  still installs the local service after operator failure; readiness requires
+  working HTTPS, and warnings give the manual repair command and retry flag.
+
 ## 12.2.1 - 2026-10-06
 
 ### Fixed

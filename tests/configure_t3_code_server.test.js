@@ -15,6 +15,7 @@ const silentLogger = {
 	warning() {},
 };
 
+const listenerCommand = "ss -Hltn 'sport = :3773'";
 const floor = "0.0.46-nightly.20261003.2610";
 const serveConfig = {
 	TCP: { 443: { HTTPS: true } },
@@ -47,6 +48,7 @@ function fixture({
 	const options = {
 		home,
 		uid: 1000,
+		user: "test",
 		ensureNodeImpl: async () => {
 			events.push("node");
 			return true;
@@ -58,7 +60,11 @@ function fixture({
 				if (value instanceof Error) throw value;
 				return typeof value === "function" ? value() : value;
 			}
+			if (command === listenerCommand)
+				return response("LISTEN 0 128 127.0.0.1:3773 0.0.0.0:*");
 			if (command === "tailscale status") return response("logged in");
+			if (command === "tailscale debug prefs")
+				return response('{"OperatorUser":"test"}');
 			if (command === "t3 --version")
 				return response(version ?? "", version === null ? 127 : 0);
 			if (command === `${installedT3} --version`)
@@ -139,10 +145,12 @@ describe("T3 server over Tailscale", () => {
 			"node",
 			"t3 --version",
 			"t3 connect status --json",
+			"tailscale debug prefs",
 			"t3 service install",
 			"systemctl --user is-active --quiet t3code.service",
 			"tailscale serve status --json",
 			"https://server.tail123.ts.net",
+			listenerCommand,
 		]);
 		expect(fs.existsSync(path.join(f.dropIns, "axstack-sandbox.conf"))).toBe(
 			false,
@@ -224,10 +232,11 @@ describe("T3 server over Tailscale", () => {
 	it("unlinks enabled Connect and confirms disabled before installing the service", async () => {
 		const f = fixture({ desired: true });
 		expect(await configureT3CodeServer(f.options)).toBe(true);
-		expect(f.events.slice(3, 7)).toEqual([
+		expect(f.events.slice(3, 8)).toEqual([
 			"t3 connect status --json",
 			"t3 connect unlink",
 			"t3 connect status --json",
+			"tailscale debug prefs",
 			"t3 service install",
 		]);
 		expect(
@@ -274,11 +283,17 @@ describe("T3 server over Tailscale", () => {
 		expect(
 			fs.readFileSync(path.join(f.dropIns, "axstack-sandbox.conf"), "utf8"),
 		).toBe("[Service]\nEnvironment=IS_SANDBOX=1\n");
+		expect(
+			fs.readFileSync(path.join(f.dropIns, "browser-sandbox.conf"), "utf8"),
+		).toBe("[Service]\nEnvironment=T3CODE_SERVER_BROWSER_SANDBOX=0\n");
 		expect(fs.readFileSync(path.join(f.dropIns, "custom.conf"), "utf8")).toBe(
 			"custom",
 		);
 		f.options.uid = 1000;
 		expect(await configureT3CodeServer(f.options)).toBe(true);
+		expect(fs.existsSync(path.join(f.dropIns, "browser-sandbox.conf"))).toBe(
+			false,
+		);
 		expect(fs.existsSync(path.join(f.dropIns, "axstack-sandbox.conf"))).toBe(
 			false,
 		);
@@ -484,5 +499,154 @@ describe("T3 Code Node.js runtime preparation", () => {
 			"curl -fsSL https://deb.nodesource.com/setup_24.x | sudo bash -",
 			"sudo apt install -y nodejs",
 		]);
+	});
+});
+
+describe("Debian Tailscale operator reconciliation", () => {
+	it("grants non-root users operator access and warns about replacement", async () => {
+		const f = fixture();
+		const warnings = [];
+		f.options.logger.warning = (message) => warnings.push(message);
+		f.overrides.set(
+			"tailscale debug prefs",
+			f.response('{"OperatorUser":"previous"}'),
+		);
+		const run = f.options.runCommandImpl;
+		f.options.runCommandImpl = async (command) => {
+			if (command.includes("set --operator")) {
+				expect(warnings.join(" ")).toContain("previous");
+				expect(warnings.join(" ")).toContain("test");
+			}
+			return run(command);
+		};
+		expect(await configureT3CodeServer(f.options)).toBe(true);
+		expect(f.events).toContain("sudo -n tailscale set --operator='test'");
+		expect(warnings.join(" ")).toContain("previous");
+		expect(warnings.join(" ")).toContain("test");
+	});
+
+	it("skips operator configuration for root", async () => {
+		const f = fixture();
+		f.options.uid = 0;
+		expect(await configureT3CodeServer(f.options)).toBe(true);
+		expect(f.events).not.toContain("tailscale debug prefs");
+	});
+
+	it("keeps an existing matching operator without a set command", async () => {
+		const f = fixture();
+		expect(await configureT3CodeServer(f.options)).toBe(true);
+		expect(f.events).toContain("tailscale debug prefs");
+		expect(f.events.some((command) => command.includes("set --operator"))).toBe(
+			false,
+		);
+	});
+
+	it.each([
+		[false, true],
+		[true, true],
+		[false, false],
+		[true, false],
+	])("continues service setup after operator failure (throws=%s, HTTPS ready=%s)", async (throws, ready) => {
+		const f = fixture();
+		const warnings = [];
+		const messages = [];
+		f.options.logger.warning = (message) => warnings.push(message);
+		f.options.logger.success = (message) => messages.push(message);
+		f.overrides.set("tailscale debug prefs", f.response('{"OperatorUser":""}'));
+		const run = f.options.runCommandImpl;
+		f.options.runCommandImpl = async (command) => {
+			if (command.includes("set --operator")) {
+				f.events.push(command);
+				if (throws) throw new Error("sudo timestamp expired");
+				return false;
+			}
+			return run(command);
+		};
+		if (!ready)
+			f.options.fetchImpl = async () =>
+				new Response("not ready", { status: 503 });
+		expect(await configureT3CodeServer(f.options)).toBe(ready);
+		expect(f.events).toContain("t3 service install");
+		expect(f.events).toContain(
+			"systemctl --user is-active --quiet t3code.service",
+		);
+		expect(warnings).toHaveLength(1);
+		expect(warnings[0]).toContain("sudo tailscale set --operator='test'");
+		expect(warnings[0]).toContain("haoshoku --server-t3-code");
+		if (ready) expect(messages.join(" ")).toContain("are ready");
+		else {
+			expect(messages).toEqual([]);
+			expect(f.errors.join(" ")).toContain("HTTPS");
+		}
+	});
+});
+
+describe("Debian T3 drop-in idempotency", () => {
+	it("writes each root drop-in once, repairs changed PATH, and leaves the generated unit alone", async () => {
+		const f = fixture();
+		f.options.uid = 0;
+		const writes = [];
+		f.options.fsImpl = {
+			...fs,
+			writeFileSync: (file, value) => {
+				writes.push(path.basename(file));
+				fs.writeFileSync(file, value);
+			},
+		};
+		expect(await configureT3CodeServer(f.options)).toBe(true);
+		expect(writes.sort()).toEqual([
+			"axstack-path.conf",
+			"axstack-sandbox.conf",
+			"axstack-tailscale.conf",
+			"browser-sandbox.conf",
+		]);
+		writes.length = 0;
+		expect(await configureT3CodeServer(f.options)).toBe(true);
+		expect(writes).toEqual([]);
+		fs.writeFileSync(path.join(f.dropIns, "axstack-path.conf"), "stale");
+		expect(await configureT3CodeServer(f.options)).toBe(true);
+		expect(writes).toEqual(["axstack-path.conf"]);
+		expect(
+			fs.readFileSync(path.join(f.dropIns, "axstack-path.conf"), "utf8"),
+		).toBe(
+			'[Service]\nEnvironment="PATH=%h/.local/bin:%h/.bun/bin:%h/.grok/bin:/usr/local/bin:/usr/bin:/bin"\n',
+		);
+	});
+});
+
+describe("Debian T3 listener verification", () => {
+	it("errors on a non-loopback listener without announcing success", async () => {
+		const f = fixture();
+		const messages = [];
+		f.options.logger.success = (message) => messages.push(message);
+		f.overrides.set(
+			listenerCommand,
+			f.response("LISTEN 0 128 100.65.100.23:3773 *:*"),
+		);
+		expect(await configureT3CodeServer(f.options)).toBe(false);
+		expect(f.events).toContain("https://server.tail123.ts.net");
+		expect(f.errors.join(" ")).toContain("100.65.100.23");
+		expect(f.errors.join(" ")).toContain("127.0.0.1");
+		expect(f.errors.join(" ")).toContain("only via Tailscale Serve");
+		expect(messages).toEqual([]);
+	});
+
+	it.each([
+		"empty",
+		"missing",
+		"throws",
+	])("logs unverifiable binding when ss is %s", async (mode) => {
+		const f = fixture();
+		const warnings = [];
+		f.options.logger.warning = (message) => warnings.push(message);
+		f.overrides.set(
+			listenerCommand,
+			mode === "throws"
+				? new Error("ss missing")
+				: f.response("", mode === "missing" ? 127 : 0),
+		);
+		expect(await configureT3CodeServer(f.options)).toBe(true);
+		expect(warnings.join(" ")).toContain("bind could not be verified");
+		expect(f.errors).toEqual([]);
 	});
 });

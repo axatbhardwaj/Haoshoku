@@ -1,9 +1,10 @@
 import fs from "node:fs";
-import { homedir } from "node:os";
+import { homedir, userInfo } from "node:os";
 import path from "node:path";
 import { ensureNode24Runtime } from "../common/node_24_runtime.js";
 import { log, runCommand, runCommandCapture } from "../common/utils.js";
 import {
+	ensureTailscaleOperator,
 	T3_VERSION_FLOOR,
 	SERVICE_ACTIVE_COMMAND,
 	READINESS_ATTEMPTS,
@@ -11,7 +12,7 @@ import {
 	parseJson,
 	shellQuote,
 	waitForT3Tailscale,
-	writeTailscaleDropIn,
+	writeServiceDropIn,
 } from "./t3_tailscale.js";
 
 function getNodeVersion() {
@@ -54,29 +55,44 @@ export async function ensureT3NodeRuntime({
 	);
 }
 
-function writeServiceDropIns(home, uid) {
-	const directory = path.join(home, ".config/systemd/user/t3code.service.d");
-	fs.mkdirSync(directory, { recursive: true });
-	fs.writeFileSync(
-		path.join(directory, "axstack-path.conf"),
-		'[Service]\nEnvironment="PATH=%h/.local/bin:%h/.bun/bin:%h/.grok/bin:/usr/local/bin:/usr/bin:/bin"\n',
-	);
-	writeTailscaleDropIn(
+function writeServiceDropIns(home, uid, fsImpl) {
+	writeServiceDropIn(
 		home,
-		fs,
-		"[Service]\nEnvironment=T3CODE_TAILSCALE_SERVE=true\n",
+		"axstack-path.conf",
+		'[Service]\nEnvironment="PATH=%h/.local/bin:%h/.bun/bin:%h/.grok/bin:/usr/local/bin:/usr/bin:/bin"\n',
+		fsImpl,
 	);
-	const sandbox = path.join(directory, "axstack-sandbox.conf");
-	if (uid === 0) {
-		fs.writeFileSync(sandbox, "[Service]\nEnvironment=IS_SANDBOX=1\n");
-	} else if (fs.existsSync(sandbox)) {
-		fs.unlinkSync(sandbox);
+	writeServiceDropIn(
+		home,
+		"axstack-tailscale.conf",
+		"[Service]\nEnvironment=T3CODE_TAILSCALE_SERVE=true\n",
+		fsImpl,
+	);
+	for (const [name, content] of [
+		["axstack-sandbox.conf", "[Service]\nEnvironment=IS_SANDBOX=1\n"],
+		[
+			"browser-sandbox.conf",
+			"[Service]\nEnvironment=T3CODE_SERVER_BROWSER_SANDBOX=0\n",
+		],
+	]) {
+		if (uid === 0) {
+			writeServiceDropIn(home, name, content, fsImpl);
+		} else {
+			const file = path.join(
+				home,
+				".config/systemd/user/t3code.service.d",
+				name,
+			);
+			if (fsImpl.existsSync(file)) fsImpl.unlinkSync(file);
+		}
 	}
 }
 
 export async function configureT3CodeServer({
 	home = homedir(),
 	uid = process.getuid(),
+	user = userInfo().username,
+	fsImpl = fs,
 	ensureNodeImpl = ensureT3NodeRuntime,
 	captureCommandImpl = runCommandCapture,
 	runCommandImpl = runCommand,
@@ -141,8 +157,18 @@ export async function configureT3CodeServer({
 		}
 	}
 
+	if (uid !== 0) {
+		// Operator access gates HTTPS Serve, not local service installation.
+		await ensureTailscaleOperator({
+			user,
+			probe,
+			runCommandImpl,
+			logger,
+		});
+	}
+
 	try {
-		writeServiceDropIns(home, uid);
+		writeServiceDropIns(home, uid, fsImpl);
 	} catch (error) {
 		return fail(
 			`Cannot write T3 service drop-ins: ${error.message}. Fix permissions and retry haoshoku --server-t3-code.`,
