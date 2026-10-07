@@ -143,27 +143,24 @@ it.each([
 
 function snapshot(dir) {
 	return Object.fromEntries(
-		fs
-			.readdirSync(dir, { recursive: true })
-			.sort()
-			.map((name) => {
-				const p = path.join(dir, name);
-				const st = fs.lstatSync(p);
-				return [
-					name,
-					[
-						st.mode,
-						st.uid,
-						st.gid,
-						st.mtimeMs,
-						st.isSymbolicLink()
-							? fs.readlinkSync(p)
-							: st.isFile()
-								? fs.readFileSync(p).toString("hex")
-								: "directory",
-					],
-				];
-			}),
+		[".", ...fs.readdirSync(dir, { recursive: true })].sort().map((name) => {
+			const p = path.join(dir, name);
+			const st = fs.lstatSync(p);
+			return [
+				name,
+				[
+					st.mode,
+					st.uid,
+					st.gid,
+					st.mtimeMs,
+					st.isSymbolicLink()
+						? fs.readlinkSync(p)
+						: st.isFile()
+							? fs.readFileSync(p).toString("hex")
+							: "directory",
+				],
+			];
+		}),
 	);
 }
 function container(f) {
@@ -186,14 +183,15 @@ function container(f) {
 		},
 	};
 }
-function existingRuntime(f, override = {}) {
+function existingRuntime(f, override = {}, runtime = {}) {
 	const original = f.options.runImpl;
 	f.options.runImpl = async (a) => {
-		if (a[1] === "ps") {
+		if (a[1] === "ps" && fs.existsSync(f.dir)) {
 			f.events.push(a);
 			return {
 				exitCode: 0,
 				stdout:
+					runtime.listing ??
 					'{"Names":"executor-selfhost","Ports":"127.0.0.1:4788->4788/tcp"}',
 			};
 		}
@@ -202,6 +200,13 @@ function existingRuntime(f, override = {}) {
 			return {
 				exitCode: 0,
 				stdout: JSON.stringify({ ...container(f), ...override }),
+			};
+		}
+		if (a[0] === "ss" && fs.existsSync(f.dir)) {
+			f.events.push(a);
+			return {
+				exitCode: 0,
+				stdout: runtime.listener ?? "LISTEN 0 4096 127.0.0.1:4788 0.0.0.0:*",
 			};
 		}
 		return original(a);
@@ -213,6 +218,40 @@ function existingRuntime(f, override = {}) {
 			? Object.assign(st, { uid: 65532, gid: 65532 })
 			: st;
 	};
+}
+function observePreservation(f) {
+	const before = snapshot(f.dir);
+	f.events.length = 0;
+	f.messages.length = 0;
+	for (const [method, event] of [
+		["readFileSync", "read"],
+		["writeFileSync", "write"],
+		["mkdirSync", "mkdir"],
+	]) {
+		const original = f.options.fsImpl[method];
+		f.options.fsImpl[method] = (p, ...args) => {
+			f.events.push([event, p]);
+			return original(p, ...args);
+		};
+	}
+	return before;
+}
+function expectPreserved(f, before) {
+	expect(snapshot(f.dir)).toEqual(before);
+	expect(
+		f.events.filter(
+			(e) =>
+				["chown", "write", "mkdir"].includes(e[0]) ||
+				(e[0] === "docker" &&
+					!["info", "ps", "inspect"].includes(e[1]) &&
+					!(e[1] === "compose" && e[2] === "version")),
+		),
+	).toEqual([]);
+	expect(
+		f.events.filter((e) => e[0] === "read" && e[1].includes("/data/")),
+	).toEqual([]);
+	expect(f.events.filter((e) => e[0] === "GET")).toEqual([]);
+	expect(f.messages.join("\n")).not.toContain("container ready");
 }
 it("identical managed rerun verifies without mutation, pull, startup or reading secrets", async () => {
 	const f = fixture();
@@ -249,30 +288,32 @@ it.each([
 	"compose-symlink",
 	"root-symlink",
 	"ancestor-symlink",
-	"data-owner",
+	"data-uid",
+	"data-gid",
 	"unknown-data",
 ])("preserves conflicting %s state before pulling or starting", async (kind) => {
 	const f = fixture();
-	if (
-		["empty", "unmanaged", "root-symlink", "ancestor-symlink"].includes(kind)
-	) {
+	if (["empty", "unmanaged"].includes(kind)) {
 		fs.mkdirSync(f.dir);
 		if (kind === "unmanaged")
 			fs.writeFileSync(
 				path.join(f.dir, "docker-compose.yml"),
 				"existing-secret-compose",
 			);
+	} else {
+		expect(await configureExecutorServer(origin, f.options)).toBe(true);
+		existingRuntime(f);
+		expect(await configureExecutorServer(origin, f.options)).toBe(true);
 		if (kind === "root-symlink") {
 			fs.renameSync(f.dir, path.join(f.home, "preserved"));
 			fs.symlinkSync(path.join(f.home, "preserved"), f.dir);
 		}
 		if (kind === "ancestor-symlink") {
 			fs.symlinkSync(f.home, path.join(f.home, "alias"));
-			f.options.deploymentDir = path.join(f.home, "alias", "executor");
+			f.dir = path.join(f.home, "alias", "executor");
+			f.options.deploymentDir = f.dir;
+			existingRuntime(f);
 		}
-	} else {
-		expect(await configureExecutorServer(origin, f.options)).toBe(true);
-		existingRuntime(f);
 		if (kind === "partial")
 			fs.renameSync(
 				path.join(f.dir, "data"),
@@ -292,7 +333,14 @@ it.each([
 				path.join(f.dir, "data", "unexpected"),
 				"private-secret",
 			);
-		if (kind === "data-owner") f.options.fsImpl.lstatSync = fs.lstatSync;
+		if (kind === "data-uid" || kind === "data-gid") {
+			const lstat = f.options.fsImpl.lstatSync;
+			f.options.fsImpl.lstatSync = (p) => {
+				const st = lstat(p);
+				if (p === path.join(f.dir, "data")) st[kind.slice(5)] = 1000;
+				return st;
+			};
+		}
 		for (const name of kind === "data-symlink"
 			? ["data.db"]
 			: kind === "compose-symlink"
@@ -306,15 +354,9 @@ it.each([
 			fs.symlinkSync(path.join(f.home, "preserved-file"), p);
 		}
 	}
-	f.events.length = 0;
-	const before = snapshot(f.dir);
+	const before = observePreservation(f);
 	expect(await configureExecutorServer(origin, f.options)).toBe(false);
-	expect(snapshot(f.dir)).toEqual(before);
-	expect(
-		f.events.some(
-			(e) => e[1] === "pull" || e.includes("up") || e[0] === "chown",
-		),
-	).toBe(false);
+	expectPreserved(f, before);
 	expect(f.messages.at(-1)).toContain("preflight");
 	expect(f.messages.at(-1)).not.toContain("private-secret");
 });
@@ -349,38 +391,166 @@ it.each([
 	expect(fs.existsSync(f.dir)).toBe(false);
 	expect(f.events.some((e) => e[1] === "pull" || e.includes("up"))).toBe(false);
 });
-it.each([
-	"image",
-	"running",
-	"ports",
-	"mounts",
-	"labels",
-	"user",
-])("refuses mismatched managed container %s unchanged", async (field) => {
-	const f = fixture();
-	expect(await configureExecutorServer(origin, f.options)).toBe(true);
-	existingRuntime(f, {
-		[field]:
-			field === "running"
-				? false
-				: field === "ports"
-					? { "4788/tcp": [{ HostIp: "0.0.0.0", HostPort: "4788" }] }
-					: field === "mounts"
-						? []
-						: field === "labels"
-							? {}
-							: "wrong",
-	});
-	f.events.length = 0;
-	const before = snapshot(f.dir);
-	expect(await configureExecutorServer(origin, f.options)).toBe(false);
-	expect(snapshot(f.dir)).toEqual(before);
-	expect(
-		f.events.some(
-			(e) => e[1] === "pull" || e.includes("up") || e[0] === "chown",
-		),
-	).toBe(false);
-});
+const identityDefects = [
+	[
+		"image",
+		(c) => {
+			c.image = image;
+		},
+	],
+	[
+		"running",
+		(c) => {
+			c.running = false;
+		},
+	],
+	[
+		"user",
+		(c) => {
+			c.user = "0:0";
+		},
+	],
+	[
+		"ports-parent",
+		(c) => {
+			c.ports = null;
+		},
+	],
+	[
+		"port-key-count",
+		(c) => {
+			c.ports["9999/tcp"] = [];
+		},
+	],
+	[
+		"bindings-parent",
+		(c) => {
+			c.ports["4788/tcp"] = null;
+		},
+	],
+	[
+		"binding-count",
+		(c) => {
+			c.ports["4788/tcp"].push({ ...c.ports["4788/tcp"][0] });
+		},
+	],
+	[
+		"binding-host-ip",
+		(c) => {
+			c.ports["4788/tcp"][0].HostIp = "0.0.0.0";
+		},
+	],
+	[
+		"binding-host-port",
+		(c) => {
+			c.ports["4788/tcp"][0].HostPort = "4789";
+		},
+	],
+	[
+		"mounts-parent",
+		(c) => {
+			c.mounts = null;
+		},
+	],
+	[
+		"mounts-empty",
+		(c) => {
+			c.mounts = [];
+		},
+	],
+	[
+		"mount-count",
+		(c) => {
+			c.mounts.push({ ...c.mounts[0] });
+		},
+	],
+	[
+		"mount-type",
+		(c) => {
+			c.mounts[0].Type = "volume";
+		},
+	],
+	[
+		"mount-source",
+		(c) => {
+			c.mounts[0].Source += "-other";
+		},
+	],
+	[
+		"mount-destination",
+		(c) => {
+			c.mounts[0].Destination = "/other";
+		},
+	],
+	[
+		"mount-rw",
+		(c) => {
+			c.mounts[0].RW = false;
+		},
+	],
+	[
+		"labels-parent",
+		(c) => {
+			c.labels = null;
+		},
+	],
+	[
+		"compose-project",
+		(c) => {
+			c.labels["com.docker.compose.project"] = "other";
+		},
+	],
+	[
+		"compose-service",
+		(c) => {
+			c.labels["com.docker.compose.service"] = "other";
+		},
+	],
+	[
+		"named-container",
+		(_, r) => {
+			r.listing = '{"Names":"other","Ports":""}';
+		},
+	],
+	[
+		"listener-address",
+		(_, r) => {
+			r.listener = "LISTEN 0 4096 0.0.0.0:4788 0.0.0.0:*";
+		},
+	],
+];
+for (const phase of ["managed rerun", "fresh post-start"]) {
+	for (const [field, change] of identityDefects) {
+		it(`refuses ${phase} identity ${field} without further effects`, async () => {
+			const f = fixture();
+			if (phase === "managed rerun") {
+				expect(await configureExecutorServer(origin, f.options)).toBe(true);
+				existingRuntime(f);
+				expect(await configureExecutorServer(origin, f.options)).toBe(true);
+			}
+			const identity = container(f);
+			const runtime = {};
+			change(identity, runtime);
+			existingRuntime(f, identity, runtime);
+			let before;
+			if (phase === "managed rerun") before = observePreservation(f);
+			else {
+				const run = f.options.runImpl;
+				f.options.runImpl = async (a) => {
+					const result = await run(a);
+					if (a.includes("up")) before = observePreservation(f);
+					return result;
+				};
+			}
+			expect(await configureExecutorServer(origin, f.options)).toBe(false);
+			expect(before).toBeDefined();
+			expectPreserved(f, before);
+			expect(f.messages.at(-1)).toContain(
+				phase === "managed rerun" ? "preflight" : "container startup",
+			);
+		});
+	}
+}
 
 it.each([
 	"wrong-health",
@@ -476,9 +646,9 @@ for (const [location, base] of [
 				f.options.fetchImpl = async (url, options) => {
 					const response = await original(url, options);
 					if (url !== target) return response;
-					const body = { ...(await response.json()), padding: "" };
+					const body = { ...(await response.json()), padding: "response-secret" };
 					const remaining = bytes - Buffer.byteLength(JSON.stringify(body));
-					body.padding =
+					body.padding +=
 						"é".repeat(Math.floor(remaining / 2)) + "x".repeat(remaining % 2);
 					const encoded = new TextEncoder().encode(JSON.stringify(body));
 					expect(encoded.byteLength).toBe(bytes);
@@ -494,6 +664,7 @@ for (const [location, base] of [
 					);
 				};
 				expect(await configureExecutorServer(origin, f.options)).toBe(accepted);
+				expect(f.messages.join("\n")).not.toContain("response-secret");
 				const probes = f.events.filter((e) => e[0] === "GET");
 				expect(probes.some((e) => e[1] === target)).toBe(true);
 				if (accepted) expect(probes).toHaveLength(4);
