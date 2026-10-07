@@ -236,46 +236,43 @@ function observePreservation(f) {
 	}
 	return before;
 }
-function expectPreserved(f, before) {
+function expectPreserved(f, before, { ready = false } = {}) {
 	expect(snapshot(f.dir)).toEqual(before);
 	expect(
 		f.events.filter(
 			(e) =>
-				["chown", "write", "mkdir"].includes(e[0]) ||
-				(e[0] === "docker" &&
-					!["info", "ps", "inspect"].includes(e[1]) &&
-					!(e[1] === "compose" && e[2] === "version")),
+				e[0] !== "read" &&
+				e[0] !== "GET" &&
+				e[0] !== "ss" &&
+				!(e[0] === "docker" &&
+					(["info", "ps", "inspect"].includes(e[1]) ||
+						(e[1] === "compose" && e[2] === "version"))),
 		),
 	).toEqual([]);
 	expect(
 		f.events.filter((e) => e[0] === "read" && e[1].includes("/data/")),
 	).toEqual([]);
-	expect(f.events.filter((e) => e[0] === "GET")).toEqual([]);
-	expect(f.messages.join("\n")).not.toContain("container ready");
+	const requests = f.events.filter((e) => e[0] === "GET").map((e) => e[1]);
+	if (ready) {
+		expect(requests).toEqual([
+			"http://127.0.0.1:4788/api/health",
+			"http://127.0.0.1:4788/.well-known/oauth-authorization-server",
+			`${origin}/api/health`,
+			`${origin}/.well-known/oauth-authorization-server`,
+		]);
+		expect(f.messages.at(-1)).toContain("container ready");
+	} else {
+		expect(requests).toEqual([]);
+		expect(f.messages.join("\n")).not.toContain("container ready");
+	}
 }
 it("identical managed rerun verifies without mutation, pull, startup or reading secrets", async () => {
 	const f = fixture();
 	expect(await configureExecutorServer(origin, f.options)).toBe(true);
 	existingRuntime(f);
-	f.events.length = 0;
-	const before = snapshot(f.dir);
-	const read = f.options.fsImpl.readFileSync;
-	f.options.fsImpl.readFileSync = (p, ...rest) => {
-		expect(p).not.toContain("/data/");
-		return read(p, ...rest);
-	};
+	const before = observePreservation(f);
 	expect(await configureExecutorServer(origin, f.options)).toBe(true);
-	expect(snapshot(f.dir)).toEqual(before);
-	expect(
-		f.events.some(
-			(e) =>
-				e[1] === "pull" ||
-				e.includes("up") ||
-				e[0] === "chown" ||
-				e[1] === "image",
-		),
-	).toBe(false);
-	expect(f.events.filter((e) => e[0] === "GET")).toHaveLength(4);
+	expectPreserved(f, before, { ready: true });
 });
 it.each([
 	"unmanaged",
