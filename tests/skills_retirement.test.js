@@ -276,6 +276,7 @@ describe("selected integration retirement", () => {
 					configure_claude_remote_control: ["configureClaudeRemoteControl", "remote-control", true],
 					configure_hermes_relay: ["configureHermesRelay", "hermes", true],
 					configure_t3_code_server: ["configureT3CodeServer", "t3", true],
+					configure_tailnet_firewall: ["setupFirewall", "firewall", { ok: true }],
 				};
 				for (const [file, [name, label, result]] of Object.entries(helpers)) mock.module(${JSON.stringify(path.join(root, "src/helpers"))} + "/" + file + ".js", () => ({ [name]: record(label, result) }));
 				const { configureUserApps, runCachyOSSetup } = await import(${JSON.stringify(path.join(root, "src/os_scripts/cachyos.js"))});

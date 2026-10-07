@@ -262,6 +262,7 @@ function runDebianDefaultPath() {
 			mock.module(${JSON.stringify(uiPath)}, () => ({
 				withSpinner: async (_message, action) => action(),
 			}));
+			mock.module(${JSON.stringify(helperPath("configure_tailnet_firewall.js"))}, () => ({ setupFirewall: async () => ({ ok: true }) }));
 			mock.module(${JSON.stringify(helperPath("configure_git.js"))}, () => ({
 				configureGit: record("git"),
 			}));
