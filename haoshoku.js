@@ -1,6 +1,11 @@
 #!/usr/bin/env bun
 
 import { Command } from "commander";
+import {
+	configureExecutorClients,
+	validateExecutorClientInput,
+	EXECUTOR_CLIENT_USAGE,
+} from "./src/helpers/configure_executor_clients.js";
 import prompts from "prompts";
 import { startRunLog } from "./src/common/run_log.js";
 import { detectOS, findActiveModeFlags } from "./src/common/cli_utils.js";
@@ -99,6 +104,30 @@ if (retiredOption) {
 	process.exit(2);
 }
 
+const clientArgs = process.argv.slice(2);
+const clientMode = clientArgs.some(
+	(arg) => arg.split("=")[0] === "--executor-clients",
+);
+let clientEndpoint;
+if (clientMode && !clientArgs.some((arg) => ["--help", "-h"].includes(arg))) {
+	try {
+		const inline = clientArgs[0]?.startsWith("--executor-clients=");
+		if (
+			!(inline && clientArgs.length === 1) &&
+			!(clientArgs[0] === "--executor-clients" && clientArgs.length === 2)
+		)
+			throw new Error(EXECUTOR_CLIENT_USAGE);
+		clientEndpoint = validateExecutorClientInput(
+			inline
+				? clientArgs[0].slice("--executor-clients=".length)
+				: clientArgs[1],
+		);
+	} catch (error) {
+		console.error(error.message);
+		process.exit(2);
+	}
+}
+
 const executorArgs = process.argv.slice(2);
 const executorIndex = executorArgs.findIndex(
 	(arg) => arg.split("=")[0] === "--server-executor",
@@ -170,8 +199,14 @@ const runLog = informational
 	? null
 	: startRunLog({
 			version: program.version(),
-			argv:
-				executorIndex === -1
+			argv: clientMode
+				? [
+						process.argv[0],
+						process.argv[1],
+						"--executor-clients",
+						"[https-endpoint]",
+					]
+				: executorIndex === -1
 					? process.argv
 					: [
 							process.argv[0],
@@ -223,6 +258,10 @@ program
 	.option(
 		"--server-executor <https-origin>",
 		"Provision Executor on Debian (opt-in; external HTTPS proxy required)",
+	)
+	.option(
+		"--executor-clients <https-endpoint>",
+		"Register Executor HTTP MCP for Claude Code and Codex (user scope, opt-in)",
 	)
 	.option(
 		"--gh-stack",
@@ -333,6 +372,11 @@ async function runAction(options) {
 			`--${activeFlags[0]} and --${activeFlags[1]} are mutually exclusive — pass exactly one mode flag`,
 		);
 		process.exit(2);
+	}
+
+	if (options.executorClients) {
+		if (!configureExecutorClients(clientEndpoint)) process.exitCode = 1;
+		return;
 	}
 
 	if (options.serverExecutor) {

@@ -22,6 +22,7 @@ export const MODE_FLAGS = [
 	"tailscaleT3",
 	"serverHermesRelay",
 	"serverExecutor",
+	"executorClients",
 	"ghStack",
 	"audio",
 	"audioBackup",
