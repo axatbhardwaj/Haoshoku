@@ -96,6 +96,7 @@ const DELIBERATE_OMISSIONS = {
 		],
 	]),
 	"debian-server": new Map([
+		["--fleet-ssh", "Fleet SSH provisioning runs only on Arch fleet hosts."],
 		[
 			"--tailscale-t3",
 			"Arch provisioning; Debian uses --server-t3-code with preconfigured Tailscale.",
@@ -185,6 +186,7 @@ function runArchDefaultPath({ isOmarchy = true, gitAnswer = true } = {}) {
 				runCachyOSSetup,
 			} = await import(${JSON.stringify(modulePath)});
 			await runCachyOSSetup({
+				configureFleetSshImpl: record("fleetSsh", true),
 				configureTailscaleT3Impl: record("tailscaleT3", true),
 				readDeviceTypeImpl: () => "pc",
 				promptDeviceTypeImpl: record("deviceType"),
@@ -324,6 +326,7 @@ function defaultSetupOverrides({
 }) {
 	return {
 		readDeviceTypeImpl: () => "pc",
+		configureFleetSshImpl: async () => true,
 		configureTailscaleT3Impl: async () => true,
 		startSudoSessionImpl: async () => () => {},
 		prepareArchPackageManagerImpl: async () => true,

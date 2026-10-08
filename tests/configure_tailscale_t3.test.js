@@ -731,6 +731,7 @@ describe("Arch full setup always-on failures", () => {
 				configureVoxtypeOsdImpl: async () => {},
 				configureKdeConnectCommandsImpl: async () => {},
 				configureOmarchyBarImpl: async () => {},
+				configureFleetSshImpl: async () => true,
 				configureTailscaleT3Impl: (options) =>
 					step === "Tailscale/T3"
 						? false

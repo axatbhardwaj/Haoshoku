@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { log } from "../src/common/utils.js";
 import {
 	installArchPackageBatch,
 	installSystemPackages,
@@ -35,6 +36,7 @@ describe("iobox full setup", () => {
 				calls.push(["apps", options]);
 			},
 			configureTailscaleT3Impl: record("tailscale-t3", true),
+			configureFleetSshImpl: record("fleet-ssh", true),
 			configureBraveManagedPoliciesImpl: record("brave-policies"),
 			configureHyprmoncfgImpl: record("monitors"),
 			configureOmarchyWorkspacesImpl: record("workspaces"),
@@ -55,6 +57,7 @@ describe("iobox full setup", () => {
 			["packages", "paru", isOmarchy, "iobox"],
 			["apps", { isOmarchy, deviceType: "iobox" }],
 			"tailscale-t3",
+			"fleet-ssh",
 			...(isOmarchy ? ["omazed", "appearance"] : []),
 			"sudo-stop",
 		]);
@@ -159,6 +162,7 @@ it("exits the full iobox CLI non-zero naming linger when the service step fails"
 				installDevToolsImpl: async () => {},
 				installSystemPackagesImpl: async () => {},
 				configureUserAppsImpl: async () => {},
+				configureFleetSshImpl: async () => true,
 				configureTailscaleT3Impl: async () => { throw new Error("linger failed: sudo denied"); },
 			}),
 		}));
@@ -184,5 +188,52 @@ it("exits the full iobox CLI non-zero naming linger when the service step fails"
 		expect(output).not.toContain("Arch setup finished");
 	} finally {
 		fs.rmSync(home, { recursive: true });
+	}
+});
+
+// A fleet failure must abort iobox and release sudo; desktop profiles keep going.
+it.each(["pc", "laptop", "iobox"])("handles fleet SSH failure on %s", async (deviceType) => {
+	for (const throws of [false, true]) {
+		const events = [];
+		const messages = [];
+		const originalWarning = log.warning, originalError = log.error;
+		log.warning = log.error = (message) => messages.push(message);
+		try {
+			const result = await runCachyOSSetup({
+				readDeviceTypeImpl: () => deviceType,
+				promptDeviceTypeImpl: async () => {},
+				startSudoSessionImpl: async () => () => events.push("stop"),
+				commandExistsImpl: async () => false,
+				prepareArchPackageManagerImpl: async () => true,
+				ensureRustToolchainImpl: async () => {},
+				ensureAurHelperImpl: async () => "paru",
+				installDevToolsImpl: async () => {},
+				installSystemPackagesImpl: async () => {},
+				installFlatpakAppsImpl: async () => {},
+				configureUserAppsImpl: async () => {},
+				configureTailscaleT3Impl: async () => { events.push("t3"); return true; },
+				configureBraveManagedPoliciesImpl: async () => {},
+				configureHyprmoncfgImpl: async () => {},
+				configureOmarchyWorkspacesImpl: async () => {},
+				configureOmarchyPluginsImpl: async () => {},
+				configureVoxtypeOsdImpl: async () => {},
+				configureKdeConnectCommandsImpl: async () => {},
+				configureOmarchyBarImpl: async () => {},
+				configureOmazedImpl: async () => {},
+				configureOmarchyAppearanceImpl: async () => {},
+				configureFleetSshImpl: async (options) => {
+					expect(options.deviceType).toBe(deviceType);
+					events.push("fleet");
+					if (throws) throw new Error("Tailscale SSH failed");
+					return false;
+				},
+			});
+			expect(result).toBe(deviceType !== "iobox");
+			expect(events).toEqual(["t3", "fleet", "stop"]);
+			expect(messages.join(" ")).toContain("Fleet SSH");
+		} finally {
+			log.warning = originalWarning;
+			log.error = originalError;
+		}
 	}
 });

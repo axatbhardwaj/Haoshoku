@@ -34,6 +34,7 @@ import { configureOmarchyWorkspaces } from "../helpers/configure_omarchy_workspa
 import { configureOmazed } from "../helpers/configure_omazed.js";
 import { configureVoxtypeOsd } from "../helpers/configure_voxtype_osd.js";
 import { configureTailscaleT3 } from "../helpers/configure_tailscale_t3.js";
+import { configureFleetSsh } from "../helpers/configure_fleet_ssh.js";
 import { installUserScripts } from "../helpers/install_user_scripts.js";
 
 // URLs
@@ -659,6 +660,7 @@ export async function runCachyOSSetup({
 	installFlatpakAppsImpl = installFlatpakApps,
 	configureUserAppsImpl = configureUserApps,
 	configureTailscaleT3Impl = configureTailscaleT3,
+	configureFleetSshImpl = configureFleetSsh,
 	promptDeviceTypeImpl = promptDeviceType,
 	readDeviceTypeImpl = readDeviceType,
 	configureBraveManagedPoliciesImpl = configureBraveManagedPolicies,
@@ -726,6 +728,18 @@ export async function runCachyOSSetup({
 			log.warning(
 				`Tailscale/T3 configuration failed (${err?.message ?? err}) — continuing. Retry: haoshoku --tailscale-t3`,
 			);
+		}
+		try {
+			if (!(await configureFleetSshImpl({ deviceType }))) {
+				throw new Error("Fleet SSH setup incomplete");
+			}
+		} catch (err) {
+			const message = `Fleet SSH setup failed (${err?.message ?? err}). Retry: haoshoku --fleet-ssh`;
+			if (isIobox) {
+				log.error(`${message}. Aborting iobox setup.`);
+				return false;
+			}
+			log.warning(`${message} — continuing setup.`);
 		}
 		if (isOmarchy && !isIobox) {
 			try {

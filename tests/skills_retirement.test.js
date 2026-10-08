@@ -290,6 +290,7 @@ describe("selected integration retirement", () => {
 						commandExistsImpl: async () => false, prepareArchPackageManagerImpl: noop,
 						ensureRustToolchainImpl: noop, ensureAurHelperImpl: async () => "paru", installDevToolsImpl: noop,
 						installSystemPackagesImpl: noop, installFlatpakAppsImpl: noop,
+						configureFleetSshImpl: async () => true,
 						configureTailscaleT3Impl: record("t3"),
 						configureBraveManagedPoliciesImpl: noop, configureHyprmoncfgImpl: noop,
 						configureOmarchyWorkspacesImpl: noop, configureOmarchyPluginsImpl: noop,

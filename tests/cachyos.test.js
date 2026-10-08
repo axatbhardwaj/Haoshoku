@@ -676,6 +676,7 @@ describe("Arch package-manager preflight", () => {
 			throw new Error("setup continued without an authenticated sudo session");
 		};
 		const result = await runCachyOSSetup({
+			configureFleetSshImpl: async () => true,
 			configureTailscaleT3Impl: async () => true,
 			readDeviceTypeImpl: () => "pc",
 			promptDeviceTypeImpl: async () => events.push("device-type"),
@@ -720,6 +721,7 @@ describe("Arch package-manager preflight", () => {
 			);
 		};
 		const result = await runCachyOSSetup({
+			configureFleetSshImpl: async () => true,
 			configureTailscaleT3Impl: async () => true,
 			readDeviceTypeImpl: () => "pc",
 			promptDeviceTypeImpl: async () => events.push("device-type"),
@@ -768,6 +770,7 @@ describe("Arch package-manager preflight", () => {
 			throw new Error("setup continued after injected failure");
 		};
 		const setup = runCachyOSSetup({
+			configureFleetSshImpl: async () => true,
 			configureTailscaleT3Impl: async () => true,
 			readDeviceTypeImpl: () => "pc",
 			promptDeviceTypeImpl: async () => {},
@@ -864,6 +867,7 @@ describe("Arch package-manager preflight", () => {
 			);
 		};
 		const result = await runCachyOSSetup({
+			configureFleetSshImpl: async () => true,
 			configureTailscaleT3Impl: async () => true,
 			readDeviceTypeImpl: () => "pc",
 			promptDeviceTypeImpl: async () => events.push("device-type"),
@@ -905,6 +909,7 @@ describe("Arch package-manager preflight", () => {
 			);
 		};
 		const result = await runCachyOSSetup({
+			configureFleetSshImpl: async () => true,
 			configureTailscaleT3Impl: async () => true,
 			readDeviceTypeImpl: () => "pc",
 			promptDeviceTypeImpl: async () => events.push("device-type"),
@@ -947,6 +952,7 @@ describe("Arch package-manager preflight", () => {
 				return result;
 			};
 			const result = await runCachyOSSetup({
+				configureFleetSshImpl: async () => true,
 				configureTailscaleT3Impl: async () => true,
 				startSudoSessionImpl: async () => () => {},
 				prepareArchPackageManagerImpl: record("prepare", true),
@@ -1023,6 +1029,7 @@ describe("Arch package-manager preflight", () => {
 		};
 
 		await runCachyOSSetup({
+			configureFleetSshImpl: async () => true,
 			configureTailscaleT3Impl: async () => true,
 			readDeviceTypeImpl: () => "pc",
 			promptDeviceTypeImpl: async () => {},
@@ -1067,6 +1074,7 @@ describe("Arch package-manager preflight", () => {
 			let result;
 			try {
 				result = await runCachyOSSetup({
+					configureFleetSshImpl: async () => true,
 					configureTailscaleT3Impl: async () => true,
 					startSudoSessionImpl: async () => () => {},
 					prepareArchPackageManagerImpl: async () => true,
@@ -1132,6 +1140,7 @@ describe("Arch package-manager preflight", () => {
 					}
 				};
 				const result = await runCachyOSSetup({
+					configureFleetSshImpl: async () => true,
 					configureTailscaleT3Impl: async () => true,
 					startSudoSessionImpl: async () => () => {},
 					prepareArchPackageManagerImpl: async () => true,
@@ -1290,6 +1299,7 @@ describe("Arch T3 phone access integration", () => {
 				configureOmarchyBarImpl: async () => {},
 				configureOmazedImpl: async () => {},
 				configureOmarchyAppearanceImpl: async () => {},
+				configureFleetSshImpl: async () => true,
 				configureTailscaleT3Impl: async () => {
 					events.push("tailscale-t3");
 					if (throws) throw new Error("unavailable");

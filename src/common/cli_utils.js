@@ -18,6 +18,7 @@ export const MODE_FLAGS = [
 	"agentsBackup",
 	"axstack",
 	"axstackCheck",
+	"fleetSsh",
 	"serverT3Code",
 	"tailscaleT3",
 	"serverHermesRelay",

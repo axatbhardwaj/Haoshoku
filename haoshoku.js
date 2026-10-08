@@ -70,6 +70,7 @@ import {
 import { configureOmarchyPlugins } from "./src/helpers/configure_omarchy_plugins.js";
 import { configureOmarchyWorkspaces } from "./src/helpers/configure_omarchy_workspaces.js";
 import { configureTailscaleT3 } from "./src/helpers/configure_tailscale_t3.js";
+import { configureFleetSsh, getArchFleetHost } from "./src/helpers/configure_fleet_ssh.js";
 import { configureT3CodeServer } from "./src/helpers/configure_t3_code_server.js";
 import {
 	backupWorktreeCleanup,
@@ -202,6 +203,15 @@ const informational = process.argv
 			["--help", "-h", "--version", "-V", "--share-log"].includes(arg) ||
 			arg.startsWith("--share-log="),
 	);
+// Refused fleet mode must leave the host untouched, including run-log files.
+if (
+	!informational &&
+	process.argv.slice(2).includes("--fleet-ssh") &&
+	!getArchFleetHost()
+) {
+	console.error("--fleet-ssh requires an Arch fleet host.");
+	process.exit(1);
+}
 const runLog = informational
 	? null
 	: startRunLog({
@@ -253,6 +263,7 @@ program
 	)
 	.option("--axstack", "Install or update the pinned Axstack release")
 	.option("--axstack-check", "Check Axstack release and harness setup")
+	.option("--fleet-ssh", "Configure Tailscale SSH and managed SSH files on an Arch fleet host")
 	.option(
 		"--server-t3-code",
 		"Configure the T3 Code headless service over Tailscale on Debian (keeps Grok CLI on PATH)",
@@ -455,6 +466,11 @@ async function runAction(options) {
 
 	if (options.axstackCheck) {
 		if (!(await checkAxstack()).ok) process.exitCode = 1;
+		return;
+	}
+
+	if (options.fleetSsh) {
+		if (!(await configureFleetSsh({ standalone: true }))) process.exitCode = 1;
 		return;
 	}
 
