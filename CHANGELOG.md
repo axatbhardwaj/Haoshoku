@@ -1,5 +1,15 @@
 # Changelog
 
+## 12.3.1 - 2026-10-08
+
+### Fixed
+
+- Isolate Executor client test caches outside fixture HOME under Bun 1.4.2,
+  preserving app-write checks. Runtime behavior is unchanged.
+- Prepare recovery after v12.3.0's tag and GitHub release were created but
+  release tests blocked npm and Linux binary publication. Publication of
+  12.3.1 remains pending separate driver verification.
+
 ## 12.3.0 - 2026-10-08
 
 This entry records merged T1–T7 source changes for 12.3.0. Tag, npm and Linux
