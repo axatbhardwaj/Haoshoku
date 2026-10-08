@@ -1,6 +1,24 @@
 # Changelog
 
-## Unreleased
+## 12.4.0 - 2026-10-08
+
+### Added
+
+- Add the `iobox` agent-box profile, a validated fleet manifest and persisted
+  hostname-based device detection that preserves existing profile choices.
+- Route iobox setup through a dedicated developer and agent package list,
+  skipping desktop integrations and gaming while retaining Omarchy appearance,
+  agent setup and user scripts.
+- Enable and verify user linger on Arch hosts; mask and verify sleep targets on
+  iobox. Failed T3, Tailscale, linger or sleep-mask setup stops iobox provisioning.
+- Add `--fleet-ssh` for Arch fleet hosts: enable and verify Tailscale SSH, manage
+  peer aliases and refresh dedicated fleet host keys while preserving user SSH
+  configuration. The Debian VPS keeps OpenSSH.
+- Add `--agent-accounts` credential overlays, enabled by default on iobox, with
+  private authentication state and shared agent resources. Existing conflicts
+  are preserved and reported; logins and T3 account mapping remain manual.
+- Integrate a validated 1Password service-account token file with a managed T3
+  environment drop-in. Invalid files are rejected without logging token values.
 
 ### Documentation
 
