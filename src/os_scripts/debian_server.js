@@ -10,18 +10,14 @@ import {
 	runCommand,
 	safeCopyFile,
 } from "../common/utils.js";
-import { syncAgentSkills } from "../helpers/configure_agent_skills.js";
 import { syncAgentsConfig } from "../helpers/configure_agents.js";
 import { configureAxstack } from "../helpers/configure_axstack.js";
 import { configureClaude } from "../helpers/configure_claude.js";
-import { configureClaudeRemoteControl } from "../helpers/configure_claude_remote_control.js";
-import { configureClaudeStayAwake } from "../helpers/configure_claude_stay_awake.js";
 import { configureCodex } from "../helpers/configure_codex.js";
 import { installGhStack } from "../helpers/configure_gh_stack.js";
 import { configureGit } from "../helpers/configure_git.js";
 import { configureHermesRelay } from "../helpers/configure_hermes_relay.js";
-import { configurePrWatch } from "../helpers/configure_pr_watch.js";
-import { configureSkills } from "../helpers/configure_skills.js";
+import { setupFirewall } from "../helpers/configure_tailnet_firewall.js";
 import { configureT3CodeServer } from "../helpers/configure_t3_code_server.js";
 import { syncWorktreeCleanup } from "../helpers/configure_worktree_cleanup.js";
 
@@ -212,33 +208,7 @@ async function installDocker() {
 	}
 }
 
-export async function setupFirewall({
-	run = runCommand,
-	prompt = promptUser,
-} = {}) {
-	log.info("Setting up UFW...");
-	await run("sudo ufw default deny incoming");
-	await run("sudo ufw default allow outgoing");
-
-	// LOCKOUT GATE: on a remote/headless server, enabling UFW with a
-	// default-deny policy but no working SSH allow rule locks us out for good.
-	// Capture the allow-ssh result and refuse to enable (or even prompt) if it
-	// failed — better to leave UFW disabled than to brick remote access.
-	const sshAllowed = await run("sudo ufw allow ssh");
-	if (!sshAllowed) {
-		log.error(
-			"SSH allow rule failed — NOT enabling UFW (remote lockout risk). Fix and re-run.",
-		);
-		return;
-	}
-
-	await run("sudo ufw allow http");
-	await run("sudo ufw allow https");
-
-	if (await prompt("Enable UFW now?", true)) {
-		await run("sudo ufw enable");
-	}
-}
+export { setupFirewall };
 
 /**
  * Build the fail2ban `jail.local` content for the [sshd] jail.
@@ -308,7 +278,7 @@ export async function runDebianServerSetup({
 	await setupSsh();
 	await configureFishShell();
 	await installDocker();
-	await setupFirewall();
+	const firewallResult = await setupFirewall();
 	await configureFail2ban();
 
 	// Debian Server deliberately receives only portable/headless developer tools.
@@ -329,18 +299,6 @@ export async function runDebianServerSetup({
 			`GitHub gh-stack extension installation failed (${err?.message ?? err}) — continuing with remaining server setup.`,
 		);
 	}
-	if (await promptUser("Enable Claude stay-awake service?", true)) {
-		await configureClaudeStayAwake();
-	}
-	if (
-		await promptUser(
-			"Install Claude Remote Control services with all permission checks bypassed? This permanently sets bypassPermissionsModeAccepted: true in ~/.claude.json for every Claude Code session on this machine, not only these services. To undo it, edit ~/.claude.json and remove the flag or set it to false.",
-			false,
-		)
-	) {
-		await configureClaudeRemoteControl();
-	}
-	await configurePrWatch();
 	if (
 		await promptUser(
 			"Enable automatic git worktree cleanup? This enables a persistent weekly timer that runs cleanup-worktrees.sh --apply and deletes eligible worktrees.",
@@ -375,16 +333,6 @@ export async function runDebianServerSetup({
 			`Shared agent profile sync failed (${error?.message ?? error}).`,
 		);
 	}
-	if (!(await configureSkills())) {
-		log.warning(
-			"External skills were not fully installed — continuing. Retry with: haoshoku --skills",
-		);
-	}
-	if (!(await syncAgentSkills())) {
-		log.warning(
-			"Haoshoku-owned agent skills were not fully synced — continuing. Retry with: haoshoku --agent-skills",
-		);
-	}
 	let axstackConfigured = false;
 	try {
 		axstackConfigured = (await configureAxstackImpl()).ok;
@@ -393,6 +341,12 @@ export async function runDebianServerSetup({
 	}
 	const hermesRelayConfigured = await configureHermesRelay();
 	const t3CodeConfigured = await configureT3CodeServer();
+	if (firewallResult?.ok !== true) {
+		log.error(
+			`Debian Server firewall is incomplete. ${firewallResult?.reason ?? "Firewall configuration was skipped."} Retry Debian setup after resolving the prerequisites.`,
+		);
+		return false;
+	}
 	if (!hermesRelayConfigured) {
 		log.error(
 			"Debian Server setup finished, but the Hermes relay is incomplete.",

@@ -81,7 +81,8 @@ The Arch setup:
 - installs Tailscale, enables `tailscaled.service`, and configures the T3 user
   service for tailnet HTTPS phone access after T3 is installed. Logged-out nodes
   print a browser login URL and wait; logged-in nodes skip login. Matching
-  service drop-ins are left untouched. Failures warn and setup continues;
+  service drop-ins are left untouched. The [single-backend preflight](#t3-single-backend-preflight)
+  must pass before T3 service changes. Failures warn and setup continues;
 - prints the verified HTTPS URL and `t3 pair --tailscale` phone pairing hint.
   Rerun this step alone with `haoshoku --tailscale-t3` on Arch. System changes
   use `sudo -n`; standalone runs require an existing sudo authorization
@@ -105,8 +106,7 @@ The Arch setup:
   so `haoshoku --device-type pc|laptop` remains the explicit override. Only
   ambiguous hardware falls back to the interactive selector; Skip persists
   nothing and leaves device-specific audio unset;
-- keeps PR watch and the Matt Pocock skill set as portable setup steps. Without
-  interactive confirmation—including piped stdin—Haoshoku declines real
+- without interactive confirmation—including piped stdin—Haoshoku declines real
   user decisions immediately and does not treat input as answers;
 - adds a device-routed behavior-only Lua workspace overlay. The hyprmoncfg
   plugin owns the generated `~/.config/hypr/monitors.lua`; Haoshoku owns only
@@ -226,10 +226,8 @@ therefore reverted on the next deploy. Every other top-level key — including
 
 ## Agent and orchestration policy
 
-Haoshoku deploys the compact Claude/Codex instructions and installs Matt
-Pocock skills through the Skills CLI with `--skills` or `--skills-update`.
-`--agent-skills` syncs the pinned upstream `visual-explainer` payload and its
-portable Claude/Codex links. Routing and review workflow policy live in Axstack.
+Haoshoku deploys the compact Claude/Codex instructions. Routing and review
+workflow policy live in Axstack. Independent skills are managed separately.
 Back up live instruction edits with:
 
 ```bash
@@ -246,6 +244,23 @@ remains responsible for orchestration.
 T3 Code owns agent orchestration, and Axstack supplies routing policy.
 Claude/Codex runtime state and `settings.json` remain machine-local.
 
+### Current reconciliation and authority
+
+The approved [setup reconciliation r2 and Claude/Codex addendum](docs/specs/2026-10-07-setup-reconciliation-r2.md)
+remain the implementation baseline for [#63](https://github.com/axatbhardwaj/Haoshoku/issues/63)
+and [#65](https://github.com/axatbhardwaj/Haoshoku/issues/65)/[#66](https://github.com/axatbhardwaj/Haoshoku/issues/66).
+The subsequent instruction to complete the work and release authorizes the T3
+driver to complete reviewed merges and the GitHub, npm and Linux binary release
+after T1–T7. It supersedes the historical human-only merge and no-release gates
+in dated specs and plans. Their original bodies and approvals remain historical.
+Release authorization does not authorize installation, migration or configuration
+on live hosts. See the [runbook's current gate](docs/runbooks/axstack-migration.md#release-and-execution-gate).
+
+Repository tests and package checks establish the candidate's source behavior.
+They do not prove publication, live Debian compatibility, desktop pairing,
+Executor authentication or future T3 session inheritance. The Unreleased entry
+describes candidate changes, not a completed release or installation.
+
 ### Existing-host migration
 
 Haoshoku no longer installs, configures, or launches Paseo. Existing hosts keep
@@ -260,27 +275,34 @@ these artifacts until you remove them manually:
 - `~/.config/haoshoku/{hermes-relay,paseo-tasks,paseo-schedules}.json`.
 
 Retiring these host artifacts needs a separate manual migration after checking
-active consumers and preserving private recovery data. Haoshoku's agent-skill
-sync archives the retired bundled `model-routing`, `paseo-pr-babysit`, and
-`paseo-pr-review` skills with their live edits. It removes only managed
-Claude/Codex links; agent-specific directories and non-managed links stay intact.
+active consumers and preserving private recovery data. Normal and repeated
+setup leaves existing skill directories, managed links, and theme preferences
+untouched. Any existing-host skill migration is manual and separately scoped.
 
-### Visual explainer and skills
+### Retired skill commands
 
-The visual explainer defaults to a fixed dark theme. Set and persist a different
-preference with `haoshoku --explainer-theme dark|light|system`; an explicit
-theme in a request takes precedence. Fixed dark or light output uses the full
-upstream renderer, while the system theme may use quick mode. On the first
-sync after this migration, Haoshoku archives the retired shared
-`html-deliverables` skill under `~/.config/haoshoku/retired-agent-skills/`
-before removing only its managed Claude/Codex links. Haoshoku no longer
-supports `--agent-skills-backup`; existing upstream skills remain untouched.
+Haoshoku no longer installs Matt Pocock skills or visual-explainer, and no
+longer provides skill inventory, agent-skill sync, or theme configuration.
+`--skills`, `--skills-update`, `--skills-list`, `--agent-skills`, and
+`--explainer-theme <theme>` exit nonzero with guidance before setup runs.
+The whole legacy `--agent-skills` route is retired, including archive/unlink
+and sync behavior. Boolean, value-bearing `--flag=value`, malformed and combined
+retired forms are refused before logging or setup; they cannot fall through to
+full OS setup. Manage independent skills separately; use `haoshoku --axstack`
+for Axstack workflows. Existing user-owned skills and configuration remain in place.
 
-## Claude Remote Control
+### Retired service and watcher commands
 
-The optional Claude Remote Control setup runs persistent Claude sessions from
-three fixed roots: `haki` at `$HOME`, `dev` at `$HOME/dev`, and `work` at
-`$HOME/Work`. Instances whose roots do not exist are skipped with a warning.
+Claude Remote Control, Claude stay-awake, and PR watch are retired from future
+Arch and Debian setup. `--claude-remote-control`,
+`--claude-remote-control-backup`, `--claude-stay-awake`,
+`--claude-stay-awake-backup`, `--pr-watch`, and `--pr-watch-backup` exit nonzero
+with guidance before logging or setup runs. Manage existing services and
+watchers separately; normal and repeated setup leaves their scripts, units,
+enablement links, state, and Claude acceptance settings untouched.
+
+## Haki launcher
+
 On Omarchy, `haoshoku-special-workspace haki` opens the tagged Ghostty `haki`
 split on its special workspace, with Claude above a fresh Codex pane below;
 it has no default keybinding. KDE uses its own Warp `agents` route.
@@ -289,39 +311,9 @@ Set `claudeSessionName` in
 value starts plain Claude; a
 syntactically invalid value is preserved, reported, and ignored. A valid name is
 passed as one literal argument to `claude -r`, but it resumes directly only when
-the name resolves uniquely; otherwise Claude may open its picker. This
-Haki launcher never attaches to tmux
-or calls systemd.
-
-These sessions run Claude Remote Control in **server mode**
-(`claude remote-control --spawn same-dir --capacity 5`): each is a persistent
-host that spawns up to five on-demand sessions in its own directory, launched
-with `--permission-mode bypassPermissions`. Debian server setup calls this out
-before installation. The user services enable
-systemd lingering when possible so sessions can survive logout; if lingering
-cannot be enabled automatically, setup prints the exact `loginctl` command to
-run.
-
-Installation sets `bypassPermissionsModeAccepted: true` in `~/.claude.json`.
-This machine-wide acceptance affects every Claude Code session, not only the
-three managed services, and persists until manually reverted. To undo it, edit
-`~/.claude.json` and remove `bypassPermissionsModeAccepted` or set it to
-`false`.
-
-Attach to any enabled managed session from a terminal with:
-
-```bash
-~/.local/bin/haoshoku-claude-remote-control attach haki
-~/.local/bin/haoshoku-claude-remote-control attach dev
-~/.local/bin/haoshoku-claude-remote-control attach work
-```
-
-Deploy or snapshot the supervisor and user unit independently with:
-
-```bash
-haoshoku --claude-remote-control
-haoshoku --claude-remote-control-backup
-```
+the name resolves uniquely; otherwise Claude may open its picker. This Haki
+launcher uses local Claude/Codex sessions without the retired Remote Control
+services.
 
 ## Gaming
 
@@ -350,26 +342,20 @@ configuration. Machine-local secrets can be stored in
 ```bash
 haoshoku --claude
 haoshoku --claude-backup
-haoshoku --claude-remote-control
-haoshoku --claude-remote-control-backup
 haoshoku --claude-update
 haoshoku --codex
 haoshoku --codex-backup
 haoshoku --server-t3-code
+haoshoku --server-executor https://gateway.example.net
+# With EXECUTOR_AUTHORIZATION supplied securely in the environment:
+haoshoku --executor-clients https://executor.example.net/mcp
 haoshoku --device-type laptop
 haoshoku --kde-connect-commands
 haoshoku --audio
 haoshoku --audio-backup
 haoshoku --mimeapps
 haoshoku --mimeapps-backup
-haoshoku --skills
-haoshoku --skills-update
-haoshoku --skills-list
-haoshoku --agent-skills
-haoshoku --explainer-theme dark
 haoshoku --gh-stack
-haoshoku --claude-stay-awake
-haoshoku --pr-watch
 haoshoku --worktree-cleanup
 haoshoku --workspaces
 haoshoku --gaming
@@ -417,10 +403,68 @@ haoshoku --os debian-server
 ```
 
 The Debian path remains deliberately headless. In addition to server hardening,
-it installs the portable Claude/Codex policy, Matt Pocock skills, the pinned
-visual-explainer, Axstack, PR-watch, and Hermes Telegram transport.
+it installs the portable Claude/Codex policy, Axstack, and Hermes
+Telegram transport.
 T3 Code is required and runs without a prompt; an incomplete T3 setup fails
 Debian setup. `haoshoku --server-t3-code` runs the same step on its own.
+
+### T3 single-backend preflight
+
+Both `--tailscale-t3` on Arch and `--server-t3-code` on Debian check desktop
+Local environment before writing T3 service configuration, installing, starting,
+or restarting the service. This check also runs on an already configured rerun.
+Runtime and CLI installation can precede this guard; refusal does not mean that
+no prerequisite work occurred. The intended workstation topology is one service
+backend shared by the desktop and phone, with desktop Local environment disabled.
+The operator pairs each client separately; source checks do not prove pairing.
+
+Haoshoku reads `desktop-settings.json` under the effective T3 base directory's
+`userdata` folder, normally `~/.t3/userdata`. It checks the service's effective
+`T3CODE_HOME`, pending unit configuration, and desktop installation, unit and
+process evidence. Only an explicit JSON `localEnvironmentEnabled: false` proves
+Local environment is disabled. A missing key means enabled. Missing settings
+are safe only when no desktop installation, unit or process is detected; an
+unused listening port does not prove a headless setup.
+
+Enabled, malformed, unreadable or conflicting directory/settings evidence, and
+failed probes, return incomplete setup before T3 service changes. Disable
+**Local environment** in the T3 Code desktop, then pair the desktop to the
+existing service. Resolve directory conflicts or unreadable evidence and retry.
+Haoshoku never rewrites desktop settings or reads, changes or displays pairing
+tokens. Explicitly disabled desktops and genuinely headless setups can proceed;
+service installation/restart uses the checked base directory. Environment-file
+and unsupported launch-directory overrides require manual reconciliation.
+
+### Debian tailnet SSH firewall
+
+Debian setup keeps OpenSSH and its existing key/deploy behavior. Before any UFW
+change, it requires logged-in, running Tailscale with kernel networking and a
+working, UP `tailscale0` carrying every reported valid IPv4/IPv6 tailnet address.
+Missing addresses, a userspace-only interface or unreadable state fail preflight. Install Tailscale,
+log in and verify `tailscale status --json` and
+`ip -j address show dev tailscale0`, then retry Debian setup.
+
+Setup adds `ufw allow in on tailscale0 to any app OpenSSH` before changing
+defaults, retains HTTP/HTTPS rules, and keeps the **Enable UFW now?** confirmation.
+UFW IPv6 support must already be enabled (`IPV6=yes` in `/etc/default/ufw`);
+Haoshoku verifies active IPv4 and IPv6 tailnet SSH rules. Active UFW follows the
+same checks and ordering without reset. Declining enable on inactive UFW,
+skipping or failing configuration, or failing verification makes overall Debian
+setup incomplete with retry guidance.
+
+Existing public SSH allow/limit rules are preserved and reported as incomplete
+hardening, including IPv6 rules and saved rules on inactive UFW. Confirm working
+tailnet access, then separately inspect and migrate/remove broad rules as the
+operator before retrying. Named application profiles are resolved through
+read-only `ufw app info` port inspection, so web/mail profiles can coexist with
+tailnet SSH. Failed, malformed or unresolved profile inspection remains
+incomplete; correct the profile or inspection prerequisite and retry. Haoshoku
+does not guess that an unknown profile is safe.
+It never enables Tailscale SSH, disables sshd, changes tailnet ACLs, or deletes
+existing firewall rules. Custom rules outside UFW's managed rules require a
+separate operator audit.
+
+### Debian T3 service setup
 
 Before setup, install Tailscale yourself and log in to your tailnet. Confirm
 that `tailscale status` succeeds. Enable HTTPS certificates in the tailnet
@@ -462,9 +506,7 @@ of this flow. If a service self-update has advanced past npm's nightly tag,
 a rerun may fail; inspect `t3 --version` and retry once the nightly tag catches
 up.
 
-The full Debian path asks about Git, Claude stay-awake, Claude Remote Control,
-and automatic worktree cleanup. `haoshoku --skills` refreshes Matt Pocock
-skills using Bun's `bunx` runner.
+The full Debian path asks about Git and automatic worktree cleanup.
 
 ### VPS Hermes Telegram transport
 
@@ -543,3 +585,154 @@ bun install
 bun test
 bun run lint
 ```
+
+## Opt-in Executor server
+
+```bash
+haoshoku --server-executor https://gateway.example.net
+```
+
+Run this command as root on Debian with Docker, Docker Compose v2 and `ss`
+already available. Executor is never provisioned by default Arch or Debian
+setup. Supply an explicit HTTPS origin (host and optional port, optionally a
+trailing `/`). Credentials, other paths, queries and fragments are rejected.
+The origin is omitted from Haoshoku run logs; no credentials are requested or
+written by this installer.
+
+Provision DNS, a publicly trusted TLS certificate and an external nginx reverse
+proxy separately. Forward the configured HTTPS origin to `127.0.0.1:4788`,
+including the `/api`, `/mcp` and `/.well-known` routes. OAuth callbacks and client
+metadata must be publicly reachable; a tailnet-only Serve URL is insufficient
+for providers that fetch those URLs. Haoshoku never changes nginx, DNS, TLS,
+firewall rules, Tailscale Serve/Funnel or OAuth client credentials.
+
+A fresh deployment pulls `ghcr.io/usefulsoftwareco/executor-selfhost:latest`,
+resolves its digest, checks the image's `65532:65532` runtime user and `/data`
+volume, and pins that digest in `/srv/executor/docker-compose.yml`. The only
+published port is `127.0.0.1:4788:4788`. `EXECUTOR_WEB_BASE_URL` supplies the
+explicit public origin. Haoshoku creates a private empty `data/` directory and
+changes ownership of that directory once; it never recursively changes data
+ownership. Upstream persists its database and generated encryption/session keys
+there. `haoshoku-executor.json` records the managed format and pulled digest.
+
+An existing manually configured deployment, differing compose file, unknown
+path, symlink, partial deployment, incompatible data ownership or conflicting
+container/port stops before pulling or starting anything. Existing files remain
+intact. Inspect and manage such deployments manually; there is no force,
+automatic adoption, migration, cleanup or upgrade path. A matching managed rerun
+checks the running `executor-selfhost` container and application without pulling,
+recreating, restarting, updating or rewriting it. Supported managed data files
+are `data.db` (plus SQLite `-wal`/`-shm` files), `secret.key` and `auth-secret.key`;
+additional files require manual inspection.
+
+Readiness checks require `/api/health` JSON with `status: "ok"` and Executor's
+OAuth authorization-server metadata advertising the configured origin and
+`/api/auth/mcp` endpoints, on both loopback and the public HTTPS origin. Each
+request, including its body, has a five-second deadline and a 16 KiB limit;
+verification makes at most five attempts, with one second between failed attempts
+(at most four retries). Redirects, proxy HTML, generic error
+responses and wrong metadata fail. A failed step exits nonzero and preserves
+partial state for manual inspection; rerunning never tries destructive repair.
+
+“Container ready” does not prove owner onboarding, an authenticated MCP
+handshake or healthy integrations. Complete first-owner signup yourself in the
+public web UI, then configure authentication, policies and integrations there.
+Haoshoku does not create owners, API keys, policies or OAuth connections.
+
+## Opt-in Executor clients
+
+For an ordinary agent user, run this standalone command after making the existing
+Executor HTTPS MCP endpoint and its authentication available:
+
+```bash
+# Supply EXECUTOR_AUTHORIZATION securely in this process environment first.
+haoshoku --executor-clients https://executor.example.net/mcp
+```
+
+`EXECUTOR_AUTHORIZATION` must contain the **complete** Authorization header value:
+`Bearer ` followed by the API key/token accepted by that endpoint. Do not put the
+secret in CLI arguments, a tracked file, or shell history. Missing, empty, raw-token,
+and newline-bearing values are rejected without printing them. The command stores
+only an environment reference, never the authorization value. HTTPS is required;
+ports and endpoint paths such as `/mcp` are supported, credentials/query/fragment
+are rejected. This endpoint differs from `--server-executor`'s origin-only input.
+
+The command adds an `executor` HTTP entry for **both Claude Code and Codex**.
+It requires no root privileges or harness subprocess and can run from any directory.
+It is separate from server provisioning and never creates accounts, keys, policy
+rules, or integrations. It is not part of default OS setup and cannot be combined
+with another mode or `--os`.
+
+Supported configuration locations:
+
+- Claude Code: `$HOME/.claude.json`, or `$CLAUDE_CONFIG_DIR/.claude.json` when that
+  override is nonempty. The entry lives in the top-level `mcpServers` map (user
+  scope), with `"headers": {"Authorization": "${EXECUTOR_AUTHORIZATION}"}`.
+- Codex: `$CODEX_HOME/config.toml`, defaulting to `$HOME/.codex/config.toml`.
+  The `[mcp_servers.executor]` table uses
+  `env_http_headers = { Authorization = "EXECUTOR_AUTHORIZATION" }`.
+
+Claude's legacy `$HOME/.claude/.config.json` or
+`$CLAUDE_CONFIG_DIR/.config.json` takes precedence over the standard file.
+If that path exists (including a link), or its layout cannot be safely inspected,
+setup refuses before writing either client. A default `$HOME/.claude` directory
+with group write permissions or a resolvable symlink is supported when no legacy
+file exists and lookup succeeds; it is only a lookup path. Actual write-target ownership, permissions
+and link checks still apply, including to an explicit `CLAUDE_CONFIG_DIR`.
+It never reads, adopts or rewrites the legacy file. Use manual user-scope MCP
+setup in the intended Claude/Codex environment for these layouts. An explicitly empty `CLAUDE_CONFIG_DIR` is
+ambiguous for legacy lookup; unset it for the default home or set an absolute home.
+
+Nonempty `CLAUDE_CODE_CUSTOM_OAUTH_URL`, `USE_STAGING_OAUTH` or `USE_LOCAL_OAUTH`
+also causes refusal before either write; use manual setup with that environment.
+Custom OAuth selects `.claude-custom-oauth.json`. The installed production Claude
+2.1.292 fixes its staging/local filename selector to production; other builds'
+`.claude-staging-oauth.json` / `.claude-local-oauth.json` targets are unsupported.
+The switches are refused conservatively for any nonempty value, including `0`
+or `false`; setup does not interpret their value semantics or change them.
+
+Use absolute homes for the intended non-root user; `XDG_CONFIG_HOME` does not
+redirect these MCP files. Auth references are resolved from the harness environment
+when it loads/connects the server, rather than saved as credentials during setup.
+Both use the header verbatim, so the environment value must include `Bearer `.
+This contract was checked against Claude Code **2.1.292**, Codex **0.160.1**, and the
+[Claude MCP documentation](https://code.claude.com/docs/en/mcp),
+[Claude environment settings](https://code.claude.com/docs/en/env-vars), and
+[Codex MCP](https://developers.openai.com/codex/mcp) /
+[config-home documentation](https://developers.openai.com/codex/config-advanced).
+Actual native offline readback with Claude **2.1.292** and Codex **0.160.1**
+confirmed the helper-written user entries and environment header references.
+That readback did not authenticate or discover tools. Live client access and T3
+inheritance remain unverified. Other clients require their own supported
+configuration contracts; older versions and other Claude builds are unverified.
+
+Both files are inspected before writes. A matching entry is a config no-op,
+including file permissions and timestamps. A differing or unknown `executor`
+entry stops: reconcile it manually in the effective user config, then retry.
+Existing inline credentials remain opaque; this command does not migrate them.
+Unrelated JSON bytes, settings, TOML sections, and comments are retained. Duplicate
+JSON keys, malformed configs, linked files/directories, foreign ownership, and
+shared write permissions are refused. The additive TOML path conservatively refuses
+multiline strings and inline/dotted `mcp_servers` parent definitions; use regular
+MCP tables or configure the entry manually for those shapes.
+
+New config files use mode 0600 and new directories 0700; existing file modes are
+preserved. Existing files are updated in place, with changed-input checks before
+writing and restoration from memory after caught write failures. No secret-bearing
+backups or temporary config copies are created. Run with other config writers
+stopped: these two file updates are not an atomic transaction across crashes or
+power loss. An incomplete/recovery warning requires manual inspection of both
+files before retrying; empty directories may remain after a failed fresh setup.
+
+For **T3-launched sessions**, run setup with the homes of the user that runs the
+future T3 backend/harness. That backend and its future child sessions must inherit
+`EXECUTOR_AUTHORIZATION` and the same `HOME`, `CODEX_HOME`, and/or
+`CLAUDE_CONFIG_DIR`. Exporting in an unrelated terminal does not update an already
+running backend. This command does not alter T3 provider settings, services, launch
+environments, or sessions. Managed/project config and explicit launch overrides
+can take precedence over these user entries.
+
+“Configuration written” or “already matches” proves only local registration.
+This command does **not** contact Executor, authenticate, run OAuth, discover tools,
+or verify account/integration access. Check an authenticated MCP handshake and
+expected tool discovery separately in the intended future harness session.

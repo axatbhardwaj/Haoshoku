@@ -1,5 +1,49 @@
 # Changelog
 
+## Unreleased
+
+These are repository candidate changes; publication and live-host installation
+are separate steps. No release or migration is claimed by this entry.
+
+### Added
+
+- Opt-in Debian `--server-executor <https-origin>` preserving installer: pin the
+  pulled upstream image digest, bind only `127.0.0.1:4788`, own only newly empty
+  data, bound health/OAuth metadata checks, and verify matching managed reruns
+  without updates. Existing/manual deployments and owner/auth/integration setup
+  remain outside automatic adoption.
+- Standalone `--executor-clients <https-endpoint>` registers both Claude and
+  Codex with an `EXECUTOR_AUTHORIZATION` environment reference. Matching entries
+  are no-ops; conflicts and unsupported layouts preserve both configurations.
+  Native offline readback is proven for Claude 2.1.292 and Codex 0.160.1;
+  authenticated tools and future T3 inheritance remain unverified.
+
+### Fixed
+
+- Both T3 setup entry points refuse ambiguous desktop Local environment state
+  before service changes; runtime/CLI prerequisites may precede the guard.
+  Desktop settings and pairing tokens are preserved.
+- Debian UFW requires running tailnet networking and matching `tailscale0`
+  addresses before changes. It adds interface-only OpenSSH rules, preserves
+  existing public SSH rules for manual migration, and propagates skipped,
+  declined or failed hardening as incomplete setup.
+- Maintained docs reconcile current driver merge/release authority while
+  preserving historical approvals. Migration verification selects npm latest
+  once and checks the actual tarball against its selected SHA-512 integrity.
+
+### Removed
+
+- Future Arch and Debian setup no longer deploys Claude Remote Control,
+  Claude stay-awake, or PR watch. Their deploy and backup flags fail before
+  logging or setup; packaged helpers and payloads are removed. Existing host
+  services, scripts, units, enablement links, watcher state, and Claude settings
+  remain untouched.
+
+- Future Arch and Debian setup no longer installs Matt Pocock skills or
+  visual-explainer. Retired skill installation, inventory, agent-skill sync,
+  and explainer-theme flags fail before setup; existing skills, links, and
+  theme preferences remain untouched. Independent skills are managed separately.
+
 ## 12.2.2 - 2026-10-07
 
 ### Fixed

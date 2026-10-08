@@ -18,12 +18,9 @@ function userAppDoubles(overrides = {}) {
 		enableServicesImpl: async () => {},
 		configureClaudeImpl: async () => {},
 		installGhStackImpl: async () => {},
-		configurePrWatchImpl: async () => {},
 		configureCodexImpl: async () => {},
 		syncAgentsConfigImpl: async () => {},
 		configureAxstackImpl: async () => ({ ok: true }),
-		configureSkillsImpl: async () => true,
-		syncAgentSkillsImpl: async () => true,
 		...overrides,
 	};
 }
@@ -58,10 +55,8 @@ describe("CachyOS browser integration", () => {
 				runCommandImpl: record("uosc"),
 				enableServicesImpl: record("services"),
 				configureClaudeImpl: record("claude"),
-				configurePrWatchImpl: record("pr-watch"),
 				configureCodexImpl: record("codex"),
 				configureAxstackImpl: async () => ({ ok: true }),
-				configureSkillsImpl: record("skills"),
 			}),
 		);
 

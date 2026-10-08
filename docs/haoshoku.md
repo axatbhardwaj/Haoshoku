@@ -47,13 +47,48 @@ The project is built using modern JavaScript (ES Modules) and runs on Bun.
 - **`src/helpers/`**: Standalone helper scripts (e.g., `configure_git.js`).
 
 T3 Code owns agent orchestration. Debian server setup requires its nightly
-service over Tailscale and Hermes Telegram transport. Omarchy binds `Super+T`
-to launch or focus T3 Code Nightly. See the [migration note](../README.md#existing-host-migration)
+service over Tailscale and Hermes Telegram transport. Its
+[tailnet SSH firewall](../README.md#debian-tailnet-ssh-firewall) checks readiness
+before UFW mutation and reports incomplete hardening through the overall setup
+result, including existing public rules and inactive-UFW enable refusal. Omarchy binds `Super+T`
+to launch or focus T3 Code Nightly. Both T3 setup helpers enforce the
+[single-backend preflight](../README.md#t3-single-backend-preflight), including reruns. See the [migration note](../README.md#existing-host-migration)
 for existing host artifacts that require manual retirement.
 
-`--skills` and `--skills-update` install Matt Pocock skills for Claude Code and
-Codex. `--agent-skills` syncs the pinned visual-explainer payload and archives
-retired bundled routing skills under `~/.config/haoshoku/retired-agent-skills/`,
-removing only managed Claude/Codex links. Routing policy lives in Axstack;
-Haoshoku no longer provides agent-skill backup. Existing upstream skills remain
-untouched.
+See the [retired skill commands](../README.md#retired-skill-commands) and
+[retired service and watcher commands](../README.md#retired-service-and-watcher-commands)
+for refusal guidance and existing-installation preservation. Axstack continues
+to supply workflow skills through `--axstack`.
+
+Executor server provisioning is a separate, opt-in Debian command:
+`haoshoku --server-executor <https-origin>`. It requires root, Docker Compose v2,
+`ss`, and independently provisioned public DNS/TLS/nginx. It preserves unmanaged
+or conflicting deployments and verifies an identical managed rerun without
+updating it. The focused helpers separate process/filesystem preflight from
+bounded application and origin probes. See [Executor server prerequisites and
+preservation](../README.md#opt-in-executor-server) for the image, data ownership,
+verification limits and manual owner/authentication steps.
+
+Executor client registration is a separate, explicit user command:
+`haoshoku --executor-clients <https-endpoint>`. The CLI validates the standalone
+endpoint/auth inputs before logging or writes, then calls focused config and
+filesystem helpers. Both Claude/Codex configs are preflighted together; JSON key
+insertion and TOML append preserve unrelated bytes, and caught write failures
+restore original contents from memory without backup artifacts. Matching entries
+perform no config writes. No server provisioning or authenticated discovery runs.
+See [Executor client prerequisites and session inheritance](../README.md#opt-in-executor-clients)
+for auth syntax, effective user/config homes, conservative unsupported shapes,
+T3 environment inheritance, and the crash/verification limits.
+
+The [current reconciliation notice](../README.md#current-reconciliation-and-authority)
+records the later driver merge/release authorization without rewriting historical
+specifications or plans. The [migration runbook](runbooks/axstack-migration.md)
+separates unmerged source candidates, release-byte verification and deferred host
+work. It retains the selected npm identity through actual SHA-512 tarball checks.
+Runtime/CLI prerequisites may precede T3's service guard. Service readiness is not
+pairing proof; firewall fixtures are not live Debian compatibility proof.
+
+Executor's server readiness makes at most five attempts, not five retries.
+Native offline Claude 2.1.292 and Codex 0.160.1 readback proves local client config
+selection and auth references. It does not prove live authentication, tools or
+future T3 inheritance; other clients need their own supported contract.

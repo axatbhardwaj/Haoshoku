@@ -10,18 +10,20 @@ Standalone setup scripts for specific tools.
 | `configure_brave_managed_policies.js` | Brave theme/default-browser managed policies plus policy-tree repair | Modifying browser policies, theme color sync, or policy ownership |
 | `configure_chromium_profiles.js` | Validated shared browser-profile registry seeding in `~/.haoshoku.json` | Modifying managed browser profiles or session-name validation |
 | `configure_claude.js` | Claude config sync, backup, update     | Adding Claude config features, debugging sync |
-| `configure_claude_stay_awake.js` | claude-stay-awake sleep inhibitor deploy/enable/backup | Adding or debugging the Claude sleep inhibitor |
-| `configure_claude_remote_control.js` | Claude Remote Control trust/disclaimer seed, supervisor + user-unit deploy/enable/backup | Adding or debugging persistent Claude Remote Control sessions |
 | `configure_axstack.js` | Latest npm Axstack release install with registry SHA-512 integrity verification under `~/.local/share/axstack/releases/<version>` with the `~/.local/bin/axstack` shim, no silent downgrade, then `axstack install --harness claude\|codex`; `checkAxstack` reports shim/version/harness state and both roles.json paths; Arch links missing t3 to t3-nightly without replacing a local t3 | Changing registry resolution or install verification, or debugging `--axstack`/`--axstack-check` |
 | `configure_codex.js` | Codex CLI plus personal config sync/backup | Adding Codex setup features or debugging config sync |
-| `configure_skills.js` | Matt Pocock skill installation through the upstream Skills CLI | Updating the shared Claude/Codex skill sources |
-| `configure_agent_skills.js` | Pinned-upstream skill sync, safe retirement, and shared agent links | Adding or debugging managed skill sync |
-| `configure_visual_explainer.js` | Validated visual-explainer theme preference with dark default and atomic persistence | Changing visual-explainer theme configuration |
 | `configure_gh_stack.js` | Idempotent `github/gh-stack` extension install | Adding or debugging stacked-PR tooling setup |
-| `configure_pr_watch.js` | pr-watch PR watcher sync/backup | Adding or debugging the PR watcher deploy |
+| `configure_executor_clients.js` | Explicit Claude/Codex user-scope Executor registration, endpoint/auth validation and truthful config-only result | Changing `--executor-clients` |
+| `executor_client_config.js` | Byte-preserving JSON insertion and TOML append with duplicate/unsupported/conflict refusals | Changing supported client config contracts |
+| `executor_client_files.js` | Actual write-parent trust checks (distinct from default Claude legacy lookup), no-op detection, changed-input checks and in-memory recovery without backups | Changing client file preservation |
+| `configure_executor_server.js` | Opt-in Debian Executor prerequisites, image digest pinning and truthful provisioning result | Changing `--server-executor` or its injected process boundary |
+| `executor_deployment.js` | Managed compose generation and read-only filesystem/container/port preservation checks | Changing Executor deployment identity or data ownership rules |
+| `executor_readiness.js` | Local/public health and OAuth metadata probes: at most five attempts, four retries | Changing Executor application/origin verification |
 | `configure_hermes_relay.js` | Pinned bootstrap when Hermes is absent plus plugin-free Telegram and running-gateway readiness probes | Adding or debugging Debian Hermes transport |
-| `configure_t3_code_server.js` | Required Debian nightly T3 service over Tailscale; disables Connect and verifies HTTPS readiness | Changing CLI floor checks, service drop-ins, Tailscale mapping, or pairing guidance |
+| `configure_tailnet_firewall.js` | Debian UFW tailnet prerequisites, interface OpenSSH rule, dual-stack verification and incomplete hardening result | Changing Debian firewall safety or command probes |
+| `configure_t3_code_server.js` | Debian nightly T3 service over Tailscale; runtime/CLI prerequisites can precede desktop preflight; service changes require it; disables Connect and verifies HTTPS readiness | Changing CLI floor checks, service drop-ins, Tailscale mapping, or pairing guidance |
 | `configure_tailscale_t3.js` | Arch Tailscale package, browser login, operator and T3 user-service reconciliation | Debugging `--tailscale-t3` or Arch phone access |
+| `t3_desktop_preflight.js` | Read-only desktop Local environment and effective-directory guard shared by both T3 entrypoints | Changing safe service preflight or desktop evidence probes |
 | `t3_tailscale.js` | Shared CLI floor, Tailscale drop-in, HTTPS mapping/readiness and pairing output | Changing common T3/Tailscale behavior across Arch and Debian |
 | `configure_git.js`    | Git user and signing setup             | Modifying automated git configuration         |
 | `configure_hyprmoncfg.js` | Profile JSON sync/backup plus hyprmoncfg package and `hyprmoncfgd.service` setup; never writes `monitors.lua` | Modifying monitor-profile deployment or the hyprmoncfg ownership boundary |

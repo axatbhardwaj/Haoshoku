@@ -30,7 +30,10 @@ function fixture({ fresh = false, loggedOut = fresh } = {}) {
 			: [
 					[dropIn, content],
 					[pathDropIn, pathContent],
-					["/home/test/.config/systemd/user/t3code.service", "installed"],
+					[
+						"/home/test/.config/systemd/user/t3code.service",
+						"[Service]\nEnvironment=T3CODE_HOME=/home/test/.t3\n",
+					],
 				],
 	);
 	const mutations = [];
@@ -40,6 +43,10 @@ function fixture({ fresh = false, loggedOut = fresh } = {}) {
 		user: "test",
 		env: {},
 		fsImpl: {
+			readdirSync: () => [],
+			statSync: () => {
+				throw Object.assign(new Error("absent fixture"), { code: "ENOENT" });
+			},
 			readFileSync: (file) => {
 				if (!files.has(file))
 					throw Object.assign(new Error("missing"), { code: "ENOENT" });
@@ -60,7 +67,17 @@ function fixture({ fresh = false, loggedOut = fresh } = {}) {
 			}
 			let stdout = "";
 			let exitCode = 0;
-			if (command === listenerCommand)
+			if (command.startsWith("systemctl --user show "))
+				stdout = fresh
+					? "LoadState=not-found\nEnvironment=\n"
+					: "LoadState=loaded\nExecStart={ path=/home/test/.t3/runtime/versions/1/t3 ; argv[]=/home/test/.t3/runtime/versions/1/t3 __service-launcher ; }\nEnvironment=T3CODE_HOME=/home/test/.t3\n";
+			else if (
+				command.startsWith("systemctl --user list-") ||
+				command === "ps -eo pid=,comm=,args="
+			)
+				stdout = "";
+			else if (command === "command -v t3code t3code-nightly") exitCode = 1;
+			else if (command === listenerCommand)
 				stdout = "LISTEN 0 128 127.0.0.1:3773 0.0.0.0:*";
 			else if (command === "command -v t3") stdout = "/usr/bin/t3";
 			else if (command === "/usr/bin/t3 --version")
@@ -157,7 +174,7 @@ describe("Arch T3 over Tailscale", () => {
 		expect(f.mutations.filter((event) => !event.startsWith("mkdir"))).toEqual([
 			`write ${dropIn}`,
 			"systemctl --user daemon-reload",
-			"t3 service restart",
+			"t3 service restart --base-dir '/home/test/.t3'",
 		]);
 	});
 
@@ -239,7 +256,7 @@ describe("existing T3 service reconciliation", () => {
 			`write ${dropIn}`,
 			"systemctl --user daemon-reload",
 			"systemctl --user enable --now t3code.service",
-			"t3 service restart",
+			"t3 service restart --base-dir '/home/test/.t3'",
 		]);
 	});
 });
@@ -323,7 +340,7 @@ describe("Arch T3 agent PATH drop-in", () => {
 		expect(f.mutations.filter((event) => !event.startsWith("mkdir"))).toEqual([
 			`write ${pathDropIn}`,
 			"systemctl --user daemon-reload",
-			"t3 service restart",
+			"t3 service restart --base-dir '/home/test/.t3'",
 		]);
 		f.mutations.length = 0;
 		expect(await configureTailscaleT3(f.options)).toBe(true);

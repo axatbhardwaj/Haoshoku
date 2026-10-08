@@ -22,19 +22,11 @@ Use `--claude-backup` and `--codex-backup` after changing the live policy; use
 
 ## Skills
 
-`configure_skills.js` delegates skill installation to the upstream Skills CLI.
-Haoshoku installs `mattpocock/skills` for Claude Code and Codex; it does not
-maintain its own clone or wrapper.
-
-- `--skills` and `--skills-update` reconcile the Matt Pocock source.
-- `--skills-list` prints the Skills CLI global inventory.
-- Full Arch and Debian setup performs the same reconciliation after Codex.
-
-`configure_agent_skills.js` separately syncs the pinned upstream
-`visual-explainer` with portable Claude/Codex links. It archives retired bundled
-skills and removes only their managed links. Agent-specific real directories,
-non-managed links, and other local/system skills are preserved. Routing and
-review policy are managed by Axstack; agent-skill backup is no longer supported.
+Haoshoku no longer installs Matt Pocock skills or visual-explainer. The retired
+`--skills`, `--skills-update`, `--skills-list`, `--agent-skills`, and
+`--explainer-theme` commands fail before setup or run logging. Manage independent
+skills separately. Default setup preserves all existing skill directories,
+links, and theme preferences. Workflow skills are managed through Axstack.
 
 ## Headless T3 Code
 
@@ -42,12 +34,13 @@ review policy are managed by Axstack; agent-skill backup is no longer supported.
 | --- | --- |
 | `configure_t3_code_server.js` | Debian runtime, CLI installation, Connect disablement and user service |
 | `configure_tailscale_t3.js` | Arch package, daemon, browser login, operator and user-service setup |
+| `t3_desktop_preflight.js` | Shared read-only desktop/backend guard before service changes and on reruns |
 | `t3_tailscale.js` | Shared CLI floor, drop-in, tailnet HTTPS readiness and pairing guidance |
 
 `configure_tailscale_t3.js` runs after Arch installs T3 and configures the
 user's CLI. It installs missing Tailscale, enables its system daemon, waits
 for `tailscale up` browser login only for `NeedsLogin`, and sets the current
-user as operator. It uses `t3 service install --base-dir ~/.t3` for a missing
+user as operator. It uses `t3 service install --base-dir <checked-base>` for a missing
 boot service, then reconciles service enablement and the HTTPS environment
 drop-in. Already-configured machines need no commands that change state or
 file rewrites. Failures warn and full setup continues; `--tailscale-t3` reruns
@@ -60,6 +53,10 @@ writes the account's service drop-ins, and verifies service and tailnet HTTPS
 readiness. Tailscale login, provider authentication, and phone pairing remain
 manual prerequisites or follow-up steps. `configure_hermes_relay.js` verifies
 Hermes Telegram transport without deploying a relay plugin.
+
+Both entrypoints enforce the [single-backend preflight](../../README.md#t3-single-backend-preflight)
+before service writes or operations, including no-op reruns. Desktop settings and
+pairing tokens remain untouched; failed evidence probes cannot establish headless state.
 
 See the [migration note](../../README.md#existing-host-migration) for host artifacts
 that Haoshoku leaves for manual retirement.

@@ -87,10 +87,10 @@ function run(args) {
 
 describe("removed CLI flags", () => {
 	it("records helper calls for a supported mode", () => {
-		const child = run(["--agent-skills"]);
+		const child = run(["--codex"]);
 		expect(child.exitCode).toBe(0);
 		expect(new TextDecoder().decode(child.stderr)).toContain(
-			"SIDE_EFFECT=syncAgentSkills",
+			"SIDE_EFFECT=syncCodexConfig",
 		);
 	});
 

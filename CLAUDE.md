@@ -52,8 +52,17 @@ haoshoku
 
 ## Arch app setup
 
-Arch app setup keeps PR watch. Retired integrations are documented in
-CHANGELOG.md; rerunning setup does not uninstall previously deployed services.
+Supported setup retains T3, Debian Hermes, Claude/Codex, Axstack,
+Git/gh/gh-stack, shared agent instructions and unrelated desktop/editor setup.
+Future installers must not restore Matt Pocock skills, visual-explainer, Claude
+Remote Control, stay-awake or PR watch, including the whole legacy agent-skills
+route. Reruns do not uninstall existing copies. See the README for all eleven
+retired CLI forms and current T3, tailnet SSH and opt-in Executor contracts.
+
+The [current reconciliation notice](README.md#current-reconciliation-and-authority)
+supersedes historical human-only merge/no-release gates for the owning driver
+of the approved T1–T7 run. Preserve dated specs, plans and approvals. Author
+candidates stop locally; live-host changes remain separately authorized.
 
 ## Test
 

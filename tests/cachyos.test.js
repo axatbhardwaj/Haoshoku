@@ -17,7 +17,7 @@ import {
 } from "../src/os_scripts/cachyos.js";
 
 describe("user app configuration", () => {
-	it("runs portable app setup and PR watch without retired services or offers", async () => {
+	it("runs portable app setup without retired services or offers", async () => {
 		const events = [];
 		const prompts = [];
 		const record = (name) => async () => events.push(name);
@@ -40,15 +40,12 @@ describe("user app configuration", () => {
 			enableServicesImpl: record("services"),
 			configureClaudeImpl: record("claude"),
 			installGhStackImpl: record("gh-stack"),
-			configurePrWatchImpl: record("pr-watch"),
 			configureCodexImpl: record("codex"),
 			syncAgentsConfigImpl: record("agents"),
 			configureAxstackImpl: async () => {
 				events.push("axstack");
 				return { ok: true };
 			},
-			configureSkillsImpl: record("skills"),
-			syncAgentSkillsImpl: record("agent-skills"),
 		});
 
 		expect(events).toEqual([
@@ -62,12 +59,9 @@ describe("user app configuration", () => {
 			"services",
 			"claude",
 			"gh-stack",
-			"pr-watch",
 			"codex",
 			"agents",
 			"axstack",
-			"skills",
-			"agent-skills",
 		]);
 		expect(prompts).toEqual([{ message: "Configure git?", initial: true }]);
 	});
@@ -94,15 +88,12 @@ describe("user app configuration", () => {
 					reason: "install command failed",
 				}),
 				installGhStackImpl: noop,
-				configurePrWatchImpl: noop,
 				configureCodexImpl: async () => ({
 					ok: false,
 					reason: "registry unavailable",
 				}),
 				syncAgentsConfigImpl: noop,
 				configureAxstackImpl: async () => ({ ok: true }),
-				configureSkillsImpl: async () => true,
-				syncAgentSkillsImpl: async () => true,
 			});
 
 			expect(warnings).toContainEqual(
@@ -139,7 +130,6 @@ describe("user app configuration", () => {
 				enableServicesImpl: noop,
 				configureClaudeImpl: async () => ({ ok: true }),
 				installGhStackImpl: noop,
-				configurePrWatchImpl: noop,
 				configureCodexImpl: async () => {
 					throw new Error("Ambiguous multiline TOML");
 				},
@@ -148,21 +138,8 @@ describe("user app configuration", () => {
 					events.push("axstack");
 					return { ok: true };
 				},
-				configureSkillsImpl: async () => {
-					events.push("skills");
-					return true;
-				},
-				syncAgentSkillsImpl: async () => {
-					events.push("agent-skills");
-					return true;
-				},
 			});
-			expect(events).toEqual([
-				"agents",
-				"axstack",
-				"skills",
-				"agent-skills",
-			]);
+			expect(events).toEqual(["agents", "axstack"]);
 			expect(warnings).toContainEqual(
 				expect.stringContaining("Ambiguous multiline TOML"),
 			);

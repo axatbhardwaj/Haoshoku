@@ -37,10 +37,11 @@ function deployModeFeaturesFromCli() {
 	const excludedNonDefaultModes = new Set([
 		// Log sharing is explicit and must never upload during default setup.
 		"--share-log",
+		// Server provisioning requires an explicit public origin and is opt-in.
+		"--server-executor",
+		// Client registration requires explicit endpoint/auth; covered by the opt-in keeper.
+		"--executor-clients",
 		"--claude-update",
-		// The default setup persists dark through agent-skills sync. This flag is
-		// only an explicit preference override, not another deploy capability.
-		"--explainer-theme",
 		// The workspaces deploy ensures the gaming autostart defaults. These
 		// flags only create or override that preference outside the default
 		// setup path.
@@ -51,8 +52,6 @@ function deployModeFeaturesFromCli() {
 		// prompt, never on an unattended default run.
 		"--gaming-split-lock",
 		"--axstack-check",
-		"--skills",
-		"--skills-update",
 		"--3-4-migrate",
 		// Discord theming follows the Omarchy appearance checkout only when
 		// explicitly requested; normal setup leaves Vesktop/Vencord untouched.
@@ -83,14 +82,6 @@ function deployModeFeaturesFromCli() {
 // configuration are desktop-only and intentionally remain on the Arch path.
 const DELIBERATE_OMISSIONS = {
 	arch: new Map([
-		[
-			"--claude-remote-control",
-			"Persistent Claude sessions are no longer offered by Arch/Omarchy setup.",
-		],
-		[
-			"--claude-stay-awake",
-			"Arch/Omarchy setup no longer installs a Claude sleep inhibitor.",
-		],
 		[
 			"--worktree-cleanup",
 			"Arch/Omarchy setup no longer enables automatic worktree deletion.",
@@ -169,6 +160,8 @@ function runArchDefaultPath({ isOmarchy = true, gitAnswer = true } = {}) {
 		`
 			import { mock } from "bun:test";
 			const calls = [];
+			mock.module(${JSON.stringify(path.resolve(import.meta.dir, "..", "src/helpers/configure_executor_server.js"))}, () => ({ configureExecutorServer: async () => { calls.push("serverExecutor"); return true; } }));
+			mock.module(${JSON.stringify(path.resolve(import.meta.dir, "..", "src/helpers/configure_executor_clients.js"))}, () => ({ configureExecutorClients: () => { calls.push("executorClients"); return true; } }));
 			const prompts = [];
 			const record = (feature, result) => async () => {
 				calls.push(feature);
@@ -219,12 +212,9 @@ function runArchDefaultPath({ isOmarchy = true, gitAnswer = true } = {}) {
 					enableServicesImpl: record("services"),
 					configureClaudeImpl: record("claude"),
 					installGhStackImpl: record("ghStack"),
-					configurePrWatchImpl: record("prWatch"),
 					configureCodexImpl: record("codex"),
 					syncAgentsConfigImpl: record("agents", true),
 					configureAxstackImpl: record("axstack", { ok: true }),
-					configureSkillsImpl: record("skills", true),
-					syncAgentSkillsImpl: record("agentSkills", true),
 				}),
 				configureBraveManagedPoliciesImpl: record("braveManagedPolicies", true),
 				configureHyprmoncfgImpl: record("monitors"),
@@ -264,6 +254,8 @@ function runDebianDefaultPath() {
 		`
 			import { mock } from "bun:test";
 				const calls = [];
+			mock.module(${JSON.stringify(path.resolve(import.meta.dir, "..", "src/helpers/configure_executor_server.js"))}, () => ({ configureExecutorServer: async () => { calls.push("serverExecutor"); return true; } }));
+			mock.module(${JSON.stringify(path.resolve(import.meta.dir, "..", "src/helpers/configure_executor_clients.js"))}, () => ({ configureExecutorClients: () => { calls.push("executorClients"); return true; } }));
 			const record = (feature, result) => async () => {
 				calls.push(feature);
 				return result;
@@ -278,6 +270,7 @@ function runDebianDefaultPath() {
 			mock.module(${JSON.stringify(uiPath)}, () => ({
 				withSpinner: async (_message, action) => action(),
 			}));
+			mock.module(${JSON.stringify(helperPath("configure_tailnet_firewall.js"))}, () => ({ setupFirewall: async () => ({ ok: true }) }));
 			mock.module(${JSON.stringify(helperPath("configure_git.js"))}, () => ({
 				configureGit: record("git"),
 			}));
@@ -285,15 +278,6 @@ function runDebianDefaultPath() {
 				configureClaude: record("claude"),
 			}));
 			mock.module(${JSON.stringify(helperPath("configure_gh_stack.js"))}, () => ({ installGhStack: record("ghStack") }));
-			mock.module(${JSON.stringify(helperPath("configure_claude_stay_awake.js"))}, () => ({
-				configureClaudeStayAwake: record("claudeStayAwake"),
-			}));
-			mock.module(${JSON.stringify(helperPath("configure_claude_remote_control.js"))}, () => ({
-				configureClaudeRemoteControl: record("claudeRemoteControl"),
-			}));
-			mock.module(${JSON.stringify(helperPath("configure_pr_watch.js"))}, () => ({
-				configurePrWatch: record("prWatch"),
-			}));
 			mock.module(${JSON.stringify(helperPath("configure_worktree_cleanup.js"))}, () => ({
 				syncWorktreeCleanup: record("worktreeCleanup"),
 			}));
@@ -305,12 +289,6 @@ function runDebianDefaultPath() {
 			}));
 			mock.module(${JSON.stringify(helperPath("configure_axstack.js"))}, () => ({
 				configureAxstack: record("axstack", { ok: true }),
-			}));
-			mock.module(${JSON.stringify(helperPath("configure_skills.js"))}, () => ({
-				configureSkills: record("skills", true),
-			}));
-			mock.module(${JSON.stringify(helperPath("configure_agent_skills.js"))}, () => ({
-				syncAgentSkills: record("agentSkills", true),
 			}));
 			mock.module(${JSON.stringify(helperPath("configure_hermes_relay.js"))}, () => ({
 				configureHermesRelay: record("serverHermesRelay", true),
@@ -382,12 +360,9 @@ function userAppDoubles(overrides = {}) {
 		enableServicesImpl: async () => {},
 		configureClaudeImpl: async () => {},
 		installGhStackImpl: async () => {},
-		configurePrWatchImpl: async () => {},
 		configureCodexImpl: async () => {},
 		syncAgentsConfigImpl: async () => {},
 		configureAxstackImpl: async () => ({ ok: true }),
-		configureSkillsImpl: async () => true,
-		syncAgentSkillsImpl: async () => true,
 		...overrides,
 	};
 }
@@ -399,15 +374,32 @@ describe("default-run reachability", () => {
 		defaultCallsByPath.set("debian-server", new Set(runDebianDefaultPath()));
 	});
 
+	it.each([
+		"arch",
+		"debian-server",
+	])("keeps Executor provisioning opt-in on %s", (pathName) => {
+		expect(defaultCallsByPath.get(pathName).has("serverExecutor")).toBe(false);
+	});
+
+	it.each([
+		"arch",
+		"debian-server",
+	])("keeps Executor client registration opt-in on %s", (pathName) => {
+		expect(defaultCallsByPath.get(pathName).has("executorClients")).toBe(false);
+	});
+
 	it("leaves git configuration to Omarchy without a prompt or helper call", () => {
 		expect({
 			gitCalls: archDefaultResult.calls.filter((call) => call === "git").length,
 			prompts: archDefaultResult.prompts,
 		}).toEqual({ gitCalls: 0, prompts: [] });
-		expect(defaultCallsByPath.get("arch").has("prWatch")).toBe(true);
+		expect(defaultCallsByPath.get("arch").has("prWatch")).toBe(false);
 	});
 
-	it.each([true, false])("offers git configuration on non-Omarchy Arch (answer=%s)", (gitAnswer) => {
+	it.each([
+		true,
+		false,
+	])("offers git configuration on non-Omarchy Arch (answer=%s)", (gitAnswer) => {
 		const result = runArchDefaultPath({ isOmarchy: false, gitAnswer });
 		expect({
 			gitCalls: result.calls.filter((call) => call === "git").length,
@@ -416,7 +408,7 @@ describe("default-run reachability", () => {
 			gitCalls: gitAnswer ? 1 : 0,
 			prompts: [{ message: "Configure git?", initial: true }],
 		});
-		expect(result.calls).toContain("prWatch");
+		expect(result.calls).not.toContain("prWatch");
 	});
 
 	it.each([
@@ -465,28 +457,6 @@ describe("default-run reachability", () => {
 		});
 	}
 
-	it("keeps PR watch unconditional when optional offers are declined", async () => {
-		const offers = [];
-		let prWatchCalls = 0;
-
-		await configureUserApps(
-			userAppDoubles({
-				promptUserImpl: async (message, initial) => {
-					offers.push({ message, initial });
-					return false;
-				},
-				configurePrWatchImpl: async () => {
-					prWatchCalls += 1;
-				},
-			}),
-		);
-
-		expect(offers.map(({ message }) => message)).not.toContain(
-			"Enable PR watch helper?",
-		);
-		expect(prWatchCalls).toBe(1);
-	});
-
 	it("completes unattended setup with explicit defaults and no persisted fallback", async () => {
 		const home = makeHome();
 		const configPath = path.join(home, ".haoshoku.json");
@@ -531,7 +501,6 @@ describe("default-run reachability", () => {
 									promptUserImpl: nonInteractivePrompt,
 									configureGitImpl: record("git"),
 									installGhStackImpl: record("gh-stack"),
-									configurePrWatchImpl: record("pr-watch"),
 								}),
 							),
 					}),
@@ -543,7 +512,7 @@ describe("default-run reachability", () => {
 
 		expect(interactivePromptCalls).toBe(0);
 		expect(fs.existsSync(configPath)).toBe(false);
-		expect(events).toEqual(["gh-stack", "pr-watch"]);
+		expect(events).toEqual(["gh-stack"]);
 		expect(warnings.join("\n")).toContain(
 			"returning deviceType pc without saving it",
 		);

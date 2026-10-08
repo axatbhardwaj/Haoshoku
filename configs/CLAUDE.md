@@ -22,11 +22,8 @@ Template configuration files copied to user's `~/.config/` during setup.
 | `vencord/`      | Vencord Discord theme               | Modifying Discord appearance              |
 | `discord/`      | Discord theme manifest deploying the Omarchy theme's Vencord CSS into Vesktop/Vencord | Modifying which theme CSS or enabled themes Discord clients receive |
 | `claude/`       | Claude Code compact personal policy (copied) | Modifying policy backup/restore       |
-| `claude-remote-control/` | Claude Remote Control tmux supervisor + systemd user-unit template | Modifying persistent Claude sessions, restart behavior, or attach lifecycle |
-| `claude-stay-awake/` | Claude CLI sleep-inhibitor watcher and systemd user unit | Modifying suspend blocking or session detection |
 | `codex/`        | Codex compact personal policy | Modifying deployed Codex agent guidance   |
 | `agent-profile/` | Shared T3 Code profile (PROFILE.md) deployed to Claude, Codex, Opencode and Antigravity, plus harness-specific appendices (e.g. GEMINI.append.md) | Modifying the single configurable agent identity |
-| `upstream-skills/` | Immutable third-party skill payloads with adjacent provenance and license records | Updating a pinned upstream skill revision without modifying vendor bytes |
 | `hermes-relay/` | Immutable Hermes runtime bootstrap pin | Updating the Hermes runtime pin |
 | `hyprmoncfg/`   | Authored monitor/workspace profile JSON consumed by hyprmoncfg; Haoshoku NEVER writes generated `monitors.lua` | Modifying monitor layouts or monitor-bound workspace rules without crossing the hyprmoncfg ownership boundary |
 | `kde/`          | KDE Ocean theme bundle (5 components)   | Modifying KDE theme deployment            |
@@ -35,6 +32,5 @@ Template configuration files copied to user's `~/.config/` during setup.
 | `audio/`        | PipeWire/WirePlumber drop-in configs (portable PipeWire + device-routed WirePlumber variants; PC has the lossless headset rule) | Modifying audio config, adding device-specific WirePlumber rules |
 | `mimeapps/`     | XDG default-application associations (`mimeapps.list`) — fully portable, no device routing | Changing default apps for MIME types or URI scheme handlers |
 | `omarchy/`      | Omarchy 4 Hyprland Lua overlays and keybinding-swap registry | Read `omarchy/CLAUDE.md` before changing overlays, require wiring, keybindings, or ownership boundaries |
-| `pr-watch/`     | Bun PR-readiness watcher and executable wrapper | Modifying PR polling, event detection, or watcher runtime |
 | `scripts/`      | Executable shell wrappers deployed to `~/.local/bin/` | Adding PATH-shadow wrappers, game-launch hooks |
 | `worktree-cleanup/` | Safe DeFi worktree cleanup script and weekly systemd user timer | Modifying cleanup eligibility, deployment, or scheduling |

@@ -1,13 +1,17 @@
 #!/usr/bin/env bun
 
 import { Command } from "commander";
+import {
+	configureExecutorClients,
+	validateExecutorClientInput,
+	EXECUTOR_CLIENT_USAGE,
+} from "./src/helpers/configure_executor_clients.js";
 import prompts from "prompts";
 import { startRunLog } from "./src/common/run_log.js";
 import { detectOS, findActiveModeFlags } from "./src/common/cli_utils.js";
 import { promptDeviceType } from "./src/common/device_type.js";
 import { getBanner, showBanner } from "./src/common/ui.js";
 import { log, promptUser, runCommand } from "./src/common/utils.js";
-import { syncAgentSkills } from "./src/helpers/configure_agent_skills.js";
 import {
 	backupAgentsConfig,
 	syncAgentsConfig,
@@ -27,17 +31,13 @@ import {
 	syncClaudeConfig,
 } from "./src/helpers/configure_claude.js";
 import {
-	backupClaudeRemoteControl,
-	syncClaudeRemoteControl,
-} from "./src/helpers/configure_claude_remote_control.js";
-import {
-	backupClaudeStayAwake,
-	syncClaudeStayAwake,
-} from "./src/helpers/configure_claude_stay_awake.js";
-import {
 	backupCodexConfig,
 	syncCodexConfig,
 } from "./src/helpers/configure_codex.js";
+import {
+	configureExecutorServer,
+	parseExecutorOrigin,
+} from "./src/helpers/configure_executor_server.js";
 import { configureDiscordTheme } from "./src/helpers/configure_discord_theme.js";
 import {
 	ensureGamingConfig,
@@ -62,14 +62,8 @@ import {
 } from "./src/helpers/configure_omarchy_bar.js";
 import { configureOmarchyPlugins } from "./src/helpers/configure_omarchy_plugins.js";
 import { configureOmarchyWorkspaces } from "./src/helpers/configure_omarchy_workspaces.js";
-import {
-	backupPrWatch,
-	syncPrWatch,
-} from "./src/helpers/configure_pr_watch.js";
-import { configureSkills, listSkills } from "./src/helpers/configure_skills.js";
 import { configureTailscaleT3 } from "./src/helpers/configure_tailscale_t3.js";
 import { configureT3CodeServer } from "./src/helpers/configure_t3_code_server.js";
-import { setExplainerTheme } from "./src/helpers/configure_visual_explainer.js";
 import {
 	backupWorktreeCleanup,
 	syncWorktreeCleanup,
@@ -78,6 +72,107 @@ import { installUserScripts } from "./src/helpers/install_user_scripts.js";
 import { shareLog } from "./src/helpers/share_log.js";
 import { runCachyOSSetup } from "./src/os_scripts/cachyos.js";
 import { runDebianServerSetup } from "./src/os_scripts/debian_server.js";
+
+// Check raw arguments before parsing or starting logs so retired commands cannot
+// fall through to setup, including malformed values and combined modes.
+const retiredOption = process.argv
+	.slice(2)
+	.find((arg) =>
+		[
+			"--skills",
+			"--skills-update",
+			"--skills-list",
+			"--agent-skills",
+			"--explainer-theme",
+			"--claude-remote-control",
+			"--claude-remote-control-backup",
+			"--claude-stay-awake",
+			"--claude-stay-awake-backup",
+			"--pr-watch",
+			"--pr-watch-backup",
+		].includes(arg.split("=")[0]),
+	);
+if (retiredOption) {
+	const flag = retiredOption.split("=")[0];
+	const guidance =
+		flag.startsWith("--claude-") || flag.startsWith("--pr-watch")
+			? "Manage existing services and watchers separately; existing installations are left untouched."
+			: "Manage independent skills separately; existing skills are left untouched.";
+	console.error(
+		`${flag} has been retired from Haoshoku. ${guidance} Use haoshoku --axstack for Axstack workflows.`,
+	);
+	process.exit(2);
+}
+
+const clientArgs = process.argv.slice(2);
+const clientMode = clientArgs.some(
+	(arg) => arg.split("=")[0] === "--executor-clients",
+);
+let clientEndpoint;
+if (clientMode && !clientArgs.some((arg) => ["--help", "-h"].includes(arg))) {
+	try {
+		const inline = clientArgs[0]?.startsWith("--executor-clients=");
+		if (
+			!(inline && clientArgs.length === 1) &&
+			!(clientArgs[0] === "--executor-clients" && clientArgs.length === 2)
+		)
+			throw new Error(EXECUTOR_CLIENT_USAGE);
+		clientEndpoint = validateExecutorClientInput(
+			inline
+				? clientArgs[0].slice("--executor-clients=".length)
+				: clientArgs[1],
+		);
+	} catch (error) {
+		console.error(error.message);
+		process.exit(2);
+	}
+}
+
+const executorArgs = process.argv.slice(2);
+const executorIndex = executorArgs.findIndex(
+	(arg) => arg.split("=")[0] === "--server-executor",
+);
+let executorOrigin;
+if (executorIndex !== -1 && !executorArgs.includes("--help")) {
+	const flag = executorArgs[executorIndex];
+	const value = flag.includes("=")
+		? flag.slice(flag.indexOf("=") + 1)
+		: executorArgs[executorIndex + 1];
+	executorOrigin = parseExecutorOrigin(value);
+	const extra = executorArgs.some(
+		(arg, index) =>
+			index !== executorIndex &&
+			index !== executorIndex + (flag.includes("=") ? 0 : 1) &&
+			!arg.startsWith("-") &&
+			executorArgs[index - 1] !== "--os",
+	);
+	if (
+		!executorOrigin ||
+		extra ||
+		executorArgs.filter((arg) => arg.split("=")[0] === "--server-executor")
+			.length !== 1
+	) {
+		console.error(
+			"Usage: haoshoku --server-executor <https-origin>. Supply HTTPS, a host and optional port only; no credentials, paths, query or fragment.",
+		);
+		process.exit(2);
+	}
+	const osOption = executorArgs.find((arg) => arg.startsWith("--os="));
+	const explicitOS = osOption
+		? osOption.slice(5)
+		: executorArgs.includes("--os")
+			? executorArgs[executorArgs.indexOf("--os") + 1]
+			: undefined;
+	if (
+		detectOS() !== "debian-server" ||
+		(explicitOS !== undefined && explicitOS !== "debian-server")
+	) {
+		console.error(
+			"--server-executor requires a Debian-family host; configure external DNS/TLS/nginx first.",
+		);
+		process.exit(2);
+	}
+}
 
 const program = new Command();
 
@@ -102,7 +197,24 @@ const informational = process.argv
 	);
 const runLog = informational
 	? null
-	: startRunLog({ version: program.version() });
+	: startRunLog({
+			version: program.version(),
+			argv: clientMode
+				? [
+						process.argv[0],
+						process.argv[1],
+						"--executor-clients",
+						"[https-endpoint]",
+					]
+				: executorIndex === -1
+					? process.argv
+					: [
+							process.argv[0],
+							process.argv[1],
+							"--server-executor",
+							"[public-origin]",
+						],
+		});
 if (runLog) process.once("exit", (code) => runLog.finish(code));
 
 program
@@ -114,14 +226,6 @@ program
 	.option(
 		"--claude-backup",
 		"Backup Claude Code config (CLAUDE.md, statusline, .gitignore)",
-	)
-	.option(
-		"--claude-remote-control",
-		"Deploy Claude Remote Control supervisor and user services",
-	)
-	.option(
-		"--claude-remote-control-backup",
-		"Backup Claude Remote Control supervisor and user unit",
 	)
 	.option("--claude-update", "Redeploy the packaged Claude Code config")
 	.option(
@@ -151,13 +255,13 @@ program
 		"Configure Tailscale login and T3 Code phone access on Arch",
 	)
 	.option("--server-hermes-relay", "Configure Hermes relay transport on Debian")
-	.option("--skills", "Install Matt Pocock skills for Claude Code and Codex")
-	.option("--skills-update", "Refresh Matt Pocock skills")
-	.option("--skills-list", "List globally installed skills")
-	.option("--agent-skills", "Deploy Haoshoku agent skills")
 	.option(
-		"--explainer-theme <theme>",
-		"Set visual-explainer theme (dark, light, system)",
+		"--server-executor <https-origin>",
+		"Provision Executor on Debian (opt-in; external HTTPS proxy required)",
+	)
+	.option(
+		"--executor-clients <https-endpoint>",
+		"Register Executor HTTP MCP for Claude Code and Codex (user scope, opt-in)",
 	)
 	.option(
 		"--gh-stack",
@@ -183,22 +287,6 @@ program
 	.option(
 		"--worktree-cleanup-backup",
 		"Backup the ~/defi worktree-cleanup script + systemd units to configs/worktree-cleanup/",
-	)
-	.option(
-		"--claude-stay-awake",
-		"Deploy the claude-stay-awake sleep inhibitor (configs/claude-stay-awake/ → live) and enable the systemd user service",
-	)
-	.option(
-		"--claude-stay-awake-backup",
-		"Backup the claude-stay-awake script + systemd unit to configs/claude-stay-awake/",
-	)
-	.option(
-		"--pr-watch",
-		"Deploy the pr-watch PR watcher (configs/pr-watch/ → ~/.local/bin/)",
-	)
-	.option(
-		"--pr-watch-backup",
-		"Backup the pr-watch PR watcher from ~/.local/bin/ to configs/pr-watch/",
 	)
 	.option("--device-type <type>", "Set device type (pc or laptop)")
 	.option(
@@ -286,6 +374,16 @@ async function runAction(options) {
 		process.exit(2);
 	}
 
+	if (options.executorClients) {
+		if (!configureExecutorClients(clientEndpoint)) process.exitCode = 1;
+		return;
+	}
+
+	if (options.serverExecutor) {
+		if (!(await configureExecutorServer(executorOrigin))) process.exitCode = 1;
+		return;
+	}
+
 	if (options.shareLog) {
 		if (
 			!(await shareLog(
@@ -303,16 +401,6 @@ async function runAction(options) {
 
 	if (options.claudeBackup) {
 		await backupClaudeConfig();
-		return;
-	}
-
-	if (options.claudeRemoteControlBackup) {
-		if (!(await backupClaudeRemoteControl())) process.exit(1);
-		return;
-	}
-
-	if (options.claudeRemoteControl) {
-		if (!(await syncClaudeRemoteControl())) process.exit(1);
 		return;
 	}
 
@@ -384,31 +472,6 @@ async function runAction(options) {
 		return;
 	}
 
-	if (options.skillsUpdate) {
-		if (!(await configureSkills())) process.exit(1);
-		return;
-	}
-
-	if (options.skills) {
-		if (!(await configureSkills())) process.exit(1);
-		return;
-	}
-
-	if (options.skillsList) {
-		if (!(await listSkills())) process.exit(1);
-		return;
-	}
-
-	if (options.agentSkills) {
-		if (!syncAgentSkills()) process.exit(1);
-		return;
-	}
-
-	if (options.explainerTheme) {
-		if (!setExplainerTheme(options.explainerTheme)) process.exitCode = 1;
-		return;
-	}
-
 	if (options.claude) {
 		await syncClaudeConfig();
 		return;
@@ -441,26 +504,6 @@ async function runAction(options) {
 
 	if (options.worktreeCleanup) {
 		await syncWorktreeCleanup();
-		return;
-	}
-
-	if (options.claudeStayAwakeBackup) {
-		await backupClaudeStayAwake();
-		return;
-	}
-
-	if (options.claudeStayAwake) {
-		await syncClaudeStayAwake();
-		return;
-	}
-
-	if (options.prWatchBackup) {
-		await backupPrWatch();
-		return;
-	}
-
-	if (options.prWatch) {
-		await syncPrWatch();
 		return;
 	}
 

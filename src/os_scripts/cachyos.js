@@ -12,7 +12,6 @@ import {
 	safeCopyFile,
 	startSudoSession,
 } from "../common/utils.js";
-import { syncAgentSkills } from "../helpers/configure_agent_skills.js";
 import { syncAgentsConfig } from "../helpers/configure_agents.js";
 import { configureAudio } from "../helpers/configure_audio.js";
 import { configureAxstack } from "../helpers/configure_axstack.js";
@@ -33,8 +32,6 @@ import { configureOmarchyPlugins } from "../helpers/configure_omarchy_plugins.js
 import { configureOmarchyWorkspaces } from "../helpers/configure_omarchy_workspaces.js";
 import { configureOmazed } from "../helpers/configure_omazed.js";
 import { configureVoxtypeOsd } from "../helpers/configure_voxtype_osd.js";
-import { configurePrWatch } from "../helpers/configure_pr_watch.js";
-import { configureSkills } from "../helpers/configure_skills.js";
 import { configureTailscaleT3 } from "../helpers/configure_tailscale_t3.js";
 import { installUserScripts } from "../helpers/install_user_scripts.js";
 
@@ -550,12 +547,9 @@ export async function configureUserApps({
 	enableServicesImpl = enableServices,
 	configureClaudeImpl = configureClaude,
 	installGhStackImpl = installGhStack,
-	configurePrWatchImpl = configurePrWatch,
 	configureCodexImpl = configureCodex,
 	syncAgentsConfigImpl = syncAgentsConfig,
 	configureAxstackImpl = configureAxstack,
-	configureSkillsImpl = configureSkills,
-	syncAgentSkillsImpl = syncAgentSkills,
 } = {}) {
 	if (!isOmarchy && (await promptUserImpl("Configure git?", true))) {
 		const configureGit =
@@ -594,8 +588,6 @@ export async function configureUserApps({
 			`GitHub gh-stack extension installation failed (${err?.message ?? err}) — continuing with remaining app setup.`,
 		);
 	}
-	if (configurePrWatchImpl === configurePrWatch) await configurePrWatch();
-	else await configurePrWatchImpl();
 	let codexResult;
 	try {
 		codexResult = await configureCodexImpl();
@@ -621,16 +613,6 @@ export async function configureUserApps({
 		axstackResult = await configureAxstackImpl();
 	} catch (error) {
 		log.warning(`Axstack setup failed (${error?.message ?? error}).`);
-	}
-	if (!(await configureSkillsImpl())) {
-		log.warning(
-			"External skills were not fully installed — continuing. Retry with: haoshoku --skills",
-		);
-	}
-	if (!(await syncAgentSkillsImpl())) {
-		log.warning(
-			"Haoshoku-owned agent skills were not fully synced — continuing. Retry with: haoshoku --agent-skills",
-		);
 	}
 	if (!axstackResult.ok) {
 		log.warning(

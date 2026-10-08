@@ -20,11 +20,9 @@ If `~/.claude/` is a Git repository rooted at that exact directory, deploy
 skips destinations tracked by its index. An untracked destination is copied
 with the normal first-capture and versioned-backup safeguards.
 
-Matt Pocock skills are managed separately through the upstream Skills CLI:
-
-```bash
-haoshoku --skills
-```
+Independent skills are managed separately. Haoshoku no longer installs Matt
+Pocock skills or visual-explainer; default setup leaves existing skills and
+links intact. Use `haoshoku --axstack` for Axstack workflows.
 
 Haoshoku does not deploy custom agent definitions, wrapper launchers, private
 policy repositories, or bundled standalone skills.
