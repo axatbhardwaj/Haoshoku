@@ -1,4 +1,8 @@
 import { describe, expect, it } from "bun:test";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { startRunLog } from "../src/common/run_log.js";
 
 import * as ghStack from "../src/helpers/configure_gh_stack.js";
 import { configureUserApps } from "../src/os_scripts/cachyos.js";
@@ -87,6 +91,8 @@ describe("gh stack provisioning", () => {
 
 	it("skips with a clear message when gh is absent from PATH", async () => {
 		const messages = [];
+		const home = fs.mkdtempSync(path.join(os.tmpdir(), "gh-stack-summary-"));
+		const run = startRunLog({ env: { HOME: home, XDG_STATE_HOME: home } });
 		const result = await installGhStack({
 			commandExistsImpl: async () => false,
 			runner: async () => {
@@ -102,6 +108,13 @@ describe("gh stack provisioning", () => {
 		expect(result).toBe("missing-gh");
 		expect(messages.join("\n")).toContain("gh");
 		expect(messages.join("\n")).toContain("Skipping");
+		run.finish(0, (message) => messages.push(message));
+		try {
+			expect(messages.at(-1)).toContain("haoshoku --gh-stack");
+			expect(messages.at(-1)).toContain("Install GitHub CLI");
+		} finally {
+			fs.rmSync(home, { recursive: true });
+		}
 	});
 
 	it("warns and continues when the gh stack install command throws", async () => {
@@ -160,4 +173,67 @@ describe("gh stack provisioning", () => {
 
 		expect(child.exitCode).toBe(1);
 	});
+});
+
+// Exercise the real CLI and gh runner with an inert executable, including exit summary.
+it.each([
+	4, 1, 0,
+])("prints only needed gh-stack next steps (gh exit %s)", (status) => {
+	const home = fs.mkdtempSync(path.join(os.tmpdir(), "gh-stack-cli-"));
+	const bin = path.join(home, "bin");
+	fs.mkdirSync(bin);
+	fs.writeFileSync(
+		path.join(bin, "gh"),
+		`#!/bin/sh
+printf '%s\\n' "$*" >> '${home}/commands'
+if [ "$1 $2" = "extension list" ]; then exit ${status}; fi
+exit 0
+`,
+		{ mode: 0o755 },
+	);
+	try {
+		const child = Bun.spawnSync(
+			[process.execPath, "haoshoku.js", "--gh-stack"],
+			{
+				env: {
+					...process.env,
+					HOME: home,
+					XDG_STATE_HOME: home,
+					PATH: `${bin}:${process.env.PATH}`,
+				},
+				stdout: "pipe",
+				stderr: "pipe",
+			},
+		);
+		const output =
+			new TextDecoder().decode(child.stdout) +
+			new TextDecoder().decode(child.stderr);
+		const commands = fs.readFileSync(path.join(home, "commands"), "utf8");
+		expect(child.exitCode, output).toBe(status === 0 ? 0 : 1);
+		if (status === 0) {
+			expect(commands).toContain("extension install github/gh-stack");
+			expect(output).not.toContain("Next steps:");
+		} else {
+			expect(commands).not.toContain("extension install");
+			const summary = output.slice(output.indexOf("Next steps:"));
+			expect(output.indexOf("Next steps:")).toBeGreaterThan(
+				output.indexOf("Log:"),
+			);
+			expect(summary).toContain("haoshoku --gh-stack");
+			expect(summary).not.toContain("haoshoku --axstack");
+			if (status === 4) {
+				expect(output).toContain("not authenticated");
+				expect(summary).toContain("gh auth login");
+			} else {
+				expect(summary).toContain("exit code 1");
+				expect(summary).not.toContain("not authenticated");
+			}
+			const logs = fs.readdirSync(path.join(home, "haoshoku/logs"));
+			expect(
+				fs.readFileSync(path.join(home, "haoshoku/logs", logs[0]), "utf8"),
+			).toContain(summary.trim());
+		}
+	} finally {
+		fs.rmSync(home, { recursive: true });
+	}
 });

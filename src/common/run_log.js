@@ -88,6 +88,7 @@ export function startRunLog({
 	const run = {
 		path: null,
 		failures: [],
+		nextSteps: new Map(),
 		finish(exitCode = 0, print = console.log) {
 			if (finished) return;
 			finished = true;
@@ -106,6 +107,11 @@ export function startRunLog({
 				: `Log: ${run.path || "unavailable"}`;
 			run.write(summary);
 			print(count ? chalk.yellow(summary) : chalk.dim(summary));
+			if (run.nextSteps.size > 0) {
+				const nextSteps = `Next steps:\n${[...run.nextSteps.values()].map((step) => `  - ${step}`).join("\n")}`;
+				run.write(nextSteps);
+				print(nextSteps);
+			}
 		},
 		write(value) {
 			if (!writable) return;
@@ -164,6 +170,10 @@ export function startRunLog({
 		unavailable();
 	}
 	return run;
+}
+
+export function recordNextStep(step, guidance) {
+	activeRun?.nextSteps.set(step, redactLog(guidance));
 }
 
 export function recordOutput(level, message, failure = true) {

@@ -3,6 +3,7 @@ import fs from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import { detectOS } from "../common/cli_utils.js";
+import { recordNextStep } from "../common/run_log.js";
 import { log } from "../common/utils.js";
 
 const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?$/;
@@ -132,6 +133,10 @@ function atomicWriteShim(shimPath, content) {
 }
 
 function failedResult(reason, action = "kept", version = null) {
+	recordNextStep(
+		"axstack",
+		`Axstack setup incomplete: ${reason}. Resolve this prerequisite, then run haoshoku --axstack.`,
+	);
 	return {
 		harnesses: {
 			claude: { ok: false, reason },
@@ -332,6 +337,16 @@ export async function configureAxstack(options = {}) {
 	log[ok ? "success" : "warning"](
 		`Axstack ${latestVersion} ${releaseAction}; Claude ${harnesses.claude.ok ? "ok" : "failed"}; Codex ${harnesses.codex.ok ? "ok" : "failed"}.`,
 	);
+	if (!ok) {
+		const failures = Object.entries(harnesses)
+			.filter(([, result]) => !result.ok)
+			.map(([harness, result]) => `${harness}: ${result.reason}`)
+			.join("; ");
+		recordNextStep(
+			"axstack",
+			`Axstack setup incomplete (${failures}). Resolve these setup errors and complete any required harness logins, then run haoshoku --axstack.`,
+		);
+	}
 	return {
 		harnesses,
 		ok,
