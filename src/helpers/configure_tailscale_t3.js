@@ -1,6 +1,7 @@
 import fs from "node:fs";
-import { homedir, userInfo } from "node:os";
+import { homedir, hostname as getHostname, userInfo } from "node:os";
 import path from "node:path";
+import { loadFleet, readFleetStatus } from "../common/fleet.js";
 import {
 	log,
 	readDeviceType,
@@ -23,6 +24,7 @@ import {
 /** Configure tailnet-only phone access after the Arch T3 package is installed. */
 export async function configureTailscaleT3({
 	home = homedir(),
+	hostname = getHostname(),
 	deviceType = readDeviceType(home),
 	user = userInfo().username,
 	env = process.env,
@@ -227,10 +229,60 @@ export async function configureTailscaleT3({
 			step = "1Password token drop-in";
 			await configureT3Op({ home, fsImpl, runCommandImpl, logger });
 		}
+		if (ready)
+			await printFleetPairings({
+				hostname,
+				baseDir: desktop.baseDir,
+				captureCommandImpl,
+				logger,
+			});
 		return ready;
 	} catch (error) {
 		if (deviceType === "iobox")
 			throw new Error(`${step} failed: ${error.message}`);
 		return fail(`${step} configuration failed: ${error.message}`);
+	}
+}
+
+async function printFleetPairings({
+	hostname,
+	baseDir,
+	captureCommandImpl,
+	logger,
+}) {
+	const fleet = loadFleet();
+	if (
+		!fleet.hosts.some(
+			(host) => host.hostname === hostname && host.os === "arch",
+		)
+	)
+		return;
+	try {
+		await readFleetStatus({ fleet, captureCommandImpl });
+	} catch {
+		logger.warning(
+			`Skipping fleet pairing: Tailscale must be Running on ${fleet.tailnet}.`,
+		);
+		return;
+	}
+	for (const client of fleet.hosts.filter(
+		(host) =>
+			host.hostname !== hostname && ["control", "access"].includes(host.role),
+	)) {
+		try {
+			const result = await captureCommandImpl(
+				`t3 pair --tailscale --base-dir ${shellQuote(baseDir)} --ttl 15m --label ${shellQuote(client.hostname)}`,
+				{ log: false, stdin: "ignore", expectFailure: true },
+			);
+			const link = /^Pairing URL: (https:\/\/\S+)$/m.exec(result.stdout)?.[1];
+			if (result.exitCode !== 0 || !link) throw new Error("mint failed");
+			logger.info(
+				`${client.hostname}: ${link} (expires in 15 minutes; paste in Add environment)`,
+			);
+		} catch {
+			logger.warning(
+				`Could not mint fleet pairing link for ${client.hostname}. Retry: t3 pair --tailscale --base-dir ${shellQuote(baseDir)} --ttl 15m --label ${shellQuote(client.hostname)}`,
+			);
+		}
 	}
 }

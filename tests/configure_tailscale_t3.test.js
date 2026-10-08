@@ -57,6 +57,7 @@ function fixture({ fresh = false, loggedOut = fresh } = {}) {
 	const overrides = new Map();
 	const options = {
 		home: "/home/test",
+		hostname: "fixture",
 		user: "test",
 		deviceType: "pc",
 		env: {},
@@ -168,6 +169,117 @@ function fixture({ fresh = false, loggedOut = fresh } = {}) {
 }
 
 describe("Arch T3 over Tailscale", () => {
+	it.each([
+		["io", "pc", ["iobook"]],
+		["iobook", "laptop", ["io"]],
+		["iobox", "iobox", ["io", "iobook"]],
+	])("provisions fresh %s without opening desktop and mints other client links", async (hostname, deviceType, clients) => {
+		const f = fixture({ fresh: true, loggedOut: false });
+		Object.assign(f.options, { hostname, deviceType });
+		f.overrides.set("command -v t3code t3code-nightly", {
+			exitCode: 0,
+			stdout: "/usr/bin/t3code-nightly",
+		});
+		f.overrides.set("tailscale status --json", {
+			exitCode: 0,
+			stdout: JSON.stringify({
+				BackendState: "Running",
+				MagicDNSSuffix: "tail140c22.ts.net",
+			}),
+		});
+		for (const client of clients) {
+			f.overrides.set(
+				`t3 pair --tailscale --base-dir '/home/test/.t3' --ttl 15m --label '${client}'`,
+				{
+					exitCode: 0,
+					stdout: `QR output\nPairing URL: https://${hostname}.tail140c22.ts.net/pair#token=${client}\nExpires soon`,
+				},
+			);
+		}
+		expect(await configureTailscaleT3(f.options)).toBe(true);
+		expect(
+			JSON.parse(f.files.get("/home/test/.t3/userdata/desktop-settings.json")),
+		).toEqual({ localEnvironmentEnabled: false });
+		expect(f.events).toContain(
+			"t3 service install --base-dir '/home/test/.t3'",
+		);
+		expect(f.events).toContain("loginctl show-user 'test' -p Linger");
+		expect(f.messages.join(" ")).toContain("Pair your phone");
+		expect(
+			f.events.filter((event) => event.startsWith("t3 pair ")),
+		).toHaveLength(clients.length);
+		for (const client of clients)
+			expect(
+				f.messages.filter((message) =>
+					message.includes(
+						`${client}: https://${hostname}.tail140c22.ts.net/pair#token=${client}`,
+					),
+				),
+			).toHaveLength(1);
+	});
+
+	it.each([
+		"wrong tailnet",
+		"stopped",
+		"malformed",
+	])("skips fleet pairing with a warning for %s", async (kind) => {
+		const f = fixture();
+		f.options.hostname = "iobox";
+		const capture = f.options.captureCommandImpl;
+		let statuses = 0;
+		f.options.captureCommandImpl = async (command, options) => {
+			if (command === "tailscale status --json" && ++statuses > 1)
+				return {
+					exitCode: 0,
+					stdout:
+						kind === "malformed"
+							? "bad json"
+							: JSON.stringify({
+									BackendState: kind === "stopped" ? "Stopped" : "Running",
+									MagicDNSSuffix:
+										kind === "wrong tailnet"
+											? "other.ts.net"
+											: "tail140c22.ts.net",
+								}),
+				};
+			return capture(command, options);
+		};
+		expect(await configureTailscaleT3(f.options)).toBe(true);
+		expect(f.events.some((event) => event.startsWith("t3 pair "))).toBe(false);
+		expect(f.warnings.join(" ")).toContain("Skipping fleet pairing");
+	});
+
+	it.each([
+		"failed",
+		"malformed",
+		"throws",
+	])("warns on a %s mint and continues with the next client", async (kind) => {
+		const f = fixture();
+		f.options.hostname = "iobox";
+		f.overrides.set("tailscale status --json", {
+			exitCode: 0,
+			stdout: '{"BackendState":"Running","MagicDNSSuffix":"tail140c22.ts.net"}',
+		});
+		f.overrides.set(
+			"t3 pair --tailscale --base-dir '/home/test/.t3' --ttl 15m --label 'io'",
+			kind === "throws"
+				? new Error("mint unavailable")
+				: { exitCode: kind === "failed" ? 1 : 0, stdout: "no link" },
+		);
+		f.overrides.set(
+			"t3 pair --tailscale --base-dir '/home/test/.t3' --ttl 15m --label 'iobook'",
+			{
+				exitCode: 0,
+				stdout: "Pairing URL: https://iobox.tail140c22.ts.net/pair#token=book",
+			},
+		);
+		expect(await configureTailscaleT3(f.options)).toBe(true);
+		expect(f.warnings.join(" ")).toContain("io");
+		expect(f.messages.join(" ")).toContain(
+			"iobook: https://iobox.tail140c22.ts.net/pair#token=book",
+		);
+	});
+
 	it("installs and enables a fresh laptop in order, then prints HTTPS and pairing", async () => {
 		const f = fixture({ fresh: true });
 		expect(await configureTailscaleT3(f.options)).toBe(true);
