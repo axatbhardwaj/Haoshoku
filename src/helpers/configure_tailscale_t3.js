@@ -1,7 +1,12 @@
 import fs from "node:fs";
 import { homedir, userInfo } from "node:os";
 import path from "node:path";
-import { log, runCommand, runCommandCapture } from "../common/utils.js";
+import {
+	log,
+	readDeviceType,
+	runCommand,
+	runCommandCapture,
+} from "../common/utils.js";
 import { preflightT3Desktop } from "./t3_desktop_preflight.js";
 import {
 	ensureTailscaleOperator,
@@ -17,6 +22,7 @@ import {
 /** Configure tailnet-only phone access after the Arch T3 package is installed. */
 export async function configureTailscaleT3({
 	home = homedir(),
+	deviceType = readDeviceType(home),
 	user = userInfo().username,
 	env = process.env,
 	fsImpl = fs,
@@ -124,6 +130,29 @@ export async function configureTailscaleT3({
 			await run(`sudo -n loginctl enable-linger ${shellQuote(operator)}`);
 			if ((await probe(lingerCommand)) !== "Linger=yes")
 				return fail("linger was not enabled after enable-linger");
+		}
+		if (deviceType === "iobox") {
+			step = "sleep mask";
+			const targets = [
+				"sleep.target",
+				"suspend.target",
+				"hibernate.target",
+				"hybrid-sleep.target",
+			];
+			const unmasked = [];
+			const maskCommand = (target) =>
+				`systemctl show ${target} --property=UnitFileState --value`;
+			for (const target of targets) {
+				const state = await probe(maskCommand(target));
+				if (!state) return fail(`sleep mask: cannot verify ${target}`);
+				if (state !== "masked") unmasked.push(target);
+			}
+			if (unmasked.length) {
+				await run(`sudo -n systemctl mask ${unmasked.join(" ")}`);
+				for (const target of unmasked)
+					if ((await probe(maskCommand(target))) !== "masked")
+						return fail(`sleep mask: ${target} was not masked`);
+			}
 		}
 		step = "T3 service";
 		let changed = writeServiceDropIn(

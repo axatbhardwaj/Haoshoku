@@ -8,6 +8,14 @@ const pathDropIn =
 	"/home/test/.config/systemd/user/t3code.service.d/axstack-path.conf";
 const pathContent =
 	'[Service]\nEnvironment="PATH=%h/.local/bin:%h/.bun/bin:%h/.local/share/mise/shims:/usr/local/bin:/usr/bin:/bin"\n';
+const sleepTargets = [
+	"sleep.target",
+	"suspend.target",
+	"hibernate.target",
+	"hybrid-sleep.target",
+];
+const maskProbe = (target) =>
+	`systemctl show ${target} --property=UnitFileState --value`;
 const listenerCommand = "ss -Hltn 'sport = :3773'";
 const url = "https://laptop.tail123.ts.net";
 const serve = {
@@ -36,6 +44,7 @@ function fixture({ fresh = false, loggedOut = fresh } = {}) {
 					],
 				],
 	);
+	const masks = new Map(sleepTargets.map((target) => [target, "masked"]));
 	const mutations = [];
 	const overrides = new Map();
 	const options = {
@@ -78,6 +87,8 @@ function fixture({ fresh = false, loggedOut = fresh } = {}) {
 			)
 				stdout = "";
 			else if (command === "command -v t3code t3code-nightly") exitCode = 1;
+			else if (command.startsWith("systemctl show "))
+				stdout = masks.get(command.split(" ")[2]);
 			else if (command.startsWith("loginctl show-user ")) stdout = "Linger=yes";
 			else if (command === listenerCommand)
 				stdout = "LISTEN 0 128 127.0.0.1:3773 0.0.0.0:*";
@@ -108,6 +119,9 @@ function fixture({ fresh = false, loggedOut = fresh } = {}) {
 		runCommandImpl: async (command, init) => {
 			events.push(command);
 			mutations.push(command);
+			if (command.startsWith("sudo -n systemctl mask "))
+				for (const target of command.split(" ").slice(4))
+					masks.set(target, "masked");
 			if (command.startsWith("t3 service install")) serviceActive = true;
 			if (command === "sudo -n tailscale up") {
 				expect(init).toMatchObject({ stdout: "inherit", stderr: "inherit" });
@@ -128,7 +142,16 @@ function fixture({ fresh = false, loggedOut = fresh } = {}) {
 			success: (message) => messages.push(message),
 		},
 	};
-	return { options, events, mutations, warnings, messages, files, overrides };
+	return {
+		options,
+		events,
+		mutations,
+		warnings,
+		messages,
+		files,
+		overrides,
+		masks,
+	};
 }
 
 describe("Arch T3 over Tailscale", () => {
@@ -527,5 +550,64 @@ describe("Arch T3 linger", () => {
 		expect(f.messages.join(" ")).not.toContain("are ready");
 		if (["root", "probe-failed"].includes(mode))
 			expect(f.mutations).toEqual([]);
+	});
+});
+
+describe("iobox sleep targets", () => {
+	it("masks only unmasked system targets, verifies each, and is a no-op on rerun", async () => {
+		const f = fixture();
+		f.options.deviceType = "iobox";
+		for (const target of sleepTargets.slice(1)) f.masks.set(target, "static");
+		expect(await configureTailscaleT3(f.options)).toBe(true);
+		expect(f.mutations).toEqual([
+			"sudo -n systemctl mask suspend.target hibernate.target hybrid-sleep.target",
+		]);
+		for (const target of sleepTargets.slice(1)) {
+			expect(f.masks.get(target)).toBe("masked");
+			expect(
+				f.events.filter((command) => command === maskProbe(target)),
+			).toHaveLength(2);
+		}
+		f.mutations.length = 0;
+		expect(await configureTailscaleT3(f.options)).toBe(true);
+		expect(f.mutations).toEqual([]);
+	});
+
+	it.each([
+		"pc",
+		"laptop",
+	])("leaves %s sleep targets alone", async (deviceType) => {
+		const f = fixture();
+		f.options.deviceType = deviceType;
+		for (const target of sleepTargets) f.masks.set(target, "static");
+		expect(await configureTailscaleT3(f.options)).toBe(true);
+		expect(f.mutations).toEqual([]);
+		expect(
+			f.events.some((command) => command.startsWith("systemctl show ")),
+		).toBe(false);
+	});
+
+	it.each([
+		"denied",
+		"throws",
+		"unverified",
+		"probe-failed",
+	])("reports a sleep mask %s without claiming readiness", async (mode) => {
+		const f = fixture();
+		f.options.deviceType = "iobox";
+		for (const target of sleepTargets) f.masks.set(target, "static");
+		if (mode === "probe-failed")
+			f.overrides.set(maskProbe("sleep.target"), { stdout: "", exitCode: 1 });
+		const run = f.options.runCommandImpl;
+		f.options.runCommandImpl = async (command, options) => {
+			if (command.startsWith("sudo -n systemctl mask ")) {
+				if (mode === "throws") throw new Error("denied");
+				return mode !== "denied";
+			}
+			return run(command, options);
+		};
+		expect(await configureTailscaleT3(f.options)).toBe(false);
+		expect(f.warnings.join(" ")).toContain("sleep mask");
+		expect(f.messages.join(" ")).not.toContain("are ready");
 	});
 });
