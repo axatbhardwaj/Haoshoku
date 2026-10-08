@@ -135,3 +135,73 @@ it.each([
 	expect(f.messages.join(" ")).toContain("systemctl --user restart t3code");
 	expect(f.messages.join(" ").includes(secret)).toBe(false);
 });
+
+it.each([
+	"absent",
+	"mode",
+	"owner",
+	"extra",
+	"empty",
+	"blank",
+	"crlf",
+	"directory",
+	"link",
+	"dangling",
+	"fifo",
+])("skips the drop-in and gives safe guidance for %s", async (kind) => {
+	const f = fixture();
+	if (kind !== "absent") f.token();
+	if (kind === "mode") fs.chmodSync(f.envFile, 0o644);
+	if (kind === "owner")
+		f.options.fsImpl.lstatSync = (file) => ({
+			...fs.lstatSync(file),
+			uid: process.getuid() + 1,
+			isFile: () => true,
+		});
+	if (kind === "extra")
+		f.token(`OP_SERVICE_ACCOUNT_TOKEN=${secret}\nT3CODE_HOME=/other\n`);
+	if (kind === "empty") f.token("OP_SERVICE_ACCOUNT_TOKEN=\n");
+	if (kind === "blank") f.token(`OP_SERVICE_ACCOUNT_TOKEN=${secret}\n\n`);
+	if (kind === "crlf") f.token(`OP_SERVICE_ACCOUNT_TOKEN=${secret}\r\n`);
+	if (["directory", "link", "dangling", "fifo"].includes(kind)) {
+		fs.unlinkSync(f.envFile);
+		if (kind === "directory") fs.mkdirSync(f.envFile);
+		else if (kind === "fifo")
+			f.options.fsImpl.lstatSync = () => ({ isFile: () => false });
+		else
+			fs.symlinkSync(
+				kind === "link" ? path.join(f.home, "target") : "/missing-fixture",
+				f.envFile,
+			);
+		if (kind === "link")
+			fs.writeFileSync(
+				path.join(f.home, "target"),
+				`OP_SERVICE_ACCOUNT_TOKEN=${secret}`,
+				{ mode: 0o600 },
+			);
+	}
+	expect(await f.run()).toBe(true);
+	expect(fs.existsSync(f.drop)).toBe(false);
+	expect(f.messages.join(" ")).toContain("~/.config/op/service-account.env");
+	expect(f.messages.join(" ")).toContain("0600");
+	expect(f.messages.join(" ").includes(secret)).toBe(false);
+	expect(f.commands).not.toContain("systemctl --user restart t3code");
+});
+
+it("does not read the token or write its drop-in before T3 succeeds or on desktop profiles", async () => {
+	for (const deviceType of ["iobox", "pc", "laptop"]) {
+		const f = fixture();
+		f.token();
+		f.options.deviceType = deviceType;
+		const read = f.options.fsImpl.readFileSync;
+		f.options.fsImpl.readFileSync = (file, ...args) => {
+			if (file === f.envFile) throw new Error("premature token read");
+			return read(file, ...args);
+		};
+		if (deviceType === "iobox") f.options.runCommandImpl = async () => false;
+		if (deviceType === "iobox")
+			await expect(f.run()).rejects.toThrow("T3 service");
+		else expect(await f.run()).toBe(true);
+		expect(fs.existsSync(f.drop)).toBe(false);
+	}
+});
