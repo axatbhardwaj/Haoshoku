@@ -73,3 +73,12 @@ send me one compact Telegram message through the `axstack-relay` skill
 (`hermes`, home channel). Never send progress or heartbeats. Record this as
 the run's Notification policy. Deduplicate through `axstack-relay`; act in
 the T3 driver thread/GitHub; a failed or uncertain delivery preserves the hold.
+
+## T3 provider settings
+
+After changing T3 provider settings (`~/.t3/userdata/settings.json`
+providerInstances) or account homes (`~/.codex-alt`, `~/.claude-alt`), run
+`t3-provider-fix` (in `~/.local/bin`; `--dry-run` to preview). Use absolute
+real binaries for `binaryPath`, never bare names or `~/.local/bin` mise
+wrappers. Never leave real files or backups inside a Codex shadow home except
+`auth.json`.
