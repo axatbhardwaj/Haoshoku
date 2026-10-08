@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 
+import { homedir } from "node:os";
 import { Command } from "commander";
 import {
 	configureExecutorClients,
@@ -11,7 +12,13 @@ import { startRunLog } from "./src/common/run_log.js";
 import { detectOS, findActiveModeFlags } from "./src/common/cli_utils.js";
 import { promptDeviceType } from "./src/common/device_type.js";
 import { getBanner, showBanner } from "./src/common/ui.js";
-import { log, promptUser, runCommand } from "./src/common/utils.js";
+import {
+	DEVICE_TYPES,
+	log,
+	promptUser,
+	readConfiguredDeviceType,
+	runCommand,
+} from "./src/common/utils.js";
 import {
 	backupAgentsConfig,
 	syncAgentsConfig,
@@ -288,7 +295,7 @@ program
 		"--worktree-cleanup-backup",
 		"Backup the ~/defi worktree-cleanup script + systemd units to configs/worktree-cleanup/",
 	)
-	.option("--device-type <type>", "Set device type (pc or laptop)")
+	.option("--device-type <type>", "Set device type (pc, laptop or iobox)")
 	.option(
 		"--scripts",
 		"Deploy user scripts (configs/scripts/ → ~/.local/bin/) and prune retired entries",
@@ -372,6 +379,23 @@ async function runAction(options) {
 			`--${activeFlags[0]} and --${activeFlags[1]} are mutually exclusive — pass exactly one mode flag`,
 		);
 		process.exit(2);
+	}
+
+	if (
+		[
+			"workspaces",
+			"monitors",
+			"hyprmoncfgBackup",
+			"audio",
+			"audioBackup",
+		].includes(activeFlags[0]) &&
+		readConfiguredDeviceType(homedir()) === "iobox"
+	) {
+		log.error(
+			"Device-routed workspace, monitor and audio commands are not supported on iobox.",
+		);
+		process.exitCode = 1;
+		return;
 	}
 
 	if (options.executorClients) {
@@ -508,8 +532,8 @@ async function runAction(options) {
 	}
 
 	if (options.deviceType !== undefined) {
-		if (!["pc", "laptop"].includes(options.deviceType)) {
-			log.error("Device type must be pc or laptop.");
+		if (!DEVICE_TYPES.includes(options.deviceType)) {
+			log.error("Device type must be pc, laptop or iobox.");
 			process.exitCode = 2;
 			return;
 		}

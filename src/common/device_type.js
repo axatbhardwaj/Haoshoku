@@ -4,7 +4,7 @@ import path from "node:path";
 
 import promptsLib from "prompts";
 
-import { log } from "./utils.js";
+import { DEVICE_TYPES, log } from "./utils.js";
 
 const HOME = homedir();
 const PORTABLE_CHASSIS_TYPES = new Set([8, 9, 10, 14, 30, 31, 32]);
@@ -44,7 +44,7 @@ export function detectDeviceType({
 
 /**
  * Resolve device type in priority order: explicit CLI override, stored value,
- * Linux hardware detection, then an interactive PC/laptop/skip fallback.
+ * Linux hardware detection, then an interactive PC/laptop/iobox/skip fallback.
  * Detected or selected values are merged into ~/.haoshoku.json; skip and
  * unavailable prompts do not write a fallback. Downstream helpers read the
  * persisted value independently.
@@ -78,10 +78,10 @@ export async function promptDeviceType({
 		fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
 		return deviceType;
 	};
-	if (forcedDeviceType === "pc" || forcedDeviceType === "laptop") {
+	if (DEVICE_TYPES.includes(forcedDeviceType)) {
 		return persist(forcedDeviceType);
 	}
-	if (config.deviceType === "pc" || config.deviceType === "laptop") {
+	if (DEVICE_TYPES.includes(config.deviceType)) {
 		log.info(`Using stored deviceType ${config.deviceType}.`);
 		return config.deviceType;
 	}
@@ -94,7 +94,7 @@ export async function promptDeviceType({
 			`Automatic device-type detection failed (${err?.message ?? err}).`,
 		);
 	}
-	if (detectedDeviceType === "pc" || detectedDeviceType === "laptop") {
+	if (DEVICE_TYPES.includes(detectedDeviceType)) {
 		log.info(`Automatically detected deviceType ${detectedDeviceType}.`);
 		return persist(detectedDeviceType);
 	}
@@ -102,10 +102,9 @@ export async function promptDeviceType({
 	const canPrompt =
 		isTTY ?? (promptFn !== promptsLib || Boolean(process.stdin.isTTY));
 	const unavailablePromptResult = (reason) => {
-		const deviceType =
-			config.deviceType === "pc" || config.deviceType === "laptop"
-				? config.deviceType
-				: "pc";
+		const deviceType = DEVICE_TYPES.includes(config.deviceType)
+			? config.deviceType
+			: "pc";
 		const source =
 			deviceType === config.deviceType
 				? `returning stored deviceType ${deviceType}`
@@ -119,8 +118,9 @@ export async function promptDeviceType({
 		return unavailablePromptResult("No interactive terminal available");
 	}
 	const choices = [
-		{ title: "Main PC", value: "pc" },
-		{ title: "Laptop", value: "laptop" },
+		{ title: "PC (io)", value: "pc" },
+		{ title: "Laptop (iobook)", value: "laptop" },
+		{ title: "Agent box (iobox)", value: "iobox" },
 		{ title: "Skip — don't persist", value: null },
 	];
 	const initial = 0;
