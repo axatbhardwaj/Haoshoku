@@ -27,7 +27,11 @@ function requireObject(value, fields, label) {
 }
 
 export function loadFleet({ manifest = defaultManifest } = {}) {
-	requireObject(manifest, new Set(["tailnet", "hosts"]), "fleet");
+	requireObject(manifest, new Set(["name", "tailnet", "hosts"]), "fleet");
+	requireValid(
+		typeof manifest.name === "string" && manifest.name.trim().length > 0,
+		"name must be a non-empty string",
+	);
 	requireValid(
 		typeof manifest.tailnet === "string" &&
 			manifest.tailnet.includes(".") &&
@@ -50,7 +54,7 @@ export function loadFleet({ manifest = defaultManifest } = {}) {
 		);
 		hostnames.add(hostname);
 		requireValid(
-			["pc", "laptop", "agent box", "vps"].includes(host.role),
+			["control", "access", "worker"].includes(host.role),
 			`${host.hostname}: invalid role`,
 		);
 		requireValid(

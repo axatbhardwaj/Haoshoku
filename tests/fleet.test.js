@@ -4,16 +4,25 @@ import { loadFleet, lookupHost } from "../src/common/fleet.js";
 
 const host = {
 	hostname: "worker",
-	role: "agent box",
+	role: "worker",
 	os: "arch",
 	deviceType: "iobox",
 	sshUser: "tester",
 	transport: "tailscale",
 };
-const fleet = (entry = host) => ({ tailnet: "example.ts.net", hosts: [entry] });
+const fleet = (entry = host) => ({
+	name: "testnet",
+	tailnet: "example.ts.net",
+	hosts: [entry],
+});
 
 describe("fleet manifest", () => {
 	it("loads the tracked fleet for hostname consumers", () => {
+		expect(loadFleet().name).toBe("axnet");
+		expect(lookupHost("io")?.role).toBe("control");
+		expect(lookupHost("iobook")?.role).toBe("access");
+		expect(lookupHost("iobox")?.role).toBe("worker");
+		expect(lookupHost("axat-vps")?.role).toBe("worker");
 		expect(loadFleet().tailnet).toBe("tail140c22.ts.net");
 		expect(lookupHost("io")?.deviceType).toBe("pc");
 		expect(lookupHost("iobook")?.deviceType).toBe("laptop");
@@ -27,12 +36,47 @@ describe("fleet manifest", () => {
 	});
 
 	it.each([
+		"control",
+		"access",
+		"worker",
+	])("accepts axnet role %s independently of device type", (role) => {
+		expect(
+			lookupHost("worker", { manifest: fleet({ ...host, role }) }),
+		).toMatchObject({ role, deviceType: "iobox" });
+	});
+
+	it.each([
+		undefined,
+		"",
+		"  ",
+		42,
+	])("rejects invalid fleet name (%#)", (name) => {
+		expect(() => loadFleet({ manifest: { ...fleet(), name } })).toThrow(
+			/fleet.*name/i,
+		);
+	});
+
+	it.each([
+		"pc",
+		"laptop",
+		"agent box",
+		"vps",
+	])("rejects retired role %s", (role) => {
+		expect(() =>
+			lookupHost("worker", { manifest: fleet({ ...host, role }) }),
+		).toThrow(/role/);
+	});
+
+	it.each([
 		[null, "object"],
 		[[], "object"],
-		[{}, "tailnet"],
-		[{ tailnet: "100.64.0.1", hosts: [] }, "tailnet"],
-		[{ tailnet: "example.ts.net\nHost bad", hosts: [] }, "tailnet"],
-		[{ tailnet: "example.ts.net", hosts: {} }, "hosts"],
+		[{ name: "testnet" }, "tailnet"],
+		[{ name: "testnet", tailnet: "100.64.0.1", hosts: [] }, "tailnet"],
+		[
+			{ name: "testnet", tailnet: "example.ts.net\nHost bad", hosts: [] },
+			"tailnet",
+		],
+		[{ name: "testnet", tailnet: "example.ts.net", hosts: {} }, "hosts"],
 		[{ ...fleet(), token: "fixture" }, "token"],
 		[{ ...fleet(), hosts: [host, { ...host }] }, "duplicate.*worker"],
 	])("rejects malformed manifest %#", (manifest, message) => {
@@ -81,7 +125,7 @@ describe("fleet manifest", () => {
 	it("accepts Debian without a device type and a plain OpenSSH filename", () => {
 		const server = {
 			hostname: "server",
-			role: "vps",
+			role: "worker",
 			os: "debian",
 			sshUser: "root",
 			transport: "openssh",
