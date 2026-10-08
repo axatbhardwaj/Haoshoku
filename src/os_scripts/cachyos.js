@@ -8,6 +8,7 @@ import {
 	commandExists,
 	log,
 	promptUser,
+	readDeviceType,
 	runCommand,
 	safeCopyFile,
 	startSudoSession,
@@ -53,6 +54,7 @@ const COMMON_DIR = path.join(PROJECT_ROOT, "common");
 const CONFIGS_DIR = path.join(PROJECT_ROOT, "configs");
 
 const PARU_APPLIST_PATH = path.join(COMMON_DIR, "paru_applist.txt");
+const IOBOX_APPLIST_PATH = path.join(COMMON_DIR, "paru_applist_iobox.txt");
 const FLATPAK_APPLIST_PATH = path.join(COMMON_DIR, "flatpacks_arch.txt");
 const CUSTOM_FASTFETCH_CONFIG_PATH = path.join(
 	CONFIGS_DIR,
@@ -426,21 +428,29 @@ async function setupFlatpakRemotes() {
 
 // --- Configuration Functions ---
 
-async function enableServices() {
-	if (await promptUser("Enable Bluetooth?", false)) {
+async function enableServices({
+	deviceType,
+	promptUserImpl = promptUser,
+	commandExistsImpl = commandExists,
+	runCommandImpl = runCommand,
+} = {}) {
+	if (
+		deviceType !== "iobox" &&
+		(await promptUserImpl("Enable Bluetooth?", false))
+	) {
 		log.info("Enabling Bluetooth service...");
-		await runCommand("sudo -n systemctl enable --now bluetooth");
+		await runCommandImpl("sudo -n systemctl enable --now bluetooth");
 	}
 
 	if (
-		(await commandExists("docker")) &&
-		(await promptUser("Enable Docker?", true))
+		(await commandExistsImpl("docker")) &&
+		(await promptUserImpl("Enable Docker?", true))
 	) {
 		log.info("Enabling and starting Docker service...");
-		await runCommand("sudo -n systemctl enable --now docker");
+		await runCommandImpl("sudo -n systemctl enable --now docker");
 		const user = process.env.USER;
 		if (user) {
-			await runCommand(`sudo -n usermod -aG docker ${user}`);
+			await runCommandImpl(`sudo -n usermod -aG docker ${user}`);
 			log.warning(
 				`User ${user} added to docker group. Please log out and back in.`,
 			);
@@ -473,6 +483,7 @@ export async function installSystemPackages(
 	aurHelper,
 	isOmarchy,
 	{
+		deviceType = "pc",
 		installArchPackageBatchImpl = installArchPackageBatch,
 		readFileImpl = fs.readFileSync,
 		runCommandImpl = runCommand,
@@ -483,7 +494,10 @@ export async function installSystemPackages(
 ) {
 	log.info("Preparing for package installation...");
 	log.info("Installing packages from file lists...");
-	const content = readFileImpl(PARU_APPLIST_PATH, "utf8");
+	const content = readFileImpl(
+		deviceType === "iobox" ? IOBOX_APPLIST_PATH : PARU_APPLIST_PATH,
+		"utf8",
+	);
 	const requested = content
 		.split("\n")
 		.map((line) => line.trim())
@@ -506,7 +520,10 @@ export async function installSystemPackages(
 		"sudo -n pacman -S --needed --noconfirm ttf-jetbrains-mono-nerd",
 	);
 
-	if (await promptUserImpl("Enable gaming configuration?", false)) {
+	if (
+		deviceType !== "iobox" &&
+		(await promptUserImpl("Enable gaming configuration?", false))
+	) {
 		await installGamingPackagesImpl({ aurHelper, isOmarchy });
 		await configureSplitLockSudoersImpl({ nonInteractiveSudo: true });
 	}
@@ -525,17 +542,20 @@ async function installFlatpakApps() {
 }
 
 export async function configureBrowserIntegration({
+	deviceType = "pc",
 	configureChromiumProfilesImpl = configureChromiumProfiles,
 	configureMimeappsImpl = configureMimeapps,
 	installUserScriptsImpl = installUserScripts,
 } = {}) {
-	await configureChromiumProfilesImpl();
+	if (deviceType !== "iobox") await configureChromiumProfilesImpl();
 	await installUserScriptsImpl();
-	await configureMimeappsImpl();
+	if (deviceType !== "iobox") await configureMimeappsImpl();
 }
 
 export async function configureUserApps({
 	isOmarchy = false,
+	deviceType = "pc",
+	commandExistsImpl = commandExists,
 	promptUserImpl = promptUser,
 	configureGitImpl,
 	configureBrowserIntegrationImpl = configureBrowserIntegration,
@@ -558,9 +578,9 @@ export async function configureUserApps({
 		await configureGit();
 	}
 
-	await configureBrowserIntegrationImpl();
+	await configureBrowserIntegrationImpl({ deviceType });
 	try {
-		await configureAudioImpl();
+		if (deviceType !== "iobox") await configureAudioImpl();
 	} catch (err) {
 		log.warning(
 			`Audio config sync failed (${err?.message ?? err}) — continuing with remaining app setup.`,
@@ -571,10 +591,17 @@ export async function configureUserApps({
 	await configureFastfetchImpl();
 	await configureGhosttyImpl();
 
-	log.info("Installing uosc for MPV...");
-	await runCommandImpl(`curl -fsSL ${UOSC_INSTALL_URL} | bash`);
+	if (deviceType !== "iobox") {
+		log.info("Installing uosc for MPV...");
+		await runCommandImpl(`curl -fsSL ${UOSC_INSTALL_URL} | bash`);
+	}
 
-	await enableServicesImpl();
+	await enableServicesImpl({
+		deviceType,
+		promptUserImpl,
+		commandExistsImpl,
+		runCommandImpl,
+	});
 	const claudeResult = await configureClaudeImpl();
 	if (claudeResult?.ok === false) {
 		log.warning(
@@ -633,6 +660,7 @@ export async function runCachyOSSetup({
 	configureUserAppsImpl = configureUserApps,
 	configureTailscaleT3Impl = configureTailscaleT3,
 	promptDeviceTypeImpl = promptDeviceType,
+	readDeviceTypeImpl = readDeviceType,
 	configureBraveManagedPoliciesImpl = configureBraveManagedPolicies,
 	configureHyprmoncfgImpl = configureHyprmoncfg,
 	configureOmarchyWorkspacesImpl = configureOmarchyWorkspaces,
@@ -655,6 +683,8 @@ export async function runCachyOSSetup({
 	const configureOmarchyAppearance = configureOmarchyAppearanceImpl;
 
 	await promptDeviceTypeImpl();
+	const deviceType = readDeviceTypeImpl(HOME);
+	const isIobox = deviceType === "iobox";
 	const stopSudoSession = await startSudoSessionImpl();
 	if (!stopSudoSession) {
 		log.error("Sudo authentication failed. Aborting Arch setup.");
@@ -668,17 +698,24 @@ export async function runCachyOSSetup({
 		const aurHelper = await ensureAurHelperImpl();
 		await installDevToolsImpl();
 
-		await installSystemPackagesImpl(aurHelper, isOmarchy);
-		await installFlatpakAppsImpl();
-		const userAppsResult = await configureUserAppsImpl({ isOmarchy });
+		await installSystemPackagesImpl(aurHelper, isOmarchy, { deviceType });
+		if (!isIobox) await installFlatpakAppsImpl();
+		const userAppsResult = await configureUserAppsImpl({
+			isOmarchy,
+			deviceType,
+		});
 		try {
 			if (!(await configureTailscaleT3Impl())) {
-				log.warning("Tailscale/T3 setup incomplete — continuing. Retry: haoshoku --tailscale-t3");
+				log.warning(
+					"Tailscale/T3 setup incomplete — continuing. Retry: haoshoku --tailscale-t3",
+				);
 			}
 		} catch (err) {
-			log.warning(`Tailscale/T3 configuration failed (${err?.message ?? err}) — continuing. Retry: haoshoku --tailscale-t3`);
+			log.warning(
+				`Tailscale/T3 configuration failed (${err?.message ?? err}) — continuing. Retry: haoshoku --tailscale-t3`,
+			);
 		}
-		if (isOmarchy) {
+		if (isOmarchy && !isIobox) {
 			try {
 				await configureBraveManagedPolicies({ nonInteractiveSudo: true });
 			} catch (err) {
@@ -686,8 +723,6 @@ export async function runCachyOSSetup({
 					`Brave managed-policy configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
 				);
 			}
-		}
-		if (isOmarchy) {
 			try {
 				await configureHyprmoncfg();
 			} catch (err) {
@@ -695,8 +730,6 @@ export async function runCachyOSSetup({
 					`Hyprmoncfg configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
 				);
 			}
-		}
-		if (isOmarchy) {
 			try {
 				await configureOmarchyWorkspaces();
 			} catch (err) {
@@ -704,8 +737,6 @@ export async function runCachyOSSetup({
 					`Omarchy workspace configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
 				);
 			}
-		}
-		if (isOmarchy) {
 			try {
 				await configureOmarchyPlugins();
 			} catch (err) {
@@ -713,8 +744,6 @@ export async function runCachyOSSetup({
 					`Omarchy plugin configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
 				);
 			}
-		}
-		if (isOmarchy) {
 			try {
 				await configureVoxtypeOsd();
 			} catch (err) {
@@ -722,8 +751,6 @@ export async function runCachyOSSetup({
 					`voxtype OSD configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
 				);
 			}
-		}
-		if (isOmarchy) {
 			try {
 				await configureKdeConnectCommands();
 			} catch (err) {
@@ -731,8 +758,6 @@ export async function runCachyOSSetup({
 					`KDE Connect command configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
 				);
 			}
-		}
-		if (isOmarchy) {
 			try {
 				await configureOmarchyBar();
 			} catch (err) {
