@@ -705,12 +705,24 @@ export async function runCachyOSSetup({
 			deviceType,
 		});
 		try {
-			if (!(await configureTailscaleT3Impl())) {
+			if (!(await configureTailscaleT3Impl({ deviceType }))) {
+				if (isIobox) {
+					log.error(
+						"Tailscale/T3 setup failed. Aborting iobox setup. Retry: haoshoku --tailscale-t3",
+					);
+					return false;
+				}
 				log.warning(
 					"Tailscale/T3 setup incomplete — continuing. Retry: haoshoku --tailscale-t3",
 				);
 			}
 		} catch (err) {
+			if (isIobox) {
+				log.error(
+					`Tailscale/T3 setup failed (${err?.message ?? err}). Aborting iobox setup. Retry: haoshoku --tailscale-t3`,
+				);
+				return false;
+			}
 			log.warning(
 				`Tailscale/T3 configuration failed (${err?.message ?? err}) — continuing. Retry: haoshoku --tailscale-t3`,
 			);

@@ -34,6 +34,7 @@ export async function configureTailscaleT3({
 	logger = log,
 } = {}) {
 	const fail = (message) => {
+		if (deviceType === "iobox") throw new Error(message);
 		logger.warning(
 			`${message} — continuing setup. Retry haoshoku --tailscale-t3.`,
 		);
@@ -90,8 +91,11 @@ export async function configureTailscaleT3({
 				runCommandImpl,
 				logger,
 			}))
-		)
+		) {
+			if (deviceType === "iobox")
+				return fail("Tailscale operator configuration failed");
 			return false;
+		}
 		step = "T3 service";
 		const version = await probe("t3 --version");
 		const resolved = await probe("command -v t3", { shell: true });
@@ -210,6 +214,8 @@ export async function configureTailscaleT3({
 			tailnetOnly: true,
 		});
 	} catch (error) {
+		if (deviceType === "iobox")
+			throw new Error(`${step} failed: ${error.message}`);
 		return fail(`${step} configuration failed: ${error.message}`);
 	}
 }

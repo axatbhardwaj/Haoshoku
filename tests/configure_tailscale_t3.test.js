@@ -1,4 +1,6 @@
 import { describe, expect, it } from "bun:test";
+import { log } from "../src/common/utils.js";
+import { runCachyOSSetup } from "../src/os_scripts/cachyos.js";
 import { configureTailscaleT3 } from "../src/helpers/configure_tailscale_t3.js";
 
 const dropIn =
@@ -477,12 +479,6 @@ describe("Arch T3 linger", () => {
 	])("enables and verifies linger on %s, then leaves it unchanged", async (deviceType) => {
 		const f = fixture();
 		f.options.deviceType = deviceType;
-		// This slice isolates linger; sleep targets are already masked.
-		const capture = f.options.captureCommandImpl;
-		f.options.captureCommandImpl = async (command) =>
-			command.startsWith("systemctl show ")
-				? { stdout: "masked", exitCode: 0 }
-				: capture(command);
 		f.overrides.set(lingerProbe, { stdout: "Linger=no", exitCode: 0 });
 		const run = f.options.runCommandImpl;
 		f.options.runCommandImpl = async (command, options) => {
@@ -606,8 +602,73 @@ describe("iobox sleep targets", () => {
 			}
 			return run(command, options);
 		};
-		expect(await configureTailscaleT3(f.options)).toBe(false);
-		expect(f.warnings.join(" ")).toContain("sleep mask");
+		await expect(configureTailscaleT3(f.options)).rejects.toThrow("sleep mask");
 		expect(f.messages.join(" ")).not.toContain("are ready");
+	});
+});
+
+describe("Arch full setup always-on failures", () => {
+	it.each([
+		"Tailscale",
+		"T3 service",
+		"linger",
+		"sleep mask",
+		"Tailscale/T3",
+	])("fails iobox setup naming %s and stops later steps", async (step) => {
+		const f = fixture();
+		const errors = [];
+		const events = [];
+		if (step === "Tailscale")
+			f.overrides.set("tailscale status --json", {
+				stdout: '{"BackendState":"Stopped"}',
+				exitCode: 0,
+			});
+		if (step === "T3 service")
+			f.overrides.set("systemctl --user is-active --quiet t3code.service", {
+				stdout: "",
+				exitCode: 1,
+			});
+		if (step === "linger") {
+			f.overrides.set(lingerProbe, { stdout: "Linger=no", exitCode: 0 });
+			f.options.runCommandImpl = async () => false;
+		}
+		if (step === "sleep mask")
+			f.overrides.set(maskProbe("sleep.target"), { stdout: "", exitCode: 1 });
+		const original = log.error;
+		log.error = (message) => errors.push(message);
+		try {
+			const result = await runCachyOSSetup({
+				promptDeviceTypeImpl: async () => {},
+				readDeviceTypeImpl: () => "iobox",
+				startSudoSessionImpl: async () => () => events.push("sudo-stop"),
+				commandExistsImpl: async () => true,
+				prepareArchPackageManagerImpl: async () => true,
+				ensureRustToolchainImpl: async () => {},
+				ensureAurHelperImpl: async () => "paru",
+				installDevToolsImpl: async () => {},
+				installSystemPackagesImpl: async () => {},
+				configureUserAppsImpl: async () => {},
+				installFlatpakAppsImpl: async () => {},
+				configureBraveManagedPoliciesImpl: async () => {},
+				configureHyprmoncfgImpl: async () => {},
+				configureOmarchyWorkspacesImpl: async () => {},
+				configureOmarchyPluginsImpl: async () => {},
+				configureVoxtypeOsdImpl: async () => {},
+				configureKdeConnectCommandsImpl: async () => {},
+				configureOmarchyBarImpl: async () => {},
+				configureTailscaleT3Impl: (options) =>
+					step === "Tailscale/T3"
+						? false
+						: configureTailscaleT3({ ...f.options, ...options }),
+				configureOmazedImpl: async () => events.push("omazed"),
+				configureOmarchyAppearanceImpl: async () => events.push("appearance"),
+			});
+			expect(result).toBe(false);
+			expect(errors.join(" ")).toContain(step);
+			expect(events).toEqual(["sudo-stop"]);
+			expect(f.messages.join(" ")).not.toContain("are ready");
+		} finally {
+			log.error = original;
+		}
 	});
 });

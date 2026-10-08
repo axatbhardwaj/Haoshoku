@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import {
 	installArchPackageBatch,
@@ -134,4 +135,54 @@ describe("iobox packages", () => {
 		]);
 		expect(prompts).toEqual([]);
 	});
+});
+
+it("exits the full iobox CLI non-zero naming linger when the service step fails", () => {
+	const root = path.resolve(import.meta.dir, "..");
+	const home = fs.mkdtempSync(path.join(os.tmpdir(), "iobox-linger-cli-"));
+	const cli = path.join(root, "haoshoku.js");
+	const setup = path.join(root, "src/os_scripts/cachyos.js");
+	const childScript = `
+		import { mock } from "bun:test";
+		import * as arch from ${JSON.stringify(setup)};
+		const runSetup = arch.runCachyOSSetup;
+		mock.module(${JSON.stringify(setup)}, () => ({
+			...arch,
+			runCachyOSSetup: () => runSetup({
+				promptDeviceTypeImpl: async () => {},
+				readDeviceTypeImpl: () => "iobox",
+				startSudoSessionImpl: async () => () => console.log("SUDO_STOPPED"),
+				commandExistsImpl: async () => false,
+				prepareArchPackageManagerImpl: async () => true,
+				ensureRustToolchainImpl: async () => {},
+				ensureAurHelperImpl: async () => "paru",
+				installDevToolsImpl: async () => {},
+				installSystemPackagesImpl: async () => {},
+				configureUserAppsImpl: async () => {},
+				configureTailscaleT3Impl: async () => { throw new Error("linger failed: sudo denied"); },
+			}),
+		}));
+		process.argv = [process.execPath, ${JSON.stringify(cli)}, "--os", "arch"];
+		await import(${JSON.stringify(cli)});
+	`;
+	try {
+		const child = Bun.spawnSync([process.execPath, "--eval", childScript], {
+			env: {
+				...process.env,
+				HOME: home,
+				XDG_STATE_HOME: path.join(home, "state"),
+			},
+			stdout: "pipe",
+			stderr: "pipe",
+		});
+		const output =
+			new TextDecoder().decode(child.stdout) +
+			new TextDecoder().decode(child.stderr);
+		expect(child.exitCode, output).toBe(1);
+		expect(output).toContain("linger failed");
+		expect(output).toContain("SUDO_STOPPED");
+		expect(output).not.toContain("Arch setup finished");
+	} finally {
+		fs.rmSync(home, { recursive: true });
+	}
 });

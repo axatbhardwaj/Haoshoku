@@ -1259,16 +1259,18 @@ describe("Omarchy-owned defaults", () => {
 
 describe("Arch T3 phone access integration", () => {
 	it.each([
-		false,
-		true,
-	])("runs after user apps and continues on failure (throws=%s)", async (throws) => {
+		["pc", false],
+		["pc", true],
+		["laptop", false],
+		["laptop", true],
+	])("runs after user apps on %s and continues on failure (throws=%s)", async (deviceType, throws) => {
 		const events = [];
 		const warnings = [];
 		const original = log.warning;
 		log.warning = (message) => warnings.push(message);
 		try {
 			const result = await runCachyOSSetup({
-				readDeviceTypeImpl: () => "pc",
+				readDeviceTypeImpl: () => deviceType,
 				promptDeviceTypeImpl: async () => {},
 				startSudoSessionImpl: async () => () => events.push("sudo-stop"),
 				prepareArchPackageManagerImpl: async () => true,
