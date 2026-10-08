@@ -16,6 +16,7 @@ export const MODE_FLAGS = [
 	"codexBackup",
 	"agents",
 	"agentsBackup",
+	"agentAccounts",
 	"axstack",
 	"axstackCheck",
 	"fleetSsh",
