@@ -29,17 +29,18 @@ native subagent tools (Claude Agent tool, Codex spawn, etc.) for delegated work.
 
 ## axnet
 
-Roles:
-
-- io = control center (may work or delegate to workers).
-- iobook and the phone = access points (keep the user informed, no real work).
-- iobox and axat-vps = workers (do the work, never delegate).
-
 The fleet is io (PC), iobook (laptop), iobox (always-on agent box running
 T3 Code), and axat-vps (Debian VPS running Executor and Hermes). Access is
 Tailscale-only: use MagicDNS short names, for example `ssh iobox` or
 `ssh axat-vps`. Hosts SSH to each other by short name using Tailscale SSH
 on Arch hosts and OpenSSH to axat-vps.
+
+Roles:
+
+- io = control center (may work locally or hand work to the workers).
+- iobook and my phone = access points (keep me informed and let me steer; no real work).
+- iobox and axat-vps = workers (do the work locally and never hand work to another host).
+  Subagents and reviewers via T3 on the same host are fine.
 
 Agents may SSH to any fleet host and act there. Accepted risk: one compromised
 agent can reach every fleet host. On iobox, use the 1Password `op` CLI with the

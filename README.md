@@ -243,7 +243,8 @@ remains responsible for orchestration. Profile sync preserves the live Axstack-o
 routing block; shared, Claude and Codex profile backups strip it so Axstack can
 own it on fresh hosts. The shared profile names axnet roles: io is the control
 center, iobook and the phone are access points, and iobox and axat-vps are
-workers that do the work and never delegate.
+workers that do the work locally and never hand work to another host. T3
+subagents and reviewers on the same host are fine.
 
 T3 Code owns agent orchestration, and Axstack supplies routing policy.
 Claude/Codex runtime state and `settings.json` remain machine-local.

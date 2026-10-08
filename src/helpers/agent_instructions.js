@@ -6,9 +6,19 @@ const AXSTACK_BLOCK =
 
 /** Axstack owns its routing block; portable profiles must not capture it. */
 export function stripAxstackBlock(content) {
+	const blockWithNewlines = new RegExp(
+		`(\\r?\\n)?${AXSTACK_BLOCK.source}(\\r?\\n)?`,
+		"g",
+	);
 	return content.replace(
-		/(?:\r?\n)?<!-- axstack:begin v\d+ -->[\s\S]*?<!-- axstack:end -->(?:\r?\n)?/g,
-		"",
+		blockWithNewlines,
+		(match, leading, trailing, offset) => {
+			const before = content.slice(0, offset);
+			const after = content.slice(offset + match.length);
+			// Keep one separator if removing both newlines would join profile lines.
+			if (!leading || !trailing || !before || !after) return "";
+			return before.endsWith("\n") || /^\r?\n/.test(after) ? "" : leading;
+		},
 	);
 }
 

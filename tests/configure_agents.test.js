@@ -134,6 +134,21 @@ describe("shared agent profile round trip", () => {
 		expect(fs.readFileSync(live, "utf8")).toBe(original);
 	});
 
+	for (const newline of ["\n", "\r\n"]) {
+		it(`keeps neighbouring profile lines separate during ${JSON.stringify(newline)} backup`, async () => {
+			const live = path.join(home, ".claude", "CLAUDE.md");
+			fs.mkdirSync(path.dirname(live), { recursive: true });
+			const block = axstackBlock.replace(/\n/g, newline);
+			const original = `A${newline}${block}${newline}B`;
+			fs.writeFileSync(live, original);
+			await backupAgentsConfig({ srcDir, home });
+			expect(fs.readFileSync(path.join(srcDir, "PROFILE.md"), "utf8")).toBe(
+				`A${newline}B`,
+			);
+			expect(fs.readFileSync(live, "utf8")).toBe(original);
+		});
+	}
+
 	it("deploys PROFILE.md verbatim to claude, codex and opencode", async () => {
 		fs.writeFileSync(path.join(srcDir, "PROFILE.md"), "SHARED");
 		await syncAgentsConfig({ srcDir, home });
