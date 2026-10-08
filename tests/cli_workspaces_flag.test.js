@@ -58,6 +58,10 @@ describe("--workspaces CLI mode", () => {
 			path.join(tmpProjectRoot, "configs", "omarchy"),
 			{ recursive: true },
 		);
+		fs.copyFileSync(
+			path.join(PROJECT_ROOT, "configs", "fleet.json"),
+			path.join(tmpProjectRoot, "configs", "fleet.json"),
+		);
 		fs.mkdirSync(path.join(tmpProjectRoot, "configs", "scripts"), {
 			recursive: true,
 		});

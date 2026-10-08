@@ -1,9 +1,10 @@
 import fs from "node:fs";
-import { homedir } from "node:os";
+import os, { homedir } from "node:os";
 import path from "node:path";
 
 import promptsLib from "prompts";
 
+import { lookupHost } from "./fleet.js";
 import { DEVICE_TYPES, log } from "./utils.js";
 
 const HOME = homedir();
@@ -44,7 +45,7 @@ export function detectDeviceType({
 
 /**
  * Resolve device type in priority order: explicit CLI override, stored value,
- * Linux hardware detection, then an interactive PC/laptop/iobox/skip fallback.
+ * fleet hostname, Linux hardware detection, then an interactive fallback.
  * Detected or selected values are merged into ~/.haoshoku.json; skip and
  * unavailable prompts do not write a fallback. Downstream helpers read the
  * persisted value independently.
@@ -55,7 +56,10 @@ export async function promptDeviceType({
 	isTTY,
 	detectDeviceTypeImpl = detectDeviceType,
 	forcedDeviceType,
+	hostname = os.hostname(),
+	fleetManifest,
 } = {}) {
+	const fleetHost = lookupHost(hostname, { manifest: fleetManifest });
 	let config = {};
 	let replacementWarning;
 	if (fs.existsSync(configPath)) {
@@ -82,8 +86,17 @@ export async function promptDeviceType({
 		return persist(forcedDeviceType);
 	}
 	if (DEVICE_TYPES.includes(config.deviceType)) {
+		if (fleetHost?.deviceType && fleetHost.deviceType !== config.deviceType) {
+			log.warning(
+				`Stored deviceType ${config.deviceType} disagrees with fleet ${hostname} (${fleetHost.deviceType}); keeping stored value. Run haoshoku --device-type ${fleetHost.deviceType} to change it.`,
+			);
+		}
 		log.info(`Using stored deviceType ${config.deviceType}.`);
 		return config.deviceType;
+	}
+	if (fleetHost?.deviceType) {
+		log.info(`Using fleet deviceType ${fleetHost.deviceType} for ${hostname}.`);
+		return persist(fleetHost.deviceType);
 	}
 
 	let detectedDeviceType = null;

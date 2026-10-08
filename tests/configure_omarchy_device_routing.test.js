@@ -59,6 +59,7 @@ describe("Omarchy deviceType routing", () => {
 			configureUserAppsImpl: async () => {},
 			promptDeviceTypeImpl: () =>
 				promptDeviceType({
+					hostname: "unknown",
 					configPath: path.join(home, ".haoshoku.json"),
 					detectDeviceTypeImpl: () => null,
 					promptFn: async () => ({ device: "laptop" }),

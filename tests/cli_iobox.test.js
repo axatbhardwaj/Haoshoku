@@ -47,6 +47,10 @@ beforeEach(() => {
 		{ recursive: true },
 	);
 	fs.copyFileSync(
+		path.join(root, "configs", "fleet.json"),
+		path.join(project, "configs", "fleet.json"),
+	);
+	fs.copyFileSync(
 		path.join(root, "haoshoku.js"),
 		path.join(project, "haoshoku.js"),
 	);

@@ -437,6 +437,7 @@ describe("default-run reachability", () => {
 					promptDeviceTypeImpl: async () => {
 						deviceTypeCalls += 1;
 						return promptDeviceType({
+							hostname: "unknown",
 							configPath,
 							detectDeviceTypeImpl: () => "laptop",
 							isTTY: true,
@@ -486,6 +487,7 @@ describe("default-run reachability", () => {
 						isOmarchy: false,
 						promptDeviceTypeImpl: () =>
 							promptDeviceType({
+								hostname: "unknown",
 								configPath,
 								detectDeviceTypeImpl: () => null,
 								isTTY: false,

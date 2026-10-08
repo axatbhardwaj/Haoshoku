@@ -9,7 +9,11 @@ import {
 } from "../src/common/device_type.js";
 
 function promptWithoutDetection(options) {
-	return promptDeviceType({ detectDeviceTypeImpl: () => null, ...options });
+	return promptDeviceType({
+		hostname: "unknown",
+		detectDeviceTypeImpl: () => null,
+		...options,
+	});
 }
 
 describe("promptDeviceType", () => {
@@ -52,6 +56,7 @@ describe("promptDeviceType", () => {
 	it("persists an automatically detected type without prompting", async () => {
 		let promptCalls = 0;
 		const result = await promptDeviceType({
+			hostname: "unknown",
 			configPath,
 			detectDeviceTypeImpl: () => "laptop",
 			promptFn: async () => {
@@ -79,6 +84,7 @@ describe("promptDeviceType", () => {
 		let detectionCalls = 0;
 		let promptCalls = 0;
 		const result = await promptDeviceType({
+			hostname: "unknown",
 			configPath,
 			detectDeviceTypeImpl: () => {
 				detectionCalls += 1;
@@ -104,6 +110,7 @@ describe("promptDeviceType", () => {
 
 		expect(
 			await promptDeviceType({
+				hostname: "unknown",
 				configPath,
 				forcedDeviceType: "laptop",
 				detectDeviceTypeImpl: () => "pc",
