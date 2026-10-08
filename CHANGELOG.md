@@ -1,5 +1,38 @@
 # Changelog
 
+## 12.5.0 - 2026-10-08
+
+### Added
+
+- Ship T3 provider settings guidance in the shared agent profile: run
+  `t3-provider-fix` after changing T3 provider instances or account homes, and
+  use absolute real binaries for `binaryPath` (#176).
+- Name the fleet `axnet` and define control, access and worker roles in the fleet
+  manifest and shared agent profile.
+- Provision the T3 server without first opening the desktop app. When desktop
+  settings are missing, create them with Local environment off while retaining
+  checks for conflicting state. Print 15-minute `t3 pair --tailscale` links for
+  other control and access hosts on the fleet tailnet (#160).
+
+### Fixed
+
+- Set and re-verify the Tailscale operator when its preference is absent or
+  empty (#161).
+- Skip JetBrains Mono Nerd Font installation when either the full or `-basic`
+  package is already installed, preserving Omarchy's font (#162).
+- Print final next steps with commands to rerun skipped gh-stack and Axstack
+  setup; report GitHub CLI exit code 4 as not authenticated (#167).
+- Remove the Axstack block from shipped agent profiles, preserve existing
+  blocks during profile sync and strip them from backups (#163).
+- Keep expected T3 and Tailscale status probes out of failed-step summaries;
+  only probe packaged `/usr/bin/t3` when it exists. Real setup failures remain
+  reported (#164).
+- Require the fleet tailnet and a running Tailscale backend before fleet SSH
+  actions (#165).
+- Store the Executor Authorization header inline in private Claude and Codex
+  config files with mode `0600`; finish `--executor-clients` with an authenticated
+  MCP initialization check and report connection failure (#166).
+
 ## 12.4.0 - 2026-10-08
 
 ### Added
