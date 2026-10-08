@@ -41,6 +41,7 @@ function fixture({ fresh = false, loggedOut = fresh } = {}) {
 	const options = {
 		home: "/home/test",
 		user: "test",
+		deviceType: "pc",
 		env: {},
 		fsImpl: {
 			readdirSync: () => [],
@@ -77,6 +78,7 @@ function fixture({ fresh = false, loggedOut = fresh } = {}) {
 			)
 				stdout = "";
 			else if (command === "command -v t3code t3code-nightly") exitCode = 1;
+			else if (command.startsWith("loginctl show-user ")) stdout = "Linger=yes";
 			else if (command === listenerCommand)
 				stdout = "LISTEN 0 128 127.0.0.1:3773 0.0.0.0:*";
 			else if (command === "command -v t3") stdout = "/usr/bin/t3";
@@ -438,5 +440,92 @@ describe("Arch T3 installation diagnostics", () => {
 		expect(f.warnings.join(" ")).toContain("t3code-bin");
 		expect(f.warnings.join(" ")).toContain("t3code-nightly-bin");
 		expect(f.mutations).toEqual([]);
+	});
+});
+
+const lingerProbe = "loginctl show-user 'test' -p Linger";
+const lingerEnable = "sudo -n loginctl enable-linger 'test'";
+
+describe("Arch T3 linger", () => {
+	it.each([
+		"pc",
+		"laptop",
+		"iobox",
+	])("enables and verifies linger on %s, then leaves it unchanged", async (deviceType) => {
+		const f = fixture();
+		f.options.deviceType = deviceType;
+		// This slice isolates linger; sleep targets are already masked.
+		const capture = f.options.captureCommandImpl;
+		f.options.captureCommandImpl = async (command) =>
+			command.startsWith("systemctl show ")
+				? { stdout: "masked", exitCode: 0 }
+				: capture(command);
+		f.overrides.set(lingerProbe, { stdout: "Linger=no", exitCode: 0 });
+		const run = f.options.runCommandImpl;
+		f.options.runCommandImpl = async (command, options) => {
+			const result = await run(command, options);
+			if (command === lingerEnable)
+				f.overrides.set(lingerProbe, { stdout: "Linger=yes", exitCode: 0 });
+			return result;
+		};
+		expect(await configureTailscaleT3(f.options)).toBe(true);
+		expect(f.mutations).toEqual([lingerEnable]);
+		expect(f.events.filter((command) => command === lingerProbe)).toHaveLength(
+			2,
+		);
+		f.mutations.length = 0;
+		expect(await configureTailscaleT3(f.options)).toBe(true);
+		expect(f.mutations).toEqual([]);
+	});
+
+	it("uses SUDO_USER and never enables linger for root", async () => {
+		const f = fixture();
+		f.options.user = "root";
+		f.options.env = { SUDO_USER: "desktop" };
+		f.overrides.set("loginctl show-user 'desktop' -p Linger", {
+			stdout: "Linger=no",
+			exitCode: 0,
+		});
+		const run = f.options.runCommandImpl;
+		f.options.runCommandImpl = async (command, options) => {
+			const result = await run(command, options);
+			if (command === "sudo -n loginctl enable-linger 'desktop'")
+				f.overrides.set("loginctl show-user 'desktop' -p Linger", {
+					stdout: "Linger=yes",
+					exitCode: 0,
+				});
+			return result;
+		};
+		expect(await configureTailscaleT3(f.options)).toBe(true);
+		expect(f.mutations).toContain("sudo -n loginctl enable-linger 'desktop'");
+		expect(f.events).not.toContain("loginctl show-user 'root' -p Linger");
+	});
+
+	it.each([
+		"denied",
+		"throws",
+		"not-enabled",
+		"probe-failed",
+		"root",
+	])("reports linger %s without claiming readiness", async (mode) => {
+		const f = fixture();
+		f.overrides.set(lingerProbe, {
+			stdout: "Linger=no",
+			exitCode: mode === "probe-failed" ? 1 : 0,
+		});
+		if (mode === "root") f.options.user = "root";
+		const run = f.options.runCommandImpl;
+		f.options.runCommandImpl = async (command, options) => {
+			if (command === lingerEnable) {
+				if (mode === "throws") throw new Error("sudo denied");
+				return mode !== "denied";
+			}
+			return run(command, options);
+		};
+		expect(await configureTailscaleT3(f.options)).toBe(false);
+		expect(f.warnings.join(" ")).toContain("linger");
+		expect(f.messages.join(" ")).not.toContain("are ready");
+		if (["root", "probe-failed"].includes(mode))
+			expect(f.mutations).toEqual([]);
 	});
 });

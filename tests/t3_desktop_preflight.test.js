@@ -128,6 +128,7 @@ function fixture(entrypoint) {
 				stdout = "t3 v0.0.46-nightly.20261004.2644";
 			else if (command === "pacman -Q t3code-bin") exitCode = 1;
 			else if (command === "pacman -Q t3code-nightly-bin") exitCode = 1;
+			else if (command.startsWith("loginctl show-user ")) stdout = "Linger=yes";
 			else if (command === "pacman -Q tailscale") stdout = "tailscale 1.0";
 			else if (command.includes("is-enabled") || command.includes("is-active"))
 				stdout = "";

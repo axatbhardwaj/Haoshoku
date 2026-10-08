@@ -42,6 +42,7 @@ export async function configureTailscaleT3({
 			throw new Error(`Failed: ${command}`);
 	};
 
+	let step = "Tailscale";
 	try {
 		if ((await probe("pacman -Q tailscale")) === null) {
 			await run("sudo -n pacman -S --needed --noconfirm tailscale");
@@ -73,6 +74,8 @@ export async function configureTailscaleT3({
 			user === "root" && env.SUDO_USER && env.SUDO_USER !== "root"
 				? env.SUDO_USER
 				: user;
+		if (!operator || operator === "root")
+			return fail("linger requires a non-root setup user");
 		if (
 			!(await ensureTailscaleOperator({
 				user: operator,
@@ -83,6 +86,7 @@ export async function configureTailscaleT3({
 			}))
 		)
 			return false;
+		step = "T3 service";
 		const version = await probe("t3 --version");
 		const resolved = await probe("command -v t3", { shell: true });
 		if (resolved && resolved !== "/usr/bin/t3") {
@@ -112,6 +116,16 @@ export async function configureTailscaleT3({
 			fail,
 		});
 		if (!desktop) return false;
+		step = "linger";
+		const lingerCommand = `loginctl show-user ${shellQuote(operator)} -p Linger`;
+		const linger = await probe(lingerCommand);
+		if (linger !== "Linger=yes") {
+			if (linger !== "Linger=no") return fail("Cannot verify linger state");
+			await run(`sudo -n loginctl enable-linger ${shellQuote(operator)}`);
+			if ((await probe(lingerCommand)) !== "Linger=yes")
+				return fail("linger was not enabled after enable-linger");
+		}
+		step = "T3 service";
 		let changed = writeServiceDropIn(
 			home,
 			"axstack-tailscale.conf",
@@ -167,6 +181,6 @@ export async function configureTailscaleT3({
 			tailnetOnly: true,
 		});
 	} catch (error) {
-		return fail(`Tailscale/T3 configuration failed: ${error.message}`);
+		return fail(`${step} configuration failed: ${error.message}`);
 	}
 }
