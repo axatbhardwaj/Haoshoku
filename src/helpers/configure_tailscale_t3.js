@@ -7,6 +7,7 @@ import {
 	runCommand,
 	runCommandCapture,
 } from "../common/utils.js";
+import { configureT3Op } from "./configure_t3_op.js";
 import { preflightT3Desktop } from "./t3_desktop_preflight.js";
 import {
 	ensureTailscaleOperator,
@@ -205,7 +206,7 @@ export async function configureTailscaleT3({
 				"T3 service is not active. Inspect systemctl --user status t3code.service",
 			);
 		}
-		return await waitForT3Tailscale({
+		const ready = await waitForT3Tailscale({
 			probe,
 			fetchImpl,
 			sleepImpl,
@@ -215,6 +216,11 @@ export async function configureTailscaleT3({
 			retryFlag: "--tailscale-t3",
 			tailnetOnly: true,
 		});
+		if (ready && deviceType === "iobox") {
+			step = "1Password token drop-in";
+			await configureT3Op({ home, fsImpl, runCommandImpl, logger });
+		}
+		return ready;
 	} catch (error) {
 		if (deviceType === "iobox")
 			throw new Error(`${step} failed: ${error.message}`);
