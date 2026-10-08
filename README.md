@@ -455,15 +455,22 @@ Run each host's setup locally. Until 12.4.0 ships, use a git checkout with Bun
 for the new commands below; the installed 12.3.x package does not include them.
 
 1. Set the hostname to `iobox` (`sudo hostnamectl set-hostname iobox`).
-2. Run `sudo tailscale up` and finish tailnet login.
-3. Disable **Local environment** in T3 desktop settings before the service step.
-4. In the Haoshoku checkout, run `bun install`, `bun haoshoku.js --device-type iobox`,
-   then `bun haoshoku.js` as the ordinary setup user. Let the T3 service step finish.
-5. Complete two Claude paste-code logins: launch `claude`, use `/login`, then
+2. Install Bun (`yay -S --needed bun-bin`; Bun >= 1.3.14), then
+   `git clone https://github.com/axatbhardwaj/Haoshoku.git` and `cd Haoshoku`.
+3. Install T3 desktop (`yay -S --needed t3code-nightly-bin`), open it once with
+   `t3code-nightly`, and disable **Local environment** in its settings. This creates
+   the desktop settings file required by preflight; do this before the service step.
+4. Install Tailscale (`sudo pacman -S --needed tailscale`), enable it with
+   `sudo systemctl enable --now tailscaled.service`, then run `sudo tailscale up`
+   and finish tailnet login. Haoshoku verifies it is installed, enabled and logged in.
+5. In the checkout, run `bun install`, `bun haoshoku.js --device-type iobox`, then
+   `bun haoshoku.js` as the ordinary setup user. If the T3 step stops, fix the
+   reported condition (including desktop settings), then rerun `bun haoshoku.js`.
+6. Complete two Claude paste-code logins: launch `claude`, use `/login`, then
    repeat with `CLAUDE_CONFIG_DIR=~/.claude-alt claude`.
-6. Complete two Codex device logins: `codex login --device-auth`, then
+7. Complete two Codex device logins: `codex login --device-auth`, then
    `CODEX_HOME=~/.codex-alt codex login --device-auth`.
-7. Supply `EXECUTOR_AUTHORIZATION` securely as described in
+8. Supply `EXECUTOR_AUTHORIZATION` securely as described in
    [Executor clients](#opt-in-executor-clients), then register once per home:
 
    ```bash
@@ -473,19 +480,19 @@ for the new commands below; the installed 12.3.x package does not include them.
 
    In T3, manually map provider instance `claudeAlt` to `CLAUDE_CONFIG_DIR=~/.claude-alt`
    and `codexAlt` to `CODEX_HOME=~/.codex-alt` (use absolute home paths in settings).
-8. Run `gh auth login` and set your Git name/email; Omarchy skips Git identity setup.
-9. Create the iobox key with `ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519_vps` and
-   authorize its public key on axat-vps by hand. Keep the private key local.
-10. Create `~/.config/op/service-account.env` as a regular file owned by your user,
+9. Run `gh auth login` and set your Git name/email; Omarchy skips Git identity setup.
+10. Create the iobox key with `ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519_vps` and
+    authorize its public key on axat-vps by hand. Keep the private key local.
+11. Create `~/.config/op/service-account.env` as a regular file owned by your user,
     mode 0600, containing exactly one non-empty `OP_SERVICE_ACCOUNT_TOKEN=` assignment
     (one trailing newline allowed). Never log or commit the value. Retry
     `bun haoshoku.js --tailscale-t3` to install the managed `haoshoku-op.conf` drop-in;
     an absent file only prints guidance. After token rotation or later creation
     with an existing drop-in, run `systemctl --user restart t3code`.
-11. Complete T3 pairing using the service's pairing flow.
-12. Ensure tailnet policy allows port 22 and a fleet SSH rule with `action: accept`.
+12. Complete T3 pairing using the service's pairing flow.
+13. Ensure tailnet policy allows port 22 and a fleet SSH rule with `action: accept`.
     An overlapping `check` rule wins and breaks unattended SSH; policy edits are manual.
-13. Smoke-test `ssh -o BatchMode=yes <peer> true` for each peer (from iobox:
+14. Smoke-test `ssh -o BatchMode=yes <peer> true` for each peer (from iobox:
     io, iobook and axat-vps). Check authenticated Executor tool discovery separately
     in both primary and alt T3 instances; registration alone does not prove access.
 
@@ -697,8 +704,8 @@ written by this installer.
 The default is a tailnet-only HTTPS origin via operator-managed Tailscale Serve:
 `https://axat-vps.<tailnet>.ts.net` (fleet: `https://axat-vps.tail140c22.ts.net`).
 Forward it to `127.0.0.1:4788`, including `/api`, `/mcp` and `/.well-known`;
-run setup and clients with tailnet access. Public reachability is not required
-by the parser. Only OAuth providers that fetch callbacks or client metadata
+run setup and clients with tailnet access. Public reachability is not required.
+Only OAuth providers that fetch callbacks or client metadata
 server-side need temporary public exposure via operator-managed Funnel; arrange
 that exception for their flow and restore tailnet-only access afterwards.
 Haoshoku never changes nginx, DNS, TLS, firewall rules, Tailscale Serve/Funnel or

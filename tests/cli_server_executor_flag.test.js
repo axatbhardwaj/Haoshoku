@@ -6,9 +6,11 @@ import os from "node:os";
 const cli = path.resolve(import.meta.dir, "..", "haoshoku.js");
 it("advertises the explicit opt-in Executor origin command", () => {
 	const child = Bun.spawnSync([process.execPath, cli, "--help"]);
+	const output = new TextDecoder().decode(child.stdout).replace(/\s+/g, " ");
 	expect(child.exitCode).toBe(0);
-	expect(new TextDecoder().decode(child.stdout)).toContain(
-		"--server-executor <https-origin>",
+	expect(output).toContain("--server-executor <https-origin>");
+	expect(output).toContain(
+		"HTTPS origin (Tailscale Serve or public proxy)",
 	);
 });
 
@@ -66,7 +68,7 @@ it("routes the canonical HTTPS origin to Executor and propagates incomplete setu
 		expect(r.code, r.output).toBe(ok ? 0 : 1);
 		expect(r.output).toContain("EXECUTOR_CANONICAL_ORIGIN");
 		expect(r.logText).not.toContain("gateway.example");
-		expect(r.logText).toContain("[public-origin]");
+		expect(r.logText).toContain("[executor-origin]");
 		expect(r.output).not.toContain("DEFAULT_SETUP");
 	}
 });

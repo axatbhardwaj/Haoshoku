@@ -230,7 +230,7 @@ const runLog = informational
 							process.argv[0],
 							process.argv[1],
 							"--server-executor",
-							"[public-origin]",
+							"[executor-origin]",
 						],
 		});
 if (runLog) process.once("exit", (code) => runLog.finish(code));
@@ -280,7 +280,7 @@ program
 	.option("--server-hermes-relay", "Configure Hermes relay transport on Debian")
 	.option(
 		"--server-executor <https-origin>",
-		"Provision Executor on Debian (opt-in; external HTTPS proxy required)",
+		"Provision Executor on Debian (opt-in; HTTPS origin (Tailscale Serve or public proxy))",
 	)
 	.option(
 		"--executor-clients <https-endpoint>",
