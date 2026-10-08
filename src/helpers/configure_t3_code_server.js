@@ -105,7 +105,7 @@ export async function configureT3CodeServer({
 } = {}) {
 	const probe = async (command) => {
 		try {
-			const result = await captureCommandImpl(command);
+			const result = await captureCommandImpl(command, { expectFailure: true });
 			return result.exitCode === 0 ? result.stdout.trim() : null;
 		} catch {
 			return null;
