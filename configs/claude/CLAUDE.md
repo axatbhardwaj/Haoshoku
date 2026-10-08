@@ -27,6 +27,19 @@ MCP: `delegate_task`, `t3_thread_launch`, schedules) so all agent work is
 visible and tracked in T3. The driver is a T3 thread. Do not use a harness's
 native subagent tools (Claude Agent tool, Codex spawn, etc.) for delegated work.
 
+## Fleet
+
+The fleet is io (PC), iobook (laptop), iobox (always-on agent box running
+T3 Code), and axat-vps (Debian VPS running Executor and Hermes). Access is
+Tailscale-only: use MagicDNS short names, for example `ssh iobox` or
+`ssh axat-vps`. Hosts SSH to each other by short name using Tailscale SSH
+on Arch hosts and OpenSSH to axat-vps.
+
+Agents may SSH to any fleet host and act there. Accepted risk: one compromised
+agent can reach every fleet host. On iobox, use the 1Password `op` CLI with the
+service-account token inherited by T3 from `~/.config/op/service-account.env`.
+Never copy keys or tokens into the repository or logs.
+
 ## MCP access
 
 Use the configured `executor` MCP for Notion and Linear access, including both

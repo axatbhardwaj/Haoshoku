@@ -100,11 +100,11 @@ The Arch setup:
 - deploys `~/.config/hypr/haoshoku/{bindings,workspaces}.lua` and appends
   exactly two `require` lines to `~/.config/hypr/hyprland.lua`; Omarchy 4
   loads user config via `require()` and no longer sources `.conf` files;
-- automatically determines `pc` or `laptop` from Linux DMI chassis data, with
-  battery detection as the fallback, and saves it to `~/.haoshoku.json` before
-  device-routed audio and Hyprland configuration. A valid stored choice wins,
-  so `haoshoku --device-type pc|laptop` remains the explicit override. Only
-  ambiguous hardware falls back to the interactive selector; Skip persists
+- selects `pc`, `laptop` or `iobox` in order: explicit flag, stored choice,
+  hostname in `configs/fleet.json`, Linux DMI/battery detection, then prompt;
+  saves the selected type to `~/.haoshoku.json` before device-routed setup.
+  A stored choice that disagrees with the fleet hostname warns and stays unchanged;
+  `haoshoku --device-type pc|laptop|iobox` is the explicit override. Skip persists
   nothing and leaves device-specific audio unset;
 - without interactive confirmation—including piped stdin—Haoshoku declines real
   user decisions immediately and does not treat input as answers;
@@ -347,10 +347,13 @@ haoshoku --claude-update
 haoshoku --codex
 haoshoku --codex-backup
 haoshoku --server-t3-code
-haoshoku --server-executor https://gateway.example.net
+haoshoku --server-executor https://axat-vps.tail140c22.ts.net
 # With EXECUTOR_AUTHORIZATION supplied securely in the environment:
 haoshoku --executor-clients https://executor.example.net/mcp
 haoshoku --device-type laptop
+haoshoku --device-type iobox
+haoshoku --fleet-ssh
+haoshoku --agent-accounts
 haoshoku --kde-connect-commands
 haoshoku --audio
 haoshoku --audio-backup
@@ -384,7 +387,7 @@ desktop entry reports the wrong class. Without line 2, the desktop entry's
 `--workspaces` setup, migrates the retired Orca default, and otherwise preserves
 your choice. Run `hyprctl reload` after editing it.
 
-Use `haoshoku --device-type pc` or `laptop` to override automatic detection.
+Use `haoshoku --device-type pc`, `laptop` or `iobox` to override automatic detection.
 Later full Arch-family setups honor that stored explicit value.
 
 `haoshoku --3-4-migrate` is a re-runnable, idempotent migration from an
@@ -396,6 +399,95 @@ shim is still present it reports validation deferred and asks for a reboot
 and re-run instead of claiming success.
 
 Run `haoshoku --help` for the complete current list.
+
+## iobox profile and fleet
+
+The fleet in [`configs/fleet.json`](configs/fleet.json) is io (PC), iobook
+(laptop), iobox (always-on Omarchy agent box running T3), and axat-vps (Debian
+VPS running Executor and Hermes). Everything is reached over Tailscale only.
+Use MagicDNS short names (`ssh io`, `ssh iobook`, `ssh iobox`, `ssh axat-vps`);
+Arch hosts use Tailscale SSH, and axat-vps keeps OpenSSH. Agents may SSH to any
+fleet host and act there. Accepted risk: one compromised agent reaches every host.
+
+`--device-type iobox` stores the profile; a later full setup uses
+[`common/paru_applist_iobox.txt`](common/paru_applist_iobox.txt), including T3,
+Tailscale, Claude/Codex dependencies, Git/gh and 1Password desktop plus `op` CLI.
+It keeps Axstack, gh-stack, shared agent instructions, user scripts and Omarchy
+appearance. It skips Flatpaks, gaming/Steam, uosc/MPV, the Bluetooth prompt,
+Brave/Chromium profiles, KDE Connect, voxtype, bar/plugins, workspaces,
+hyprmoncfg and audio. Standalone `--workspaces`, `--monitors`,
+`--hyprmoncfg-backup`, `--audio` and `--audio-backup` refuse iobox. Reruns keep
+previously installed apps; switching profiles does not uninstall anything.
+
+The Arch T3 step enables and verifies user linger. On iobox it also masks and
+verifies `sleep.target`, `suspend.target`, `hibernate.target`,
+`hybrid-sleep.target` and `suspend-then-hibernate.target`. T3, Tailscale, linger
+or sleep-mask failures stop iobox setup with the failed step named.
+
+`--fleet-ssh` runs only fleet SSH setup on an Arch fleet host; Debian and
+non-fleet hosts are refused without changes. Full Arch setup also runs it.
+It enables/verifies Tailscale SSH, writes `~/.ssh/config.d/haoshoku-fleet`, and
+puts its Include first in `~/.ssh/config`, preserving user Host/Match blocks.
+Arch peer keys from Tailscale go to `~/.ssh/known_hosts_fleet` with strict host
+checking; offline peers retain their cached keys. VPS connections use
+`~/.ssh/id_ed25519_vps` and `accept-new`, recording the first key in ordinary
+`known_hosts`. Haoshoku does not create SSH keys, authorize them or edit ACLs.
+
+`--agent-accounts` is opt-in elsewhere and runs by default on iobox after
+Claude/Codex and shared-profile setup. It creates `~/.claude-alt` and
+`~/.codex-alt`, sharing every other primary-home top-level entry by symlink
+except these private entries:
+
+| Home | Private entries (never linked) |
+| --- | --- |
+| Claude | `.credentials.json`, `.claude.json`, `history.jsonl`, `sessions`, `session-env`, `shell-snapshots`, `cache`, `backups`, `security`, `mcp-needs-auth-cache.json`, `.last-cleanup` |
+| Codex | `auth.json`, `config.toml`, `models_cache.json`, `log`, `memories`, `tmp` |
+
+Codex `config.toml` is copied once when the alt file is missing. Other runtime
+state stays shared, including Claude `projects` and Codex `history.jsonl`,
+`sessions` and SQLite files. Existing real entries and wrong/dangling links
+are reported and preserved; private symlinks report incomplete account isolation.
+Missing primary homes are skipped. Logins and T3 provider settings remain manual.
+
+### Bring-up checklist
+
+Run each host's setup locally. Until 12.4.0 ships, use a git checkout with Bun
+for the new commands below; the installed 12.3.x package does not include them.
+
+1. Set the hostname to `iobox` (`sudo hostnamectl set-hostname iobox`).
+2. Run `sudo tailscale up` and finish tailnet login.
+3. Disable **Local environment** in T3 desktop settings before the service step.
+4. In the Haoshoku checkout, run `bun install`, `bun haoshoku.js --device-type iobox`,
+   then `bun haoshoku.js` as the ordinary setup user. Let the T3 service step finish.
+5. Complete two Claude paste-code logins: launch `claude`, use `/login`, then
+   repeat with `CLAUDE_CONFIG_DIR=~/.claude-alt claude`.
+6. Complete two Codex device logins: `codex login --device-auth`, then
+   `CODEX_HOME=~/.codex-alt codex login --device-auth`.
+7. Supply `EXECUTOR_AUTHORIZATION` securely as described in
+   [Executor clients](#opt-in-executor-clients), then register once per home:
+
+   ```bash
+   bun haoshoku.js --executor-clients https://axat-vps.tail140c22.ts.net/mcp
+   CLAUDE_CONFIG_DIR=~/.claude-alt CODEX_HOME=~/.codex-alt bun haoshoku.js --executor-clients https://axat-vps.tail140c22.ts.net/mcp
+   ```
+
+   In T3, manually map provider instance `claudeAlt` to `CLAUDE_CONFIG_DIR=~/.claude-alt`
+   and `codexAlt` to `CODEX_HOME=~/.codex-alt` (use absolute home paths in settings).
+8. Run `gh auth login` and set your Git name/email; Omarchy skips Git identity setup.
+9. Create the iobox key with `ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519_vps` and
+   authorize its public key on axat-vps by hand. Keep the private key local.
+10. Create `~/.config/op/service-account.env` as a regular file owned by your user,
+    mode 0600, containing exactly one non-empty `OP_SERVICE_ACCOUNT_TOKEN=` assignment
+    (one trailing newline allowed). Never log or commit the value. Retry
+    `bun haoshoku.js --tailscale-t3` to install the managed `haoshoku-op.conf` drop-in;
+    an absent file only prints guidance. After token rotation or later creation
+    with an existing drop-in, run `systemctl --user restart t3code`.
+11. Complete T3 pairing using the service's pairing flow.
+12. Ensure tailnet policy allows port 22 and a fleet SSH rule with `action: accept`.
+    An overlapping `check` rule wins and breaks unattended SSH; policy edits are manual.
+13. Smoke-test `ssh -o BatchMode=yes <peer> true` for each peer (from iobox:
+    io, iobook and axat-vps). Check authenticated Executor tool discovery separately
+    in both primary and alt T3 instances; registration alone does not prove access.
 
 ## Debian Server
 
@@ -581,6 +673,8 @@ conversation. A failed upload keeps the file and reports failure.
 
 ## Development
 
+Run `bun test` from the repository root; the `bunfig.toml` preload that isolates HOME for tests only applies there.
+
 ```bash
 bun install
 bun test
@@ -590,7 +684,7 @@ bun run lint
 ## Opt-in Executor server
 
 ```bash
-haoshoku --server-executor https://gateway.example.net
+haoshoku --server-executor https://axat-vps.tail140c22.ts.net
 ```
 
 Run this command as root on Debian with Docker, Docker Compose v2 and `ss`
@@ -600,18 +694,22 @@ trailing `/`). Credentials, other paths, queries and fragments are rejected.
 The origin is omitted from Haoshoku run logs; no credentials are requested or
 written by this installer.
 
-Provision DNS, a publicly trusted TLS certificate and an external nginx reverse
-proxy separately. Forward the configured HTTPS origin to `127.0.0.1:4788`,
-including the `/api`, `/mcp` and `/.well-known` routes. OAuth callbacks and client
-metadata must be publicly reachable; a tailnet-only Serve URL is insufficient
-for providers that fetch those URLs. Haoshoku never changes nginx, DNS, TLS,
-firewall rules, Tailscale Serve/Funnel or OAuth client credentials.
+The default is a tailnet-only HTTPS origin via operator-managed Tailscale Serve:
+`https://axat-vps.<tailnet>.ts.net` (fleet: `https://axat-vps.tail140c22.ts.net`).
+Forward it to `127.0.0.1:4788`, including `/api`, `/mcp` and `/.well-known`;
+run setup and clients with tailnet access. Public reachability is not required
+by the parser. Only OAuth providers that fetch callbacks or client metadata
+server-side need temporary public exposure via operator-managed Funnel; arrange
+that exception for their flow and restore tailnet-only access afterwards.
+Haoshoku never changes nginx, DNS, TLS, firewall rules, Tailscale Serve/Funnel or
+OAuth client credentials. The hand-edited VPS compose remains operator-managed:
+a rerun refuses a differing compose rather than undoing the move to Serve.
 
 A fresh deployment pulls `ghcr.io/usefulsoftwareco/executor-selfhost:latest`,
 resolves its digest, checks the image's `65532:65532` runtime user and `/data`
 volume, and pins that digest in `/srv/executor/docker-compose.yml`. The only
 published port is `127.0.0.1:4788:4788`. `EXECUTOR_WEB_BASE_URL` supplies the
-explicit public origin. Haoshoku creates a private empty `data/` directory and
+explicit HTTPS origin. Haoshoku creates a private empty `data/` directory and
 changes ownership of that directory once; it never recursively changes data
 ownership. Upstream persists its database and generated encryption/session keys
 there. `haoshoku-executor.json` records the managed format and pulled digest.
@@ -628,7 +726,7 @@ additional files require manual inspection.
 
 Readiness checks require `/api/health` JSON with `status: "ok"` and Executor's
 OAuth authorization-server metadata advertising the configured origin and
-`/api/auth/mcp` endpoints, on both loopback and the public HTTPS origin. Each
+`/api/auth/mcp` endpoints, on both loopback and the configured HTTPS origin. Each
 request, including its body, has a five-second deadline and a 16 KiB limit;
 verification makes at most five attempts, with one second between failed attempts
 (at most four retries). Redirects, proxy HTML, generic error
@@ -637,7 +735,7 @@ partial state for manual inspection; rerunning never tries destructive repair.
 
 “Container ready” does not prove owner onboarding, an authenticated MCP
 handshake or healthy integrations. Complete first-owner signup yourself in the
-public web UI, then configure authentication, policies and integrations there.
+tailnet web UI, then configure authentication, policies and integrations there.
 Haoshoku does not create owners, API keys, policies or OAuth connections.
 
 ## Opt-in Executor clients

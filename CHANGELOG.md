@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Documentation
+
+- Document the iobox profile, fleet SSH, shared alt-account overlays and manual
+  bring-up, including 1Password service-account setup. Executor defaults to a
+  tailnet-only Serve origin, with temporary Funnel for server-side OAuth fetches;
+  add CLI regression coverage for the fleet HTTPS origin.
+
 ## 12.3.1 - 2026-10-08
 
 ### Fixed
