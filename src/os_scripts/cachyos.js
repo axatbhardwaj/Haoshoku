@@ -730,7 +730,7 @@ export async function runCachyOSSetup({
 			);
 		}
 		try {
-			if (!(await configureFleetSshImpl({ deviceType }))) {
+			if (!(await configureFleetSshImpl({ deviceType, throwOnFailure: true }))) {
 				throw new Error("Fleet SSH setup incomplete");
 			}
 		} catch (err) {

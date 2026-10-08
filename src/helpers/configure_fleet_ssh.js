@@ -16,17 +16,33 @@ function readOptional(file, fsImpl) {
 }
 
 function writePrivate(file, content, fsImpl) {
-	if (!fsImpl.existsSync(file) || readOptional(file, fsImpl) !== content) {
-		const temporary = `${file}.${randomUUID()}.tmp`;
+	let existing;
+	try {
+		existing = fsImpl.lstatSync(file);
+	} catch (error) {
+		if (error.code !== "ENOENT") throw error;
+	}
+	let target = file;
+	if (existing?.isSymbolicLink()) {
+		try {
+			target = fsImpl.realpathSync(file);
+		} catch (error) {
+			throw new Error(
+				`Cannot resolve managed symlink ${file}: ${error.message}`,
+			);
+		}
+	}
+	if (!fsImpl.existsSync(target) || readOptional(target, fsImpl) !== content) {
+		const temporary = `${target}.${randomUUID()}.tmp`;
 		try {
 			fsImpl.writeFileSync(temporary, content, { mode: 0o600, flag: "wx" });
-			fsImpl.renameSync(temporary, file);
+			fsImpl.renameSync(temporary, target);
 		} finally {
 			if (fsImpl.existsSync(temporary)) fsImpl.unlinkSync(temporary);
 		}
 	}
-	if ((fsImpl.statSync(file).mode & 0o777) !== 0o600)
-		fsImpl.chmodSync(file, 0o600);
+	if ((fsImpl.statSync(target).mode & 0o777) !== 0o600)
+		fsImpl.chmodSync(target, 0o600);
 }
 
 function refreshFleetKeys(home, fleet, self, status, fsImpl, logger) {
@@ -134,6 +150,7 @@ export async function configureFleetSsh({
 	manifest,
 	standalone = false,
 	deviceType,
+	throwOnFailure = false,
 	captureCommandImpl = runCommandCapture,
 	runCommandImpl = runCommand,
 	logger = log,
@@ -145,7 +162,8 @@ export async function configureFleetSsh({
 		return !standalone;
 	}
 	const fail = (message) => {
-		if ((deviceType ?? self.deviceType) === "iobox") throw new Error(message);
+		if (throwOnFailure || (deviceType ?? self.deviceType) === "iobox")
+			throw new Error(message);
 		logger.warning(message);
 		return false;
 	};

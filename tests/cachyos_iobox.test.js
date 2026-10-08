@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { log } from "../src/common/utils.js";
+import { configureFleetSsh } from "../src/helpers/configure_fleet_ssh.js";
 import {
 	installArchPackageBatch,
 	installSystemPackages,
@@ -225,12 +226,28 @@ it.each(["pc", "laptop", "iobox"])("handles fleet SSH failure on %s", async (dev
 					expect(options.deviceType).toBe(deviceType);
 					events.push("fleet");
 					if (throws) throw new Error("Tailscale SSH failed");
-					return false;
+					return configureFleetSsh({
+						...options,
+						home: path.join(os.tmpdir(), "unused-fleet-failure-home"),
+						hostname:
+							deviceType === "iobox"
+								? "iobox"
+								: deviceType === "laptop"
+									? "iobook"
+									: "io",
+						osType: "arch",
+						captureCommandImpl: async () => ({ exitCode: 1, stdout: "" }),
+						runCommandImpl: async () => {
+							throw new Error("unexpected mutation");
+						},
+					});
 				},
 			});
 			expect(result).toBe(deviceType !== "iobox");
 			expect(events).toEqual(["t3", "fleet", "stop"]);
 			expect(messages.join(" ")).toContain("Fleet SSH");
+			expect(messages).toHaveLength(1);
+			expect(messages[0]).toContain("Tailscale SSH");
 		} finally {
 			log.warning = originalWarning;
 			log.error = originalError;

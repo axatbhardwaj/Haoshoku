@@ -252,3 +252,59 @@ it("moves an Include without a trailing newline while preserving surrounding bla
 		"Include config.d/haoshoku-fleet\n\n# user settings\n\nHost vps\n  User custom\n\n",
 	);
 });
+
+it.each([
+	"config",
+	"config.d/haoshoku-fleet",
+	"known_hosts_fleet",
+])("preserves a symlinked managed %s and updates its resolved target", async (relative) => {
+	const file = path.join(home, ".ssh", relative);
+	const target = path.join(home, "dotfiles", "ssh-file");
+	fs.mkdirSync(path.dirname(file), { recursive: true });
+	fs.mkdirSync(path.dirname(target));
+	const old =
+		relative === "config"
+			? "Host private\n  User owner\n"
+			: "stale managed data\n";
+	fs.writeFileSync(target, old, { mode: 0o644 });
+	const link = path.relative(path.dirname(file), target);
+	fs.symlinkSync(link, file);
+	expect(await configureFleetSsh(options)).toBe(true);
+	expect(fs.lstatSync(file).isSymbolicLink()).toBe(true);
+	expect(fs.readlinkSync(file)).toBe(link);
+	const updated = fs.readFileSync(target, "utf8");
+	if (relative === "config")
+		expect(updated).toBe(
+			"Include config.d/haoshoku-fleet\nHost private\n  User owner\n",
+		);
+	else if (relative === "config.d/haoshoku-fleet")
+		expect(updated).toContain(
+			"Host iobook\n  HostName iobook.tail140c22.ts.net\n",
+		);
+	else
+		expect(updated).toBe(
+			"iobook,iobook.tail140c22.ts.net ssh-ed25519 Qk9PSw==\niobox,iobox.tail140c22.ts.net ssh-ed25519 Qk9Y\n",
+		);
+	expect(fs.statSync(target).mode & 0o777).toBe(0o600);
+	const before = fs.statSync(target, { bigint: true }).mtimeNs;
+	expect(await configureFleetSsh(options)).toBe(true);
+	expect(fs.lstatSync(file).isSymbolicLink()).toBe(true);
+	expect(fs.statSync(target, { bigint: true }).mtimeNs).toBe(before);
+});
+
+it.each([
+	"config",
+	"config.d/haoshoku-fleet",
+	"known_hosts_fleet",
+])("reports and leaves a dangling managed %s link untouched", async (relative) => {
+	const file = path.join(home, ".ssh", relative);
+	const target = path.join(home, "missing-target");
+	fs.mkdirSync(path.dirname(file), { recursive: true });
+	fs.symlinkSync(target, file);
+	expect(await configureFleetSsh(options)).toBe(false);
+	expect(fs.lstatSync(file).isSymbolicLink()).toBe(true);
+	expect(fs.readlinkSync(file)).toBe(target);
+	expect(fs.existsSync(target)).toBe(false);
+	expect(warnings.join(" ")).toContain("symlink");
+	expect(warnings.join(" ")).toContain(file);
+});
