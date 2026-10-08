@@ -102,6 +102,7 @@ export function configureExecutorClients(
 					client,
 					plan.original?.toString("utf8") ?? null,
 					url,
+					env.EXECUTOR_AUTHORIZATION,
 				),
 			};
 		});
@@ -110,7 +111,7 @@ export function configureExecutorClients(
 			(plan) => plan.content !== plan.original?.toString("utf8"),
 		);
 		print(
-			`${changed ? "Configuration written" : "Configuration already matches"} for Claude Code and Codex; authenticated MCP handshake/tool discovery not verified. EXECUTOR_AUTHORIZATION must reach future harness sessions.`,
+			`${changed ? "Configuration written" : "Configuration already matches"} for Claude Code and Codex; authenticated MCP handshake/tool discovery not verified. Authorization saved in private client configs.`,
 		);
 		return true;
 	} catch (error) {

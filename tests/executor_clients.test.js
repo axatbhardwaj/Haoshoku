@@ -44,7 +44,7 @@ it("advertises explicit Claude/Codex client setup", () => {
 	expect(result.code).toBe(0);
 	expect(result.output).toContain("--executor-clients <https-endpoint>");
 });
-it("writes both documented HTTP env-reference entries for an ordinary user", () => {
+it("writes private inline headers usable without a future harness environment", () => {
 	const f = fixture();
 	const result = run(f);
 	expect(result.code).toBe(0);
@@ -53,19 +53,18 @@ it("writes both documented HTTP env-reference entries for an ordinary user", () 
 	expect(claude.mcpServers.executor).toEqual({
 		type: "http",
 		url: endpoint,
-		// biome-ignore lint/suspicious/noTemplateCurlyInString: Assert the serialized reference, not a resolved secret.
-		headers: { Authorization: "${EXECUTOR_AUTHORIZATION}" },
+		headers: { Authorization: auth },
 	});
 	expect(codex.mcp_servers.executor).toEqual({
 		url: endpoint,
-		env_http_headers: { Authorization: "EXECUTOR_AUTHORIZATION" },
+		http_headers: { Authorization: auth },
 	});
 	expect(fs.statSync(f.claude).mode & 0o777).toBe(0o600);
 	expect(fs.statSync(f.codex).mode & 0o777).toBe(0o600);
 	expect(result.output).toContain("Configuration written");
 	expect(result.output).toContain("not verified");
 	for (const file of [f.claude, f.codex])
-		expect(fs.readFileSync(file, "utf8").includes(auth)).toBe(false);
+		expect(fs.readFileSync(file, "utf8").includes(auth)).toBe(true);
 	expect(result.output.includes(auth)).toBe(false);
 });
 
@@ -105,7 +104,7 @@ it("preserves unrelated JSON bytes and TOML comments/settings, then reruns witho
 		.filter((file) => fs.lstatSync(file).isFile());
 	for (const file of files) {
 		const bytes = fs.readFileSync(file, "utf8");
-		expect(bytes.includes(auth)).toBe(false);
+		expect(bytes.includes(auth)).toBe([f.claude, f.codex].includes(file));
 		if (![f.claude, f.codex].includes(file))
 			expect(bytes.includes(opaque)).toBe(false);
 	}
@@ -445,7 +444,8 @@ function preserved(f, before, result, opaque) {
 		const file = path.join(f.home, rel);
 		if (!fs.lstatSync(file).isFile()) continue;
 		const bytes = fs.readFileSync(file, "utf8");
-		expect(bytes.includes(auth)).toBe(false);
+		if (![f.claude, f.codex].includes(file))
+			expect(bytes.includes(auth)).toBe(false);
 		if (!before.some(([original]) => original === rel))
 			expect(bytes.includes(opaque)).toBe(false);
 	}
@@ -632,4 +632,19 @@ it("refuses an unresolvable default legacy lookup before touching either client"
 	expect(fs.readdirSync(path.dirname(f.codex))).toEqual(["config.toml"]);
 	expect(fs.readlinkSync(path.join(f.home, ".claude"))).toBe(".claude");
 	expect(result.output.includes(auth)).toBe(false);
+});
+
+it("makes existing readable configs private and repairs matching entry permissions", () => {
+	const f = fixture();
+	seed(f.claude, '{"keep":true}');
+	seed(f.codex, '# keep\n');
+	for (const file of [f.claude, f.codex]) fs.chmodSync(file, 0o644);
+	expect(run(f).code).toBe(0);
+	for (const file of [f.claude, f.codex]) {
+		expect(fs.statSync(file).mode & 0o777).toBe(0o600);
+		fs.chmodSync(file, 0o640);
+	}
+	expect(run(f).code).toBe(0);
+	for (const file of [f.claude, f.codex])
+		expect(fs.statSync(file).mode & 0o777).toBe(0o600);
 });

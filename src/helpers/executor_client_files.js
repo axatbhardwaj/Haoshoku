@@ -87,7 +87,9 @@ export function writeClientPlans(plans, fsImpl = fs) {
 				);
 		}
 		for (const plan of plans.filter(
-			(p) => p.content !== p.original?.toString("utf8"),
+			(p) =>
+				p.content !== p.original?.toString("utf8") ||
+				(p.stat.mode & 0o777) !== 0o600,
 		)) {
 			fsImpl.mkdirSync(path.dirname(plan.file), {
 				recursive: true,
@@ -129,7 +131,9 @@ export function writeClientPlans(plans, fsImpl = fs) {
 		}
 		for (const item of opened) {
 			item.touched = true;
-			replaceContents(item.fd, Buffer.from(item.plan.content), fsImpl);
+			fsImpl.fchmodSync(item.fd, 0o600);
+			if (item.plan.content !== item.plan.original?.toString("utf8"))
+				replaceContents(item.fd, Buffer.from(item.plan.content), fsImpl);
 		}
 	} catch {
 		let recovered = true;
@@ -141,6 +145,7 @@ export function writeClientPlans(plans, fsImpl = fs) {
 					fsImpl.unlinkSync(plan.file);
 				} else if (touched) {
 					replaceContents(fd, plan.original, fsImpl);
+					fsImpl.fchmodSync(fd, plan.stat.mode & 0o777);
 				}
 			} catch {
 				recovered = false;
