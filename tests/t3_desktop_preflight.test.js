@@ -246,13 +246,14 @@ for (const [name, entrypoint] of [
 			expect(f.messages.join(" ")).not.toContain("fixture-pairing-secret");
 		});
 
-		it("refuses missing settings when an empty transient scope signals desktop presence", async () => {
+		it("initializes missing settings when an empty transient scope signals desktop presence", async () => {
 			const f = fixture(entrypoint);
 			runningDesktopScope(f);
 			f.overrides.set("ps -eo pid=,comm=,args=", { exitCode: 0, stdout: "" });
-			expect(await f.run()).toBe(false);
-			expect(f.effects).toEqual([]);
-			expect(fs.existsSync(f.settings)).toBe(false);
+			expect(await f.run()).toBe(true);
+			expect(JSON.parse(fs.readFileSync(f.settings, "utf8"))).toEqual({
+				localEnvironmentEnabled: false,
+			});
 			expect(f.probes).toContain(scopeShow);
 			expect(f.reads).toContain(f.settings);
 			expect(f.reads).not.toContain(f.token);
@@ -330,7 +331,7 @@ for (const [name, entrypoint] of [
 			"installation",
 			"unit",
 			"process",
-		])("refuses missing settings with desktop %s even without a listener", async (signal) => {
+		])("initializes missing settings with desktop %s before service setup", async (signal) => {
 			const f = fixture(entrypoint);
 			if (signal === "installation")
 				f.overrides.set("command -v t3code t3code-nightly", {
@@ -350,9 +351,34 @@ for (const [name, entrypoint] of [
 			if (signal === "process")
 				f.overrides.set("/proc/123/environ", "HOME=fixture\0");
 			f.overrides.set("ss -Hltn 'sport = :3773'", { exitCode: 0, stdout: "" });
-			expect(await f.run(), JSON.stringify(f.effects)).toBe(false);
-			expect(f.effects).toEqual([]);
-			expect(fs.existsSync(f.settings)).toBe(false);
+			expect(await f.run(), JSON.stringify(f.messages)).toBe(true);
+			expect(JSON.parse(fs.readFileSync(f.settings, "utf8"))).toEqual({
+				localEnvironmentEnabled: false,
+			});
+			expect(f.effects.indexOf(`write ${f.settings}`)).toBeLessThan(
+				f.effects.findIndex((effect) => effect.includes("service install")),
+			);
+			expect(fs.readFileSync(f.token, "utf8")).toBe("fixture-pairing-secret");
+			expect(f.reads).not.toContain(f.token);
+		});
+
+		it("preserves settings created concurrently and stops service setup", async () => {
+			const f = fixture(entrypoint);
+			f.overrides.set("command -v t3code t3code-nightly", {
+				exitCode: 0,
+				stdout: "/usr/bin/t3code-nightly",
+			});
+			const value = '{"localEnvironmentEnabled":true,"other":"keep"}';
+			const write = f.options.fsImpl.writeFileSync;
+			f.options.fsImpl.writeFileSync = (file, ...args) => {
+				if (file === f.settings) f.write(file, value);
+				return write(file, ...args);
+			};
+			expect(await f.run()).toBe(false);
+			expect(fs.readFileSync(f.settings, "utf8")).toBe(value);
+			expect(
+				f.effects.some((effect) => effect.includes("service install")),
+			).toBe(false);
 		});
 
 		it("refuses unreadable settings without exposing their contents", async () => {
@@ -531,11 +557,13 @@ for (const [name, entrypoint] of [
 			expect(f.effects).toEqual([]);
 		});
 
-		it("refuses settings absence with an installed bundle even when its launcher is off PATH", async () => {
+		it("initializes settings with an installed bundle even when its launcher is off PATH", async () => {
 			const f = fixture(entrypoint);
 			f.overrides.set("/usr/lib/t3code-nightly/resources/app.asar", true);
-			expect(await f.run(), JSON.stringify(f.effects)).toBe(false);
-			expect(f.effects).toEqual([]);
+			expect(await f.run(), JSON.stringify(f.messages)).toBe(true);
+			expect(JSON.parse(fs.readFileSync(f.settings, "utf8"))).toEqual({
+				localEnvironmentEnabled: false,
+			});
 		});
 
 		it("accepts a quoted custom service directory with spaces", async () => {

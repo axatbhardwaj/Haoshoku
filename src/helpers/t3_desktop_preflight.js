@@ -284,11 +284,12 @@ export async function preflightT3Desktop({
 		}
 		if (desktop && baseDir !== desktopBase)
 			throw new Error("conflicting desktop and service directories");
+		let missingSettings;
 		for (const base of new Set([defaultBase, desktopBase, baseDir])) {
-			const contents = read(path.join(base, "userdata/desktop-settings.json"));
+			const settingsFile = path.join(base, "userdata/desktop-settings.json");
+			const contents = read(settingsFile);
 			if (contents === null) {
-				if (desktop && base === desktopBase)
-					throw new Error("desktop settings are missing");
+				if (desktop && base === desktopBase) missingSettings = settingsFile;
 				continue;
 			}
 			if (base !== baseDir)
@@ -306,6 +307,14 @@ export async function preflightT3Desktop({
 				settings.localEnvironmentEnabled !== false
 			)
 				throw new Error("Local environment is enabled or unverified");
+		}
+		if (missingSettings) {
+			fsImpl.mkdirSync(path.dirname(missingSettings), { recursive: true });
+			fsImpl.writeFileSync(
+				missingSettings,
+				`${JSON.stringify({ localEnvironmentEnabled: false }, null, 2)}\n`,
+				{ flag: "wx", mode: 0o600 },
+			);
 		}
 		return { baseDir };
 	} catch (error) {
