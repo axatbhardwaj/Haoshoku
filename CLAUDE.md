@@ -60,9 +60,10 @@ route. Reruns do not uninstall existing copies. See the README for all eleven
 retired CLI forms and current T3, tailnet SSH and opt-in Executor contracts.
 
 The [current reconciliation notice](README.md#current-reconciliation-and-authority)
-supersedes historical human-only merge/no-release gates for the owning driver
-of the approved T1–T7 run. Preserve dated specs, plans and approvals. Author
-candidates stop locally; live-host changes remain separately authorized.
+supersedes historical human-only merge/no-release gates. T1–T7 are merged for
+12.3.0; the owning driver handles and verifies tag, npm and Linux binary
+publication separately. Preserve dated specs, plans and approvals. Author
+candidates stop locally; live-host changes remain deferred and separately authorized.
 
 ## Test
 

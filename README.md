@@ -256,10 +256,11 @@ in dated specs and plans. Their original bodies and approvals remain historical.
 Release authorization does not authorize installation, migration or configuration
 on live hosts. See the [runbook's current gate](docs/runbooks/axstack-migration.md#release-and-execution-gate).
 
-Repository tests and package checks establish the candidate's source behavior.
+T1–T7 are merged for 12.3.0. Repository tests and package checks establish source behavior.
 They do not prove publication, live Debian compatibility, desktop pairing,
-Executor authentication or future T3 session inheritance. The Unreleased entry
-describes candidate changes, not a completed release or installation.
+Executor authentication or future T3 session inheritance. The 12.3.0 changelog
+records merged changes; the driver verifies tag, npm and Linux binary publication
+separately. Live installation and migration remain deferred.
 
 ### Existing-host migration
 

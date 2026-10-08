@@ -5,27 +5,30 @@ Migration guidance aligned with [the approved T3 Code replacement](https://githu
 ## Release and execution gate
 
 The later instruction to complete the work and release authorizes the owning T3
-driver to finish T1–T7, reviewed merges and the GitHub/npm/Linux binary release.
+driver to complete the GitHub/npm/Linux binary release after the merged T1–T7 changes.
 It supersedes the historical human-only merge and no-release gates in the
 [frozen specification](../specs/2026-10-07-setup-reconciliation-r2.md) and
 [dated plan](../plans/2026-10-07-setup-reconciliation.md). Preserve those historical
 bodies and approvals. This authority still excludes live-host installation,
 migration, configuration, credentials and integration changes.
 
-At the 2026-10-08 documentation snapshot, the reviewed source candidates are
+At the 2026-10-08 release-preparation snapshot, all seven reviewed source PRs are merged:
 [PR130](https://github.com/axatbhardwaj/Haoshoku/pull/130),
 [PR132](https://github.com/axatbhardwaj/Haoshoku/pull/132),
 [PR134](https://github.com/axatbhardwaj/Haoshoku/pull/134),
 [PR135](https://github.com/axatbhardwaj/Haoshoku/pull/135),
-[PR136](https://github.com/axatbhardwaj/Haoshoku/pull/136) and
-[PR137](https://github.com/axatbhardwaj/Haoshoku/pull/137), all still unmerged.
-This runbook is candidate guidance; no release or host migration is claimed.
-The driver must recheck forge state before publishing a completion claim.
+[PR136](https://github.com/axatbhardwaj/Haoshoku/pull/136),
+[PR137](https://github.com/axatbhardwaj/Haoshoku/pull/137) and
+[PR138](https://github.com/axatbhardwaj/Haoshoku/pull/138).
+The merged changes are prepared as 12.3.0. At this dated snapshot, tag, npm and
+Linux binary publication and verification remain pending with the driver.
+This is source-release guidance, not proof of publication or host migration.
+The driver must verify actual published bytes before claiming release completion.
 
-[#63](https://github.com/axatbhardwaj/Haoshoku/issues/63),
-[#65](https://github.com/axatbhardwaj/Haoshoku/issues/65) and
-[#66](https://github.com/axatbhardwaj/Haoshoku/issues/66) remain open for repository
-follow-up. [#67](https://github.com/axatbhardwaj/Haoshoku/issues/67) and
+At the same snapshot, [#65](https://github.com/axatbhardwaj/Haoshoku/issues/65) and
+[#66](https://github.com/axatbhardwaj/Haoshoku/issues/66) are closed as completed.
+[#63](https://github.com/axatbhardwaj/Haoshoku/issues/63) remains open pending
+release and deferred host work. [#67](https://github.com/axatbhardwaj/Haoshoku/issues/67) and
 [#68](https://github.com/axatbhardwaj/Haoshoku/issues/68) remain open and deferred
 for separately authorized host work. Closed
 [#64](https://github.com/axatbhardwaj/Haoshoku/issues/64), merged
@@ -33,8 +36,9 @@ for separately authorized host work. Closed
 [axstack#19](https://github.com/axatbhardwaj/axstack/issues/19) are historical source
 evidence, not live-host proof. Superseded
 [PR86](https://github.com/axatbhardwaj/Haoshoku/pull/86) is closed;
-obsolete [PR72](https://github.com/axatbhardwaj/Haoshoku/pull/72) is still open.
-Its replacement PR136 is reviewed but unmerged; the driver reconciles that state.
+obsolete [PR72](https://github.com/axatbhardwaj/Haoshoku/pull/72) is closed unmerged
+and linked to its merged replacement PR136. These dated tracker states do not
+establish live installation, authentication or tool discovery.
 
 For future authorized migration, record the reviewed merged commits and actual
 release artifacts separately. Resolve npm latest once, retain the exact selected
