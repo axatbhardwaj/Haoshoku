@@ -581,8 +581,9 @@ separate operator audit.
 
 Before setup, install Tailscale yourself and log in to your tailnet. Confirm
 that `tailscale status` succeeds. Enable HTTPS certificates in the tailnet
-admin console. For a non-root service account, run
-`sudo tailscale set --operator=$USER` so T3 can manage its Serve route. Your
+admin console. For a non-root service account, Haoshoku sets the Tailscale
+operator with `sudo -n tailscale set --operator=$USER` when unset or different,
+then re-reads the preferences to verify it so T3 can manage its Serve route. Your
 phone must also be logged in to the same tailnet. Haoshoku does not install
 Tailscale or log in for you.
 

@@ -555,6 +555,10 @@ describe("Debian Tailscale operator reconciliation", () => {
 			if (command.includes("set --operator")) {
 				expect(warnings.join(" ")).toContain("previous");
 				expect(warnings.join(" ")).toContain("test");
+				f.overrides.set(
+					"tailscale debug prefs",
+					f.response('{"OperatorUser":"test"}'),
+				);
 			}
 			return run(command);
 		};

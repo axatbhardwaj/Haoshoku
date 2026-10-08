@@ -32,6 +32,7 @@ const serve = {
 
 function fixture({ fresh = false, loggedOut = fresh } = {}) {
 	let serviceActive = !fresh;
+	let operator = fresh ? "" : "test";
 	const events = [];
 	const warnings = [];
 	const messages = [];
@@ -111,7 +112,7 @@ function fixture({ fresh = false, loggedOut = fresh } = {}) {
 					BackendState: loggedOut ? "NeedsLogin" : "Running",
 				});
 			else if (command === "tailscale debug prefs")
-				stdout = JSON.stringify({ OperatorUser: fresh ? "" : "test" });
+				stdout = JSON.stringify({ OperatorUser: operator });
 			else if (command === "t3 --version")
 				stdout = "t3 v0.0.46-nightly.20261004.2644";
 			else if (command === "tailscale serve status --json")
@@ -122,6 +123,10 @@ function fixture({ fresh = false, loggedOut = fresh } = {}) {
 		runCommandImpl: async (command, init) => {
 			events.push(command);
 			mutations.push(command);
+			if (command.startsWith("sudo -n tailscale set --operator=")) {
+				operator = options.env.SUDO_USER || options.user;
+				overrides.delete("tailscale debug prefs");
+			}
 			if (command.startsWith("sudo -n systemctl mask "))
 				for (const target of command.split(" ").slice(4))
 					masks.set(target, "masked");
@@ -311,6 +316,10 @@ describe("Tailscale operator reconciliation", () => {
 			expect(f.warnings.join(" ")).toContain("previous");
 			expect(f.warnings.join(" ")).toContain("test");
 			f.mutations.push(command);
+			f.overrides.set("tailscale debug prefs", {
+				stdout: '{"OperatorUser":"test"}',
+				exitCode: 0,
+			});
 			return true;
 		};
 		expect(await configureTailscaleT3(f.options)).toBe(true);

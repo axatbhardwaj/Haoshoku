@@ -40,7 +40,13 @@ export async function ensureTailscaleOperator({
 }) {
 	try {
 		const prefs = parseJson(await probe("tailscale debug prefs"));
-		if (!prefs || typeof prefs.OperatorUser !== "string") {
+		if (
+			!prefs ||
+			typeof prefs !== "object" ||
+			Array.isArray(prefs) ||
+			(Object.hasOwn(prefs, "OperatorUser") &&
+				typeof prefs.OperatorUser !== "string")
+		) {
 			throw new Error("Cannot verify Tailscale operator preferences");
 		}
 		if (prefs.OperatorUser === user) return true;
@@ -55,6 +61,10 @@ export async function ensureTailscaleOperator({
 			))
 		) {
 			throw new Error(`Cannot set Tailscale operator to ${user}`);
+		}
+		const verified = parseJson(await probe("tailscale debug prefs"));
+		if (verified?.OperatorUser !== user) {
+			throw new Error(`Cannot verify Tailscale operator is ${user}`);
 		}
 		return true;
 	} catch (error) {
