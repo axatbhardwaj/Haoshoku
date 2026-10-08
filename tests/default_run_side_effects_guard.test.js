@@ -19,6 +19,7 @@ const EXPECTED_OPTIONS = [
 	"configureUserAppsImpl",
 	"configureTailscaleT3Impl",
 	"promptDeviceTypeImpl",
+	"readDeviceTypeImpl",
 	"configureBraveManagedPoliciesImpl",
 	"configureHyprmoncfgImpl",
 	"configureOmarchyWorkspacesImpl",
@@ -59,6 +60,7 @@ const TEST_CALLER_CONTRACTS = new Map([
 	[
 		"configureUser" + "Apps",
 		[
+			"commandExistsImpl",
 			"promptUserImpl",
 			"configureGitImpl",
 			"configureBrowserIntegrationImpl",
@@ -220,6 +222,7 @@ it("keeps the default Omarchy run behind explicit injectable side-effect seams",
 	const startedAt = performance.now();
 	const result = await runCachyOSSetup({
 		promptDeviceTypeImpl: record("deviceType"),
+		readDeviceTypeImpl: () => "pc",
 		startSudoSessionImpl: record("sudoSession", () => calls.push("sudoStop")),
 		prepareArchPackageManagerImpl: record("packageManager", true),
 		ensureRustToolchainImpl: record("rust"),

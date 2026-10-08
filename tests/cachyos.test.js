@@ -27,6 +27,7 @@ describe("user app configuration", () => {
 				prompts.push({ message, initial });
 				return true;
 			},
+			commandExistsImpl: async () => false,
 			configureGitImpl: record("git"),
 			configureBrowserIntegrationImpl: record("browser"),
 			configureAudioImpl: record("audio"),
@@ -75,6 +76,7 @@ describe("user app configuration", () => {
 		try {
 			await configureUserApps({
 				promptUserImpl: async () => false,
+				commandExistsImpl: async () => false,
 				configureGitImpl: noop,
 				configureBrowserIntegrationImpl: noop,
 				configureAudioImpl: noop,
@@ -120,6 +122,7 @@ describe("user app configuration", () => {
 		try {
 			await configureUserApps({
 				promptUserImpl: async () => false,
+				commandExistsImpl: async () => false,
 				configureGitImpl: noop,
 				configureBrowserIntegrationImpl: noop,
 				configureAudioImpl: noop,
@@ -674,6 +677,7 @@ describe("Arch package-manager preflight", () => {
 		};
 		const result = await runCachyOSSetup({
 			configureTailscaleT3Impl: async () => true,
+			readDeviceTypeImpl: () => "pc",
 			promptDeviceTypeImpl: async () => events.push("device-type"),
 			startSudoSessionImpl: async () => {
 				events.push("sudo-start");
@@ -717,6 +721,7 @@ describe("Arch package-manager preflight", () => {
 		};
 		const result = await runCachyOSSetup({
 			configureTailscaleT3Impl: async () => true,
+			readDeviceTypeImpl: () => "pc",
 			promptDeviceTypeImpl: async () => events.push("device-type"),
 			startSudoSessionImpl: async () => {
 				events.push("sudo-start");
@@ -764,6 +769,7 @@ describe("Arch package-manager preflight", () => {
 		};
 		const setup = runCachyOSSetup({
 			configureTailscaleT3Impl: async () => true,
+			readDeviceTypeImpl: () => "pc",
 			promptDeviceTypeImpl: async () => {},
 			startSudoSessionImpl: async () => () => events.push("sudo-stop"),
 			commandExistsImpl: async () => false,
@@ -859,6 +865,7 @@ describe("Arch package-manager preflight", () => {
 		};
 		const result = await runCachyOSSetup({
 			configureTailscaleT3Impl: async () => true,
+			readDeviceTypeImpl: () => "pc",
 			promptDeviceTypeImpl: async () => events.push("device-type"),
 			startSudoSessionImpl: async () => () => {},
 			commandExistsImpl: async () => {
@@ -899,6 +906,7 @@ describe("Arch package-manager preflight", () => {
 		};
 		const result = await runCachyOSSetup({
 			configureTailscaleT3Impl: async () => true,
+			readDeviceTypeImpl: () => "pc",
 			promptDeviceTypeImpl: async () => events.push("device-type"),
 			startSudoSessionImpl: async () => () => {},
 			commandExistsImpl: async (command) => {
@@ -951,6 +959,7 @@ describe("Arch package-manager preflight", () => {
 				},
 				installSystemPackagesImpl: record("system-packages"),
 				installFlatpakAppsImpl: record("flatpaks"),
+				readDeviceTypeImpl: () => "pc",
 				promptDeviceTypeImpl: record("device-type"),
 				configureUserAppsImpl: record("user-apps"),
 				configureBraveManagedPoliciesImpl: async (options) => {
@@ -1015,6 +1024,7 @@ describe("Arch package-manager preflight", () => {
 
 		await runCachyOSSetup({
 			configureTailscaleT3Impl: async () => true,
+			readDeviceTypeImpl: () => "pc",
 			promptDeviceTypeImpl: async () => {},
 			startSudoSessionImpl: async () => () => {},
 			prepareArchPackageManagerImpl: async () => true,
@@ -1066,6 +1076,7 @@ describe("Arch package-manager preflight", () => {
 					commandExistsImpl: async () => true,
 					installSystemPackagesImpl: async () => {},
 					installFlatpakAppsImpl: async () => {},
+					readDeviceTypeImpl: () => "pc",
 					promptDeviceTypeImpl: async () => {},
 					configureUserAppsImpl: async () => {},
 					configureBraveManagedPoliciesImpl: async () => {
@@ -1130,6 +1141,7 @@ describe("Arch package-manager preflight", () => {
 					commandExistsImpl: async () => true,
 					installSystemPackagesImpl: async () => {},
 					installFlatpakAppsImpl: async () => {},
+					readDeviceTypeImpl: () => "pc",
 					promptDeviceTypeImpl: async () => {},
 					configureUserAppsImpl: async () => {},
 					configureBraveManagedPoliciesImpl: async () => true,
@@ -1256,6 +1268,7 @@ describe("Arch T3 phone access integration", () => {
 		log.warning = (message) => warnings.push(message);
 		try {
 			const result = await runCachyOSSetup({
+				readDeviceTypeImpl: () => "pc",
 				promptDeviceTypeImpl: async () => {},
 				startSudoSessionImpl: async () => () => events.push("sudo-stop"),
 				prepareArchPackageManagerImpl: async () => true,

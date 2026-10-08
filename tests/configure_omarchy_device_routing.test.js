@@ -57,6 +57,7 @@ describe("Omarchy deviceType routing", () => {
 			installSystemPackagesImpl: async () => {},
 			installFlatpakAppsImpl: async () => {},
 			configureUserAppsImpl: async () => {},
+			readDeviceTypeImpl: () => "pc",
 			promptDeviceTypeImpl: () =>
 				promptDeviceType({
 					hostname: "unknown",

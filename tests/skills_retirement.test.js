@@ -285,6 +285,7 @@ describe("selected integration retirement", () => {
 				const testUtils = await import(utilsPath);
 				for (let pass = 0; pass < 2; pass++) {
 					const ok = ${JSON.stringify(target)} === "arch" ? await runCachyOSSetup({
+						readDeviceTypeImpl: () => "pc",
 						promptDeviceTypeImpl: noop, startSudoSessionImpl: async () => () => {},
 						commandExistsImpl: async () => false, prepareArchPackageManagerImpl: noop,
 						ensureRustToolchainImpl: noop, ensureAurHelperImpl: async () => "paru", installDevToolsImpl: noop,
@@ -295,6 +296,7 @@ describe("selected integration retirement", () => {
 						configureVoxtypeOsdImpl: noop, configureKdeConnectCommandsImpl: noop,
 						configureOmarchyBarImpl: noop, configureOmazedImpl: noop, configureOmarchyAppearanceImpl: noop,
 						configureUserAppsImpl: (options) => configureUserApps({ ...options,
+							commandExistsImpl: async () => false,
 							promptUserImpl: testUtils.promptUser, configureGitImpl: noop,
 							configureBrowserIntegrationImpl: noop, configureAudioImpl: noop, configureBashImpl: noop,
 							runCommandImpl: testUtils.runCommand,

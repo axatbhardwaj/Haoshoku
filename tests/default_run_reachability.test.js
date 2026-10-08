@@ -186,6 +186,7 @@ function runArchDefaultPath({ isOmarchy = true, gitAnswer = true } = {}) {
 			} = await import(${JSON.stringify(modulePath)});
 			await runCachyOSSetup({
 				configureTailscaleT3Impl: record("tailscaleT3", true),
+				readDeviceTypeImpl: () => "pc",
 				promptDeviceTypeImpl: record("deviceType"),
 				startSudoSessionImpl: record("sudoSession", () => calls.push("sudoStop")),
 				prepareArchPackageManagerImpl: record("packageManager", true),
@@ -198,6 +199,7 @@ function runArchDefaultPath({ isOmarchy = true, gitAnswer = true } = {}) {
 				configureUserAppsImpl: (options) => configureUserApps({
 					...options,
 					promptUserImpl: undefined,
+					commandExistsImpl: async () => false,
 					configureGitImpl: undefined,
 					configureBrowserIntegrationImpl: () => configureBrowserIntegration({
 						configureChromiumProfilesImpl: record("chromiumProfiles"),
@@ -321,6 +323,7 @@ function defaultSetupOverrides({
 	configureUserAppsImpl = async () => {},
 }) {
 	return {
+		readDeviceTypeImpl: () => "pc",
 		configureTailscaleT3Impl: async () => true,
 		startSudoSessionImpl: async () => () => {},
 		prepareArchPackageManagerImpl: async () => true,
@@ -350,6 +353,7 @@ function defaultSetupOverrides({
 function userAppDoubles(overrides = {}) {
 	return {
 		promptUserImpl: async () => false,
+		commandExistsImpl: async () => false,
 		configureGitImpl: async () => {},
 		configureBrowserIntegrationImpl: async () => {},
 		configureAudioImpl: async () => {},
