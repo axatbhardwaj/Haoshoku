@@ -9,7 +9,11 @@ import {
 } from "../src/common/device_type.js";
 
 function promptWithoutDetection(options) {
-	return promptDeviceType({ detectDeviceTypeImpl: () => null, ...options });
+	return promptDeviceType({
+		hostname: "unknown",
+		detectDeviceTypeImpl: () => null,
+		...options,
+	});
 }
 
 describe("promptDeviceType", () => {
@@ -52,6 +56,7 @@ describe("promptDeviceType", () => {
 	it("persists an automatically detected type without prompting", async () => {
 		let promptCalls = 0;
 		const result = await promptDeviceType({
+			hostname: "unknown",
 			configPath,
 			detectDeviceTypeImpl: () => "laptop",
 			promptFn: async () => {
@@ -67,14 +72,19 @@ describe("promptDeviceType", () => {
 		});
 	});
 
-	it("honors a stored explicit type without detecting or prompting", async () => {
+	it.each([
+		"pc",
+		"laptop",
+		"iobox",
+	])("honors stored %s without detecting or prompting", async (deviceType) => {
 		fs.writeFileSync(
 			configPath,
-			`${JSON.stringify({ deviceType: "pc", preserved: true })}\n`,
+			`${JSON.stringify({ deviceType, preserved: true })}\n`,
 		);
 		let detectionCalls = 0;
 		let promptCalls = 0;
 		const result = await promptDeviceType({
+			hostname: "unknown",
 			configPath,
 			detectDeviceTypeImpl: () => {
 				detectionCalls += 1;
@@ -86,11 +96,11 @@ describe("promptDeviceType", () => {
 			},
 		});
 
-		expect(result).toBe("pc");
+		expect(result).toBe(deviceType);
 		expect(detectionCalls).toBe(0);
 		expect(promptCalls).toBe(0);
 		expect(JSON.parse(fs.readFileSync(configPath, "utf8"))).toEqual({
-			deviceType: "pc",
+			deviceType,
 			preserved: true,
 		});
 	});
@@ -100,6 +110,7 @@ describe("promptDeviceType", () => {
 
 		expect(
 			await promptDeviceType({
+				hostname: "unknown",
 				configPath,
 				forcedDeviceType: "laptop",
 				detectDeviceTypeImpl: () => "pc",
@@ -168,21 +179,25 @@ describe("promptDeviceType", () => {
 		);
 	});
 
-	it("offers only device types that have routable config variants", async () => {
+	it("offers fleet device labels and persists the selected agent box", async () => {
 		let question;
 		await promptWithoutDetection({
 			configPath,
 			promptFn: async (receivedQuestion) => {
 				question = receivedQuestion;
-				return { device: null };
+				return { device: "iobox" };
 			},
 		});
 
-		expect(question.choices.map(({ value }) => value)).toEqual([
-			"pc",
-			"laptop",
-			null,
+		expect(question.choices).toEqual([
+			{ title: "PC (io)", value: "pc" },
+			{ title: "Laptop (iobook)", value: "laptop" },
+			{ title: "Agent box (iobox)", value: "iobox" },
+			{ title: "Skip — don't persist", value: null },
 		]);
+		expect(JSON.parse(fs.readFileSync(configPath, "utf8"))).toEqual({
+			deviceType: "iobox",
+		});
 	});
 
 	it("does NOT modify ~/.haoshoku.json when the user picks Skip", async () => {

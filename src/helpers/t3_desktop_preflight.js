@@ -1,4 +1,11 @@
 import path from "node:path";
+import {
+	checkOpEnvironment,
+	OP_DROP_CONTENT,
+	OP_DROP_IN,
+	OP_ENV_FIX,
+	OP_ENV_PATH,
+} from "./configure_t3_op.js";
 import { shellQuote } from "./t3_tailscale.js";
 
 // T3's installed desktop defaults localEnvironmentEnabled to true, uses
@@ -109,11 +116,27 @@ export async function preflightT3Desktop({
 		const properties = showProperties(service);
 		if (!["loaded", "not-found"].includes(properties.LoadState))
 			throw new Error("unknown effective T3 service directory");
+		const opDrop = path.join(
+			home,
+			".config/systemd/user/t3code.service.d",
+			OP_DROP_IN,
+		);
+		const opContents = read(opDrop);
+		if (opContents !== null && checkOpEnvironment(home, fsImpl) === "invalid")
+			throw new Error(OP_ENV_FIX);
+		if (opContents !== null && opContents !== OP_DROP_CONTENT)
+			throw new Error("unrecognized 1Password drop-in");
+		const opEnvironment = path.join(home, OP_ENV_PATH);
+		const environmentFiles = properties.EnvironmentFiles;
 		if (
-			properties.EnvironmentFiles ||
+			(environmentFiles &&
+				(opContents !== OP_DROP_CONTENT ||
+					![opEnvironment, `${opEnvironment} (ignore_errors=yes)`].includes(
+						environmentFiles,
+					))) ||
 			properties.ExecStart?.includes("--base-dir") ||
 			(properties.LoadState === "not-found" &&
-				(properties.Environment || properties.ExecStart))
+				(properties.Environment || properties.ExecStart || environmentFiles))
 		)
 			throw new Error("ambiguous service directory overrides");
 		const environmentBases = (value) =>
@@ -137,9 +160,10 @@ export async function preflightT3Desktop({
 		for (const file of unitFiles) {
 			const contents = read(file);
 			if (contents === null) continue;
+			if (file === opDrop && contents === OP_DROP_CONTENT) continue;
 			for (const line of contents.split("\n")) {
 				if (
-					/^\s*EnvironmentFile\s*=\s*\S/.test(line) ||
+					/^\s*EnvironmentFile\s*=/.test(line) ||
 					/^\s*ExecStart\s*=.*--base-dir/.test(line)
 				)
 					throw new Error("ambiguous service directory overrides");
@@ -284,9 +308,11 @@ export async function preflightT3Desktop({
 				throw new Error("Local environment is enabled or unverified");
 		}
 		return { baseDir };
-	} catch {
+	} catch (error) {
 		fail(
-			"T3 setup is incomplete: desktop Local environment or its data directory could not be confirmed safe. In T3 Code desktop, disable Local environment, then pair the desktop to the existing service. Resolve unreadable or conflicting desktop/service directory evidence, including service drop-ins, before retrying. Haoshoku leaves desktop settings and pairing tokens unchanged.",
+			error.message === OP_ENV_FIX
+				? OP_ENV_FIX
+				: "T3 setup is incomplete: desktop Local environment or its data directory could not be confirmed safe. In T3 Code desktop, disable Local environment, then pair the desktop to the existing service. Resolve unreadable or conflicting desktop/service directory evidence, including service drop-ins, before retrying. Haoshoku leaves desktop settings and pairing tokens unchanged.",
 		);
 		return null;
 	}

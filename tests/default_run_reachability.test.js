@@ -41,6 +41,9 @@ function deployModeFeaturesFromCli() {
 		"--server-executor",
 		// Client registration requires explicit endpoint/auth; covered by the opt-in keeper.
 		"--executor-clients",
+		// This guard runs the pc/server paths. cachyos.test.js covers the
+		// iobox-only default, its ordering, and its omission on pc/laptop.
+		"--agent-accounts",
 		"--claude-update",
 		// The workspaces deploy ensures the gaming autostart defaults. These
 		// flags only create or override that preference outside the default
@@ -96,6 +99,7 @@ const DELIBERATE_OMISSIONS = {
 		],
 	]),
 	"debian-server": new Map([
+		["--fleet-ssh", "Fleet SSH provisioning runs only on Arch fleet hosts."],
 		[
 			"--tailscale-t3",
 			"Arch provisioning; Debian uses --server-t3-code with preconfigured Tailscale.",
@@ -185,7 +189,9 @@ function runArchDefaultPath({ isOmarchy = true, gitAnswer = true } = {}) {
 				runCachyOSSetup,
 			} = await import(${JSON.stringify(modulePath)});
 			await runCachyOSSetup({
+				configureFleetSshImpl: record("fleetSsh", true),
 				configureTailscaleT3Impl: record("tailscaleT3", true),
+				readDeviceTypeImpl: () => "pc",
 				promptDeviceTypeImpl: record("deviceType"),
 				startSudoSessionImpl: record("sudoSession", () => calls.push("sudoStop")),
 				prepareArchPackageManagerImpl: record("packageManager", true),
@@ -198,6 +204,7 @@ function runArchDefaultPath({ isOmarchy = true, gitAnswer = true } = {}) {
 				configureUserAppsImpl: (options) => configureUserApps({
 					...options,
 					promptUserImpl: undefined,
+					commandExistsImpl: async () => false,
 					configureGitImpl: undefined,
 					configureBrowserIntegrationImpl: () => configureBrowserIntegration({
 						configureChromiumProfilesImpl: record("chromiumProfiles"),
@@ -215,6 +222,7 @@ function runArchDefaultPath({ isOmarchy = true, gitAnswer = true } = {}) {
 					configureCodexImpl: record("codex"),
 					syncAgentsConfigImpl: record("agents", true),
 					configureAxstackImpl: record("axstack", { ok: true }),
+					configureAgentAccountsImpl: record("agentAccounts", true),
 				}),
 				configureBraveManagedPoliciesImpl: record("braveManagedPolicies", true),
 				configureHyprmoncfgImpl: record("monitors"),
@@ -321,6 +329,8 @@ function defaultSetupOverrides({
 	configureUserAppsImpl = async () => {},
 }) {
 	return {
+		readDeviceTypeImpl: () => "pc",
+		configureFleetSshImpl: async () => true,
 		configureTailscaleT3Impl: async () => true,
 		startSudoSessionImpl: async () => () => {},
 		prepareArchPackageManagerImpl: async () => true,
@@ -350,6 +360,7 @@ function defaultSetupOverrides({
 function userAppDoubles(overrides = {}) {
 	return {
 		promptUserImpl: async () => false,
+		commandExistsImpl: async () => false,
 		configureGitImpl: async () => {},
 		configureBrowserIntegrationImpl: async () => {},
 		configureAudioImpl: async () => {},
@@ -363,6 +374,7 @@ function userAppDoubles(overrides = {}) {
 		configureCodexImpl: async () => {},
 		syncAgentsConfigImpl: async () => {},
 		configureAxstackImpl: async () => ({ ok: true }),
+		configureAgentAccountsImpl: async () => true,
 		...overrides,
 	};
 }
@@ -437,6 +449,7 @@ describe("default-run reachability", () => {
 					promptDeviceTypeImpl: async () => {
 						deviceTypeCalls += 1;
 						return promptDeviceType({
+							hostname: "unknown",
 							configPath,
 							detectDeviceTypeImpl: () => "laptop",
 							isTTY: true,
@@ -486,6 +499,7 @@ describe("default-run reachability", () => {
 						isOmarchy: false,
 						promptDeviceTypeImpl: () =>
 							promptDeviceType({
+								hostname: "unknown",
 								configPath,
 								detectDeviceTypeImpl: () => null,
 								isTTY: false,

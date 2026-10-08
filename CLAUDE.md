@@ -65,7 +65,18 @@ supersedes historical human-only merge/no-release gates. T1–T7 are merged for
 publication separately. Preserve dated specs, plans and approvals. Author
 candidates stop locally; live-host changes remain deferred and separately authorized.
 
+## Fleet and iobox
+
+The fleet is io (PC), iobook (laptop), iobox (always-on T3 agent box), and
+axat-vps (Debian Executor/Hermes VPS), reached over Tailscale only. Agents may
+SSH to any fleet host and act there; one compromised agent can reach all hosts.
+See [iobox bring-up](README.md#iobox-profile-and-fleet) for setup, alt-account
+homes and `op`, and [Executor](README.md#opt-in-executor-server) for the default
+tailnet-only origin and temporary Funnel OAuth exception.
+
 ## Test
+
+Run `bun test` from the repository root; the `bunfig.toml` preload that isolates HOME for tests only applies there.
 
 ```bash
 bun test

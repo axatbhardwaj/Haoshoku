@@ -58,6 +58,10 @@ describe("--workspaces CLI mode", () => {
 			path.join(tmpProjectRoot, "configs", "omarchy"),
 			{ recursive: true },
 		);
+		fs.copyFileSync(
+			path.join(PROJECT_ROOT, "configs", "fleet.json"),
+			path.join(tmpProjectRoot, "configs", "fleet.json"),
+		);
 		fs.mkdirSync(path.join(tmpProjectRoot, "configs", "scripts"), {
 			recursive: true,
 		});
@@ -120,12 +124,16 @@ describe("--workspaces CLI mode", () => {
 		).toContain('require("hypr.haoshoku.workspaces")');
 	});
 
-	it("sets or changes deviceType through the standalone CLI mode", () => {
+	it.each([
+		"pc",
+		"laptop",
+		"iobox",
+	])("sets %s through the standalone CLI mode preserving other keys", (deviceType) => {
 		fs.writeFileSync(
 			path.join(tmpHome, ".haoshoku.json"),
 			`${JSON.stringify({ deviceType: "pc", preserved: true })}\n`,
 		);
-		const result = Bun.spawnSync([CLI, "--device-type", "laptop"], {
+		const result = Bun.spawnSync([CLI, "--device-type", deviceType], {
 			env: { ...process.env, HOME: tmpHome },
 			stderr: "pipe",
 			stdout: "pipe",
@@ -134,7 +142,7 @@ describe("--workspaces CLI mode", () => {
 		expect(result.exitCode).toBe(0);
 		expect(
 			JSON.parse(fs.readFileSync(path.join(tmpHome, ".haoshoku.json"), "utf8")),
-		).toEqual({ deviceType: "laptop", preserved: true });
+		).toEqual({ deviceType, preserved: true });
 	});
 
 	it("rejects an unroutable standalone deviceType", () => {
@@ -146,7 +154,7 @@ describe("--workspaces CLI mode", () => {
 
 		expect(result.exitCode).toBe(2);
 		expect(result.stderr.toString()).toContain(
-			"Device type must be pc or laptop",
+			"Device type must be pc, laptop or iobox",
 		);
 		expect(fs.existsSync(path.join(tmpHome, ".haoshoku.json"))).toBe(false);
 	});
@@ -163,7 +171,7 @@ describe("--workspaces CLI mode", () => {
 
 		expect(result.exitCode).toBe(2);
 		expect(result.stderr.toString()).toContain(
-			"Device type must be pc or laptop",
+			"Device type must be pc, laptop or iobox",
 		);
 		expect(fs.existsSync(path.join(tmpHome, ".haoshoku.json"))).toBe(false);
 	});

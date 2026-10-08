@@ -47,6 +47,7 @@ describe("Omarchy deviceType routing", () => {
 		const home = makeHome();
 		const startedAt = performance.now();
 		const result = await runCachyOSSetup({
+			configureFleetSshImpl: async () => true,
 			configureTailscaleT3Impl: async () => true,
 			startSudoSessionImpl: async () => () => {},
 			prepareArchPackageManagerImpl: async () => true,
@@ -57,8 +58,10 @@ describe("Omarchy deviceType routing", () => {
 			installSystemPackagesImpl: async () => {},
 			installFlatpakAppsImpl: async () => {},
 			configureUserAppsImpl: async () => {},
+			readDeviceTypeImpl: () => "pc",
 			promptDeviceTypeImpl: () =>
 				promptDeviceType({
+					hostname: "unknown",
 					configPath: path.join(home, ".haoshoku.json"),
 					detectDeviceTypeImpl: () => null,
 					promptFn: async () => ({ device: "laptop" }),

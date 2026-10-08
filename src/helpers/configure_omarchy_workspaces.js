@@ -104,6 +104,22 @@ export async function configureOmarchyWorkspaces({
 	logImpl = log,
 	versionResult,
 } = {}) {
+	const deviceType = readDeviceType(home);
+	if (deviceType === "iobox") {
+		const message = "Workspaces are not supported on iobox.";
+		logImpl.warning(message);
+		return {
+			status: "refused",
+			message,
+			bindingsChanged: false,
+			overlayChanged: false,
+			gamingChanged: false,
+			scriptChanged: false,
+			sourceChanged: false,
+			reloaded: false,
+			replayed: false,
+		};
+	}
 	const gate = await checkOmarchyV4({
 		captureCommandImpl,
 		env,
@@ -142,7 +158,6 @@ export async function configureOmarchyWorkspaces({
 		};
 	}
 
-	const deviceType = readDeviceType(home);
 	const sourceDirectory = path.join(
 		projectRoot,
 		"configs",

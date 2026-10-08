@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 
+import { homedir } from "node:os";
 import { Command } from "commander";
 import {
 	configureExecutorClients,
@@ -11,11 +12,18 @@ import { startRunLog } from "./src/common/run_log.js";
 import { detectOS, findActiveModeFlags } from "./src/common/cli_utils.js";
 import { promptDeviceType } from "./src/common/device_type.js";
 import { getBanner, showBanner } from "./src/common/ui.js";
-import { log, promptUser, runCommand } from "./src/common/utils.js";
+import {
+	DEVICE_TYPES,
+	log,
+	promptUser,
+	readConfiguredDeviceType,
+	runCommand,
+} from "./src/common/utils.js";
 import {
 	backupAgentsConfig,
 	syncAgentsConfig,
 } from "./src/helpers/configure_agents.js";
+import { configureAgentAccounts } from "./src/helpers/configure_agent_accounts.js";
 import {
 	backupAudioConfig,
 	syncAudioConfig,
@@ -63,6 +71,7 @@ import {
 import { configureOmarchyPlugins } from "./src/helpers/configure_omarchy_plugins.js";
 import { configureOmarchyWorkspaces } from "./src/helpers/configure_omarchy_workspaces.js";
 import { configureTailscaleT3 } from "./src/helpers/configure_tailscale_t3.js";
+import { configureFleetSsh, getArchFleetHost } from "./src/helpers/configure_fleet_ssh.js";
 import { configureT3CodeServer } from "./src/helpers/configure_t3_code_server.js";
 import {
 	backupWorktreeCleanup,
@@ -195,6 +204,15 @@ const informational = process.argv
 			["--help", "-h", "--version", "-V", "--share-log"].includes(arg) ||
 			arg.startsWith("--share-log="),
 	);
+// Refused fleet mode must leave the host untouched, including run-log files.
+if (
+	!informational &&
+	process.argv.slice(2).includes("--fleet-ssh") &&
+	!getArchFleetHost()
+) {
+	console.error("--fleet-ssh requires an Arch fleet host.");
+	process.exit(1);
+}
 const runLog = informational
 	? null
 	: startRunLog({
@@ -212,7 +230,7 @@ const runLog = informational
 							process.argv[0],
 							process.argv[1],
 							"--server-executor",
-							"[public-origin]",
+							"[executor-origin]",
 						],
 		});
 if (runLog) process.once("exit", (code) => runLog.finish(code));
@@ -244,8 +262,13 @@ program
 		"--agents-backup",
 		"Backup live Claude profile to configs/agent-profile/PROFILE.md",
 	)
+	.option(
+		"--agent-accounts",
+		"Create Claude and Codex alt-account credential overlays",
+	)
 	.option("--axstack", "Install or update the pinned Axstack release")
 	.option("--axstack-check", "Check Axstack release and harness setup")
+	.option("--fleet-ssh", "Configure Tailscale SSH and managed SSH files on an Arch fleet host")
 	.option(
 		"--server-t3-code",
 		"Configure the T3 Code headless service over Tailscale on Debian (keeps Grok CLI on PATH)",
@@ -257,7 +280,7 @@ program
 	.option("--server-hermes-relay", "Configure Hermes relay transport on Debian")
 	.option(
 		"--server-executor <https-origin>",
-		"Provision Executor on Debian (opt-in; external HTTPS proxy required)",
+		"Provision Executor on Debian (opt-in; HTTPS origin (Tailscale Serve or public proxy))",
 	)
 	.option(
 		"--executor-clients <https-endpoint>",
@@ -288,7 +311,7 @@ program
 		"--worktree-cleanup-backup",
 		"Backup the ~/defi worktree-cleanup script + systemd units to configs/worktree-cleanup/",
 	)
-	.option("--device-type <type>", "Set device type (pc or laptop)")
+	.option("--device-type <type>", "Set device type (pc, laptop or iobox)")
 	.option(
 		"--scripts",
 		"Deploy user scripts (configs/scripts/ → ~/.local/bin/) and prune retired entries",
@@ -374,6 +397,23 @@ async function runAction(options) {
 		process.exit(2);
 	}
 
+	if (
+		[
+			"workspaces",
+			"monitors",
+			"hyprmoncfgBackup",
+			"audio",
+			"audioBackup",
+		].includes(activeFlags[0]) &&
+		readConfiguredDeviceType(homedir()) === "iobox"
+	) {
+		log.error(
+			"Device-routed workspace, monitor and audio commands are not supported on iobox.",
+		);
+		process.exitCode = 1;
+		return;
+	}
+
 	if (options.executorClients) {
 		if (!configureExecutorClients(clientEndpoint)) process.exitCode = 1;
 		return;
@@ -424,6 +464,11 @@ async function runAction(options) {
 		return;
 	}
 
+	if (options.agentAccounts) {
+		if (!configureAgentAccounts()) process.exitCode = 1;
+		return;
+	}
+
 	if (options.axstack) {
 		if (!(await configureAxstack()).ok) process.exitCode = 1;
 		return;
@@ -434,13 +479,23 @@ async function runAction(options) {
 		return;
 	}
 
+	if (options.fleetSsh) {
+		if (!(await configureFleetSsh({ standalone: true }))) process.exitCode = 1;
+		return;
+	}
+
 	if (options.tailscaleT3) {
 		if (detectOS() !== "arch") {
 			log.error("--tailscale-t3 requires an Arch-family host.");
 			process.exitCode = 2;
 			return;
 		}
-		if (!(await configureTailscaleT3())) process.exitCode = 1;
+		try {
+			if (!(await configureTailscaleT3())) process.exitCode = 1;
+		} catch (error) {
+			log.error(error.message);
+			process.exitCode = 1;
+		}
 		return;
 	}
 
@@ -508,8 +563,8 @@ async function runAction(options) {
 	}
 
 	if (options.deviceType !== undefined) {
-		if (!["pc", "laptop"].includes(options.deviceType)) {
-			log.error("Device type must be pc or laptop.");
+		if (!DEVICE_TYPES.includes(options.deviceType)) {
+			log.error("Device type must be pc, laptop or iobox.");
 			process.exitCode = 2;
 			return;
 		}

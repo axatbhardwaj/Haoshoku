@@ -285,22 +285,26 @@ describe("selected integration retirement", () => {
 				const testUtils = await import(utilsPath);
 				for (let pass = 0; pass < 2; pass++) {
 					const ok = ${JSON.stringify(target)} === "arch" ? await runCachyOSSetup({
+						readDeviceTypeImpl: () => "pc",
 						promptDeviceTypeImpl: noop, startSudoSessionImpl: async () => () => {},
 						commandExistsImpl: async () => false, prepareArchPackageManagerImpl: noop,
 						ensureRustToolchainImpl: noop, ensureAurHelperImpl: async () => "paru", installDevToolsImpl: noop,
 						installSystemPackagesImpl: noop, installFlatpakAppsImpl: noop,
+						configureFleetSshImpl: async () => true,
 						configureTailscaleT3Impl: record("t3"),
 						configureBraveManagedPoliciesImpl: noop, configureHyprmoncfgImpl: noop,
 						configureOmarchyWorkspacesImpl: noop, configureOmarchyPluginsImpl: noop,
 						configureVoxtypeOsdImpl: noop, configureKdeConnectCommandsImpl: noop,
 						configureOmarchyBarImpl: noop, configureOmazedImpl: noop, configureOmarchyAppearanceImpl: noop,
 						configureUserAppsImpl: (options) => configureUserApps({ ...options,
+							commandExistsImpl: async () => false,
 							promptUserImpl: testUtils.promptUser, configureGitImpl: noop,
 							configureBrowserIntegrationImpl: noop, configureAudioImpl: noop, configureBashImpl: noop,
 							runCommandImpl: testUtils.runCommand,
 							configureClaudeImpl: record("claude", { ok: true }), configureCodexImpl: record("codex", { ok: true }),
 							installGhStackImpl: record("gh-stack"), configurePrWatchImpl: record("pr-watch"),
 							syncAgentsConfigImpl: record("agents"), configureAxstackImpl: record("axstack", { ok: true }),
+							configureAgentAccountsImpl: noop,
 							configureFastfetchImpl: noop, configureGhosttyImpl: noop, enableServicesImpl: noop,
 						}),
 					}) : await runDebianServerSetup();

@@ -43,9 +43,13 @@ describe("--scripts CLI mode", () => {
 	it("deploys scripts through the real CLI wiring", () => {
 		const scriptName = "cli-wiring-script";
 		const scriptContents = "#!/usr/bin/env bash\necho cli wiring\n";
-		fs.cpSync(path.join(PROJECT_ROOT, "src"), path.join(tmpProjectRoot, "src"), {
-			recursive: true,
-		});
+		fs.cpSync(
+			path.join(PROJECT_ROOT, "src"),
+			path.join(tmpProjectRoot, "src"),
+			{
+				recursive: true,
+			},
+		);
 		fs.copyFileSync(CLI, path.join(tmpProjectRoot, "haoshoku.js"));
 		fs.symlinkSync(
 			path.join(PROJECT_ROOT, "node_modules"),
@@ -53,6 +57,10 @@ describe("--scripts CLI mode", () => {
 			"dir",
 		);
 		fs.mkdirSync(scriptsDir(), { recursive: true });
+		fs.copyFileSync(
+			path.join(PROJECT_ROOT, "configs", "fleet.json"),
+			path.join(tmpProjectRoot, "configs", "fleet.json"),
+		);
 		fs.writeFileSync(path.join(scriptsDir(), scriptName), scriptContents, {
 			mode: 0o755,
 		});

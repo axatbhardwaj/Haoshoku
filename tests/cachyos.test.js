@@ -17,6 +17,83 @@ import {
 } from "../src/os_scripts/cachyos.js";
 
 describe("user app configuration", () => {
+	it.each([
+		"iobox",
+		"pc",
+		"laptop",
+	])("creates alt accounts only for %s after agent setup", async (deviceType) => {
+		const events = [];
+		const noop = async () => {};
+		await configureUserApps({
+			deviceType,
+			isOmarchy: true,
+			commandExistsImpl: noop,
+			promptUserImpl: noop,
+			configureGitImpl: noop,
+			configureBrowserIntegrationImpl: noop,
+			configureAudioImpl: noop,
+			configureBashImpl: noop,
+			configureFastfetchImpl: noop,
+			configureGhosttyImpl: noop,
+			runCommandImpl: noop,
+			enableServicesImpl: noop,
+			configureClaudeImpl: async () => events.push("claude"),
+			installGhStackImpl: noop,
+			configureCodexImpl: async () => events.push("codex"),
+			syncAgentsConfigImpl: async () => events.push("agents"),
+			configureAxstackImpl: async () => ({ ok: true }),
+			configureAgentAccountsImpl: async () => {
+				events.push("accounts");
+				return true;
+			},
+		});
+		expect(events).toEqual([
+			"claude",
+			"codex",
+			"agents",
+			...(deviceType === "iobox" ? ["accounts"] : []),
+		]);
+	});
+
+	it.each([
+		false,
+		"throws",
+	])("reports incomplete iobox alt accounts (%s)", async (outcome) => {
+		const warnings = [];
+		const originalWarning = log.warning;
+		log.warning = (message) => warnings.push(message);
+		const noop = async () => {};
+		try {
+			await configureUserApps({
+				deviceType: "iobox",
+				isOmarchy: true,
+				commandExistsImpl: noop,
+				promptUserImpl: noop,
+				configureGitImpl: noop,
+				configureBrowserIntegrationImpl: noop,
+				configureAudioImpl: noop,
+				configureBashImpl: noop,
+				configureFastfetchImpl: noop,
+				configureGhosttyImpl: noop,
+				runCommandImpl: noop,
+				enableServicesImpl: noop,
+				configureClaudeImpl: noop,
+				installGhStackImpl: noop,
+				configureCodexImpl: noop,
+				syncAgentsConfigImpl: noop,
+				configureAxstackImpl: async () => ({ ok: true }),
+				configureAgentAccountsImpl: async () => {
+					if (outcome === "throws") throw new Error("fixture error");
+					return false;
+				},
+			});
+			expect(warnings.join(" ")).toContain("Agent accounts incomplete");
+			expect(warnings.join(" ")).toContain("haoshoku --agent-accounts");
+		} finally {
+			log.warning = originalWarning;
+		}
+	});
+
 	it("runs portable app setup without retired services or offers", async () => {
 		const events = [];
 		const prompts = [];
@@ -27,6 +104,7 @@ describe("user app configuration", () => {
 				prompts.push({ message, initial });
 				return true;
 			},
+			commandExistsImpl: async () => false,
 			configureGitImpl: record("git"),
 			configureBrowserIntegrationImpl: record("browser"),
 			configureAudioImpl: record("audio"),
@@ -42,6 +120,7 @@ describe("user app configuration", () => {
 			installGhStackImpl: record("gh-stack"),
 			configureCodexImpl: record("codex"),
 			syncAgentsConfigImpl: record("agents"),
+			configureAgentAccountsImpl: async () => true,
 			configureAxstackImpl: async () => {
 				events.push("axstack");
 				return { ok: true };
@@ -75,6 +154,7 @@ describe("user app configuration", () => {
 		try {
 			await configureUserApps({
 				promptUserImpl: async () => false,
+				commandExistsImpl: async () => false,
 				configureGitImpl: noop,
 				configureBrowserIntegrationImpl: noop,
 				configureAudioImpl: noop,
@@ -93,6 +173,7 @@ describe("user app configuration", () => {
 					reason: "registry unavailable",
 				}),
 				syncAgentsConfigImpl: noop,
+				configureAgentAccountsImpl: noop,
 				configureAxstackImpl: async () => ({ ok: true }),
 			});
 
@@ -120,6 +201,7 @@ describe("user app configuration", () => {
 		try {
 			await configureUserApps({
 				promptUserImpl: async () => false,
+				commandExistsImpl: async () => false,
 				configureGitImpl: noop,
 				configureBrowserIntegrationImpl: noop,
 				configureAudioImpl: noop,
@@ -134,6 +216,7 @@ describe("user app configuration", () => {
 					throw new Error("Ambiguous multiline TOML");
 				},
 				syncAgentsConfigImpl: async () => events.push("agents"),
+				configureAgentAccountsImpl: noop,
 				configureAxstackImpl: async () => {
 					events.push("axstack");
 					return { ok: true };
@@ -673,7 +756,9 @@ describe("Arch package-manager preflight", () => {
 			throw new Error("setup continued without an authenticated sudo session");
 		};
 		const result = await runCachyOSSetup({
+			configureFleetSshImpl: async () => true,
 			configureTailscaleT3Impl: async () => true,
+			readDeviceTypeImpl: () => "pc",
 			promptDeviceTypeImpl: async () => events.push("device-type"),
 			startSudoSessionImpl: async () => {
 				events.push("sudo-start");
@@ -716,7 +801,9 @@ describe("Arch package-manager preflight", () => {
 			);
 		};
 		const result = await runCachyOSSetup({
+			configureFleetSshImpl: async () => true,
 			configureTailscaleT3Impl: async () => true,
+			readDeviceTypeImpl: () => "pc",
 			promptDeviceTypeImpl: async () => events.push("device-type"),
 			startSudoSessionImpl: async () => {
 				events.push("sudo-start");
@@ -763,7 +850,9 @@ describe("Arch package-manager preflight", () => {
 			throw new Error("setup continued after injected failure");
 		};
 		const setup = runCachyOSSetup({
+			configureFleetSshImpl: async () => true,
 			configureTailscaleT3Impl: async () => true,
+			readDeviceTypeImpl: () => "pc",
 			promptDeviceTypeImpl: async () => {},
 			startSudoSessionImpl: async () => () => events.push("sudo-stop"),
 			commandExistsImpl: async () => false,
@@ -858,7 +947,9 @@ describe("Arch package-manager preflight", () => {
 			);
 		};
 		const result = await runCachyOSSetup({
+			configureFleetSshImpl: async () => true,
 			configureTailscaleT3Impl: async () => true,
+			readDeviceTypeImpl: () => "pc",
 			promptDeviceTypeImpl: async () => events.push("device-type"),
 			startSudoSessionImpl: async () => () => {},
 			commandExistsImpl: async () => {
@@ -898,7 +989,9 @@ describe("Arch package-manager preflight", () => {
 			);
 		};
 		const result = await runCachyOSSetup({
+			configureFleetSshImpl: async () => true,
 			configureTailscaleT3Impl: async () => true,
+			readDeviceTypeImpl: () => "pc",
 			promptDeviceTypeImpl: async () => events.push("device-type"),
 			startSudoSessionImpl: async () => () => {},
 			commandExistsImpl: async (command) => {
@@ -939,6 +1032,7 @@ describe("Arch package-manager preflight", () => {
 				return result;
 			};
 			const result = await runCachyOSSetup({
+				configureFleetSshImpl: async () => true,
 				configureTailscaleT3Impl: async () => true,
 				startSudoSessionImpl: async () => () => {},
 				prepareArchPackageManagerImpl: record("prepare", true),
@@ -951,6 +1045,7 @@ describe("Arch package-manager preflight", () => {
 				},
 				installSystemPackagesImpl: record("system-packages"),
 				installFlatpakAppsImpl: record("flatpaks"),
+				readDeviceTypeImpl: () => "pc",
 				promptDeviceTypeImpl: record("device-type"),
 				configureUserAppsImpl: record("user-apps"),
 				configureBraveManagedPoliciesImpl: async (options) => {
@@ -1014,7 +1109,9 @@ describe("Arch package-manager preflight", () => {
 		};
 
 		await runCachyOSSetup({
+			configureFleetSshImpl: async () => true,
 			configureTailscaleT3Impl: async () => true,
+			readDeviceTypeImpl: () => "pc",
 			promptDeviceTypeImpl: async () => {},
 			startSudoSessionImpl: async () => () => {},
 			prepareArchPackageManagerImpl: async () => true,
@@ -1057,6 +1154,7 @@ describe("Arch package-manager preflight", () => {
 			let result;
 			try {
 				result = await runCachyOSSetup({
+					configureFleetSshImpl: async () => true,
 					configureTailscaleT3Impl: async () => true,
 					startSudoSessionImpl: async () => () => {},
 					prepareArchPackageManagerImpl: async () => true,
@@ -1066,6 +1164,7 @@ describe("Arch package-manager preflight", () => {
 					commandExistsImpl: async () => true,
 					installSystemPackagesImpl: async () => {},
 					installFlatpakAppsImpl: async () => {},
+					readDeviceTypeImpl: () => "pc",
 					promptDeviceTypeImpl: async () => {},
 					configureUserAppsImpl: async () => {},
 					configureBraveManagedPoliciesImpl: async () => {
@@ -1121,6 +1220,7 @@ describe("Arch package-manager preflight", () => {
 					}
 				};
 				const result = await runCachyOSSetup({
+					configureFleetSshImpl: async () => true,
 					configureTailscaleT3Impl: async () => true,
 					startSudoSessionImpl: async () => () => {},
 					prepareArchPackageManagerImpl: async () => true,
@@ -1130,6 +1230,7 @@ describe("Arch package-manager preflight", () => {
 					commandExistsImpl: async () => true,
 					installSystemPackagesImpl: async () => {},
 					installFlatpakAppsImpl: async () => {},
+					readDeviceTypeImpl: () => "pc",
 					promptDeviceTypeImpl: async () => {},
 					configureUserAppsImpl: async () => {},
 					configureBraveManagedPoliciesImpl: async () => true,
@@ -1247,15 +1348,18 @@ describe("Omarchy-owned defaults", () => {
 
 describe("Arch T3 phone access integration", () => {
 	it.each([
-		false,
-		true,
-	])("runs after user apps and continues on failure (throws=%s)", async (throws) => {
+		["pc", false],
+		["pc", true],
+		["laptop", false],
+		["laptop", true],
+	])("runs after user apps on %s and continues on failure (throws=%s)", async (deviceType, throws) => {
 		const events = [];
 		const warnings = [];
 		const original = log.warning;
 		log.warning = (message) => warnings.push(message);
 		try {
 			const result = await runCachyOSSetup({
+				readDeviceTypeImpl: () => deviceType,
 				promptDeviceTypeImpl: async () => {},
 				startSudoSessionImpl: async () => () => events.push("sudo-stop"),
 				prepareArchPackageManagerImpl: async () => true,
@@ -1275,6 +1379,7 @@ describe("Arch T3 phone access integration", () => {
 				configureOmarchyBarImpl: async () => {},
 				configureOmazedImpl: async () => {},
 				configureOmarchyAppearanceImpl: async () => {},
+				configureFleetSshImpl: async () => true,
 				configureTailscaleT3Impl: async () => {
 					events.push("tailscale-t3");
 					if (throws) throw new Error("unavailable");

@@ -8,6 +8,7 @@ const { installGhStack } = ghStack;
 function userAppDoubles(overrides = {}) {
 	return {
 		promptUserImpl: async () => false,
+		commandExistsImpl: async () => false,
 		configureGitImpl: async () => {},
 		configureBrowserIntegrationImpl: async () => {},
 		configureAudioImpl: async () => {},
@@ -21,6 +22,7 @@ function userAppDoubles(overrides = {}) {
 		configureCodexImpl: async () => {},
 		syncAgentsConfigImpl: async () => {},
 		configureAxstackImpl: async () => ({ ok: true }),
+		configureAgentAccountsImpl: async () => true,
 		...overrides,
 	};
 }

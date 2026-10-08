@@ -6,9 +6,11 @@ import os from "node:os";
 const cli = path.resolve(import.meta.dir, "..", "haoshoku.js");
 it("advertises the explicit opt-in Executor origin command", () => {
 	const child = Bun.spawnSync([process.execPath, cli, "--help"]);
+	const output = new TextDecoder().decode(child.stdout).replace(/\s+/g, " ");
 	expect(child.exitCode).toBe(0);
-	expect(new TextDecoder().decode(child.stdout)).toContain(
-		"--server-executor <https-origin>",
+	expect(output).toContain("--server-executor <https-origin>");
+	expect(output).toContain(
+		"HTTPS origin (Tailscale Serve or public proxy)",
 	);
 });
 
@@ -25,7 +27,7 @@ function runMode(args, osType = "debian-server", result = true) {
 		mock.module(${JSON.stringify(path.join(root, "src/common/cli_utils.js"))}, () => ({ ...utils, detectOS: () => ${JSON.stringify(osType)} }));
 		const helper = await import(${JSON.stringify(path.join(root, "src/helpers/configure_executor_server.js"))});
 		mock.module(${JSON.stringify(path.join(root, "src/helpers/configure_executor_server.js"))}, () => ({ ...helper,
-			configureExecutorServer: async (origin) => { console.log(origin === 'https://gateway.example:8444' ? 'EXECUTOR_CANONICAL_ORIGIN' : 'EXECUTOR_CALLED'); return ${JSON.stringify(result)}; }
+			configureExecutorServer: async (origin) => { console.log('EXECUTOR_ORIGIN=' + origin); console.log(origin === 'https://gateway.example:8444' ? 'EXECUTOR_CANONICAL_ORIGIN' : 'EXECUTOR_CALLED'); return ${JSON.stringify(result)}; }
 		}));
 		mock.module(${JSON.stringify(path.join(root, "src/os_scripts/debian_server.js"))}, () => ({ runDebianServerSetup: async () => { console.log('DEFAULT_SETUP'); return true; } }));
 		process.argv = [process.execPath, ${JSON.stringify(cli)}, ...${JSON.stringify(args)}];
@@ -66,9 +68,21 @@ it("routes the canonical HTTPS origin to Executor and propagates incomplete setu
 		expect(r.code, r.output).toBe(ok ? 0 : 1);
 		expect(r.output).toContain("EXECUTOR_CANONICAL_ORIGIN");
 		expect(r.logText).not.toContain("gateway.example");
-		expect(r.logText).toContain("[public-origin]");
+		expect(r.logText).toContain("[executor-origin]");
 		expect(r.output).not.toContain("DEFAULT_SETUP");
 	}
+});
+it.each([
+	["--server-executor", "https://axat-vps.tail140c22.ts.net/"],
+	["--server-executor=https://axat-vps.tail140c22.ts.net"],
+])("accepts a tailnet-only Executor origin via %j", (...args) => {
+	const r = runMode(args);
+	expect(r.code, r.output).toBe(0);
+	expect(r.output).toContain(
+		"EXECUTOR_ORIGIN=https://axat-vps.tail140c22.ts.net\n",
+	);
+	expect(r.output).not.toContain("DEFAULT_SETUP");
+	expect(r.logText).not.toContain("tail140c22");
 });
 it.each([
 	"arch",

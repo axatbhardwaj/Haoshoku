@@ -1,7 +1,13 @@
 import fs from "node:fs";
 import { homedir, userInfo } from "node:os";
 import path from "node:path";
-import { log, runCommand, runCommandCapture } from "../common/utils.js";
+import {
+	log,
+	readDeviceType,
+	runCommand,
+	runCommandCapture,
+} from "../common/utils.js";
+import { configureT3Op } from "./configure_t3_op.js";
 import { preflightT3Desktop } from "./t3_desktop_preflight.js";
 import {
 	ensureTailscaleOperator,
@@ -17,6 +23,7 @@ import {
 /** Configure tailnet-only phone access after the Arch T3 package is installed. */
 export async function configureTailscaleT3({
 	home = homedir(),
+	deviceType = readDeviceType(home),
 	user = userInfo().username,
 	env = process.env,
 	fsImpl = fs,
@@ -28,6 +35,7 @@ export async function configureTailscaleT3({
 	logger = log,
 } = {}) {
 	const fail = (message) => {
+		if (deviceType === "iobox") throw new Error(message);
 		logger.warning(
 			`${message} — continuing setup. Retry haoshoku --tailscale-t3.`,
 		);
@@ -42,6 +50,7 @@ export async function configureTailscaleT3({
 			throw new Error(`Failed: ${command}`);
 	};
 
+	let step = "Tailscale";
 	try {
 		if ((await probe("pacman -Q tailscale")) === null) {
 			await run("sudo -n pacman -S --needed --noconfirm tailscale");
@@ -81,8 +90,12 @@ export async function configureTailscaleT3({
 				runCommandImpl,
 				logger,
 			}))
-		)
+		) {
+			if (deviceType === "iobox")
+				return fail("Tailscale operator configuration failed");
 			return false;
+		}
+		step = "T3 service";
 		const version = await probe("t3 --version");
 		const resolved = await probe("command -v t3", { shell: true });
 		if (resolved && resolved !== "/usr/bin/t3") {
@@ -112,6 +125,43 @@ export async function configureTailscaleT3({
 			fail,
 		});
 		if (!desktop) return false;
+		step = "linger";
+		if (!operator || operator === "root") {
+			fail("linger requires a non-root setup user");
+		} else {
+			const lingerCommand = `loginctl show-user ${shellQuote(operator)} -p Linger`;
+			const linger = await probe(lingerCommand);
+			if (linger !== "Linger=yes") {
+				await run(`sudo -n loginctl enable-linger ${shellQuote(operator)}`);
+				if ((await probe(lingerCommand)) !== "Linger=yes")
+					return fail("linger was not enabled after enable-linger");
+			}
+		}
+		if (deviceType === "iobox") {
+			step = "sleep mask";
+			const targets = [
+				"sleep.target",
+				"suspend.target",
+				"hibernate.target",
+				"hybrid-sleep.target",
+				"suspend-then-hibernate.target",
+			];
+			const unmasked = [];
+			const maskCommand = (target) =>
+				`systemctl show ${target} --property=UnitFileState --value`;
+			for (const target of targets) {
+				const state = await probe(maskCommand(target));
+				if (!state) return fail(`sleep mask: cannot verify ${target}`);
+				if (state !== "masked") unmasked.push(target);
+			}
+			if (unmasked.length) {
+				await run(`sudo -n systemctl mask ${unmasked.join(" ")}`);
+				for (const target of unmasked)
+					if ((await probe(maskCommand(target))) !== "masked")
+						return fail(`sleep mask: ${target} was not masked`);
+			}
+		}
+		step = "T3 service";
 		let changed = writeServiceDropIn(
 			home,
 			"axstack-tailscale.conf",
@@ -156,7 +206,7 @@ export async function configureTailscaleT3({
 				"T3 service is not active. Inspect systemctl --user status t3code.service",
 			);
 		}
-		return await waitForT3Tailscale({
+		const ready = await waitForT3Tailscale({
 			probe,
 			fetchImpl,
 			sleepImpl,
@@ -166,7 +216,14 @@ export async function configureTailscaleT3({
 			retryFlag: "--tailscale-t3",
 			tailnetOnly: true,
 		});
+		if (ready && deviceType === "iobox") {
+			step = "1Password token drop-in";
+			await configureT3Op({ home, fsImpl, runCommandImpl, logger });
+		}
+		return ready;
 	} catch (error) {
-		return fail(`Tailscale/T3 configuration failed: ${error.message}`);
+		if (deviceType === "iobox")
+			throw new Error(`${step} failed: ${error.message}`);
+		return fail(`${step} configuration failed: ${error.message}`);
 	}
 }

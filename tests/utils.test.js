@@ -922,6 +922,15 @@ describe("readDeviceType", () => {
 		fs.rmSync(tmpHome, { recursive: true, force: true });
 	});
 
+	it("returns the configured iobox without a pc fallback", () => {
+		fs.writeFileSync(
+			path.join(tmpHome, ".haoshoku.json"),
+			JSON.stringify({ deviceType: "iobox" }),
+		);
+		expect(readDeviceType(tmpHome)).toBe("iobox");
+		expect(readConfiguredDeviceType(tmpHome)).toBe("iobox");
+	});
+
 	it("returns 'pc' when ~/.haoshoku.json is missing", () => {
 		expect(readDeviceType(tmpHome)).toBe("pc");
 	});

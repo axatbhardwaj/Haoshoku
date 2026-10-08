@@ -128,6 +128,7 @@ function fixture(entrypoint) {
 				stdout = "t3 v0.0.46-nightly.20261004.2644";
 			else if (command === "pacman -Q t3code-bin") exitCode = 1;
 			else if (command === "pacman -Q t3code-nightly-bin") exitCode = 1;
+			else if (command.startsWith("loginctl show-user ")) stdout = "Linger=yes";
 			else if (command === "pacman -Q tailscale") stdout = "tailscale 1.0";
 			else if (command.includes("is-enabled") || command.includes("is-active"))
 				stdout = "";
@@ -619,5 +620,114 @@ for (const [name, entrypoint] of [
 			expect(await f.run(), JSON.stringify(f.effects)).toBe(false);
 			expect(f.effects).toEqual([]);
 		});
+	});
+}
+
+const opDropContent =
+	"[Service]\nEnvironmentFile=-%h/.config/op/service-account.env\n";
+const opSecret = "fixture-op-preflight-secret";
+for (const entrypoint of [configureTailscaleT3, configureT3CodeServer]) {
+	it("accepts only the managed op EnvironmentFile, including systemd's suffix", async () => {
+		for (const suffix of ["", " (ignore_errors=yes)"]) {
+			const f = fixture(entrypoint);
+			const envFile = path.join(f.home, ".config/op/service-account.env");
+			f.write(envFile, `OP_SERVICE_ACCOUNT_TOKEN=${opSecret}\n`);
+			fs.chmodSync(envFile, 0o600);
+			f.write(
+				path.join(
+					f.home,
+					".config/systemd/user/t3code.service.d/haoshoku-op.conf",
+				),
+				opDropContent,
+			);
+			f.overrides.set(serviceShow, {
+				exitCode: 0,
+				stdout: `${loadedService(f.base)}EnvironmentFiles=${envFile}${suffix}\n`,
+			});
+			expect(await f.run()).toBe(true);
+			fs.unlinkSync(envFile);
+			expect(await f.run()).toBe(true);
+			expect(f.messages.join(" ").includes(opSecret)).toBe(false);
+		}
+	});
+
+	it.each([
+		"extra",
+		"mode",
+		"owner",
+		"directory",
+		"dangling",
+	])("fails closed for managed op with %s and recovers after correction or deletion", async (kind) => {
+		const f = fixture(entrypoint);
+		const envFile = path.join(f.home, ".config/op/service-account.env");
+		const drop = path.join(
+			f.home,
+			".config/systemd/user/t3code.service.d/haoshoku-op.conf",
+		);
+		f.write(drop, opDropContent);
+		f.write(
+			envFile,
+			`OP_SERVICE_ACCOUNT_TOKEN=${opSecret}\n${kind === "extra" ? "T3CODE_HOME=/other\n" : ""}`,
+		);
+		fs.chmodSync(envFile, kind === "mode" ? 0o644 : 0o600);
+		if (kind === "owner")
+			f.options.fsImpl.lstatSync = (file) => ({
+				...fs.lstatSync(file),
+				uid: process.getuid() + 1,
+				isFile: () => true,
+			});
+		if (["directory", "dangling"].includes(kind)) {
+			fs.unlinkSync(envFile);
+			if (kind === "directory") fs.mkdirSync(envFile);
+			else fs.symlinkSync("/absent-op-fixture", envFile);
+		}
+		// Pending drop-in alone must also validate the file before any mutation.
+		expect(await f.run()).toBe(false);
+		expect(f.effects).toEqual([]);
+		expect(f.messages.join(" ")).toContain("~/.config/op/service-account.env");
+		expect(f.messages.join(" ")).toContain("0600");
+		expect(f.messages.join(" ")).toContain("single line");
+		expect(f.messages.join(" ")).toContain("delete");
+		expect(f.messages.join(" ").includes(opSecret)).toBe(false);
+		expect(fs.readFileSync(drop, "utf8")).toBe(opDropContent);
+		f.options.fsImpl.lstatSync = fs.lstatSync;
+		if (kind === "directory") fs.rmdirSync(envFile);
+		else fs.unlinkSync(envFile);
+		expect(await f.run()).toBe(true);
+		f.write(envFile, `OP_SERVICE_ACCOUNT_TOKEN=${opSecret}\n`);
+		fs.chmodSync(envFile, 0o600);
+		expect(await f.run()).toBe(true);
+	});
+
+	it.each([
+		"effective-other",
+		"effective-many",
+		"effective-required",
+		"pending-other",
+		"wrong-content",
+		"wrong-name",
+	])("rejects unmanaged op EnvironmentFile evidence: %s", async (kind) => {
+		const f = fixture(entrypoint);
+		const envFile = path.join(f.home, ".config/op/service-account.env");
+		f.write(envFile, `OP_SERVICE_ACCOUNT_TOKEN=${opSecret}\n`);
+		fs.chmodSync(envFile, 0o600);
+		const dir = path.join(f.home, ".config/systemd/user/t3code.service.d");
+		f.write(
+			path.join(dir, kind === "wrong-name" ? "other.conf" : "haoshoku-op.conf"),
+			kind === "wrong-content"
+				? `${opDropContent}Environment=T3CODE_HOME=/other\n`
+				: kind === "pending-other"
+					? "[Service]\nEnvironmentFile=/other\n"
+					: opDropContent,
+		);
+		if (kind.startsWith("effective-"))
+			f.overrides.set(serviceShow, {
+				exitCode: 0,
+				stdout:
+					loadedService(f.base) +
+					`EnvironmentFiles=${kind === "effective-other" ? "/other (ignore_errors=yes)" : kind === "effective-many" ? `${envFile} (ignore_errors=yes) /other (ignore_errors=yes)` : `${envFile} (ignore_errors=no)`}\n`,
+			});
+		expect(await f.run()).toBe(false);
+		expect(f.effects).toEqual([]);
 	});
 }
