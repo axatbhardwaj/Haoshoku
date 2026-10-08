@@ -1,0 +1,37 @@
+{
+	"tailnet": "tail140c22.ts.net",
+	"hosts": [
+		{
+			"hostname": "io",
+			"role": "pc",
+			"os": "arch",
+			"deviceType": "pc",
+			"sshUser": "xzat",
+			"transport": "tailscale"
+		},
+		{
+			"hostname": "iobook",
+			"role": "laptop",
+			"os": "arch",
+			"deviceType": "laptop",
+			"sshUser": "xzat",
+			"transport": "tailscale"
+		},
+		{
+			"hostname": "iobox",
+			"role": "agent box",
+			"os": "arch",
+			"deviceType": "iobox",
+			"sshUser": "xzat",
+			"transport": "tailscale"
+		},
+		{
+			"hostname": "axat-vps",
+			"role": "vps",
+			"os": "debian",
+			"sshUser": "root",
+			"transport": "openssh",
+			"identityFile": "id_ed25519_vps"
+		}
+	]
+}
