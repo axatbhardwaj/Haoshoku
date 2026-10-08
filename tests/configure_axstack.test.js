@@ -8,6 +8,8 @@ import {
 	configureAxstack as runConfigureAxstack,
 } from "../src/helpers/configure_axstack.js";
 
+import { startRunLog } from "../src/common/run_log.js";
+
 const LATEST_VERSION = "0.24.7";
 const REGISTRY_URL = "https://registry.npmjs.org/axstack/latest";
 const homes = [];
@@ -104,6 +106,7 @@ describe("configureAxstack", () => {
 		}
 		const requests = [];
 		const invocations = [];
+		const run = startRunLog({ env: { HOME: home, XDG_STATE_HOME: home } });
 		const result = await configureAxstack({
 			...target,
 			home,
@@ -123,6 +126,10 @@ describe("configureAxstack", () => {
 		expect(fs.existsSync(target.dataDir)).toBe(false);
 		if (existing) expect(fs.readFileSync(target.shim, "utf8")).toBe(original);
 		else expect(fs.existsSync(target.shim)).toBe(false);
+		const summary = [];
+		run.finish(0, (line) => summary.push(line));
+		expect(summary.at(-1)).toContain("Bun required");
+		expect(summary.at(-1)).toContain("haoshoku --axstack");
 	});
 
 	it.each([
@@ -507,11 +514,19 @@ describe("configureAxstack", () => {
 		expect(fs.readFileSync(target.cli)).toEqual(before);
 	});
 
-	it("reports one harness conflict and still attempts the other", async () => {
+	it.each([
+		{ failed: ["claude"] },
+		{ failed: ["codex"] },
+		{ failed: ["claude", "codex"] },
+		{ failed: [] },
+	])("summarizes only failed Axstack harnesses (%j) and attempts both", async ({
+		failed,
+	}) => {
 		const home = makeHome();
 		const target = releasePaths(home);
 		fs.mkdirSync(path.dirname(target.cli), { recursive: true });
 		fs.writeFileSync(target.cli, "existing");
+		const run = startRunLog({ env: { HOME: home, XDG_STATE_HOME: home } });
 		const harnesses = [];
 		const result = await configureAxstack({
 			...target,
@@ -519,19 +534,31 @@ describe("configureAxstack", () => {
 			runner: async (_executable, args) => {
 				const harness = args[args.indexOf("--harness") + 1];
 				harnesses.push(harness);
-				return harness === "claude"
-					? { exitCode: 1, stderr: "instruction conflict", stdout: "" }
+				return failed.includes(harness)
+					? {
+							exitCode: 1,
+							stderr: `${harness} instruction conflict`,
+							stdout: "",
+						}
 					: { exitCode: 0, stderr: "", stdout: "installed" };
 			},
 		});
-
 		expect(harnesses).toEqual(["claude", "codex"]);
-		expect(result.ok).toBe(false);
-		expect(result.harnesses.claude).toEqual({
-			ok: false,
-			reason: "instruction conflict",
-		});
-		expect(result.harnesses.codex.ok).toBe(true);
+		expect(result.ok).toBe(failed.length === 0);
+		const summary = [];
+		run.finish(0, (line) => summary.push(line));
+		const nextSteps = summary.slice(1).join("\n");
+		if (failed.length === 0) expect(nextSteps).toBe("");
+		else {
+			expect(nextSteps).toContain("Next steps:");
+			expect(nextSteps.match(/haoshoku --axstack/g)).toHaveLength(1);
+			for (const harness of ["claude", "codex"]) {
+				expect(result.harnesses[harness].ok).toBe(!failed.includes(harness));
+				if (failed.includes(harness))
+					expect(nextSteps).toContain(`${harness} instruction conflict`);
+				else expect(nextSteps).not.toContain(`${harness} instruction conflict`);
+			}
+		}
 	});
 });
 

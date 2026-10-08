@@ -74,8 +74,8 @@ The Arch setup:
   packages;
 - batches repository and AUR packages, filters missing targets, and retries only
   still-uninstalled packages individually when a batch fails;
-- installs only JetBrains Mono Nerd Font instead of the conflicting complete
-  Nerd Font group;
+- installs only JetBrains Mono Nerd Font when neither its full nor Omarchy's
+  `ttf-jetbrains-mono-nerd-basic` package is installed; keeps either existing package;
 - binds `Super+T` to launch or focus T3 Code Nightly with `t3code-nightly`,
   matching only the anchored `^com\.t3tools\.T3Code$` window class;
 - installs Tailscale, enables `tailscaled.service`, and configures the T3 user
@@ -470,6 +470,8 @@ for the new commands below; the installed 12.3.x package does not include them.
    repeat with `CLAUDE_CONFIG_DIR=~/.claude-alt claude`.
 7. Complete two Codex device logins: `codex login --device-auth`, then
    `CODEX_HOME=~/.codex-alt codex login --device-auth`.
+   After completing the primary logins, rerun `bun haoshoku.js --axstack` if
+   the first setup reported incomplete Axstack harness setup.
 8. Supply `EXECUTOR_AUTHORIZATION` securely as described in
    [Executor clients](#opt-in-executor-clients), then register once per home:
 
@@ -481,6 +483,9 @@ for the new commands below; the installed 12.3.x package does not include them.
    In T3, manually map provider instance `claudeAlt` to `CLAUDE_CONFIG_DIR=~/.claude-alt`
    and `codexAlt` to `CODEX_HOME=~/.codex-alt` (use absolute home paths in settings).
 9. Run `gh auth login` and set your Git name/email; Omarchy skips Git identity setup.
+   Then rerun `bun haoshoku.js --gh-stack` if the first setup skipped gh-stack.
+   The end-of-run **Next steps** block lists incomplete gh-stack and Axstack
+   setup, the reason, and the exact `haoshoku` command to rerun.
 10. Create the iobox key with `ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519_vps` and
     authorize its public key on axat-vps by hand. Keep the private key local.
 11. Create `~/.config/op/service-account.env` as a regular file owned by your user,

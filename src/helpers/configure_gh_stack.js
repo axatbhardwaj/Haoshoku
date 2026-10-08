@@ -1,4 +1,5 @@
 import { commandExists, log } from "../common/utils.js";
+import { recordNextStep } from "../common/run_log.js";
 
 const GH_STACK_REPOSITORY = "github/gh-stack";
 
@@ -21,9 +22,25 @@ export async function installGhStack({
 	runner = runGhCommand,
 	logImpl = log,
 } = {}) {
+	const failed = (reason, exitCode) => {
+		const message = exitCode === 4 ? "GitHub CLI is not authenticated" : reason;
+		const guidance =
+			exitCode === 4
+				? "Run gh auth login, then haoshoku --gh-stack."
+				: "Resolve the GitHub CLI error, then run haoshoku --gh-stack.";
+		logImpl.warning(
+			`${message} — skipping gh-stack installation and continuing.`,
+		);
+		recordNextStep("gh-stack", `${message}. ${guidance}`);
+		return "failed";
+	};
 	if (!(await commandExistsImpl("gh"))) {
 		logImpl.info(
 			"GitHub CLI (gh) is not on PATH. Skipping gh-stack extension.",
+		);
+		recordNextStep(
+			"gh-stack",
+			"GitHub CLI is missing. Install GitHub CLI, then run gh auth login and haoshoku --gh-stack.",
 		);
 		return "missing-gh";
 	}
@@ -32,17 +49,16 @@ export async function installGhStack({
 	try {
 		listed = await runner(["gh", "extension", "list"]);
 	} catch (err) {
-		logImpl.warning(
-			`Could not list GitHub CLI extensions (${err?.message ?? err}) — skipping gh-stack installation and continuing.`,
+		return failed(
+			`Could not list GitHub CLI extensions (${err?.message ?? err})`,
 		);
-		return "failed";
 	}
 
 	if (listed.exitCode !== 0) {
-		logImpl.warning(
-			`Could not list GitHub CLI extensions (exit code ${listed.exitCode}) — skipping gh-stack installation and continuing.`,
+		return failed(
+			`Could not list GitHub CLI extensions (exit code ${listed.exitCode})`,
+			listed.exitCode,
 		);
-		return "failed";
 	}
 
 	if (ghStackIsInstalled(listed.stdout)) return "already-installed";
@@ -58,14 +74,13 @@ export async function installGhStack({
 			logImpl.success("Installed GitHub gh-stack extension.");
 			return "installed";
 		}
-		logImpl.warning(
-			`GitHub gh-stack extension installation failed (exit code ${installed.exitCode}) — continuing. Authenticate with gh auth login and retry with: haoshoku --gh-stack`,
+		return failed(
+			`GitHub gh-stack extension installation failed (exit code ${installed.exitCode})`,
+			installed.exitCode,
 		);
 	} catch (err) {
-		logImpl.warning(
-			`GitHub gh-stack extension installation failed (${err?.message ?? err}) — continuing. Authenticate with gh auth login and retry with: haoshoku --gh-stack`,
+		return failed(
+			`GitHub gh-stack extension installation failed (${err?.message ?? err})`,
 		);
 	}
-
-	return "failed";
 }

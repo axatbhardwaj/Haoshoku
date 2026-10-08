@@ -74,6 +74,7 @@ describe("iobox packages", () => {
 		let requested;
 		const options = {
 			deviceType: "iobox",
+			getInstalledPackagesImpl: async () => installed,
 			readFileImpl: (file, encoding) => {
 				files.push(path.basename(file));
 				return fs.readFileSync(file, encoding);
@@ -92,7 +93,11 @@ describe("iobox packages", () => {
 				for (const pkg of result.installed) installed.add(pkg);
 				return result;
 			},
-			runCommandImpl: async (command) => commands.push(command),
+			runCommandImpl: async (command) => {
+				commands.push(command);
+				installed.add("ttf-jetbrains-mono-nerd");
+				return true;
+			},
 			promptUserImpl: async (message) => {
 				prompts.push(message);
 				return true;
@@ -133,10 +138,7 @@ describe("iobox packages", () => {
 		const firstRun = [...commands];
 		await installSystemPackages("paru", true, options);
 		expect(files).toEqual(["paru_applist_iobox.txt", "paru_applist_iobox.txt"]);
-		expect(commands).toEqual([
-			...firstRun,
-			"sudo -n pacman -S --needed --noconfirm ttf-jetbrains-mono-nerd",
-		]);
+		expect(commands).toEqual(firstRun);
 		expect(prompts).toEqual([]);
 	});
 });
