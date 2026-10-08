@@ -426,7 +426,7 @@ async function runAction(options) {
 	}
 
 	if (options.executorClients) {
-		if (!configureExecutorClients(clientEndpoint)) process.exitCode = 1;
+		if (!(await configureExecutorClients(clientEndpoint))) process.exitCode = 1;
 		return;
 	}
 

@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { checkExecutorConnection } from "./executor_client_connection.js";
 import {
 	ExecutorClientError,
 	planExecutorClientConfig,
@@ -56,9 +57,14 @@ export function validateExecutorClientInput(endpoint, env = process.env) {
 	return url.href;
 }
 
-export function configureExecutorClients(
+export async function configureExecutorClients(
 	endpoint,
-	{ env = process.env, fsImpl = fs, print = console.log } = {},
+	{
+		env = process.env,
+		fsImpl = fs,
+		print = console.log,
+		fetchImpl = fetch,
+	} = {},
 ) {
 	try {
 		const url = validateExecutorClientInput(endpoint, env);
@@ -111,9 +117,20 @@ export function configureExecutorClients(
 			(plan) => plan.content !== plan.original?.toString("utf8"),
 		);
 		print(
-			`${changed ? "Configuration written" : "Configuration already matches"} for Claude Code and Codex; authenticated MCP handshake/tool discovery not verified. Authorization saved in private client configs.`,
+			`${changed ? "Configuration written" : "Configuration already matches"} for Claude Code and Codex; Authorization saved in private client configs.`,
 		);
-		return true;
+		try {
+			await checkExecutorConnection(url, env.EXECUTOR_AUTHORIZATION, fetchImpl);
+			print(
+				"Executor connected (authenticated MCP initialize); tool and integration access not verified.",
+			);
+			return true;
+		} catch {
+			print(
+				"Executor connection failed; client configs saved. Check the endpoint, authorization and network, then retry.",
+			);
+			return false;
+		}
 	} catch (error) {
 		print(
 			!(error instanceof ExecutorClientError)
