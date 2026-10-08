@@ -74,8 +74,8 @@ The Arch setup:
   packages;
 - batches repository and AUR packages, filters missing targets, and retries only
   still-uninstalled packages individually when a batch fails;
-- installs only JetBrains Mono Nerd Font instead of the conflicting complete
-  Nerd Font group;
+- installs only JetBrains Mono Nerd Font when neither its full nor Omarchy's
+  `ttf-jetbrains-mono-nerd-basic` package is installed; keeps either existing package;
 - binds `Super+T` to launch or focus T3 Code Nightly with `t3code-nightly`,
   matching only the anchored `^com\.t3tools\.T3Code$` window class;
 - installs Tailscale, enables `tailscaled.service`, and configures the T3 user

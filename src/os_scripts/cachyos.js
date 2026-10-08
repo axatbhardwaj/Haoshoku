@@ -487,6 +487,7 @@ export async function installSystemPackages(
 	{
 		deviceType = "pc",
 		installArchPackageBatchImpl = installArchPackageBatch,
+		getInstalledPackagesImpl = getInstalledPackages,
 		readFileImpl = fs.readFileSync,
 		runCommandImpl = runCommand,
 		promptUserImpl = promptUser,
@@ -517,10 +518,16 @@ export async function installSystemPackages(
 		}
 	}
 
-	log.info("Installing Nerd Fonts...");
-	await runCommandImpl(
-		"sudo -n pacman -S --needed --noconfirm ttf-jetbrains-mono-nerd",
-	);
+	const installed = await getInstalledPackagesImpl();
+	if (
+		!installed.has("ttf-jetbrains-mono-nerd") &&
+		!installed.has("ttf-jetbrains-mono-nerd-basic")
+	) {
+		log.info("Installing JetBrains Mono Nerd Font...");
+		await runCommandImpl(
+			"sudo -n pacman -S --needed --noconfirm ttf-jetbrains-mono-nerd",
+		);
+	}
 
 	if (
 		deviceType !== "iobox" &&

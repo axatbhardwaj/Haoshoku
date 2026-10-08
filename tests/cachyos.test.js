@@ -622,12 +622,41 @@ describe("batched Arch package installation", () => {
 });
 
 describe("system package installation orchestration", () => {
+	it.each([
+		"ttf-jetbrains-mono-nerd-basic",
+		"ttf-jetbrains-mono-nerd",
+		null,
+	])("keeps an existing JetBrains Nerd Font package (%s)", async (installedFont) => {
+		const commands = [];
+		await installSystemPackages("yay", true, {
+			readFileImpl: () => "",
+			installArchPackageBatchImpl: async () => ({
+				failed: [],
+				missing: [],
+				invalid: [],
+			}),
+			getInstalledPackagesImpl: async () =>
+				new Set(installedFont ? [installedFont] : []),
+			runCommandImpl: async (command) => {
+				commands.push(command);
+				return true;
+			},
+			promptUserImpl: async () => false,
+		});
+		expect(commands).toEqual(
+			installedFont
+				? []
+				: ["sudo -n pacman -S --needed --noconfirm ttf-jetbrains-mono-nerd"],
+		);
+	});
+
 	it("passes filtered package-file entries to the batch installer before Nerd Fonts", async () => {
 		const commands = [];
 		const batchRequests = [];
 		const events = [];
 
 		await installSystemPackages("yay", false, {
+			getInstalledPackagesImpl: async () => new Set(),
 			readFileImpl: () =>
 				"# Applications\n chromium \n\nvisual-studio-code-bin\n",
 			installArchPackageBatchImpl: async (packages, options) => {
@@ -664,6 +693,7 @@ describe("system package installation orchestration", () => {
 	it("does not perform a second interactive sudo authentication", async () => {
 		const commands = [];
 		await installSystemPackages("paru", false, {
+			getInstalledPackagesImpl: async () => new Set(),
 			readFileImpl: () => "chromium\n",
 			installArchPackageBatchImpl: async () => ({
 				installed: ["chromium"],
@@ -689,6 +719,7 @@ describe("system package installation orchestration", () => {
 		for (const enabled of [true, false]) {
 			const calls = [];
 			await installSystemPackages("paru", false, {
+				getInstalledPackagesImpl: async () => new Set(),
 				readFileImpl: () => "chromium\n",
 				installArchPackageBatchImpl: async () => ({
 					installed: [],
@@ -705,9 +736,7 @@ describe("system package installation orchestration", () => {
 			});
 
 			expect(calls).toEqual(
-				enabled
-					? ["packages", ["sudoers", { nonInteractiveSudo: true }]]
-					: [],
+				enabled ? ["packages", ["sudoers", { nonInteractiveSudo: true }]] : [],
 			);
 		}
 	});
