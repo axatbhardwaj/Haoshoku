@@ -61,16 +61,15 @@ function parseCodexConfig(text) {
 	return Bun.TOML.parse(text);
 }
 
-export function planExecutorClientConfig(client, original, url) {
+export function planExecutorClientConfig(client, original, url, authorization) {
 	const expected =
 		client === "Claude Code"
 			? {
 					type: "http",
 					url,
-					// biome-ignore lint/suspicious/noTemplateCurlyInString: Claude resolves this reference at runtime.
-					headers: { Authorization: "${EXECUTOR_AUTHORIZATION}" },
+					headers: { Authorization: authorization },
 				}
-			: { url, env_http_headers: { Authorization: "EXECUTOR_AUTHORIZATION" } };
+			: { url, http_headers: { Authorization: authorization } };
 	let config, node, servers;
 	try {
 		if (client === "Claude Code") {
@@ -111,5 +110,5 @@ export function planExecutorClientConfig(client, original, url) {
 		throw new ExecutorClientError(
 			"Codex config is malformed or unsupported for additive setup; use regular MCP TOML tables, then retry. Both configs left intact.",
 		);
-	return `${original ?? ""}\n[mcp_servers.executor]\nurl = ${JSON.stringify(url)}\nenv_http_headers = { Authorization = "EXECUTOR_AUTHORIZATION" }\n`;
+	return `${original ?? ""}\n[mcp_servers.executor]\nurl = ${JSON.stringify(url)}\nhttp_headers = { Authorization = ${JSON.stringify(authorization)} }\n`;
 }

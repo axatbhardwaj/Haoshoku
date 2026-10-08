@@ -42,7 +42,10 @@ export async function configureTailscaleT3({
 		return false;
 	};
 	const probe = async (command, options) => {
-		const result = await captureCommandImpl(command, options);
+		const result = await captureCommandImpl(command, {
+			...options,
+			expectFailure: true,
+		});
 		return result.exitCode === 0 ? result.stdout.trim() : null;
 	};
 	const run = async (command, options) => {
@@ -98,7 +101,11 @@ export async function configureTailscaleT3({
 		step = "T3 service";
 		const version = await probe("t3 --version");
 		const resolved = await probe("command -v t3", { shell: true });
-		if (resolved && resolved !== "/usr/bin/t3") {
+		if (
+			resolved &&
+			resolved !== "/usr/bin/t3" &&
+			fsImpl.existsSync("/usr/bin/t3")
+		) {
 			const packagedVersion = await probe("/usr/bin/t3 --version");
 			logger.warning(
 				`T3 on PATH is ${resolved} (${version ?? "unknown version"}), shadowing packaged /usr/bin/t3 (${packagedVersion ?? "unknown version"}). Inspect these installs.`,

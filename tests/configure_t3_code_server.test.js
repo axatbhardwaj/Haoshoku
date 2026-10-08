@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it } from "bun:test";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { startRunLog } from "../src/common/run_log.js";
+import { runCommandCapture } from "../src/common/utils.js";
 import {
 	configureT3CodeServer,
 	ensureT3NodeRuntime,
@@ -30,6 +32,36 @@ afterEach(() => {
 	for (const home of homes.splice(0)) {
 		fs.rmSync(home, { recursive: true, force: true });
 	}
+});
+
+it("keeps recovered server CLI and readiness probes out of the failure summary", async () => {
+	const f = fixture({ version: null });
+	const run = startRunLog({ version: "test", env: { HOME: f.home } });
+	const capture = f.options.captureCommandImpl;
+	let readiness = 0;
+	f.options.captureCommandImpl = async (command, options) => {
+		const result =
+			command === "tailscale serve status --json" && readiness++ === 0
+				? f.response("", 1)
+				: await capture(command);
+		return runCommandCapture(command, {
+			...options,
+			log: false,
+			spawnImpl: () => ({
+				exited: Promise.resolve(result.exitCode),
+				stdout: new Response(result.stdout).body,
+				stderr: new Response("").body,
+			}),
+		});
+	};
+	expect(await configureT3CodeServer(f.options)).toBe(true);
+	const summary = [];
+	run.finish(0, (message) => summary.push(message));
+	expect(summary).toHaveLength(1);
+	expect(summary[0]).not.toContain("failed command");
+	const text = fs.readFileSync(run.path, "utf8");
+	expect(text).toContain("Probe: t3 --version\nExit: 127");
+	expect(text).toContain("Probe: tailscale serve status --json\nExit: 1");
 });
 
 function fixture({
@@ -555,6 +587,10 @@ describe("Debian Tailscale operator reconciliation", () => {
 			if (command.includes("set --operator")) {
 				expect(warnings.join(" ")).toContain("previous");
 				expect(warnings.join(" ")).toContain("test");
+				f.overrides.set(
+					"tailscale debug prefs",
+					f.response('{"OperatorUser":"test"}'),
+				);
 			}
 			return run(command);
 		};

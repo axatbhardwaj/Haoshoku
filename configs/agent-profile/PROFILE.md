@@ -27,13 +27,20 @@ MCP: `delegate_task`, `t3_thread_launch`, schedules) so all agent work is
 visible and tracked in T3. The driver is a T3 thread. Do not use a harness's
 native subagent tools (Claude Agent tool, Codex spawn, etc.) for delegated work.
 
-## Fleet
+## axnet
 
 The fleet is io (PC), iobook (laptop), iobox (always-on agent box running
 T3 Code), and axat-vps (Debian VPS running Executor and Hermes). Access is
 Tailscale-only: use MagicDNS short names, for example `ssh iobox` or
 `ssh axat-vps`. Hosts SSH to each other by short name using Tailscale SSH
 on Arch hosts and OpenSSH to axat-vps.
+
+Roles:
+
+- io = control center (may work locally or hand work to the workers).
+- iobook and my phone = access points (keep me informed and let me steer; no real work).
+- iobox and axat-vps = workers (do the work locally and never hand work to another host).
+  Subagents and reviewers via T3 on the same host are fine.
 
 Agents may SSH to any fleet host and act there. Accepted risk: one compromised
 agent can reach every fleet host. On iobox, use the 1Password `op` CLI with the
@@ -66,14 +73,3 @@ send me one compact Telegram message through the `axstack-relay` skill
 (`hermes`, home channel). Never send progress or heartbeats. Record this as
 the run's Notification policy. Deduplicate through `axstack-relay`; act in
 the T3 driver thread/GitHub; a failed or uncertain delivery preserves the hold.
-
-<!-- axstack:begin v1 -->
-Use Axstack for engineering work: invoke the matching `axstack-*` skill directly.
-`axstack-implement` loops author -> review -> repair until every PR is merge-ready.
-Route every subagent, delegated worker, reviewer, and cross-harness dispatch through T3 Code orchestration using the `t3-code` MCP.
-Use `delegate_task` for non-writer roles.
-Use `t3_thread_launch` for writers.
-Follow `references/t3-runtime.md` in the installed `axstack` skill for the runtime contract.
-The user authorizes Axstack drivers in T3 to run full-access and launch top-level writer threads and worktrees within approved scope.
-Do not use a harness native subagent tool for delegated work.
-<!-- axstack:end -->

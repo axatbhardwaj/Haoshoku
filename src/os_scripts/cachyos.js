@@ -736,7 +736,7 @@ export async function runCachyOSSetup({
 					);
 					return false;
 				}
-				log.warning(
+				log.error(
 					"Tailscale/T3 setup incomplete — continuing. Retry: haoshoku --tailscale-t3",
 				);
 			}
@@ -747,7 +747,7 @@ export async function runCachyOSSetup({
 				);
 				return false;
 			}
-			log.warning(
+			log.error(
 				`Tailscale/T3 configuration failed (${err?.message ?? err}) — continuing. Retry: haoshoku --tailscale-t3`,
 			);
 		}

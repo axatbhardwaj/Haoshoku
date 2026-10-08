@@ -1383,9 +1383,9 @@ describe("Arch T3 phone access integration", () => {
 		["laptop", true],
 	])("runs after user apps on %s and continues on failure (throws=%s)", async (deviceType, throws) => {
 		const events = [];
-		const warnings = [];
-		const original = log.warning;
-		log.warning = (message) => warnings.push(message);
+		const errors = [];
+		const original = log.error;
+		log.error = (message) => errors.push(message);
 		try {
 			const result = await runCachyOSSetup({
 				readDeviceTypeImpl: () => deviceType,
@@ -1422,9 +1422,10 @@ describe("Arch T3 phone access integration", () => {
 				"tailscale-t3",
 				"sudo-stop",
 			]);
-			expect(warnings.join(" ")).toContain("--tailscale-t3");
+			expect(errors).toHaveLength(1);
+			expect(errors[0]).toContain("--tailscale-t3");
 		} finally {
-			log.warning = original;
+			log.error = original;
 		}
 	});
 });

@@ -1,5 +1,9 @@
-import { describe, expect, it } from "bun:test";
-import { log } from "../src/common/utils.js";
+import { afterEach, describe, expect, it } from "bun:test";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { startRunLog } from "../src/common/run_log.js";
+import { log, runCommand, runCommandCapture } from "../src/common/utils.js";
 import { runCachyOSSetup } from "../src/os_scripts/cachyos.js";
 import { configureTailscaleT3 } from "../src/helpers/configure_tailscale_t3.js";
 
@@ -32,6 +36,7 @@ const serve = {
 
 function fixture({ fresh = false, loggedOut = fresh } = {}) {
 	let serviceActive = !fresh;
+	let operator = fresh ? "" : "test";
 	const events = [];
 	const warnings = [];
 	const messages = [];
@@ -56,6 +61,7 @@ function fixture({ fresh = false, loggedOut = fresh } = {}) {
 		deviceType: "pc",
 		env: {},
 		fsImpl: {
+			existsSync: (file) => files.has(file),
 			readdirSync: () => [],
 			statSync: () => {
 				throw Object.assign(new Error("absent fixture"), { code: "ENOENT" });
@@ -111,7 +117,7 @@ function fixture({ fresh = false, loggedOut = fresh } = {}) {
 					BackendState: loggedOut ? "NeedsLogin" : "Running",
 				});
 			else if (command === "tailscale debug prefs")
-				stdout = JSON.stringify({ OperatorUser: fresh ? "" : "test" });
+				stdout = JSON.stringify({ OperatorUser: operator });
 			else if (command === "t3 --version")
 				stdout = "t3 v0.0.46-nightly.20261004.2644";
 			else if (command === "tailscale serve status --json")
@@ -122,6 +128,10 @@ function fixture({ fresh = false, loggedOut = fresh } = {}) {
 		runCommandImpl: async (command, init) => {
 			events.push(command);
 			mutations.push(command);
+			if (command.startsWith("sudo -n tailscale set --operator=")) {
+				operator = options.env.SUDO_USER || options.user;
+				overrides.delete("tailscale debug prefs");
+			}
 			if (command.startsWith("sudo -n systemctl mask "))
 				for (const target of command.split(" ").slice(4))
 					masks.set(target, "masked");
@@ -311,6 +321,10 @@ describe("Tailscale operator reconciliation", () => {
 			expect(f.warnings.join(" ")).toContain("previous");
 			expect(f.warnings.join(" ")).toContain("test");
 			f.mutations.push(command);
+			f.overrides.set("tailscale debug prefs", {
+				stdout: '{"OperatorUser":"test"}',
+				exitCode: 0,
+			});
 			return true;
 		};
 		expect(await configureTailscaleT3(f.options)).toBe(true);
@@ -452,6 +466,7 @@ it("immediately reports a non-loopback iobox listener without retrying HTTPS", a
 describe("Arch T3 installation diagnostics", () => {
 	it("warns about a shadowing CLI with both paths and versions, without removing it", async () => {
 		const f = fixture();
+		f.files.set("/usr/bin/t3", "packaged CLI");
 		f.overrides.set("command -v t3", {
 			stdout: "/home/test/.local/bin/t3",
 			exitCode: 0,
@@ -472,6 +487,18 @@ describe("Arch T3 installation diagnostics", () => {
 		expect(f.mutations).toEqual([]);
 	});
 
+	it("does not probe or warn about an absent packaged CLI", async () => {
+		const f = fixture();
+		f.overrides.set("command -v t3", {
+			stdout: "/home/test/.local/bin/t3",
+			exitCode: 0,
+		});
+		f.overrides.set("/usr/bin/t3 --version", { stdout: "", exitCode: 127 });
+		expect(await configureTailscaleT3(f.options)).toBe(true);
+		expect(f.events).not.toContain("/usr/bin/t3 --version");
+		expect(f.warnings).toEqual([]);
+	});
+
 	it("warns when stable and nightly packages coexist without uninstalling them", async () => {
 		const f = fixture();
 		f.overrides.set("pacman -Q t3code-bin", {
@@ -483,6 +510,70 @@ describe("Arch T3 installation diagnostics", () => {
 		expect(f.warnings.join(" ")).toContain("t3code-nightly-bin");
 		expect(f.mutations).toEqual([]);
 	});
+});
+
+const logRoots = [];
+afterEach(() => {
+	for (const root of logRoots.splice(0)) fs.rmSync(root, { recursive: true });
+});
+
+it.each([
+	true,
+	false,
+])("summarizes only actual setup failures after expected probes (enable succeeds=%s)", async (succeeds) => {
+	const f = fixture({ fresh: true, loggedOut: false });
+	const root = fs.mkdtempSync(path.join(os.tmpdir(), "t3-probe-log-"));
+	logRoots.push(root);
+	const run = startRunLog({ version: "test", env: { HOME: root } });
+	const capture = f.options.captureCommandImpl;
+	f.options.captureCommandImpl = async (command, options) => {
+		const result = await capture(command);
+		return runCommandCapture(command, {
+			...options,
+			log: false,
+			spawnImpl: () => ({
+				exited: Promise.resolve(result.exitCode),
+				stdout: new Response(result.stdout).body,
+				stderr: new Response("").body,
+			}),
+		});
+	};
+	const execute = f.options.runCommandImpl;
+	f.options.runCommandImpl = async (command, options) => {
+		const result = succeeds && (await execute(command, options));
+		return runCommand(command, {
+			log: false,
+			spawnImpl: () => ({
+				exited: Promise.resolve(result ? 0 : 1),
+				stdout: new Response("").body,
+				stderr: new Response("").body,
+			}),
+		});
+	};
+	f.overrides.set("command -v t3", {
+		stdout: "/home/test/.local/bin/t3",
+		exitCode: 0,
+	});
+	f.overrides.set("/usr/bin/t3 --version", { stdout: "", exitCode: 127 });
+	expect(await configureTailscaleT3(f.options)).toBe(succeeds);
+	const summary = [];
+	run.finish(0, (message) => summary.push(message));
+	expect(summary).toHaveLength(1);
+	const text = fs.readFileSync(run.path, "utf8");
+	if (succeeds) {
+		expect(summary[0]).not.toContain("failed command");
+		expect(text).toContain("Probe: pacman -Q t3code-bin\nExit: 1");
+		expect(text).toContain(
+			"Probe: systemctl is-enabled --quiet tailscaled.service\nExit: 1",
+		);
+		expect(text).not.toContain("/usr/bin/t3 --version");
+	} else {
+		expect(summary[0]).toContain("1 failed command/step:");
+		expect(summary[0]).toContain(
+			"sudo -n pacman -S --needed --noconfirm tailscale",
+		);
+		expect(summary[0]).not.toContain("pacman -Q tailscale");
+	}
 });
 
 const lingerProbe = "loginctl show-user 'test' -p Linger";
@@ -745,6 +836,91 @@ describe("Arch full setup always-on failures", () => {
 			expect(f.messages.join(" ")).not.toContain("are ready");
 		} finally {
 			log.error = original;
+		}
+	});
+});
+
+describe("Arch full setup T3 failure summary", () => {
+	it.each([
+		["pc", "ready"],
+		["pc", "missing"],
+		["pc", "throws"],
+		["laptop", "missing"],
+		["laptop", "throws"],
+	])("continues %s setup and counts the T3 %s outcome once", async (deviceType, outcome) => {
+		const f = fixture({ fresh: true, loggedOut: false });
+		const root = fs.mkdtempSync(path.join(os.tmpdir(), "arch-t3-step-log-"));
+		logRoots.push(root);
+		const run = startRunLog({ version: "test", env: { HOME: root } });
+		const events = [];
+		f.overrides.set("command -v t3", {
+			stdout: "/home/test/.local/bin/t3",
+			exitCode: 0,
+		});
+		if (outcome === "missing")
+			f.overrides.set("t3 --version", { stdout: "", exitCode: 127 });
+		const capture = f.options.captureCommandImpl;
+		f.options.captureCommandImpl = async (command, options) => {
+			const result = await capture(command);
+			return runCommandCapture(command, {
+				...options,
+				log: false,
+				spawnImpl: () => ({
+					exited: Promise.resolve(result.exitCode),
+					stdout: new Response(result.stdout).body,
+					stderr: new Response("").body,
+				}),
+			});
+		};
+		expect(
+			await runCachyOSSetup({
+				promptDeviceTypeImpl: async () => {},
+				readDeviceTypeImpl: () => deviceType,
+				startSudoSessionImpl: async () => () => events.push("sudo-stop"),
+				commandExistsImpl: async () => false,
+				prepareArchPackageManagerImpl: async () => true,
+				ensureRustToolchainImpl: async () => {},
+				ensureAurHelperImpl: async () => "paru",
+				installDevToolsImpl: async () => {},
+				installSystemPackagesImpl: async () => {},
+				installFlatpakAppsImpl: async () => {},
+				configureUserAppsImpl: async () => {},
+				configureTailscaleT3Impl: (options) => {
+					if (outcome === "throws") throw new Error("T3 probe unavailable");
+					return configureTailscaleT3({ ...f.options, ...options });
+				},
+				configureBraveManagedPoliciesImpl: async () => {},
+				configureHyprmoncfgImpl: async () => {},
+				configureOmarchyWorkspacesImpl: async () => {},
+				configureOmarchyPluginsImpl: async () => {},
+				configureVoxtypeOsdImpl: async () => {},
+				configureKdeConnectCommandsImpl: async () => {},
+				configureOmarchyBarImpl: async () => {},
+				configureOmazedImpl: async () => {},
+				configureOmarchyAppearanceImpl: async () => {},
+				configureFleetSshImpl: async () => {
+					events.push("fleet-ssh");
+					return true;
+				},
+			}),
+		).toBe(true);
+		expect(events).toEqual(["fleet-ssh", "sudo-stop"]);
+		const summary = [];
+		run.finish(0, (message) => summary.push(message));
+		expect(summary).toHaveLength(1);
+		const text = fs.readFileSync(run.path, "utf8");
+		if (outcome === "ready") {
+			expect(summary[0]).not.toContain("failed command");
+			expect(text).toContain("Probe: pacman -Q t3code-bin\nExit: 1");
+			expect(text).toContain(
+				"Probe: systemctl is-enabled --quiet tailscaled.service\nExit: 1",
+			);
+		} else {
+			expect(summary[0]).toContain("1 failed command/step:");
+			expect(summary[0]).toContain("Tailscale/T3");
+			expect(summary[0]).toContain("haoshoku --tailscale-t3");
+			if (outcome === "missing")
+				expect(text).toContain("Probe: t3 --version\nExit: 127");
 		}
 	});
 });

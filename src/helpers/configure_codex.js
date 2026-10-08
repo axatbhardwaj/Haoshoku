@@ -6,12 +6,12 @@ import {
 	exportCodexStatusLine,
 	writeCodexStatusLine,
 } from "./codex_status_line.js";
+import { log, portabilizeHome, runCommand } from "../common/utils.js";
+
 import {
-	log,
-	portabilizeHome,
-	runCommand,
-	safeCopyFile,
-} from "../common/utils.js";
+	stripAxstackBlock,
+	syncAgentInstructions,
+} from "./agent_instructions.js";
 
 const HOME = homedir();
 const CUSTOM_CODEX_DIR = path.join(PROJECT_ROOT, "configs", "codex");
@@ -62,7 +62,7 @@ export async function syncCodexConfig(options = {}) {
 		const destPath = codexFilePath(file.src, codexHome);
 		if (fs.existsSync(srcPath)) {
 			fs.mkdirSync(path.dirname(destPath), { recursive: true });
-			safeCopyFile(srcPath, destPath);
+			syncAgentInstructions(srcPath, destPath);
 			log.info(`Copied ${file.src}`);
 		} else {
 			log.warning(
@@ -92,7 +92,7 @@ export async function backupCodexConfig(options = {}) {
 			const destPath = path.join(srcDir, file.src);
 			fs.mkdirSync(path.dirname(destPath), { recursive: true });
 			const portable = portabilizeHome(
-				fs.readFileSync(livePath, "utf8"),
+				stripAxstackBlock(fs.readFileSync(livePath, "utf8")),
 				codexHome,
 			);
 			fs.writeFileSync(destPath, portable);
