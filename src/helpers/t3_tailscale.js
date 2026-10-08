@@ -143,24 +143,24 @@ export async function waitForT3Tailscale({
 				? null
 				: tailscaleHttpsUrl(config);
 		if (url) {
+			let ready = false;
 			try {
 				const response = await fetchImpl(url, {
 					signal: AbortSignal.timeout(HTTPS_TIMEOUT_MS),
 					redirect: "error",
 				});
 				await response.body?.cancel();
-				if (response.ok) {
-					if (!(await verifyT3Loopback(probe, logger, fail))) return false;
-					logger.success(
-						`T3 Code service and Tailscale HTTPS are ready: ${url}`,
-					);
-					logger.info(
-						`Pair your phone on the same tailnet with: ${t3} pair --tailscale`,
-					);
-					return true;
-				}
+				ready = response.ok;
 			} catch {
 				// Serve and HTTPS certificates can take time to become available.
+			}
+			if (ready) {
+				if (!(await verifyT3Loopback(probe, logger, fail))) return false;
+				logger.success(`T3 Code service and Tailscale HTTPS are ready: ${url}`);
+				logger.info(
+					`Pair your phone on the same tailnet with: ${t3} pair --tailscale`,
+				);
+				return true;
 			}
 		}
 		if (attempt < attempts - 1) await sleepImpl(READINESS_INTERVAL_MS);

@@ -1,4 +1,6 @@
 import { describe, expect, it } from "bun:test";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
 const projectRoot = path.resolve(import.meta.dir, "..");
@@ -9,7 +11,7 @@ const t3Helper = path.join(
 	"src/helpers/configure_tailscale_t3.js",
 );
 
-function runServerMode(detectedOS, helperResult = true) {
+function runServerMode(detectedOS, helperResult = true, helperError) {
 	const childScript = `
 		import { mock } from "bun:test";
 		mock.module(${JSON.stringify(cliUtils)}, () => ({
@@ -19,6 +21,7 @@ function runServerMode(detectedOS, helperResult = true) {
 		mock.module(${JSON.stringify(t3Helper)}, () => ({
 			configureTailscaleT3: async () => {
 				console.log("T3_HELPER_CALLED");
+				if (${JSON.stringify(helperError ?? null)}) throw new Error(${JSON.stringify(helperError ?? null)});
 				return ${JSON.stringify(helperResult)};
 			},
 		}));
@@ -26,14 +29,24 @@ function runServerMode(detectedOS, helperResult = true) {
 		await import(${JSON.stringify(cli)} + "?tailscale-t3-" + ${JSON.stringify(detectedOS)});
 	`;
 
-	const child = Bun.spawnSync([process.execPath, "--eval", childScript], {
-		stderr: "pipe",
-		stdout: "pipe",
-	});
-	return {
-		exitCode: child.exitCode,
-		output: `${new TextDecoder().decode(child.stdout)}\n${new TextDecoder().decode(child.stderr)}`,
-	};
+	const home = fs.mkdtempSync(path.join(os.tmpdir(), "tailscale-t3-cli-"));
+	try {
+		const child = Bun.spawnSync([process.execPath, "--eval", childScript], {
+			env: {
+				...process.env,
+				HOME: home,
+				XDG_STATE_HOME: path.join(home, "state"),
+			},
+			stderr: "pipe",
+			stdout: "pipe",
+		});
+		return {
+			exitCode: child.exitCode,
+			output: `${new TextDecoder().decode(child.stdout)}\n${new TextDecoder().decode(child.stderr)}`,
+		};
+	} finally {
+		fs.rmSync(home, { recursive: true });
+	}
 }
 
 describe("--tailscale-t3", () => {
@@ -54,4 +67,13 @@ describe("--tailscale-t3", () => {
 		expect(result.exitCode, result.output).toBe(1);
 		expect(result.output).toContain("T3_HELPER_CALLED");
 	});
+});
+
+it("reports a throwing iobox T3 helper cleanly with exit 1", () => {
+	const result = runServerMode("arch", false, "linger failed: sudo denied");
+	expect(result.exitCode, result.output).toBe(1);
+	expect(result.output).toContain("linger failed: sudo denied");
+	expect(result.output).not.toContain("at configureTailscaleT3");
+	expect(result.output).not.toContain("throw new Error");
+	expect(result.output.toLowerCase()).not.toContain("unhandled");
 });

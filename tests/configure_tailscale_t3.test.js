@@ -433,6 +433,22 @@ describe("Arch T3 listener verification", () => {
 	});
 });
 
+it("immediately reports a non-loopback iobox listener without retrying HTTPS", async () => {
+	const f = fixture();
+	f.options.deviceType = "iobox";
+	f.options.maxReadinessAttempts = 3;
+	const sleeps = [];
+	f.options.sleepImpl = async (ms) => sleeps.push(ms);
+	f.overrides.set(listenerCommand, {
+		stdout: "LISTEN 0 128 0.0.0.0:3773 0.0.0.0:*",
+		exitCode: 0,
+	});
+	await expect(configureTailscaleT3(f.options)).rejects.toThrow("not loopback");
+	expect(sleeps).toEqual([]);
+	expect(f.events.filter((event) => event === url)).toHaveLength(1);
+	expect(f.messages.join(" ")).not.toContain("are ready");
+});
+
 describe("Arch T3 installation diagnostics", () => {
 	it("warns about a shadowing CLI with both paths and versions, without removing it", async () => {
 		const f = fixture();

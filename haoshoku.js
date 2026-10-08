@@ -464,7 +464,12 @@ async function runAction(options) {
 			process.exitCode = 2;
 			return;
 		}
-		if (!(await configureTailscaleT3())) process.exitCode = 1;
+		try {
+			if (!(await configureTailscaleT3())) process.exitCode = 1;
+		} catch (error) {
+			log.error(error.message);
+			process.exitCode = 1;
+		}
 		return;
 	}
 
