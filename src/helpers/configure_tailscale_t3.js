@@ -81,8 +81,6 @@ export async function configureTailscaleT3({
 			user === "root" && env.SUDO_USER && env.SUDO_USER !== "root"
 				? env.SUDO_USER
 				: user;
-		if (!operator || operator === "root")
-			return fail("linger requires a non-root setup user");
 		if (
 			!(await ensureTailscaleOperator({
 				user: operator,
@@ -127,13 +125,16 @@ export async function configureTailscaleT3({
 		});
 		if (!desktop) return false;
 		step = "linger";
-		const lingerCommand = `loginctl show-user ${shellQuote(operator)} -p Linger`;
-		const linger = await probe(lingerCommand);
-		if (linger !== "Linger=yes") {
-			if (linger !== "Linger=no") return fail("Cannot verify linger state");
-			await run(`sudo -n loginctl enable-linger ${shellQuote(operator)}`);
-			if ((await probe(lingerCommand)) !== "Linger=yes")
-				return fail("linger was not enabled after enable-linger");
+		if (!operator || operator === "root") {
+			fail("linger requires a non-root setup user");
+		} else {
+			const lingerCommand = `loginctl show-user ${shellQuote(operator)} -p Linger`;
+			const linger = await probe(lingerCommand);
+			if (linger !== "Linger=yes") {
+				await run(`sudo -n loginctl enable-linger ${shellQuote(operator)}`);
+				if ((await probe(lingerCommand)) !== "Linger=yes")
+					return fail("linger was not enabled after enable-linger");
+			}
 		}
 		if (deviceType === "iobox") {
 			step = "sleep mask";
@@ -142,6 +143,7 @@ export async function configureTailscaleT3({
 				"suspend.target",
 				"hibernate.target",
 				"hybrid-sleep.target",
+				"suspend-then-hibernate.target",
 			];
 			const unmasked = [];
 			const maskCommand = (target) =>

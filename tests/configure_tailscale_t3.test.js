@@ -15,6 +15,7 @@ const sleepTargets = [
 	"suspend.target",
 	"hibernate.target",
 	"hybrid-sleep.target",
+	"suspend-then-hibernate.target",
 ];
 const maskProbe = (target) =>
 	`systemctl show ${target} --property=UnitFileState --value`;
@@ -524,15 +525,12 @@ describe("Arch T3 linger", () => {
 		"denied",
 		"throws",
 		"not-enabled",
-		"probe-failed",
-		"root",
 	])("reports linger %s without claiming readiness", async (mode) => {
 		const f = fixture();
 		f.overrides.set(lingerProbe, {
 			stdout: "Linger=no",
-			exitCode: mode === "probe-failed" ? 1 : 0,
+			exitCode: 0,
 		});
-		if (mode === "root") f.options.user = "root";
 		const run = f.options.runCommandImpl;
 		f.options.runCommandImpl = async (command, options) => {
 			if (command === lingerEnable) {
@@ -544,8 +542,69 @@ describe("Arch T3 linger", () => {
 		expect(await configureTailscaleT3(f.options)).toBe(false);
 		expect(f.warnings.join(" ")).toContain("linger");
 		expect(f.messages.join(" ")).not.toContain("are ready");
-		if (["root", "probe-failed"].includes(mode))
-			expect(f.mutations).toEqual([]);
+	});
+});
+
+describe("Arch linger without an existing logind user", () => {
+	it.each([
+		{ stdout: "", exitCode: 1 },
+		{ stdout: "unexpected", exitCode: 0 },
+		{ stdout: "", exitCode: 0 },
+	])("enables then verifies after initial state %j", async (initial) => {
+		const f = fixture();
+		f.options.deviceType = "iobox";
+		f.overrides.set(lingerProbe, initial);
+		const run = f.options.runCommandImpl;
+		f.options.runCommandImpl = async (command, options) => {
+			const result = await run(command, options);
+			if (command === lingerEnable)
+				f.overrides.set(lingerProbe, { stdout: "Linger=yes", exitCode: 0 });
+			return result;
+		};
+		expect(await configureTailscaleT3(f.options)).toBe(true);
+		expect(f.mutations).toEqual([lingerEnable]);
+		expect(f.events.filter((command) => command === lingerProbe)).toHaveLength(
+			2,
+		);
+		f.mutations.length = 0;
+		expect(await configureTailscaleT3(f.options)).toBe(true);
+		expect(f.mutations).toEqual([]);
+	});
+});
+
+describe("Arch root linger policy", () => {
+	it("names the missing non-root user as a linger failure on iobox", async () => {
+		const f = fixture();
+		f.options.user = "root";
+		f.options.deviceType = "iobox";
+		await expect(configureTailscaleT3(f.options)).rejects.toThrow(
+			/^linger failed:/,
+		);
+		expect(f.events).toContain("t3 --version");
+		expect(f.events.some((command) => command.startsWith("loginctl "))).toBe(
+			false,
+		);
+		expect(f.messages.join(" ")).not.toContain("are ready");
+	});
+
+	it.each([
+		"pc",
+		"laptop",
+	])("warns about root linger and still installs the %s T3 service", async (deviceType) => {
+		const f = fixture({ fresh: true, loggedOut: false });
+		f.options.user = "root";
+		f.options.deviceType = deviceType;
+		expect(await configureTailscaleT3(f.options)).toBe(true);
+		expect(f.warnings.join(" ")).toContain(
+			"linger requires a non-root setup user",
+		);
+		expect(f.mutations).toContain(
+			"t3 service install --base-dir '/home/test/.t3'",
+		);
+		expect(f.events.some((command) => command.includes("loginctl"))).toBe(
+			false,
+		);
+		expect(f.messages.join(" ")).toContain("are ready");
 	});
 });
 
@@ -556,7 +615,7 @@ describe("iobox sleep targets", () => {
 		for (const target of sleepTargets.slice(1)) f.masks.set(target, "static");
 		expect(await configureTailscaleT3(f.options)).toBe(true);
 		expect(f.mutations).toEqual([
-			"sudo -n systemctl mask suspend.target hibernate.target hybrid-sleep.target",
+			"sudo -n systemctl mask suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target",
 		]);
 		for (const target of sleepTargets.slice(1)) {
 			expect(f.masks.get(target)).toBe("masked");
