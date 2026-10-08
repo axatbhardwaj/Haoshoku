@@ -781,3 +781,37 @@ describe("seeded configs/audio/ (in-tree static configs)", () => {
 		expect(docs).toMatch(/other[^.\n]*skip/i);
 	});
 });
+
+for (const [operation, run] of [
+	["syncAudioConfig", audio.syncAudioConfig],
+	["backupAudioConfig", audio.backupAudioConfig],
+]) {
+	it(`${operation} refuses iobox before portable or device-routed writes`, async () => {
+		seedRepoFixtures();
+		fs.writeFileSync(
+			path.join(tmpHome, ".haoshoku.json"),
+			'{"deviceType":"iobox"}\n',
+		);
+		const live = path.join(tmpHome, ".config", "pipewire", "pipewire.conf.d");
+		fs.mkdirSync(live, { recursive: true });
+		fs.writeFileSync(path.join(live, "live.conf"), "live audio\n");
+		const files = (directory) =>
+			Object.fromEntries(
+				fs
+					.readdirSync(directory, { recursive: true })
+					.sort()
+					.filter((file) => fs.statSync(path.join(directory, file)).isFile())
+					.map((file) => [
+						file,
+						fs.readFileSync(path.join(directory, file), "utf8"),
+					]),
+			);
+		const beforeHome = files(tmpHome);
+		const beforeRepo = files(tmpProjectRoot);
+		await expect(
+			run({ home: tmpHome, projectRoot: tmpProjectRoot }),
+		).rejects.toThrow("not supported on iobox");
+		expect(files(tmpHome)).toEqual(beforeHome);
+		expect(files(tmpProjectRoot)).toEqual(beforeRepo);
+	});
+}

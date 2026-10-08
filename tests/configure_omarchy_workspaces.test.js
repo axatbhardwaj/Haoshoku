@@ -21,6 +21,47 @@ describe("configureOmarchyWorkspaces", () => {
 	});
 	afterEach(() => fs.rmSync(home, { recursive: true, force: true }));
 
+	it("refuses iobox before any overlay lookup or write", async () => {
+		fs.writeFileSync(
+			path.join(home, ".haoshoku.json"),
+			'{"deviceType":"iobox"}\n',
+		);
+		fs.writeFileSync(
+			path.join(home, ".config", "hypr", "hyprland.lua"),
+			'require("hypr.defaults")\n',
+		);
+		const before = fs.readFileSync(
+			path.join(home, ".config", "hypr", "hyprland.lua"),
+			"utf8",
+		);
+		const lookups = [];
+		const fsImpl = new Proxy(fs, {
+			get(target, key) {
+				if (key !== "readFileSync") return target[key];
+				return (file, ...args) => {
+					lookups.push(String(file));
+					return target.readFileSync(file, ...args);
+				};
+			},
+		});
+		const result = await configureV4({ fsImpl }).catch((error) => ({
+			status: "error",
+			message: error.message,
+		}));
+		expect(result.status).toBe("refused");
+		expect(result.message).toContain("not supported on iobox");
+		expect(lookups.some((file) => file.includes("-iobox"))).toBe(false);
+		expect(fs.existsSync(path.join(home, ".config", "hypr", "haoshoku"))).toBe(
+			false,
+		);
+		expect(
+			fs.readFileSync(
+				path.join(home, ".config", "hypr", "hyprland.lua"),
+				"utf8",
+			),
+		).toBe(before);
+	});
+
 	it("deploys Lua overlays to the v4 module paths and requires both", async () => {
 		fs.writeFileSync(
 			path.join(home, ".config", "hypr", "hyprland.lua"),

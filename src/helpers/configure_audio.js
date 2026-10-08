@@ -231,6 +231,9 @@ export async function syncAudioConfig(opts = {}) {
   } = resolvePaths(opts);
 
   const deviceType = readConfiguredDeviceType(home);
+  if (deviceType === "iobox") {
+    throw new Error("Audio configuration is not supported on iobox.");
+  }
   log.info(`Syncing audio config (deviceType=${deviceType ?? "unset"})...`);
 
   // Portable PipeWire drop-ins
@@ -294,6 +297,9 @@ export async function backupAudioConfig(opts = {}) {
   } = resolvePaths(opts);
 
   const deviceType = readConfiguredDeviceType(home);
+  if (deviceType === "iobox") {
+    throw new Error("Audio configuration is not supported on iobox.");
+  }
   log.info(`Backing up audio config (deviceType=${deviceType ?? "unset"})...`);
 
   // Portable PipeWire drop-ins
