@@ -1,5 +1,5 @@
 import defaultManifest from "../../configs/fleet.json";
-import { DEVICE_TYPES } from "./utils.js";
+import { DEVICE_TYPES, runCommandCapture } from "./utils.js";
 
 const HOST_FIELDS = new Set([
 	"hostname",
@@ -27,7 +27,11 @@ function requireObject(value, fields, label) {
 }
 
 export function loadFleet({ manifest = defaultManifest } = {}) {
-	requireObject(manifest, new Set(["tailnet", "hosts"]), "fleet");
+	requireObject(manifest, new Set(["name", "tailnet", "hosts"]), "fleet");
+	requireValid(
+		typeof manifest.name === "string" && manifest.name.trim().length > 0,
+		"name must be a non-empty string",
+	);
 	requireValid(
 		typeof manifest.tailnet === "string" &&
 			manifest.tailnet.includes(".") &&
@@ -50,7 +54,7 @@ export function loadFleet({ manifest = defaultManifest } = {}) {
 		);
 		hostnames.add(hostname);
 		requireValid(
-			["pc", "laptop", "agent box", "vps"].includes(host.role),
+			["control", "access", "worker"].includes(host.role),
 			`${host.hostname}: invalid role`,
 		);
 		requireValid(
@@ -89,4 +93,23 @@ export function lookupHost(hostname, options) {
 	return (
 		loadFleet(options).hosts.find((host) => host.hostname === hostname) ?? null
 	);
+}
+
+// Shared by standalone preflight and full setup, before either writes fleet state.
+export async function readFleetStatus({
+	fleet = loadFleet(),
+	captureCommandImpl = runCommandCapture,
+} = {}) {
+	const result = await captureCommandImpl("tailscale status --json");
+	if (result?.exitCode !== 0)
+		throw new Error("Cannot inspect tailscale status --json");
+	const status = JSON.parse(result.stdout);
+	if (
+		status?.BackendState !== "Running" ||
+		status?.MagicDNSSuffix !== fleet.tailnet
+	)
+		throw new Error(
+			`Tailscale must be Running on fleet tailnet ${fleet.tailnet}`,
+		);
+	return status;
 }

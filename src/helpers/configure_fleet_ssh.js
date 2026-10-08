@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { homedir, hostname as getHostname } from "node:os";
 import path from "node:path";
 import { detectOS } from "../common/cli_utils.js";
-import { loadFleet } from "../common/fleet.js";
+import { loadFleet, readFleetStatus } from "../common/fleet.js";
 import { log, runCommand, runCommandCapture } from "../common/utils.js";
 
 function readOptional(file, fsImpl) {
@@ -161,6 +161,15 @@ export async function configureFleetSsh({
 		if (standalone) logger.warning("--fleet-ssh requires an Arch fleet host.");
 		return !standalone;
 	}
+	let status;
+	try {
+		status = await readFleetStatus({ fleet, captureCommandImpl });
+	} catch (error) {
+		logger.warning(
+			`${standalone ? "Tailscale SSH failed" : "Skipping fleet SSH"}: ${error.message}.`,
+		);
+		return !standalone;
+	}
 	const fail = (message) => {
 		if (throwOnFailure || (deviceType ?? self.deviceType) === "iobox")
 			throw new Error(message);
@@ -174,9 +183,6 @@ export async function configureFleetSsh({
 	};
 	let step = "Tailscale SSH";
 	try {
-		const status = await inspect("tailscale status --json");
-		if (status?.BackendState !== "Running")
-			throw new Error("Tailscale is not running/logged in");
 		let prefs = await inspect("tailscale debug prefs");
 		if (prefs?.RunSSH === false) {
 			if (!(await runCommandImpl("tailscale set --ssh")))

@@ -7,11 +7,12 @@ import { promptDeviceType } from "../src/common/device_type.js";
 import { log, readConfiguredDeviceType } from "../src/common/utils.js";
 
 const manifest = {
+	name: "testnet",
 	tailnet: "example.ts.net",
 	hosts: [
 		{
 			hostname: "desktop",
-			role: "pc",
+			role: "control",
 			os: "arch",
 			deviceType: "pc",
 			sshUser: "tester",
@@ -19,7 +20,7 @@ const manifest = {
 		},
 		{
 			hostname: "portable",
-			role: "laptop",
+			role: "access",
 			os: "arch",
 			deviceType: "laptop",
 			sshUser: "tester",
@@ -27,7 +28,7 @@ const manifest = {
 		},
 		{
 			hostname: "worker",
-			role: "agent box",
+			role: "worker",
 			os: "arch",
 			deviceType: "iobox",
 			sshUser: "tester",
@@ -35,7 +36,7 @@ const manifest = {
 		},
 		{
 			hostname: "server",
-			role: "vps",
+			role: "worker",
 			os: "debian",
 			sshUser: "root",
 			transport: "openssh",

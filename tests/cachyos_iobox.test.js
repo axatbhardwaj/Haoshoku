@@ -238,7 +238,16 @@ it.each(["pc", "laptop", "iobox"])("handles fleet SSH failure on %s", async (dev
 									? "iobook"
 									: "io",
 						osType: "arch",
-						captureCommandImpl: async () => ({ exitCode: 1, stdout: "" }),
+						captureCommandImpl: async (command) =>
+							command === "tailscale status --json"
+								? {
+										exitCode: 0,
+										stdout: JSON.stringify({
+											BackendState: "Running",
+											MagicDNSSuffix: "tail140c22.ts.net",
+										}),
+									}
+								: { exitCode: 1, stdout: "" },
 						runCommandImpl: async () => {
 							throw new Error("unexpected mutation");
 						},

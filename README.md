@@ -402,9 +402,9 @@ Run `haoshoku --help` for the complete current list.
 
 ## iobox profile and fleet
 
-The fleet in [`configs/fleet.json`](configs/fleet.json) is io (PC), iobook
-(laptop), iobox (always-on Omarchy agent box running T3), and axat-vps (Debian
-VPS running Executor and Hermes). Everything is reached over Tailscale only.
+The axnet fleet in [`configs/fleet.json`](configs/fleet.json) is io (PC, control),
+iobook (laptop, access), iobox (always-on Omarchy agent box running T3, worker),
+and axat-vps (Debian VPS running Executor and Hermes, worker). Everything is reached over Tailscale only.
 Use MagicDNS short names (`ssh io`, `ssh iobook`, `ssh iobox`, `ssh axat-vps`);
 Arch hosts use Tailscale SSH, and axat-vps keeps OpenSSH. Agents may SSH to any
 fleet host and act there. Accepted risk: one compromised agent reaches every host.
@@ -425,7 +425,10 @@ verifies `sleep.target`, `suspend.target`, `hibernate.target`,
 or sleep-mask failures stop iobox setup with the failed step named.
 
 `--fleet-ssh` runs only fleet SSH setup on an Arch fleet host; Debian and
-non-fleet hosts are refused without changes. Full Arch setup also runs it.
+non-fleet hosts are refused without changes. Tailscale must report `BackendState`
+`Running` and `MagicDNSSuffix` matching the manifest tailnet (`tail140c22.ts.net`)
+before fleet actions. Otherwise standalone mode exits non-zero without writing
+files; full Arch setup skips fleet SSH with a message.
 It enables/verifies Tailscale SSH, writes `~/.ssh/config.d/haoshoku-fleet`, and
 puts its Include first in `~/.ssh/config`, preserving user Host/Match blocks.
 Arch peer keys from Tailscale go to `~/.ssh/known_hosts_fleet` with strict host

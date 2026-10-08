@@ -23,6 +23,7 @@ beforeEach(() => {
 						? { RunSSH: true }
 						: {
 								BackendState: "Running",
+								MagicDNSSuffix: "tail140c22.ts.net",
 								Peer: {
 									book: {
 										DNSName: "iobook.tail140c22.ts.net.",
@@ -57,7 +58,11 @@ function setPeers(peers) {
 			stdout: JSON.stringify(
 				command === "tailscale debug prefs"
 					? { RunSSH: true }
-					: { BackendState: "Running", Peer: peers },
+					: {
+							BackendState: "Running",
+							MagicDNSSuffix: "tail140c22.ts.net",
+							Peer: peers,
+						},
 			),
 		};
 	};
@@ -164,6 +169,7 @@ it.each([
 					? "not-json"
 					: JSON.stringify({
 							BackendState: "Running",
+							MagicDNSSuffix: "tail140c22.ts.net",
 							Peer:
 								failure === "peers"
 									? []
@@ -177,7 +183,7 @@ it.each([
 						}),
 		};
 	};
-	expect(await configureFleetSsh(options)).toBe(false);
+	expect(await configureFleetSsh({ ...options, standalone: true })).toBe(false);
 	expect(fs.readFileSync(file, "utf8")).toBe(old);
 	expect(warnings.join(" ")).toContain(
 		failure === "command" || failure === "json"
@@ -202,7 +208,7 @@ it("preserves previous keys if publishing the rebuilt file fails", async () => {
 			return fs.renameSync(source, destination);
 		},
 	};
-	expect(await configureFleetSsh(options)).toBe(false);
+	expect(await configureFleetSsh({ ...options, standalone: true })).toBe(false);
 	expect(fs.readFileSync(file, "utf8")).toBe(old);
 	expect(fs.readdirSync(path.dirname(file)).sort()).toEqual([
 		"config",

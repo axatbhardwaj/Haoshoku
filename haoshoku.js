@@ -71,6 +71,7 @@ import {
 import { configureOmarchyPlugins } from "./src/helpers/configure_omarchy_plugins.js";
 import { configureOmarchyWorkspaces } from "./src/helpers/configure_omarchy_workspaces.js";
 import { configureTailscaleT3 } from "./src/helpers/configure_tailscale_t3.js";
+import { readFleetStatus } from "./src/common/fleet.js";
 import { configureFleetSsh, getArchFleetHost } from "./src/helpers/configure_fleet_ssh.js";
 import { configureT3CodeServer } from "./src/helpers/configure_t3_code_server.js";
 import {
@@ -204,36 +205,6 @@ const informational = process.argv
 			["--help", "-h", "--version", "-V", "--share-log"].includes(arg) ||
 			arg.startsWith("--share-log="),
 	);
-// Refused fleet mode must leave the host untouched, including run-log files.
-if (
-	!informational &&
-	process.argv.slice(2).includes("--fleet-ssh") &&
-	!getArchFleetHost()
-) {
-	console.error("--fleet-ssh requires an Arch fleet host.");
-	process.exit(1);
-}
-const runLog = informational
-	? null
-	: startRunLog({
-			version: program.version(),
-			argv: clientMode
-				? [
-						process.argv[0],
-						process.argv[1],
-						"--executor-clients",
-						"[https-endpoint]",
-					]
-				: executorIndex === -1
-					? process.argv
-					: [
-							process.argv[0],
-							process.argv[1],
-							"--server-executor",
-							"[executor-origin]",
-						],
-		});
-if (runLog) process.once("exit", (code) => runLog.finish(code));
 
 program
 	.option("--os <type>", "Specify the target OS (arch, debian-server)")
@@ -383,6 +354,46 @@ program
 			process.exit(1);
 		}
 	});
+
+// Refused fleet mode must leave the host untouched, including run-log files.
+if (!informational && process.argv.slice(2).includes("--fleet-ssh")) {
+	program.parseOptions(process.argv.slice(2));
+	if (findActiveModeFlags(program.opts()).length >= 2) {
+		console.error("Mode flags are mutually exclusive — pass exactly one mode flag.");
+		process.exit(2);
+	}
+	if (!getArchFleetHost()) {
+		console.error("--fleet-ssh requires an Arch fleet host.");
+		process.exit(1);
+	}
+	try {
+		await readFleetStatus();
+	} catch (error) {
+		console.error(`Tailscale SSH failed: ${error.message}.`);
+		process.exit(1);
+	}
+}
+const runLog = informational
+	? null
+	: startRunLog({
+			version: program.version(),
+			argv: clientMode
+				? [
+						process.argv[0],
+						process.argv[1],
+						"--executor-clients",
+						"[https-endpoint]",
+					]
+				: executorIndex === -1
+					? process.argv
+					: [
+							process.argv[0],
+							process.argv[1],
+							"--server-executor",
+							"[executor-origin]",
+						],
+		});
+if (runLog) process.once("exit", (code) => runLog.finish(code));
 
 async function runAction(options) {
 	showBanner();
