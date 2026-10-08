@@ -1,9 +1,10 @@
 # Changelog
 
-## Unreleased
+## 12.3.0 - 2026-10-08
 
-These are repository candidate changes; publication and live-host installation
-are separate steps. No release or migration is claimed by this entry.
+This entry records merged T1–T7 source changes for 12.3.0. Tag, npm and Linux
+binary publication require separate verification; live-host installation and
+migration remain separately authorized.
 
 ### Added
 
