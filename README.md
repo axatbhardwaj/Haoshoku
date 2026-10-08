@@ -239,7 +239,11 @@ The shared profile lives at `configs/agent-profile/PROFILE.md`. Apply it to
 Claude, Codex, Opencode, and Antigravity with `haoshoku --agents`, or capture
 the live Claude copy with `haoshoku --agents-backup`. The bundled policy routes
 both Notion accounts and Linear through the configured Executor MCP while T3 Code
-remains responsible for orchestration.
+remains responsible for orchestration. Profile sync preserves the live Axstack-owned
+routing block; shared, Claude and Codex profile backups strip it so Axstack can
+own it on fresh hosts. The shared profile names axnet roles: io is the control
+center, iobook and the phone are access points, and iobox and axat-vps are
+workers that do the work and never delegate.
 
 T3 Code owns agent orchestration, and Axstack supplies routing policy.
 Claude/Codex runtime state and `settings.json` remain machine-local.

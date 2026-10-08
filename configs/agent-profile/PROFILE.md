@@ -27,7 +27,13 @@ MCP: `delegate_task`, `t3_thread_launch`, schedules) so all agent work is
 visible and tracked in T3. The driver is a T3 thread. Do not use a harness's
 native subagent tools (Claude Agent tool, Codex spawn, etc.) for delegated work.
 
-## Fleet
+## axnet
+
+Roles:
+
+- io = control center (may work or delegate to workers).
+- iobook and the phone = access points (keep the user informed, no real work).
+- iobox and axat-vps = workers (do the work, never delegate).
 
 The fleet is io (PC), iobook (laptop), iobox (always-on agent box running
 T3 Code), and axat-vps (Debian VPS running Executor and Hermes). Access is
