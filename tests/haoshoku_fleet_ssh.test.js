@@ -12,7 +12,17 @@ beforeEach(() => {
 afterEach(() => fs.rmSync(home, { recursive: true }));
 function run(
 	args,
-	{ osType = "arch", hostname = "io", fails = false, fullSetup = false } = {},
+	{
+		osType = "arch",
+		hostname = "io",
+		fails = false,
+		fullSetup = false,
+		status = {
+			BackendState: "Running",
+			MagicDNSSuffix: "tail140c22.ts.net",
+			Peer: {},
+		},
+	} = {},
 ) {
 	const script = `
 		import { mock } from "bun:test";
@@ -23,7 +33,7 @@ function run(
 		mock.module(utilsPath, () => ({ ...utils,
 			runCommandCapture: async (command) => {
 				console.log("FLEET_PROBE:" + command);
-				return { exitCode: ${fails ? 1 : 0}, stdout: JSON.stringify(command === "tailscale debug prefs" ? {RunSSH:true} : {BackendState:"Running", Peer:{}}) };
+				return { exitCode: ${fails} && (!${fullSetup} || command === "tailscale debug prefs") ? 1 : 0, stdout: JSON.stringify(command === "tailscale debug prefs" ? {RunSSH:true} : ${JSON.stringify(status)}) };
 			},
 			runCommand: async () => { throw new Error("unexpected mutation"); },
 		}));
@@ -121,4 +131,15 @@ it("exits full iobox setup non-zero naming Tailscale SSH and stops sudo", () => 
 	expect(result.output).toContain("SUDO_STOPPED");
 	expect(result.output).not.toContain("Arch setup finished");
 	expect(fs.existsSync(path.join(home, ".ssh"))).toBe(false);
+});
+
+it.each([
+	{ BackendState: "Running", MagicDNSSuffix: "other.ts.net", Peer: {} },
+	{ BackendState: "NeedsLogin", MagicDNSSuffix: "tail140c22.ts.net", Peer: {} },
+])("refuses unverified fleet identity before even writing run logs (%#)", (status) => {
+	const result = run(["--fleet-ssh"], { status });
+	expect(result.exitCode, result.output).toBe(1);
+	expect(result.output).toContain("tail140c22.ts.net");
+	expect(result.output).not.toContain("FLEET_PROBE:tailscale debug prefs");
+	expect(fs.readdirSync(home)).toEqual([]);
 });

@@ -23,6 +23,7 @@ beforeEach(() => {
 						? { RunSSH: true }
 						: {
 								BackendState: "Running",
+								MagicDNSSuffix: "tail140c22.ts.net",
 								Peer: {
 									book: {
 										DNSName: "iobook.tail140c22.ts.net.",
@@ -76,6 +77,38 @@ it("validates the fleet before any commands or writes", async () => {
 });
 
 it.each([
+	{ BackendState: "Running", MagicDNSSuffix: "other.ts.net" },
+	{ BackendState: "NeedsLogin", MagicDNSSuffix: "tail140c22.ts.net" },
+	{ BackendState: "Stopped", MagicDNSSuffix: "tail140c22.ts.net" },
+	{ BackendState: "Running" },
+])("guards fleet actions before commands or writes (%#)", async (status) => {
+	options.captureCommandImpl = async (command) => {
+		calls.push(command);
+		return {
+			exitCode: 0,
+			stdout: JSON.stringify(
+				command === "tailscale debug prefs" ? { RunSSH: true } : status,
+			),
+		};
+	};
+	for (const standalone of [true, false]) {
+		calls.length = 0;
+		expect(
+			await configureFleetSsh({
+				...options,
+				hostname: "iobox",
+				standalone,
+				throwOnFailure: true,
+			}),
+		).toBe(!standalone);
+		expect(calls).toEqual(["tailscale status --json"]);
+		expect(fs.readdirSync(home)).toEqual([]);
+	}
+	expect(warnings.join(" ")).toContain("Skipping fleet SSH");
+	expect(warnings.join(" ")).toContain("tail140c22.ts.net");
+});
+
+it.each([
 	true,
 	false,
 ])("verifies RunSSH and enables it only when needed (%s)", async (enabled) => {
@@ -89,6 +122,7 @@ it.each([
 					? { RunSSH: runSSH }
 					: {
 							BackendState: "Running",
+							MagicDNSSuffix: "tail140c22.ts.net",
 							Peer: {
 								book: {
 									DNSName: "iobook.tail140c22.ts.net.",
@@ -139,6 +173,7 @@ it.each([
 			exitCode: failure === "stopped" ? 1 : 0,
 			stdout: JSON.stringify({
 				BackendState: failure === "logged-out" ? "NeedsLogin" : "Running",
+				MagicDNSSuffix: "tail140c22.ts.net",
 				Peer: {},
 			}),
 		};
@@ -147,16 +182,26 @@ it.each([
 		calls.push(command);
 		return failure !== "set-failed";
 	};
-	expect(await configureFleetSsh(options)).toBe(false);
+	expect(await configureFleetSsh({ ...options, standalone: true })).toBe(false);
 	expect(warnings.join(" ")).toContain("Tailscale SSH");
 	expect(fs.readdirSync(home)).toEqual([]);
 	if (
 		["stopped", "logged-out", "prefs-failed", "prefs-invalid"].includes(failure)
 	)
 		expect(calls).not.toContain("tailscale set --ssh");
-	await expect(
-		configureFleetSsh({ ...options, hostname: "iobox" }),
-	).rejects.toThrow("Tailscale SSH");
+	if (["stopped", "logged-out"].includes(failure)) {
+		expect(
+			await configureFleetSsh({
+				...options,
+				hostname: "iobox",
+				throwOnFailure: true,
+			}),
+		).toBe(true);
+	} else {
+		await expect(
+			configureFleetSsh({ ...options, hostname: "iobox", standalone: true }),
+		).rejects.toThrow("Tailscale SSH");
+	}
 });
 
 it.each([
