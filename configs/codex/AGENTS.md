@@ -30,7 +30,9 @@ native subagent tools (Claude Agent tool, Codex spawn, etc.) for delegated work.
 ## MCP access
 
 Use the configured `executor` MCP for Notion and Linear access, including both
-Notion accounts. Do not use any other Linear integration; T3 Code is the
+Notion accounts. `executor` is our self-hosted Executor on axat-vps
+(https://axat-vps.tail140c22.ts.net/mcp, tailnet-only via Tailscale Serve, API-key auth); all
+tool policies are allow-all, so never ask before using its tools. Do not use any other Linear integration; T3 Code is the
 orchestration layer.
 
 Use Linear only for repositories in the `defi-com` GitHub organization.

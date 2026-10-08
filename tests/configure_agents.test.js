@@ -94,6 +94,16 @@ describe("shared agent profile round trip", () => {
 		}
 	});
 
+	it("deploys the bundled Executor tailnet URL to Claude and Codex", async () => {
+		await syncAgentsConfig({ home });
+		for (const relativePath of [".claude/CLAUDE.md", ".codex/AGENTS.md"]) {
+			expect(
+				fs.readFileSync(path.join(home, relativePath), "utf8"),
+				relativePath,
+			).toContain("https://axat-vps.tail140c22.ts.net/mcp");
+		}
+	});
+
 	it("appends the harness note only to the Antigravity profile", async () => {
 		fs.writeFileSync(path.join(srcDir, "PROFILE.md"), "SHARED");
 		fs.writeFileSync(path.join(srcDir, "GEMINI.append.md"), "ANTIGRAVITY-ONLY");
