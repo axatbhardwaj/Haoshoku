@@ -169,6 +169,15 @@ describe("shared agent profile round trip", () => {
 		}
 	});
 
+	it("deploys the bundled T3 provider settings guidance to Claude and Codex", async () => {
+		await syncAgentsConfig({ home });
+		for (const relativePath of [".claude/CLAUDE.md", ".codex/AGENTS.md"]) {
+			const deployed = fs.readFileSync(path.join(home, relativePath), "utf8");
+			expect(deployed, relativePath).toMatch(/^## T3 provider settings$/m);
+			expect(deployed, relativePath).toContain("`t3-provider-fix`");
+		}
+	});
+
 	it("appends the harness note only to the Antigravity profile", async () => {
 		fs.writeFileSync(path.join(srcDir, "PROFILE.md"), "SHARED");
 		fs.writeFileSync(path.join(srcDir, "GEMINI.append.md"), "ANTIGRAVITY-ONLY");
