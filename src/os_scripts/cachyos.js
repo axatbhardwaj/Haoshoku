@@ -22,6 +22,7 @@ import { configureSplitLockSudoers } from "../helpers/configure_split_lock_sudoe
 import { configureChromiumProfiles } from "../helpers/configure_chromium_profiles.js";
 import { configureClaude } from "../helpers/configure_claude.js";
 import { configureCodex } from "../helpers/configure_codex.js";
+import { configureAgentAccounts } from "../helpers/configure_agent_accounts.js";
 import { installGhStack } from "../helpers/configure_gh_stack.js";
 import { configureHyprmoncfg } from "../helpers/configure_hyprmoncfg.js";
 import { configureKdeConnectCommands } from "../helpers/configure_kde_connect.js";
@@ -571,6 +572,7 @@ export async function configureUserApps({
 	configureCodexImpl = configureCodex,
 	syncAgentsConfigImpl = syncAgentsConfig,
 	configureAxstackImpl = configureAxstack,
+	configureAgentAccountsImpl = configureAgentAccounts,
 } = {}) {
 	if (!isOmarchy && (await promptUserImpl("Configure git?", true))) {
 		const configureGit =
@@ -646,6 +648,19 @@ export async function configureUserApps({
 		log.warning(
 			"Axstack setup was not completed — continuing. Retry with: haoshoku --axstack",
 		);
+	}
+	if (deviceType === "iobox") {
+		let complete;
+		try {
+			complete = await configureAgentAccountsImpl();
+		} catch {
+			complete = false;
+		}
+		if (!complete) {
+			log.warning(
+				"Agent accounts incomplete — continuing. Retry with: haoshoku --agent-accounts",
+			);
+		}
 	}
 	return { claude: claudeResult, codex: codexResult };
 }

@@ -304,6 +304,7 @@ describe("selected integration retirement", () => {
 							configureClaudeImpl: record("claude", { ok: true }), configureCodexImpl: record("codex", { ok: true }),
 							installGhStackImpl: record("gh-stack"), configurePrWatchImpl: record("pr-watch"),
 							syncAgentsConfigImpl: record("agents"), configureAxstackImpl: record("axstack", { ok: true }),
+							configureAgentAccountsImpl: noop,
 							configureFastfetchImpl: noop, configureGhosttyImpl: noop, enableServicesImpl: noop,
 						}),
 					}) : await runDebianServerSetup();

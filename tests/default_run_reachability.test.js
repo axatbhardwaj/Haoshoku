@@ -41,6 +41,9 @@ function deployModeFeaturesFromCli() {
 		"--server-executor",
 		// Client registration requires explicit endpoint/auth; covered by the opt-in keeper.
 		"--executor-clients",
+		// This guard runs the pc/server paths. cachyos.test.js covers the
+		// iobox-only default, its ordering, and its omission on pc/laptop.
+		"--agent-accounts",
 		"--claude-update",
 		// The workspaces deploy ensures the gaming autostart defaults. These
 		// flags only create or override that preference outside the default
@@ -219,6 +222,7 @@ function runArchDefaultPath({ isOmarchy = true, gitAnswer = true } = {}) {
 					configureCodexImpl: record("codex"),
 					syncAgentsConfigImpl: record("agents", true),
 					configureAxstackImpl: record("axstack", { ok: true }),
+					configureAgentAccountsImpl: record("agentAccounts", true),
 				}),
 				configureBraveManagedPoliciesImpl: record("braveManagedPolicies", true),
 				configureHyprmoncfgImpl: record("monitors"),
@@ -370,6 +374,7 @@ function userAppDoubles(overrides = {}) {
 		configureCodexImpl: async () => {},
 		syncAgentsConfigImpl: async () => {},
 		configureAxstackImpl: async () => ({ ok: true }),
+		configureAgentAccountsImpl: async () => true,
 		...overrides,
 	};
 }

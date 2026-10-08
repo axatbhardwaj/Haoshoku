@@ -17,6 +17,83 @@ import {
 } from "../src/os_scripts/cachyos.js";
 
 describe("user app configuration", () => {
+	it.each([
+		"iobox",
+		"pc",
+		"laptop",
+	])("creates alt accounts only for %s after agent setup", async (deviceType) => {
+		const events = [];
+		const noop = async () => {};
+		await configureUserApps({
+			deviceType,
+			isOmarchy: true,
+			commandExistsImpl: noop,
+			promptUserImpl: noop,
+			configureGitImpl: noop,
+			configureBrowserIntegrationImpl: noop,
+			configureAudioImpl: noop,
+			configureBashImpl: noop,
+			configureFastfetchImpl: noop,
+			configureGhosttyImpl: noop,
+			runCommandImpl: noop,
+			enableServicesImpl: noop,
+			configureClaudeImpl: async () => events.push("claude"),
+			installGhStackImpl: noop,
+			configureCodexImpl: async () => events.push("codex"),
+			syncAgentsConfigImpl: async () => events.push("agents"),
+			configureAxstackImpl: async () => ({ ok: true }),
+			configureAgentAccountsImpl: async () => {
+				events.push("accounts");
+				return true;
+			},
+		});
+		expect(events).toEqual([
+			"claude",
+			"codex",
+			"agents",
+			...(deviceType === "iobox" ? ["accounts"] : []),
+		]);
+	});
+
+	it.each([
+		false,
+		"throws",
+	])("reports incomplete iobox alt accounts (%s)", async (outcome) => {
+		const warnings = [];
+		const originalWarning = log.warning;
+		log.warning = (message) => warnings.push(message);
+		const noop = async () => {};
+		try {
+			await configureUserApps({
+				deviceType: "iobox",
+				isOmarchy: true,
+				commandExistsImpl: noop,
+				promptUserImpl: noop,
+				configureGitImpl: noop,
+				configureBrowserIntegrationImpl: noop,
+				configureAudioImpl: noop,
+				configureBashImpl: noop,
+				configureFastfetchImpl: noop,
+				configureGhosttyImpl: noop,
+				runCommandImpl: noop,
+				enableServicesImpl: noop,
+				configureClaudeImpl: noop,
+				installGhStackImpl: noop,
+				configureCodexImpl: noop,
+				syncAgentsConfigImpl: noop,
+				configureAxstackImpl: async () => ({ ok: true }),
+				configureAgentAccountsImpl: async () => {
+					if (outcome === "throws") throw new Error("fixture error");
+					return false;
+				},
+			});
+			expect(warnings.join(" ")).toContain("Agent accounts incomplete");
+			expect(warnings.join(" ")).toContain("haoshoku --agent-accounts");
+		} finally {
+			log.warning = originalWarning;
+		}
+	});
+
 	it("runs portable app setup without retired services or offers", async () => {
 		const events = [];
 		const prompts = [];
@@ -43,6 +120,7 @@ describe("user app configuration", () => {
 			installGhStackImpl: record("gh-stack"),
 			configureCodexImpl: record("codex"),
 			syncAgentsConfigImpl: record("agents"),
+			configureAgentAccountsImpl: async () => true,
 			configureAxstackImpl: async () => {
 				events.push("axstack");
 				return { ok: true };
@@ -95,6 +173,7 @@ describe("user app configuration", () => {
 					reason: "registry unavailable",
 				}),
 				syncAgentsConfigImpl: noop,
+				configureAgentAccountsImpl: noop,
 				configureAxstackImpl: async () => ({ ok: true }),
 			});
 
@@ -137,6 +216,7 @@ describe("user app configuration", () => {
 					throw new Error("Ambiguous multiline TOML");
 				},
 				syncAgentsConfigImpl: async () => events.push("agents"),
+				configureAgentAccountsImpl: noop,
 				configureAxstackImpl: async () => {
 					events.push("axstack");
 					return { ok: true };

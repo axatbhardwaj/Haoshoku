@@ -153,3 +153,132 @@ it("provides an independent Codex config accepted by executor client setup", () 
 	);
 	expect(fs.existsSync(path.join(home, ".claude/.claude.json"))).toBe(false);
 });
+
+it("preserves and reports shared-entry conflicts while keeping correct links", () => {
+	for (const entry of [
+		"real-file",
+		"real-dir",
+		"wrong",
+		"dangling",
+		"correct",
+		"relative",
+	]) {
+		seed(`.claude/${entry}`, "primary bytes\n");
+	}
+	seed(".codex/config.toml", 'model = "primary"\n');
+	seed(".codex-alt/config.toml", 'model = "alt"\n');
+	seed(".claude-alt/real-file", "alt file\n");
+	seed(".claude-alt/real-dir/local", "alt dir\n");
+	seed("unrelated", "unrelated bytes\n");
+	for (const [name, target] of [
+		["wrong", path.join(home, "unrelated")],
+		["dangling", path.join(home, "absent")],
+		["correct", path.join(home, ".claude/correct")],
+		["relative", "../.claude/relative"],
+	])
+		fs.symlinkSync(target, path.join(home, ".claude-alt", name));
+	const before = Object.fromEntries(
+		["wrong", "dangling", "correct", "relative"].map((name) => [
+			name,
+			fs.lstatSync(path.join(home, ".claude-alt", name)).ino,
+		]),
+	);
+	for (let n = 0; n < 2; n++) {
+		const result = run();
+		expect(result.code).toBe(1);
+		expect(result.output).toContain("incomplete");
+		for (const name of ["real-file", "real-dir", "wrong", "dangling"]) {
+			expect(result.output).toContain(path.join(home, ".claude-alt", name));
+		}
+		for (const [name, inode] of Object.entries(before)) {
+			expect(fs.lstatSync(path.join(home, ".claude-alt", name)).ino).toBe(
+				inode,
+			);
+		}
+		expect(
+			fs.readFileSync(path.join(home, ".claude-alt/real-file"), "utf8"),
+		).toBe("alt file\n");
+		expect(
+			fs.readFileSync(path.join(home, ".claude-alt/real-dir/local"), "utf8"),
+		).toBe("alt dir\n");
+		expect(
+			fs.readFileSync(path.join(home, ".codex-alt/config.toml"), "utf8"),
+		).toBe('model = "alt"\n');
+	}
+});
+
+it("reports every private symlink without altering it, even absent from the primary", () => {
+	seed(".claude/CLAUDE.md");
+	seed(".codex/AGENTS.md");
+	const secret = "disposable-secret-contents\n";
+	const target = seed("unrelated-auth", secret);
+	const entries = [
+		...[
+			".credentials.json",
+			".claude.json",
+			"history.jsonl",
+			"sessions",
+			"session-env",
+			"shell-snapshots",
+			"cache",
+			"backups",
+			"security",
+			"mcp-needs-auth-cache.json",
+			".last-cleanup",
+		].map((name) => `.claude-alt/${name}`),
+		...[
+			"auth.json",
+			"config.toml",
+			"models_cache.json",
+			"log",
+			"memories",
+			"tmp",
+		].map((name) => `.codex-alt/${name}`),
+	];
+	for (const alt of [".claude-alt", ".codex-alt"])
+		fs.mkdirSync(path.join(home, alt));
+	for (const entry of entries) fs.symlinkSync(target, path.join(home, entry));
+	const result = run();
+	expect(result.code).toBe(1);
+	expect(result.output).toContain("incomplete");
+	for (const entry of entries) {
+		expect(result.output).toContain(path.join(home, entry));
+		expect(fs.readlinkSync(path.join(home, entry))).toBe(target);
+	}
+	expect(fs.readFileSync(target, "utf8")).toBe(secret);
+	expect(result.output).not.toContain(secret.trim());
+});
+
+it("skips missing primary homes with a message and creates no alt homes", () => {
+	const result = run();
+	expect(result.code, result.output).toBe(0);
+	for (const primary of [".claude", ".codex"]) {
+		expect(result.output).toContain(path.join(home, primary));
+		expect(result.output).toContain("skipped");
+		expect(fs.existsSync(path.join(home, `${primary}-alt`))).toBe(false);
+	}
+});
+
+it("refuses an alt home that aliases the primary directory", () => {
+	seed(".claude/CLAUDE.md");
+	seed(".codex/config.toml", 'model = "fixture"\n');
+	fs.symlinkSync(path.join(home, ".claude"), path.join(home, ".claude-alt"));
+	const result = run();
+	expect(result.code).toBe(1);
+	expect(result.output).toContain("incomplete");
+	expect(result.output).toContain(path.join(home, ".claude-alt"));
+	expect(fs.lstatSync(path.join(home, ".claude/CLAUDE.md")).isFile()).toBe(
+		true,
+	);
+	expect(fs.readlinkSync(path.join(home, ".claude-alt"))).toBe(
+		path.join(home, ".claude"),
+	);
+});
+
+it("rejects combining agent accounts with another one-shot mode", () => {
+	seed(".claude/CLAUDE.md");
+	const result = run(["--agent-accounts", "--agents"]);
+	expect(result.code).toBe(2);
+	expect(result.output).toContain("mutually exclusive");
+	expect(fs.existsSync(path.join(home, ".claude-alt"))).toBe(false);
+});
