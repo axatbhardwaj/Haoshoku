@@ -3,6 +3,11 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
+import {
+	certFile,
+	createExecutorStub,
+} from "./fixtures/executor-mcp-server.js";
+
 const cli = path.resolve(import.meta.dir, "..", "haoshoku.js");
 let scratch;
 let home;
@@ -125,7 +130,7 @@ it("creates credential overlays sharing all other top-level entries", () => {
 	}
 });
 
-it("provides an independent Codex config accepted by executor client setup", () => {
+it("provides an independent Codex config accepted by executor client setup", async () => {
 	seed(".claude/CLAUDE.md");
 	const primaryConfig = '# preserved\nmodel = "fixture"\n';
 	seed(".codex/config.toml", primaryConfig);
@@ -133,21 +138,38 @@ it("provides an independent Codex config accepted by executor client setup", () 
 	env.CLAUDE_CONFIG_DIR = path.join(home, ".claude-alt");
 	env.CODEX_HOME = path.join(home, ".codex-alt");
 	env.EXECUTOR_AUTHORIZATION = "Bearer disposable-fixture";
-	const result = run([
-		"--executor-clients",
-		"https://executor.example.test/mcp",
-	]);
-	expect(result.code, result.output).toBe(0);
+	const server = createExecutorStub(env.EXECUTOR_AUTHORIZATION);
+	const endpoint = `${server.url.origin}/mcp`;
+	env.NODE_EXTRA_CA_CERTS = certFile;
+	try {
+		const child = Bun.spawn(
+			[process.execPath, cli, "--executor-clients", endpoint],
+			{
+				env,
+				stdout: "pipe",
+				stderr: "pipe",
+			},
+		);
+		const [stdout, stderr, code] = await Promise.all([
+			new Response(child.stdout).text(),
+			new Response(child.stderr).text(),
+			child.exited,
+		]);
+		expect(code, stdout + stderr).toBe(0);
+		expect(stdout + stderr).toContain("Executor connected");
+	} finally {
+		server.stop(true);
+	}
 	expect(
 		Bun.TOML.parse(
 			fs.readFileSync(path.join(env.CODEX_HOME, "config.toml"), "utf8"),
 		).mcp_servers.executor.url,
-	).toBe("https://executor.example.test/mcp");
+	).toBe(endpoint);
 	expect(
 		JSON.parse(
 			fs.readFileSync(path.join(env.CLAUDE_CONFIG_DIR, ".claude.json"), "utf8"),
 		).mcpServers.executor.url,
-	).toBe("https://executor.example.test/mcp");
+	).toBe(endpoint);
 	expect(fs.readFileSync(path.join(home, ".codex/config.toml"), "utf8")).toBe(
 		primaryConfig,
 	);
