@@ -535,18 +535,31 @@ Haoshoku reads `desktop-settings.json` under the effective T3 base directory's
 `userdata` folder, normally `~/.t3/userdata`. It checks the service's effective
 `T3CODE_HOME`, pending unit configuration, and desktop installation, unit and
 process evidence. Only an explicit JSON `localEnvironmentEnabled: false` proves
-Local environment is disabled. A missing key means enabled. Missing settings
-are safe only when no desktop installation, unit or process is detected; an
-unused listening port does not prove a headless setup.
+Local environment is disabled. A missing key means enabled. When desktop
+settings are missing and a desktop installation, unit or process is detected,
+Haoshoku creates them with Local environment off after checking the directories.
+You do not need to open the desktop first. Creation is exclusive: an existing
+settings file is never overwritten. Headless setups can proceed without settings;
+an unused listening port does not prove a headless setup.
 
 Enabled, malformed, unreadable or conflicting directory/settings evidence, and
 failed probes, return incomplete setup before T3 service changes. Disable
 **Local environment** in the T3 Code desktop, then pair the desktop to the
 existing service. Resolve directory conflicts or unreadable evidence and retry.
-Haoshoku never rewrites desktop settings or reads, changes or displays pairing
-tokens. Explicitly disabled desktops and genuinely headless setups can proceed;
+Haoshoku never rewrites existing desktop settings or reads or changes existing
+pairing state. Explicitly disabled desktops and headless setups can proceed;
 service installation/restart uses the checked base directory. Environment-file
 and unsupported launch-directory overrides require manual reconciliation.
+
+At the end of a successful Arch T3 step on a host in `configs/fleet.json`,
+Haoshoku mints one `t3 pair --tailscale` link per other fleet client (roles
+`control` or `access`). Workers do not pair outbound. Each link is labeled with
+its target host and expires after 15 minutes; paste it in that client's
+**Add environment** dialog. The local desktop can pair to its own service with
+`t3 pair --tailscale`; the phone pairing hint is also printed. Haoshoku leaves
+the encrypted desktop connection catalog unchanged. Link minting requires
+Tailscale `Running` with the fleet's `MagicDNSSuffix`; a mismatched tailnet or
+failed mint produces a warning and does not fail service setup.
 
 ### Debian tailnet SSH firewall
 

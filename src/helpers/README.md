@@ -34,7 +34,7 @@ links, and theme preferences. Workflow skills are managed through Axstack.
 | --- | --- |
 | `configure_t3_code_server.js` | Debian runtime, CLI installation, Connect disablement and user service |
 | `configure_tailscale_t3.js` | Arch package, daemon, browser login, operator and user-service setup |
-| `t3_desktop_preflight.js` | Shared read-only desktop/backend guard before service changes and on reruns |
+| `t3_desktop_preflight.js` | Shared desktop/backend guard; initializes missing desktop settings with Local off |
 | `t3_tailscale.js` | Shared CLI floor, drop-in, tailnet HTTPS readiness and pairing guidance |
 
 `configure_tailscale_t3.js` runs after Arch installs T3 and configures the
@@ -55,8 +55,11 @@ manual prerequisites or follow-up steps. `configure_hermes_relay.js` verifies
 Hermes Telegram transport without deploying a relay plugin.
 
 Both entrypoints enforce the [single-backend preflight](../../README.md#t3-single-backend-preflight)
-before service writes or operations, including no-op reruns. Desktop settings and
-pairing tokens remain untouched; failed evidence probes cannot establish headless state.
+before service writes or operations, including no-op reruns. Missing desktop
+settings are created with Local environment off; existing settings and pairing
+state remain untouched. Failed evidence probes cannot establish headless state.
+Arch fleet setup prints a separate 15-minute pairing link for each other control
+or access host, guarded by the fleet tailnet check.
 
 See the [migration note](../../README.md#existing-host-migration) for host artifacts
 that Haoshoku leaves for manual retirement.
