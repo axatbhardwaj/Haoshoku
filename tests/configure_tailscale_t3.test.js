@@ -839,3 +839,88 @@ describe("Arch full setup always-on failures", () => {
 		}
 	});
 });
+
+describe("Arch full setup T3 failure summary", () => {
+	it.each([
+		["pc", "ready"],
+		["pc", "missing"],
+		["pc", "throws"],
+		["laptop", "missing"],
+		["laptop", "throws"],
+	])("continues %s setup and counts the T3 %s outcome once", async (deviceType, outcome) => {
+		const f = fixture({ fresh: true, loggedOut: false });
+		const root = fs.mkdtempSync(path.join(os.tmpdir(), "arch-t3-step-log-"));
+		logRoots.push(root);
+		const run = startRunLog({ version: "test", env: { HOME: root } });
+		const events = [];
+		f.overrides.set("command -v t3", {
+			stdout: "/home/test/.local/bin/t3",
+			exitCode: 0,
+		});
+		if (outcome === "missing")
+			f.overrides.set("t3 --version", { stdout: "", exitCode: 127 });
+		const capture = f.options.captureCommandImpl;
+		f.options.captureCommandImpl = async (command, options) => {
+			const result = await capture(command);
+			return runCommandCapture(command, {
+				...options,
+				log: false,
+				spawnImpl: () => ({
+					exited: Promise.resolve(result.exitCode),
+					stdout: new Response(result.stdout).body,
+					stderr: new Response("").body,
+				}),
+			});
+		};
+		expect(
+			await runCachyOSSetup({
+				promptDeviceTypeImpl: async () => {},
+				readDeviceTypeImpl: () => deviceType,
+				startSudoSessionImpl: async () => () => events.push("sudo-stop"),
+				commandExistsImpl: async () => false,
+				prepareArchPackageManagerImpl: async () => true,
+				ensureRustToolchainImpl: async () => {},
+				ensureAurHelperImpl: async () => "paru",
+				installDevToolsImpl: async () => {},
+				installSystemPackagesImpl: async () => {},
+				installFlatpakAppsImpl: async () => {},
+				configureUserAppsImpl: async () => {},
+				configureTailscaleT3Impl: (options) => {
+					if (outcome === "throws") throw new Error("T3 probe unavailable");
+					return configureTailscaleT3({ ...f.options, ...options });
+				},
+				configureBraveManagedPoliciesImpl: async () => {},
+				configureHyprmoncfgImpl: async () => {},
+				configureOmarchyWorkspacesImpl: async () => {},
+				configureOmarchyPluginsImpl: async () => {},
+				configureVoxtypeOsdImpl: async () => {},
+				configureKdeConnectCommandsImpl: async () => {},
+				configureOmarchyBarImpl: async () => {},
+				configureOmazedImpl: async () => {},
+				configureOmarchyAppearanceImpl: async () => {},
+				configureFleetSshImpl: async () => {
+					events.push("fleet-ssh");
+					return true;
+				},
+			}),
+		).toBe(true);
+		expect(events).toEqual(["fleet-ssh", "sudo-stop"]);
+		const summary = [];
+		run.finish(0, (message) => summary.push(message));
+		expect(summary).toHaveLength(1);
+		const text = fs.readFileSync(run.path, "utf8");
+		if (outcome === "ready") {
+			expect(summary[0]).not.toContain("failed command");
+			expect(text).toContain("Probe: pacman -Q t3code-bin\nExit: 1");
+			expect(text).toContain(
+				"Probe: systemctl is-enabled --quiet tailscaled.service\nExit: 1",
+			);
+		} else {
+			expect(summary[0]).toContain("1 failed command/step:");
+			expect(summary[0]).toContain("Tailscale/T3");
+			expect(summary[0]).toContain("haoshoku --tailscale-t3");
+			if (outcome === "missing")
+				expect(text).toContain("Probe: t3 --version\nExit: 127");
+		}
+	});
+});
