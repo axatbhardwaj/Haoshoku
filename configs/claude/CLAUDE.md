@@ -66,14 +66,3 @@ send me one compact Telegram message through the `axstack-relay` skill
 (`hermes`, home channel). Never send progress or heartbeats. Record this as
 the run's Notification policy. Deduplicate through `axstack-relay`; act in
 the T3 driver thread/GitHub; a failed or uncertain delivery preserves the hold.
-
-<!-- axstack:begin v1 -->
-Use Axstack for engineering work: invoke the matching `axstack-*` skill directly.
-`axstack-implement` loops author -> review -> repair until every PR is merge-ready.
-Route every subagent, delegated worker, reviewer, and cross-harness dispatch through T3 Code orchestration using the `t3-code` MCP.
-Use `delegate_task` for non-writer roles.
-Use `t3_thread_launch` for writers.
-Follow `references/t3-runtime.md` in the installed `axstack` skill for the runtime contract.
-The user authorizes Axstack drivers in T3 to run full-access and launch top-level writer threads and worktrees within approved scope.
-Do not use a harness native subagent tool for delegated work.
-<!-- axstack:end -->

@@ -29,16 +29,27 @@ describe("AGENT_TARGETS manifest", () => {
 });
 
 describe("bundled shared agent profile", () => {
+	it("leaves Axstack instruction ownership to its installer", () => {
+		for (const relativePath of [
+			"configs/agent-profile/PROFILE.md",
+			"configs/claude/CLAUDE.md",
+			"configs/codex/AGENTS.md",
+		]) {
+			expect(
+				fs.readFileSync(path.join(import.meta.dir, "..", relativePath), "utf8"),
+				relativePath,
+			).not.toContain("axstack:begin");
+		}
+	});
 	it("keeps bundled global templates aligned with the shared agent profile", () => {
 		const read = (relativePath) =>
 			fs.readFileSync(path.join(import.meta.dir, "..", relativePath), "utf8");
-		const compact = (value) => value.replace(/\s+/g, " ");
-		const profile = compact(read("configs/agent-profile/PROFILE.md"));
+		const profile = read("configs/agent-profile/PROFILE.md");
 		for (const relativePath of [
 			"configs/codex/AGENTS.md",
 			"configs/claude/CLAUDE.md",
 		]) {
-			const template = compact(read(relativePath));
+			const template = read(relativePath);
 			expect(template, relativePath).toContain("## Notifications");
 			expect(template, relativePath).toBe(profile);
 			expect(template, relativePath).toContain("T3 Code orchestration");
@@ -70,6 +81,9 @@ describe("bundled shared agent profile", () => {
 	});
 });
 
+const axstackBlock =
+	"<!-- axstack:begin v1 -->\nManaged by Axstack; preserve these exact bytes.\n<!-- axstack:end -->";
+
 describe("shared agent profile round trip", () => {
 	let tmpDir;
 	let srcDir;
@@ -83,6 +97,42 @@ describe("shared agent profile round trip", () => {
 	});
 
 	afterEach(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+	it("preserves each existing Axstack block across profile resyncs", async () => {
+		fs.writeFileSync(path.join(srcDir, "PROFILE.md"), "UPDATED\n");
+		fs.writeFileSync(path.join(srcDir, "GEMINI.append.md"), "HARNESS\n");
+		for (const target of AGENT_TARGETS) {
+			const live = path.join(home, target.destDir, target.dest);
+			fs.mkdirSync(path.dirname(live), { recursive: true });
+			fs.writeFileSync(live, `OLD\n\n${axstackBlock}\nOLD-TAIL`);
+		}
+		await syncAgentsConfig({ srcDir, home });
+		for (const target of AGENT_TARGETS) {
+			const live = path.join(home, target.destDir, target.dest);
+			expect(fs.readFileSync(live, "utf8")).toBe(
+				`${target.append ? "UPDATED\n\nHARNESS" : "UPDATED"}\n\n${axstackBlock}\n`,
+			);
+		}
+		const before = AGENT_TARGETS.map((t) =>
+			fs.readdirSync(path.join(home, t.destDir)),
+		);
+		await syncAgentsConfig({ srcDir, home });
+		expect(
+			AGENT_TARGETS.map((t) => fs.readdirSync(path.join(home, t.destDir))),
+		).toEqual(before);
+	});
+
+	it("strips the Axstack block from shared backups without changing live bytes", async () => {
+		const live = path.join(home, ".claude", "CLAUDE.md");
+		fs.mkdirSync(path.dirname(live), { recursive: true });
+		const original = `BEFORE\n\n${axstackBlock}\n\nAFTER\n`;
+		fs.writeFileSync(live, original);
+		await backupAgentsConfig({ srcDir, home });
+		expect(fs.readFileSync(path.join(srcDir, "PROFILE.md"), "utf8")).toBe(
+			"BEFORE\n\nAFTER\n",
+		);
+		expect(fs.readFileSync(live, "utf8")).toBe(original);
+	});
 
 	it("deploys PROFILE.md verbatim to claude, codex and opencode", async () => {
 		fs.writeFileSync(path.join(srcDir, "PROFILE.md"), "SHARED");

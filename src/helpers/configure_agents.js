@@ -2,7 +2,12 @@ import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { PROJECT_ROOT } from "../common/paths.js";
-import { log, portabilizeHome, safeCopyFile } from "../common/utils.js";
+import { log, portabilizeHome } from "../common/utils.js";
+
+import {
+	stripAxstackBlock,
+	syncAgentInstructions,
+} from "./agent_instructions.js";
 
 const HOME = homedir();
 const AGENT_PROFILE_DIR = path.join(PROJECT_ROOT, "configs", "agent-profile");
@@ -50,19 +55,7 @@ export async function syncAgentsConfig(options = {}) {
 	for (const target of AGENT_TARGETS) {
 		const destPath = path.join(home, target.destDir, target.dest);
 		fs.mkdirSync(path.dirname(destPath), { recursive: true });
-		if (!target.append) {
-			safeCopyFile(srcPath, destPath);
-		} else {
-			// Stage the composed bytes so safeCopyFile keeps its
-			// unchanged-skip and first-capture/backup semantics.
-			const tmpPath = `${destPath}.haoshoku-staging-${process.pid}`;
-			fs.writeFileSync(tmpPath, targetContent(srcDir, target));
-			try {
-				safeCopyFile(tmpPath, destPath);
-			} finally {
-				fs.rmSync(tmpPath, { force: true });
-			}
-		}
+		syncAgentInstructions(srcPath, destPath, targetContent(srcDir, target));
 		log.info(`Copied PROFILE.md to ${target.destDir}/${target.dest}`);
 	}
 
@@ -82,7 +75,10 @@ export async function backupAgentsConfig(options = {}) {
 		return { backedUp: 0, refused: 0 };
 	}
 
-	const portable = portabilizeHome(fs.readFileSync(primary, "utf8"), home);
+	const portable = portabilizeHome(
+		stripAxstackBlock(fs.readFileSync(primary, "utf8")),
+		home,
+	);
 	fs.writeFileSync(path.join(srcDir, "PROFILE.md"), portable);
 	log.info("Backed up ~/.claude/CLAUDE.md to PROFILE.md");
 	log.success("Shared agent profile backed up to configs/agent-profile/");

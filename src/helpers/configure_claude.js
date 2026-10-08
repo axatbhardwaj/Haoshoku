@@ -9,6 +9,11 @@ import {
 	safeCopyFile,
 } from "../common/utils.js";
 
+import {
+	stripAxstackBlock,
+	syncAgentInstructions,
+} from "./agent_instructions.js";
+
 const HOME = homedir();
 
 const CONFIGS_DIR = path.join(PROJECT_ROOT, "configs");
@@ -147,7 +152,8 @@ export async function syncClaudeConfig(options = {}) {
 				);
 			} else {
 				fs.mkdirSync(path.dirname(destPath), { recursive: true });
-				safeCopyFile(srcPath, destPath);
+				if (file.src === "CLAUDE.md") syncAgentInstructions(srcPath, destPath);
+				else safeCopyFile(srcPath, destPath);
 				log.info(`Copied ${file.src} to ${liveFile}`);
 			}
 		} else {
@@ -180,7 +186,12 @@ function findAbsoluteHomePath(content) {
 function backupClaudeFile(srcPath, destPath, summary, portableHome = null) {
 	const original = fs.readFileSync(srcPath);
 	const content = portableHome
-		? Buffer.from(portabilizeHome(original.toString("utf8"), portableHome))
+		? Buffer.from(
+				portabilizeHome(
+					stripAxstackBlock(original.toString("utf8")),
+					portableHome,
+				),
+			)
 		: original;
 	const absoluteHomePath = findAbsoluteHomePath(content);
 	if (absoluteHomePath) {

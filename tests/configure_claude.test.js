@@ -985,3 +985,38 @@ describe("Claude root manifest keeps undeclared directories untouched", () => {
 		);
 	});
 });
+
+describe("Axstack instruction ownership in Claude profiles", () => {
+	for (const operation of ["sync", "backup"]) {
+		it(`${operation} respects Axstack instruction ownership`, async () => {
+			const scratch = fs.mkdtempSync(
+				path.join(os.tmpdir(), "haoshoku-owned-profile-"),
+			);
+			try {
+				const configsDir = path.join(scratch, "bundle");
+				const home = path.join(scratch, "home");
+				const live = path.join(home, ".claude", "CLAUDE.md");
+				fs.mkdirSync(configsDir, { recursive: true });
+				fs.mkdirSync(path.dirname(live), { recursive: true });
+				const block =
+					"<!-- axstack:begin v1 -->\nAxstack-owned bytes\n<!-- axstack:end -->";
+				fs.writeFileSync(path.join(configsDir, "CLAUDE.md"), "UPDATED\n");
+				fs.writeFileSync(
+					live,
+					`${operation === "sync" ? "OLD" : "UPDATED"}\n\n${block}\n`,
+				);
+				if (operation === "sync") {
+					await syncClaudeConfig({ srcDir: configsDir, claudeHome: home });
+				} else {
+					await backupClaudeConfig({ srcDir: configsDir, claudeHome: home });
+					expect(
+						fs.readFileSync(path.join(configsDir, "CLAUDE.md"), "utf8"),
+					).toBe("UPDATED\n");
+				}
+				expect(fs.readFileSync(live, "utf8")).toBe(`UPDATED\n\n${block}\n`);
+			} finally {
+				fs.rmSync(scratch, { recursive: true });
+			}
+		});
+	}
+});
