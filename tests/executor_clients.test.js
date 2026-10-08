@@ -7,7 +7,9 @@ const cli = path.resolve(import.meta.dir, "..", "haoshoku.js");
 const endpoint = "https://executor.example.test:8444/mcp";
 const auth = `Bearer ${Buffer.from("disposable auth fixture").toString("hex")}`;
 function fixture() {
-	const home = fs.mkdtempSync(path.join(os.tmpdir(), "executor-clients-"));
+	const root = fs.mkdtempSync(path.join(os.tmpdir(), "executor-clients-"));
+	const home = path.join(root, "home");
+	fs.mkdirSync(home, { mode: 0o700 });
 	return {
 		home,
 		claude: path.join(home, ".claude.json"),
@@ -19,6 +21,8 @@ function fixture() {
 			CLAUDE_CONFIG_DIR: undefined,
 			XDG_CONFIG_HOME: path.join(home, "config"),
 			XDG_STATE_HOME: path.join(home, "state"),
+			// Keep Bun's runtime cache outside HOME so snapshots measure app writes.
+			XDG_CACHE_HOME: path.join(root, "cache"),
 			EXECUTOR_AUTHORIZATION: auth,
 		},
 	};
