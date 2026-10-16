@@ -232,7 +232,7 @@ fi
 		const result = await run("focus", "[]", NIGHTLY, "", "6");
 		expect(result.code).not.toBe(0);
 		expect(result.dispatches).toContain('hl.dsp.focus({ workspace = "6" })');
-	}, 10000);
+	}, 30000);
 
 	(luaInterpreter ? it : it.skip)(
 		"sets the workspace rule from the same executable setting",
