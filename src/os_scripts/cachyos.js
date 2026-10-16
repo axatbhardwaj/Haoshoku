@@ -10,6 +10,7 @@ import {
 	promptUser,
 	readDeviceType,
 	runCommand,
+	runCommandCapture,
 	safeCopyFile,
 	startSudoSession,
 } from "../common/utils.js";
@@ -37,6 +38,7 @@ import { configureVoxtypeOsd } from "../helpers/configure_voxtype_osd.js";
 import { configureTailscaleT3 } from "../helpers/configure_tailscale_t3.js";
 import { configureFleetSsh } from "../helpers/configure_fleet_ssh.js";
 import { installUserScripts } from "../helpers/install_user_scripts.js";
+import { meetsT3Floor } from "../helpers/t3_tailscale.js";
 
 // URLs
 const RUSTUP_URL = "https://sh.rustup.rs";
@@ -206,6 +208,20 @@ export async function installArchPackageBatch(packages, options = {}) {
 		getInstalledPackagesImpl = getInstalledPackages,
 		runCommandImpl = runCommand,
 	} = options;
+	const captureCommandImpl = options.captureCommandImpl ?? runCommandCapture;
+	const stableDesktopInstalled = async () => {
+		try {
+			const result = await captureCommandImpl("pacman -Q t3code-bin", {
+				expectFailure: true,
+			});
+			const version = result.stdout.trim().match(/^t3code-bin (?:\d+:)?(.+)-\d+(?:\.\d+)*$/)?.[1];
+			if (result.exitCode === 0 && meetsT3Floor(version)) return true;
+		} catch { /* An unreadable package version cannot prove the stable floor. */ }
+		log.warning(
+			`T3 desktop version is unknown, prerelease or below 0.1.0; keeping it unchanged. After backing up and closing T3, inspect and run: ${aurHelper ?? "yay"} -S aur/t3code-bin. Continuing with unrelated packages.`,
+		);
+		return false;
+	};
 	const whichImpl = options.whichImpl ?? Bun.which;
 	const { valid, invalid } = normalizeArchPackageNames(packages);
 	const status = new Map();
@@ -229,8 +245,8 @@ export async function installArchPackageBatch(packages, options = {}) {
 	for (const pkg of valid) {
 		if (status.get(pkg) === "held") continue;
 		if (initiallyInstalled.has(pkg)) {
-			status.set(pkg, "skipped");
-		} else if (await packageInRepositoryImpl(pkg)) {
+			status.set(pkg, pkg === "t3code-bin" && !(await stableDesktopInstalled()) ? "held" : "skipped");
+		} else if (pkg !== "t3code-bin" && await packageInRepositoryImpl(pkg)) {
 			repositoryPackages.push(pkg);
 		} else if (!aurHelper) {
 			status.set(pkg, "missing");
@@ -251,12 +267,14 @@ export async function installArchPackageBatch(packages, options = {}) {
 	});
 	await installBatchWithFallback({
 		packages: aurPackages,
-		batchCommand: `${aurHelper} -S --needed --noconfirm --batchinstall ${aurPackages.join(" ")}`,
-		individualCommand: (pkg) => `${aurHelper} -S --needed --noconfirm ${pkg}`,
+		batchCommand: `${aurHelper} -S --needed --noconfirm --batchinstall ${aurPackages.map((pkg) => pkg === "t3code-bin" ? "aur/t3code-bin" : pkg).join(" ")}`,
+		individualCommand: (pkg) => `${aurHelper} -S --needed --noconfirm ${pkg === "t3code-bin" ? "aur/t3code-bin" : pkg}`,
 		status,
 		getInstalledPackagesImpl,
 		runCommandImpl,
 	});
+	if (status.get("t3code-bin") === "installed" && !(await stableDesktopInstalled()))
+		status.set("t3code-bin", "held");
 
 	return {
 		installed: valid.filter((pkg) => status.get(pkg) === "installed"),
