@@ -1,5 +1,16 @@
 # Changelog
 
+## 12.5.2 - 2026-10-17
+
+### Fixed
+
+- Select `aur/t3code-bin` explicitly for fresh Arch desktop and iobox setup;
+  hold incompatible installed desktops while continuing unrelated packages (#180).
+- Share guarded stable npm T3 CLI preparation across Axstack, Tailscale and
+  Debian service setup, with Node/npm prerequisites in Arch package lists (#180).
+- Reuse runnable stable T3 CLIs for Axstack harness installation without
+  requiring CLI ownership, a T3 registry lookup or Node/npm prerequisites (#180).
+
 ## 12.5.1 - 2026-10-16
 
 ### Fixed
