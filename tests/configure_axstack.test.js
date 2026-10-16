@@ -180,6 +180,42 @@ describe("configureAxstack", () => {
 		else expect(fs.existsSync(alias)).toBe(false);
 	});
 
+	it.each([
+		["stable below floor", { exitCode: 0, stdout: "t3 v0.0.99" }, null],
+		["stable prerelease", { exitCode: 0, stdout: "t3 v0.1.0-nightly.20261016.1" }, null],
+		["stable unknown", { exitCode: 0, stdout: "unknown" }, null],
+		["stable failed", { exitCode: 1, stdout: "t3 v0.1.0" }, null],
+		["stable threw", new Error("stable executable unavailable"), null],
+		["nightly newer", { exitCode: 0, stdout: "t3 v0.1.0" }, { exitCode: 0, stdout: "t3 v0.2.0-nightly.20261016.1" }],
+		["nightly unknown", { exitCode: 0, stdout: "t3 v0.1.0" }, { exitCode: 0, stdout: "unknown" }],
+		["nightly failed", { exitCode: 0, stdout: "t3 v0.1.0" }, { exitCode: 1, stdout: "t3 v0.0.46-nightly.20261004.1" }],
+		["nightly threw", { exitCode: 0, stdout: "t3 v0.1.0" }, new Error("nightly executable unavailable")],
+	])("preserves the managed link and holds Axstack installation for %s", async (_name, stable, nightly) => {
+		const home = makeHome();
+		const target = releasePaths(home);
+		const alias = path.join(target.binDir, "t3");
+		fs.mkdirSync(target.binDir, { recursive: true });
+		fs.symlinkSync("/usr/bin/t3-nightly", alias);
+		const calls = [];
+		const result = await configureAxstack({
+			...target, home, detectOS: () => "arch", stableExists: true, nightlyExists: true,
+			which: () => alias,
+			extractor: makeExtractor([]),
+			runner: async (executable) => {
+				calls.push(executable);
+				const reply = executable === "/usr/bin/t3" ? stable : executable === "/usr/bin/t3-nightly" ? nightly : { exitCode: 0, stdout: "installed" };
+				if (reply instanceof Error) throw reply;
+				return reply;
+			},
+		});
+		expect(result.ok).toBe(false);
+		expect(result.harnesses.codex.reason).toContain("T3 alias failed");
+		expect(fs.readlinkSync(alias)).toBe("/usr/bin/t3-nightly");
+		expect(fs.existsSync(target.shim)).toBe(false);
+		expect(fs.existsSync(target.dataDir)).toBe(false);
+		expect(calls).toEqual(nightly === null ? ["/usr/bin/t3"] : ["/usr/bin/t3", "/usr/bin/t3-nightly"]);
+	});
+
 	it("migrates a dangling exact managed nightly link after checking stable and stays idempotent", async () => {
 		const home = makeHome();
 		const target = releasePaths(home);
@@ -189,7 +225,7 @@ describe("configureAxstack", () => {
 		const calls = [];
 		const options = {
 			...target, home,
-			detectOS: () => "arch", stableExists: true, nightlyExists: false,
+			detectOS: () => "arch", stableExists: true, nightlyExists: undefined,
 			which: () => alias,
 			extractor: makeExtractor([]),
 			runner: async (executable) => {

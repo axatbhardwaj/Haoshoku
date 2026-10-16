@@ -222,6 +222,32 @@ for (const [name, entrypoint] of [
 		});
 
 		it.each([
+			["malformed", "{bad json", "unknown running server"],
+			["unknown version", JSON.stringify({ version: 1, serverVersion: "unknown", serviceManaged: true }), "running server version or service ownership is unknown"],
+			["newer than stable", JSON.stringify({ version: 1, serverVersion: "0.2.0", serviceManaged: true }), "running server is newer"],
+			["newer than CLI only", JSON.stringify({ version: 1, serverVersion: "0.1.1", serviceManaged: true }), "running server is newer"],
+		])("holds the running-server record for %s before service writes", async (kind, record, reason) => {
+			const f = fixture(entrypoint);
+			if (kind === "newer than CLI only") f.options.latestStableImpl = async () => "0.2.0";
+			f.write(path.join(f.base, "userdata/server-runtime.json"), record);
+			expect(await f.run()).toBe(false);
+			expect(f.effects).toEqual([]);
+			expect(f.messages.join(" ")).toContain(reason);
+			expect(fs.readFileSync(f.token, "utf8")).toBe("fixture-pairing-secret");
+			expect(fs.readFileSync(path.join(f.base, "userdata/server-runtime.json"), "utf8")).toBe(record);
+		});
+
+		it("holds a pending restart marker independently of pending service updates", async () => {
+			const f = fixture(entrypoint);
+			const marker = path.join(f.base, "runtime/.restart-pending");
+			f.write(marker, "pending restart\n");
+			expect(await f.run()).toBe(false);
+			expect(f.effects).toEqual([]);
+			expect(f.messages.join(" ")).toContain("restart is pending");
+			expect(fs.readFileSync(marker, "utf8")).toBe("pending restart\n");
+		});
+
+		it.each([
 			"missing",
 			"unknown",
 			"newer",

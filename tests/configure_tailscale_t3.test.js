@@ -1059,3 +1059,16 @@ it("holds an unmanaged Arch executable even when it reports a stable version", a
 	expect(f.mutations).toEqual([]);
 	expect(f.warnings.join(" ")).toContain("origin");
 });
+
+
+it.each(["unavailable", "invalid", "below floor", "prerelease"])("holds Arch setup when the stable registry is %s", async (kind) => {
+	const f = fixture();
+	f.options.latestStableImpl = async () => {
+		if (kind === "unavailable") throw new Error("stable registry unavailable");
+		return { invalid: "invalid", "below floor": "0.0.99", prerelease: "0.1.0-nightly.20261016.1" }[kind];
+	};
+	expect(await configureTailscaleT3(f.options)).toBe(false);
+	expect(f.mutations).toEqual([]);
+	expect(f.events).not.toContain("pacman -Qqo '/usr/bin/t3'");
+	expect(f.warnings.join(" ")).toContain(kind === "unavailable" ? "stable registry unavailable" : "stable release unknown");
+});
