@@ -8,17 +8,15 @@ import {
 	runCommand,
 	runCommandCapture,
 } from "../common/utils.js";
+import { prepareArchT3Cli } from "./t3_cli.js";
 import { configureT3Op } from "./configure_t3_op.js";
 import { preflightT3Desktop } from "./t3_desktop_preflight.js";
 import {
 	ensureTailscaleOperator,
-	meetsT3Floor,
-	parseT3Version,
 	latestT3Stable,
 	parseJson,
 	SERVICE_ACTIVE_COMMAND,
 	shellQuote,
-	T3_VERSION_FLOOR,
 	waitForT3Tailscale,
 	writeServiceDropIn,
 } from "./t3_tailscale.js";
@@ -104,18 +102,6 @@ export async function configureTailscaleT3({
 			return false;
 		}
 		step = "T3 service";
-		const version = await probe("t3 --version");
-		const resolved = await probe("command -v t3", { shell: true });
-		if (
-			resolved &&
-			resolved !== "/usr/bin/t3" &&
-			fsImpl.existsSync("/usr/bin/t3")
-		) {
-			const packagedVersion = await probe("/usr/bin/t3 --version");
-			logger.warning(
-				`T3 on PATH is ${resolved} (${version ?? "unknown version"}), shadowing packaged /usr/bin/t3 (${packagedVersion ?? "unknown version"}). Inspect these installs.`,
-			);
-		}
 		const stablePackage = await probe("pacman -Q t3code-bin");
 		const nightlyPackage = await probe("pacman -Q t3code-nightly-bin");
 		if (stablePackage !== null && nightlyPackage !== null) {
@@ -123,36 +109,9 @@ export async function configureTailscaleT3({
 				`Both T3 packages are installed: ${stablePackage}; ${nightlyPackage}. Inspect t3code-bin and t3code-nightly-bin for conflicting installs.`,
 			);
 		}
-		if (!meetsT3Floor(version)) {
-			return fail(
-				`T3 must be >= ${T3_VERSION_FLOOR}; install/update t3code-bin stable and ensure t3 is on PATH`,
-			);
-		}
-
-		const latest = await latestStableImpl();
-		if (
-			!meetsT3Floor(latest) ||
-			Bun.semver.order(parseT3Version(version), latest) > 0
-		)
-			return fail(
-				"T3 stable migration held: CLI newer than verified stable or stable release unknown; inspect before migration",
-			);
-		let packagedPath = resolved;
-		if (resolved === path.join(home, ".local/bin/t3")) {
-			try {
-				if (fsImpl.readlinkSync(resolved) === "/usr/bin/t3")
-					packagedPath = "/usr/bin/t3";
-			} catch {
-				/* An unmanaged executable is held by the package check. */
-			}
-		}
-		if (
-			!packagedPath ||
-			(await probe(`pacman -Qqo ${shellQuote(packagedPath)}`)) !== "t3code-bin"
-		)
-			return fail(
-				"T3 stable migration held: CLI origin is not t3code-bin; preserve the unmanaged executable and select the packaged stable CLI explicitly",
-			);
+		const { t3, latest, cliVersion, env: t3Env } = await prepareArchT3Cli({
+			home, env, fsImpl, captureCommandImpl, runCommandImpl, latestStableImpl, logger,
+		});
 
 		const desktop = await preflightT3Desktop({
 			home,
@@ -161,7 +120,7 @@ export async function configureTailscaleT3({
 			captureCommandImpl,
 			fail,
 			stableVersion: latest,
-			cliVersion: parseT3Version(version),
+			cliVersion,
 		});
 		if (!desktop) return false;
 		step = "linger";
@@ -225,7 +184,7 @@ export async function configureTailscaleT3({
 			installed = false;
 		}
 		if (!installed || desktop.serviceNeedsUpdate) {
-			await run(`t3 service install --base-dir ${shellQuote(desktop.baseDir)}`);
+			await run(`${t3} service install --base-dir ${shellQuote(desktop.baseDir)}`, { env: t3Env });
 		} else {
 			if (changed) await run("systemctl --user daemon-reload");
 			const enabled = await probe(
@@ -237,7 +196,8 @@ export async function configureTailscaleT3({
 			}
 			if (changed && active !== null)
 				await run(
-					`t3 service restart --base-dir ${shellQuote(desktop.baseDir)}`,
+					`${t3} service restart --base-dir ${shellQuote(desktop.baseDir)}`,
+					{ env: t3Env },
 				);
 		}
 		if ((await probe(SERVICE_ACTIVE_COMMAND)) === null) {
@@ -263,6 +223,7 @@ export async function configureTailscaleT3({
 			await printFleetPairings({
 				hostname,
 				baseDir: desktop.baseDir,
+				t3, env: t3Env,
 				captureCommandImpl,
 				logger,
 			});
@@ -275,6 +236,7 @@ export async function configureTailscaleT3({
 }
 
 async function printFleetPairings({
+	t3, env,
 	hostname,
 	baseDir,
 	captureCommandImpl,
@@ -301,8 +263,8 @@ async function printFleetPairings({
 	)) {
 		try {
 			const result = await captureCommandImpl(
-				`t3 pair --tailscale --base-dir ${shellQuote(baseDir)} --ttl 15m --label ${shellQuote(client.hostname)}`,
-				{ log: false, stdin: "ignore", expectFailure: true },
+				`${t3} pair --tailscale --base-dir ${shellQuote(baseDir)} --ttl 15m --label ${shellQuote(client.hostname)}`,
+				{ env, log: false, stdin: "ignore", expectFailure: true },
 			);
 			const link = /^Pairing URL: (https:\/\/\S+)$/m.exec(result.stdout)?.[1];
 			if (result.exitCode !== 0 || !link) throw new Error("mint failed");

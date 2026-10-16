@@ -5,6 +5,8 @@ tailscale
 1password
 1password-cli
 bun-bin
+nodejs
+npm
 nvm
 curl
 jq

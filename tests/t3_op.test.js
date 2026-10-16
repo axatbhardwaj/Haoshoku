@@ -168,7 +168,8 @@ it.each([
 		fs.unlinkSync(f.envFile);
 		if (kind === "directory") fs.mkdirSync(f.envFile);
 		else if (kind === "fifo")
-			f.options.fsImpl.lstatSync = () => ({ isFile: () => false });
+			f.options.fsImpl.lstatSync = (file, ...args) =>
+				file === f.envFile ? { isFile: () => false } : fs.lstatSync(file, ...args);
 		else
 			fs.symlinkSync(
 				kind === "link" ? path.join(f.home, "target") : "/missing-fixture",

@@ -47,13 +47,34 @@ Install the latest Axstack release from npm, verified against its registry
 SHA-512 integrity, and configure its Claude and Codex harness targets with
 `haoshoku --axstack`. Axstack requires Bun >= 1.3.14 and
 `t3` stable >= 0.1.0 on PATH. Haoshoku enforces that floor independently of
-Axstack. On Arch/Omarchy, desktop and iobox package lists select `t3code-bin`.
-Haoshoku links a missing `~/.local/bin/t3` to packaged `/usr/bin/t3`, and can
-migrate its exact old `/usr/bin/t3-nightly` link after verifying both versions.
-Unmanaged executables and links stay unchanged; unknown or newer nightly
-versions hold migration. Installing stable over an existing nightly package or
-unmanaged T3 also holds before the package transaction. Inspect the existing
-installation and arrange a backed-up migration before retrying.
+Axstack. On Arch/Omarchy, desktop and iobox setup explicitly selects
+`aur/t3code-bin`, so an older Omarchy repository package cannot win the lookup.
+An already installed desktop below 0.1.0, prerelease or unknown version is held;
+Haoshoku prints `yay -S aur/t3code-bin` (or the selected helper) for a backed-up,
+operator-controlled replacement. Unrelated packages continue.
+
+The stable desktop package can ship only `t3code`; setup does not assume it also
+provides `/usr/bin/t3`. Axstack harness installation reuses an already runnable
+stable CLI >=0.1.0 on the caller's PATH, including unmanaged and fleet archive
+CLIs, without a T3 registry lookup or Node/npm prerequisite checks. When CLI
+preparation is needed, Haoshoku installs supported `t3@latest` under `~/.local`
+or reuses a genuinely available stable package-owned CLI. Standalone
+`--tailscale-t3` retains its strict origin/version/runtime guards. Arch lists
+include `nodejs` and `npm`; the selected Node runtime must meet ^22.16, ^23.11 or
+>=24.10 on the service PATH, including mise shims. Arch never runs the Debian
+Node bootstrap. A missing or incompatible prerequisite reports incomplete setup.
+
+Only the exact old managed `/usr/bin/t3-nightly` alias or a verified local npm
+install can migrate after origin/version checks. npm replacement is staged and
+verified before switching the alias; a failed installation preserves it.
+Unmanaged executables, custom links and fleet archive aliases remain unchanged;
+CLI preparation and service migration hold them until explicitly selected by
+the operator. Unknown/newer CLI
+versions and unsupported runtimes hold migration, and installing stable over an existing nightly
+package or unmanaged desktop remains a bounded T3 package hold. Desktop Local
+environment, single-server preflight and provider settings retain their existing
+policy; no theme synchronization is added.
+
 Run `haoshoku --axstack-check` to report the shim/version, each harness check,
 and `roles.json` presence at `~/.claude/skills/axstack/roles.json` and
 `~/.agents/skills/axstack/roles.json` separately. The role-file readback
@@ -472,7 +493,8 @@ for the new commands below; the installed 12.3.x package does not include them.
 1. Set the hostname to `iobox` (`sudo hostnamectl set-hostname iobox`).
 2. Install Bun (`yay -S --needed bun-bin`; Bun >= 1.3.14), then
    `git clone https://github.com/axatbhardwaj/Haoshoku.git` and `cd Haoshoku`.
-3. Install T3 desktop (`yay -S --needed t3code-bin`), open it once with
+3. Install T3 desktop (`yay -S aur/t3code-bin`; verify the proposed stable
+   version is >=0.1.0), open it once with
    `t3code`, choose the Stable update channel, and disable **Local environment**
    in its settings. This creates
    the desktop settings file required by preflight; do this before the service step.

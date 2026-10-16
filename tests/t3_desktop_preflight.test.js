@@ -128,7 +128,10 @@ function fixture(entrypoint) {
 			}
 			let stdout = "";
 			let exitCode = 0;
-			if (
+			if (command === "node --version") stdout = "v24.10.0";
+			else if (command === "command -v node") stdout = "/usr/bin/node";
+			else if (command === "npm --version") stdout = "10.9.3";
+			else if (
 				command.startsWith("systemctl --user show ") &&
 				!command.includes("show t3code.service")
 			)
