@@ -225,7 +225,7 @@ describe("configureAxstack", () => {
 		const calls = [];
 		const options = {
 			...target, home,
-			detectOS: () => "arch", stableExists: true, nightlyExists: undefined,
+			detectOS: () => "arch", stableExists: true, nightlyExists: false,
 			which: () => alias,
 			extractor: makeExtractor([]),
 			runner: async (executable) => {
