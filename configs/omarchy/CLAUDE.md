@@ -135,7 +135,7 @@ stealing focus. Haki and agents use their own exact Ghostty classes and tmux
 splits. `SUPER+Return` remains Omarchy's
 `xdg-terminal-exec` route, whose XDG default is Ghostty; `SUPER+T` uses
 the class pattern `^com\.t3tools\.T3Code$`, focusing T3 Code
-wherever it resides and launching T3 Code Nightly when absent. Keep the class
+wherever it resides and launching T3 Code stable (`t3code`) when absent. Keep the class
 anchored and its dots escaped. Primary-app workspace behavior stays independent
 of this launcher. The assistants recipe runs
 at login and on `SUPER+I`, managing ChatGPT and Claude Desktop in `special:assistants`;
