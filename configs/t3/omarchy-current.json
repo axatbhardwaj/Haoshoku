@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "name": "Aurora",
+  "appearance": "dark",
+  "canvas": "#0a100d",
+  "accent": "#62e2a4",
+  "colors": {
+    "canvas": "#0a100d",
+    "chrome": "#0a100d",
+    "toolbar": "#0a100d",
+    "toolbarForeground": "#fdfffd",
+    "toolbarBorder": "#1c2e25",
+    "toolbarControl": "#12221a",
+    "toolbarControlForeground": "#d6efe2",
+    "toolbarControlHover": "#1a3226",
+
+    "surface": "#0f1a14",
+    "surfaceRaised": "#12221a",
+    "surfaceOverlay": "#0d1611",
+
+    "text": "#fdfffd",
+    "textMuted": "#a3c2b1",
+    "border": "#1f3329",
+    "input": "#2a4537",
+    "focus": "#62e2a4",
+
+    "accent": "#62e2a4",
+    "accentForeground": "#0a100d",
+    "accentSurface": "#173326",
+    "accentSurfaceForeground": "#a8f0b3",
+
+    "secondary": "#12221a",
+    "secondaryForeground": "#d6efe2",
+    "muted": "#12221a",
+    "mutedForeground": "#8fb5a0",
+    "placeholder": "#6f9a82",
+    "secondaryLabel": "#8fb5a0",
+    "iconMuted": "#6f9a82",
+
+    "error": "#e0587a",
+    "errorForeground": "#ff9bb3",
+    "errorSurface": "#2a1219",
+    "warning": "#e6d59a",
+    "warningForeground": "#f3e8c2",
+    "warningSurface": "#262212",
+    "update": "#7dd6c8",
+    "updateForeground": "#b0eadf",
+    "updateSurface": "#11262a",
+
+    "messageSurface": "#12221a",
+    "messageForeground": "#fdfffd",
+    "messageAction": "#62e2a4",
+    "messageActionForeground": "#0a100d",
+    "messageActionHover": "#8ae9bb",
+
+    "codeBackground": "#070c0a",
+    "codeForeground": "#fdfffd",
+
+    "sidebar": "#070c0a",
+    "sidebarForeground": "#e8f5ee",
+    "sidebarMutedForeground": "#8fb5a0",
+    "sidebarControlSurface": "#0f1a14",
+    "sidebarRowHover": "#111c16",
+    "sidebarRowActive": "#173326",
+    "sidebarRowSelected": "#1d3f2f",
+    "sidebarBorder": "#14231b",
+
+    "terminalBackground": "#0a100d",
+    "terminalForeground": "#fdfffd",
+    "terminalCursor": "#62e2a4",
+    "terminalSelection": "#2a5a43",
+    "terminalScrollbar": "#1f3329",
+    "terminalScrollbarHover": "#3f5a4c"
+  }
+}

@@ -108,8 +108,8 @@ describe("haoshoku CLI help", () => {
 		expect(readme).toContain("tailscale status");
 		expect(readme).toContain("HTTPS certificates");
 		expect(readme).toContain("tailscale set --operator=$USER");
-		expect(readme).toContain("t3@nightly");
-		expect(readme).toContain("0.0.46-nightly.20261003.2610");
+		expect(readme).toContain("t3@latest");
+		expect(readme).toContain("0.1.0");
 		expect(readme).toContain("T3 Code is required");
 		expect(readme).toContain(
 			"PATH=%h/.local/bin:%h/.bun/bin:%h/.grok/bin:/usr/local/bin:/usr/bin:/bin",
