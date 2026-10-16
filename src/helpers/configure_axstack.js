@@ -7,7 +7,7 @@ import { recordNextStep } from "../common/run_log.js";
 import { prepareArchT3Cli } from "./t3_cli.js";
 import { runCommand, runCommandCapture, log } from "../common/utils.js";
 
-import { latestT3Stable } from "./t3_tailscale.js";
+import { latestT3Stable, meetsT3Floor } from "./t3_tailscale.js";
 
 const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?$/;
 
@@ -203,13 +203,35 @@ export async function configureAxstack(options = {}) {
 	let harnessEnv = { ...process.env, HOME: home };
 	try {
 		if ((options.detectOS ?? detectOS)() === "arch") {
-			const prepared = await prepareArchT3Cli({
-				home, env: options.env, fsImpl: options.fsImpl ?? fs, logger: log,
-				captureCommandImpl: options.captureCommandImpl ?? runCommandCapture,
-				runCommandImpl: options.runCommandImpl ?? runCommand,
-				latestStableImpl: options.latestStableImpl ?? latestT3Stable,
-			});
-			harnessEnv = { ...prepared.env, HOME: home };
+			harnessEnv = { ...harnessEnv, ...options.env, HOME: home };
+			const capture = options.captureCommandImpl ?? runCommandCapture;
+			const probe = async (command, extra = {}) => {
+				try {
+					const result = await capture(command, {
+						env: harnessEnv, expectFailure: true, ...extra,
+					});
+					return result.exitCode === 0 ? result.stdout.trim() : null;
+				} catch {
+					return null;
+				}
+			};
+			const resolved = await probe("command -v t3", { shell: true });
+			const version = resolved ? await probe("t3 --version") : null;
+			let ownedNightly = false;
+			try {
+				ownedNightly = resolved === path.join(home, ".local/bin/t3") &&
+					(options.fsImpl ?? fs).readlinkSync(resolved) === "/usr/bin/t3-nightly";
+			} catch { /* A runnable custom CLI needs no ownership for read-only reuse. */ }
+			// Harness reuse only needs a runnable stable CLI; mutation retains the stricter policy.
+			if (!meetsT3Floor(version) || ownedNightly) {
+				const prepared = await prepareArchT3Cli({
+					home, env: options.env, fsImpl: options.fsImpl ?? fs, logger: log,
+					captureCommandImpl: capture,
+					runCommandImpl: options.runCommandImpl ?? runCommand,
+					latestStableImpl: options.latestStableImpl ?? latestT3Stable,
+				});
+				harnessEnv = { ...prepared.env, HOME: home };
+			}
 		}
 	} catch (error) {
 		return failedResult(`T3 alias failed: ${error?.message ?? error}`, "kept", latestVersion);

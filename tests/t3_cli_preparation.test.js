@@ -73,12 +73,13 @@ function fixture() {
 			if (
 				command.includes("t3-nightly") ||
 				(resolved() &&
+					fs.lstatSync(cli).isSymbolicLink() &&
 					fs.readlinkSync(cli) === "/usr/bin/t3-nightly" &&
 					command === "t3 --version")
 			)
 				return reply(state.nightly ?? "", state.nightly ? 0 : 127);
 			const available =
-				resolved() ||
+				fs.existsSync(cli) ||
 				command.includes(".t3-install-") ||
 				(command.startsWith("'") && fs.existsSync(command.split("'")[1]));
 			return reply(
@@ -335,8 +336,9 @@ it.each([
 	"file",
 	"dangling",
 	"archive",
-])("preserves unmanaged %s without adoption or harness installs", async (kind) => {
+])("holds an unusable unmanaged %s without adoption or harness installs", async (kind) => {
 	const f = fixture();
+	f.state.npmVersion = "unknown";
 	fs.mkdirSync(path.dirname(f.cli), { recursive: true });
 	if (kind === "file") fs.writeFileSync(f.cli, "custom CLI");
 	else
@@ -395,21 +397,95 @@ it("validates Node selected by the service PATH, including a shadowing mise shim
 	).toBe(false);
 });
 
-it("does not hide a custom shell CLI by preparing a different service PATH", async () => {
+it("reuses a stable custom shell CLI without replacing its working harness PATH", async () => {
 	const f = fixture(),
-		capture = f.axstack.captureCommandImpl;
+		capture = f.axstack.captureCommandImpl,
+		paths = [];
+	f.axstack.env.PATH = `/custom/bin:/custom/harness-tools:${process.env.PATH}`;
+	f.axstack.runner = async (_exe, _args, options) => {
+		paths.push(options.env.PATH);
+		return { exitCode: 0, stdout: "installed" };
+	};
 	f.axstack.captureCommandImpl = async (command, options) =>
 		command === "command -v t3"
 			? { exitCode: 0, stdout: "/custom/t3" }
 			: command === "t3 --version"
 				? { exitCode: 0, stdout: "t3 v0.1.0" }
 				: capture(command, options);
-	expect((await configureAxstack(f.axstack)).ok).toBe(false);
-	expect(
-		f.events.some(
-			(s) => s.startsWith("npm --global") || s.startsWith("harness:"),
-		),
-	).toBe(false);
+	expect((await configureAxstack(f.axstack)).ok).toBe(true);
+	expect(paths).toEqual([f.axstack.env.PATH, f.axstack.env.PATH]);
+	expect(f.events.some((s) => s.startsWith("npm --global"))).toBe(false);
+});
+
+for (const origin of ["managed npm", "unmanaged file", "archive alias"]) {
+	it.each(["T3 registry unavailable", "Node absent", "npm absent"])(
+		`reuses a runnable stable ${origin} when %s without CLI preparation`,
+		async (failure) => {
+			const f = fixture();
+			if (origin === "managed npm") f.seedNpm();
+			else if (origin === "unmanaged file") f.write(f.cli, "custom CLI");
+			else {
+				const target = path.join(f.home, ".local/opt/t3code-stable/t3-0.1.0-linux-x64/t3");
+				f.write(target, "archive CLI");
+				fs.mkdirSync(path.dirname(f.cli), { recursive: true });
+				fs.symlinkSync(target, f.cli);
+			}
+			const snapshot = () => ({
+				link: fs.lstatSync(f.cli).isSymbolicLink() ? fs.readlinkSync(f.cli) : null,
+				content: fs.readFileSync(f.cli, "utf8"),
+			});
+			const before = snapshot(), capture = f.axstack.captureCommandImpl;
+			let lookups = 0;
+			f.axstack.latestStableImpl = async () => {
+				lookups++;
+				if (failure === "T3 registry unavailable") throw new Error("T3 registry offline");
+				return "0.1.0";
+			};
+			f.axstack.captureCommandImpl = async (command, options) =>
+				(failure === "Node absent" && command === "node --version") ||
+				(failure === "npm absent" && command === "npm --version")
+					? { exitCode: 127, stdout: "" }
+					: capture(command, options);
+			expect((await configureAxstack(f.axstack)).ok).toBe(true);
+			expect(f.events.filter((s) => s.startsWith("harness:"))).toEqual(["harness:claude", "harness:codex"]);
+			expect(snapshot()).toEqual(before);
+			expect(lookups).toBe(0);
+			expect(f.events.some((s) => s.startsWith("npm ") || s === "node --version")).toBe(false);
+		},
+	);
+}
+
+it("reuses a newer stable CLI without downgrade comparison while the service still holds", async () => {
+	const f = fixture();
+	f.write(f.cli, "custom native CLI");
+	f.state.npmVersion = "0.2.0";
+	f.axstack.latestStableImpl = async () => { throw new Error("must not look up T3 for reuse"); };
+	expect((await configureAxstack(f.axstack)).ok).toBe(true);
+	expect(f.events.filter((s) => s.startsWith("harness:"))).toHaveLength(2);
+	expect(await configureTailscaleT3(f.tailscale)).toBe(false);
+	expect(fs.readFileSync(f.cli, "utf8")).toBe("custom native CLI");
+	expect(f.events.some((s) => s.startsWith("npm --global") || s.includes(" service install"))).toBe(false);
+});
+
+it.each([
+	[0, "unknown"],
+	[0, "t3 v0.0.99"],
+	[0, "t3 v0.1.0-nightly.1"],
+	[127, "t3 v0.1.0"],
+	[null, "probe failed"],
+])("holds unusable custom CLI exit=%s output=%s without replacement", async (exitCode, stdout) => {
+	const f = fixture(), capture = f.axstack.captureCommandImpl;
+	f.write(f.cli, "keep custom bytes");
+	f.axstack.captureCommandImpl = async (command, options) => {
+		if (command !== "t3 --version") return capture(command, options);
+		if (exitCode === null) throw new Error(stdout);
+		return { exitCode, stdout };
+	};
+	const result = await configureAxstack(f.axstack);
+	expect(result.ok).toBe(false);
+	expect(result.harnesses.claude.reason).toContain("T3");
+	expect(fs.readFileSync(f.cli, "utf8")).toBe("keep custom bytes");
+	expect(f.events.some((s) => s.startsWith("npm --global") || s.startsWith("harness:"))).toBe(false);
 });
 
 it.each([

@@ -54,9 +54,12 @@ Haoshoku prints `yay -S aur/t3code-bin` (or the selected helper) for a backed-up
 operator-controlled replacement. Unrelated packages continue.
 
 The stable desktop package can ship only `t3code`; setup does not assume it also
-provides `/usr/bin/t3`. Before Axstack harness installation and standalone
-`--tailscale-t3`, Haoshoku prepares the supported `t3@latest` npm CLI under
-`~/.local`, or reuses a genuinely available stable package-owned CLI. Arch lists
+provides `/usr/bin/t3`. Axstack harness installation reuses an already runnable
+stable CLI >=0.1.0 on the caller's PATH, including unmanaged and fleet archive
+CLIs, without a T3 registry lookup or Node/npm prerequisite checks. When CLI
+preparation is needed, Haoshoku installs supported `t3@latest` under `~/.local`
+or reuses a genuinely available stable package-owned CLI. Standalone
+`--tailscale-t3` retains its strict origin/version/runtime guards. Arch lists
 include `nodejs` and `npm`; the selected Node runtime must meet ^22.16, ^23.11 or
 >=24.10 on the service PATH, including mise shims. Arch never runs the Debian
 Node bootstrap. A missing or incompatible prerequisite reports incomplete setup.
@@ -64,8 +67,9 @@ Node bootstrap. A missing or incompatible prerequisite reports incomplete setup.
 Only the exact old managed `/usr/bin/t3-nightly` alias or a verified local npm
 install can migrate after origin/version checks. npm replacement is staged and
 verified before switching the alias; a failed installation preserves it.
-Unmanaged executables, custom links and fleet archive aliases remain unchanged
-and hold setup until explicitly selected by the operator. Unknown/newer CLI
+Unmanaged executables, custom links and fleet archive aliases remain unchanged;
+CLI preparation and service migration hold them until explicitly selected by
+the operator. Unknown/newer CLI
 versions and unsupported runtimes hold migration, and installing stable over an existing nightly
 package or unmanaged desktop remains a bounded T3 package hold. Desktop Local
 environment, single-server preflight and provider settings retain their existing

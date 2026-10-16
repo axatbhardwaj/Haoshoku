@@ -246,7 +246,7 @@ describe("configureAxstack", () => {
 				return { exitCode: 0, stderr: "", stdout: "installed" };
 			},
 		});
-		expect(result.ok).toBe(os !== "arch" || (!t3Path && !["file", "dangling"].includes(existing)));
+		expect(result.ok).toBe(os !== "arch" || existing === "file" || (!t3Path && existing !== "dangling"));
 		if (created) expect(fs.readlinkSync(alias)).toBe("/usr/bin/t3");
 		else if (existing === "file")
 			expect(fs.readFileSync(alias, "utf8")).toBe("user t3");
