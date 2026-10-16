@@ -218,14 +218,16 @@ export async function installArchPackageBatch(packages, options = {}) {
 			whichImpl("t3code") ||
 			whichImpl("t3code-nightly"))
 	) {
-		throw new Error(
-			"T3 stable migration held: existing nightly or unmanaged T3 installation. Inspect its version and origin against stable >=0.1.0 before replacing packages; automatic downgrade is disabled.",
+		status.set("t3code-bin", "held");
+		log.warning(
+			"T3 stable migration held: existing nightly or unmanaged T3 installation. Inspect its version and origin against stable >=0.1.0 before replacing packages; automatic downgrade is disabled. Continuing with unrelated packages.",
 		);
 	}
 	const repositoryPackages = [];
 	const aurPackages = [];
 
 	for (const pkg of valid) {
+		if (status.get(pkg) === "held") continue;
 		if (initiallyInstalled.has(pkg)) {
 			status.set(pkg, "skipped");
 		} else if (await packageInRepositoryImpl(pkg)) {
@@ -262,6 +264,7 @@ export async function installArchPackageBatch(packages, options = {}) {
 		missing: valid.filter((pkg) => status.get(pkg) === "missing"),
 		invalid,
 		skipped: valid.filter((pkg) => status.get(pkg) === "skipped"),
+		held: valid.filter((pkg) => status.get(pkg) === "held"),
 	};
 }
 
