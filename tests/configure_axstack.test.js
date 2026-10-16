@@ -20,6 +20,7 @@ function configureAxstack(options) {
 		detectOS: () => "debian-server",
 		which: () => null,
 		stableExists: false,
+		nightlyExists: true,
 		fetcher: registryFetcher(),
 		...options,
 	});
@@ -177,6 +178,35 @@ describe("configureAxstack", () => {
 		else if (existing === "dangling")
 			expect(fs.readlinkSync(alias)).toBe("/missing/user-t3");
 		else expect(fs.existsSync(alias)).toBe(false);
+	});
+
+	it("migrates a dangling exact managed nightly link after checking stable and stays idempotent", async () => {
+		const home = makeHome();
+		const target = releasePaths(home);
+		const alias = path.join(target.binDir, "t3");
+		fs.mkdirSync(target.binDir, { recursive: true });
+		fs.symlinkSync("/usr/bin/t3-nightly", alias);
+		const calls = [];
+		const options = {
+			...target, home,
+			detectOS: () => "arch", stableExists: true, nightlyExists: false,
+			which: () => alias,
+			extractor: makeExtractor([]),
+			runner: async (executable) => {
+				calls.push(executable);
+				if (executable === "/usr/bin/t3") return { exitCode: 0, stdout: "t3 v0.1.0" };
+				if (executable === "/usr/bin/t3-nightly") throw Object.assign(new Error("target missing"), { code: "ENOENT" });
+				expect(fs.readlinkSync(alias)).toBe("/usr/bin/t3");
+				return { exitCode: 0, stdout: "installed", stderr: "" };
+			},
+		};
+		expect((await configureAxstack(options)).ok).toBe(true);
+		expect(fs.readlinkSync(alias)).toBe("/usr/bin/t3");
+		expect(calls).toEqual(["/usr/bin/t3", "/test/bin/bun", "/test/bin/bun"]);
+		const mtime = fs.lstatSync(alias).mtimeMs;
+		expect((await configureAxstack(options)).ok).toBe(true);
+		expect(fs.lstatSync(alias).mtimeMs).toBe(mtime);
+		expect(calls).not.toContain("/usr/bin/t3-nightly");
 	});
 
 	it.each([

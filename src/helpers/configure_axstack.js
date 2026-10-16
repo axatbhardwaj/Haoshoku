@@ -221,16 +221,28 @@ export async function configureAxstack(options = {}) {
 				if (stable.exitCode !== 0 || !meetsT3Floor(stable.stdout))
 					throw new Error("packaged T3 stable >=0.1.0 is required");
 				if (ownedNightly) {
-					const old = await runner("/usr/bin/t3-nightly", ["--version"]);
-					const oldVersion = parseT3Version(old.stdout);
-					if (
-						old.exitCode !== 0 ||
-						!oldVersion ||
-						Bun.semver.order(oldVersion, parseT3Version(stable.stdout)) > 0
-					)
-						throw new Error(
-							"nightly version unknown or newer than stable; migration held, inspect before replacing the managed link",
-						);
+					let nightlyExists = options.nightlyExists;
+					if (nightlyExists === undefined) {
+						try {
+							fs.statSync("/usr/bin/t3-nightly");
+							nightlyExists = true;
+						} catch (error) {
+							if (error.code !== "ENOENT") throw error;
+							nightlyExists = false;
+						}
+					}
+					if (nightlyExists) {
+						const old = await runner("/usr/bin/t3-nightly", ["--version"]);
+						const oldVersion = parseT3Version(old.stdout);
+						if (
+							old.exitCode !== 0 ||
+							!oldVersion ||
+							Bun.semver.order(oldVersion, parseT3Version(stable.stdout)) > 0
+						)
+							throw new Error(
+								"nightly version unknown or newer than stable; migration held, inspect before replacing the managed link",
+							);
+					}
 					fs.unlinkSync(alias);
 				}
 				fs.mkdirSync(binDir, { recursive: true });
