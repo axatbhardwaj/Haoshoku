@@ -83,6 +83,7 @@ describe("iobox packages", () => {
 				requested = packages;
 				const result = await installArchPackageBatch(packages, {
 					...batchOptions,
+					whichImpl: () => null,
 					getInstalledPackagesImpl: async () => installed,
 					packageInRepositoryImpl: async () => true,
 					runCommandImpl: async (command) => {
@@ -195,11 +196,16 @@ it("exits the full iobox CLI non-zero naming linger when the service step fails"
 });
 
 // A fleet failure must abort iobox and release sudo; desktop profiles keep going.
-it.each(["pc", "laptop", "iobox"])("handles fleet SSH failure on %s", async (deviceType) => {
+it.each([
+	"pc",
+	"laptop",
+	"iobox",
+])("handles fleet SSH failure on %s", async (deviceType) => {
 	for (const throws of [false, true]) {
 		const events = [];
 		const messages = [];
-		const originalWarning = log.warning, originalError = log.error;
+		const originalWarning = log.warning,
+			originalError = log.error;
 		log.warning = log.error = (message) => messages.push(message);
 		try {
 			const result = await runCachyOSSetup({
@@ -214,7 +220,10 @@ it.each(["pc", "laptop", "iobox"])("handles fleet SSH failure on %s", async (dev
 				installSystemPackagesImpl: async () => {},
 				installFlatpakAppsImpl: async () => {},
 				configureUserAppsImpl: async () => {},
-				configureTailscaleT3Impl: async () => { events.push("t3"); return true; },
+				configureTailscaleT3Impl: async () => {
+					events.push("t3");
+					return true;
+				},
 				configureBraveManagedPoliciesImpl: async () => {},
 				configureHyprmoncfgImpl: async () => {},
 				configureOmarchyWorkspacesImpl: async () => {},

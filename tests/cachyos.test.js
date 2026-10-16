@@ -1429,3 +1429,31 @@ describe("Arch T3 phone access integration", () => {
 		}
 	});
 });
+
+describe("stable T3 package transaction safety", () => {
+	it.each([
+		"nightly-package",
+		"unmanaged-cli",
+		"unmanaged-desktop",
+	])("holds before any package transaction for %s", async (origin) => {
+		const commands = [];
+		await expect(
+			installArchPackageBatch(["chromium", "t3code-bin"], {
+				aurHelper: "paru",
+				getInstalledPackagesImpl: async () =>
+					new Set(origin === "nightly-package" ? ["t3code-nightly-bin"] : []),
+				whichImpl: (name) =>
+					(origin === "unmanaged-cli" && name === "t3") ||
+					(origin === "unmanaged-desktop" && name === "t3code")
+						? "/custom/t3"
+						: null,
+				packageInRepositoryImpl: async () => true,
+				runCommandImpl: async (command) => {
+					commands.push(command);
+					return true;
+				},
+			}),
+		).rejects.toThrow("T3 stable migration held");
+		expect(commands).toEqual([]);
+	});
+});
