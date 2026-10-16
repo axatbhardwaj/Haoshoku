@@ -32,6 +32,21 @@ export function meetsT3Floor(output) {
 	);
 }
 
+// CLI and service update channels are derived from the installed version upstream.
+// Desktop uses a separate `latest`/`nightly` preference (checked by preflight).
+export async function latestT3Stable() {
+	const response = await fetch("https://registry.npmjs.org/t3/latest", {
+		signal: AbortSignal.timeout(10000),
+		redirect: "error",
+	});
+	if (!response.ok)
+		throw new Error(`T3 stable registry returned ${response.status}`);
+	const { version } = await response.json();
+	if (!meetsT3Floor(version))
+		throw new Error("T3 stable registry version is invalid or below 0.1.0");
+	return version;
+}
+
 export function parseJson(output) {
 	try {
 		return JSON.parse(output);

@@ -10,6 +10,8 @@ import {
 	SERVICE_ACTIVE_COMMAND,
 	READINESS_ATTEMPTS,
 	meetsT3Floor,
+	parseT3Version,
+	latestT3Stable,
 	parseJson,
 	shellQuote,
 	waitForT3Tailscale,
@@ -96,6 +98,7 @@ export async function configureT3CodeServer({
 	env = process.env,
 	fsImpl = fs,
 	ensureNodeImpl = ensureT3NodeRuntime,
+	latestStableImpl = latestT3Stable,
 	captureCommandImpl = runCommandCapture,
 	runCommandImpl = runCommand,
 	fetchImpl = fetch,
@@ -105,7 +108,10 @@ export async function configureT3CodeServer({
 } = {}) {
 	const probe = async (command) => {
 		try {
-			const result = await captureCommandImpl(command, { expectFailure: true });
+			const result = await captureCommandImpl(command, {
+				expectFailure: true,
+				shell: command.startsWith("command -v "),
+			});
 			return result.exitCode === 0 ? result.stdout.trim() : null;
 		} catch {
 			return null;
@@ -124,17 +130,65 @@ export async function configureT3CodeServer({
 	if (!(await ensureNodeImpl({ runCommandImpl, logger }))) return false;
 
 	let t3 = "t3";
-	if (!meetsT3Floor(await probe("t3 --version"))) {
-		const install = `npm --global --prefix ${shellQuote(path.join(home, ".local"))} install t3@nightly`;
-		if (!(await runCommandImpl(install))) {
-			return fail(`T3 nightly installation failed. Retry with: ${install}`);
+	let latest;
+	let cliVersion;
+	try {
+		latest = await latestStableImpl();
+		if (!meetsT3Floor(latest)) throw new Error("invalid stable version");
+		const output = await probe("t3 --version");
+		const resolved = await probe("command -v t3");
+		const version = parseT3Version(output);
+		cliVersion = version;
+		if (
+			(output !== null || resolved) &&
+			(!resolved || !version || Bun.semver.order(version, latest) > 0)
+		)
+			throw new Error("CLI version unknown or newer than stable");
+		const localCli = path.join(home, ".local/bin/t3");
+		const packageDir = path.join(home, ".local/lib/node_modules/t3");
+		let occupied = false;
+		let managed = false;
+		try {
+			const stat = fsImpl.lstatSync(localCli);
+			occupied = true;
+			if (
+				stat.isSymbolicLink() &&
+				fsImpl.realpathSync(localCli) === path.join(packageDir, "bin/t3.js")
+			) {
+				const metadata = JSON.parse(
+					fsImpl.readFileSync(path.join(packageDir, "package.json"), "utf8"),
+				);
+				const packageVersion = parseT3Version(metadata.version);
+				if (packageVersion && Bun.semver.order(packageVersion, latest) > 0)
+					throw new Error("managed npm package is newer than stable");
+				managed = metadata.name === "t3" && packageVersion !== null;
+			}
+		} catch (error) {
+			if (error.code !== "ENOENT") throw error;
 		}
-		t3 = shellQuote(path.join(home, ".local/bin/t3"));
-		if (!meetsT3Floor(await probe(`${t3} --version`))) {
-			return fail(
-				`T3 must be >= ${T3_VERSION_FLOOR}. Inspect ${t3} --version and retry the nightly install.`,
+		if (
+			(resolved && (resolved !== localCli || !managed)) ||
+			(occupied && !managed)
+		)
+			throw new Error(
+				"CLI origin is unmanaged; preserve it and select the supported ~/.local npm install explicitly",
 			);
+		if (!meetsT3Floor(output)) {
+			const install = `npm --global --prefix ${shellQuote(path.join(home, ".local"))} install t3@latest`;
+			if (!(await runCommandImpl(install)))
+				return fail(`T3 stable installation failed. Retry with: ${install}`);
+			t3 = shellQuote(localCli);
+			const installed = parseT3Version(await probe(`${t3} --version`));
+			cliVersion = installed;
+			if (!meetsT3Floor(installed) || Bun.semver.order(installed, latest) > 0)
+				return fail(
+					`T3 stable must be >= ${T3_VERSION_FLOOR} and no newer than verified stable ${latest}. Inspect ${t3} --version before retrying.`,
+				);
 		}
+	} catch (error) {
+		return fail(
+			`T3 stable migration held: ${error.message}. Inspect the CLI version and origin before retrying; no automatic downgrade.`,
+		);
 	}
 
 	const desktop = await preflightT3Desktop({
@@ -143,6 +197,8 @@ export async function configureT3CodeServer({
 		fsImpl,
 		captureCommandImpl,
 		fail,
+		stableVersion: latest,
+		cliVersion,
 	});
 	if (!desktop) return false;
 	const connectStatusCommand = `${t3} connect status --json`;
