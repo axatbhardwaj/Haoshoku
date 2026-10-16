@@ -4,9 +4,10 @@ import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import { detectOS } from "../common/cli_utils.js";
 import { recordNextStep } from "../common/run_log.js";
-import { log } from "../common/utils.js";
+import { prepareArchT3Cli } from "./t3_cli.js";
+import { runCommand, runCommandCapture, log } from "../common/utils.js";
 
-import { meetsT3Floor, parseT3Version } from "./t3_tailscale.js";
+import { latestT3Stable } from "./t3_tailscale.js";
 
 const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?$/;
 
@@ -199,62 +200,19 @@ export async function configureAxstack(options = {}) {
 		};
 	}
 
+	let harnessEnv = { ...process.env, HOME: home };
 	try {
 		if ((options.detectOS ?? detectOS)() === "arch") {
-			const alias = path.join(binDir, "t3");
-			let ownedNightly = false;
-			let occupied = false;
-			try {
-				const stat = fs.lstatSync(alias);
-				occupied = true;
-				ownedNightly =
-					stat.isSymbolicLink() &&
-					fs.readlinkSync(alias) === "/usr/bin/t3-nightly";
-			} catch (error) {
-				if (error.code !== "ENOENT") throw error;
-			}
-			if (
-				(ownedNightly || (!occupied && !(options.which ?? Bun.which)("t3"))) &&
-				(options.stableExists ?? fs.existsSync("/usr/bin/t3"))
-			) {
-				const stable = await runner("/usr/bin/t3", ["--version"]);
-				if (stable.exitCode !== 0 || !meetsT3Floor(stable.stdout))
-					throw new Error("packaged T3 stable >=0.1.0 is required");
-				if (ownedNightly) {
-					let nightlyExists = options.nightlyExists;
-					if (nightlyExists === undefined) {
-						try {
-							fs.statSync("/usr/bin/t3-nightly");
-							nightlyExists = true;
-						} catch (error) {
-							if (error.code !== "ENOENT") throw error;
-							nightlyExists = false;
-						}
-					}
-					if (nightlyExists) {
-						const old = await runner("/usr/bin/t3-nightly", ["--version"]);
-						const oldVersion = parseT3Version(old.stdout);
-						if (
-							old.exitCode !== 0 ||
-							!oldVersion ||
-							Bun.semver.order(oldVersion, parseT3Version(stable.stdout)) > 0
-						)
-							throw new Error(
-								"nightly version unknown or newer than stable; migration held, inspect before replacing the managed link",
-							);
-					}
-					fs.unlinkSync(alias);
-				}
-				fs.mkdirSync(binDir, { recursive: true });
-				fs.symlinkSync("/usr/bin/t3", alias);
-			}
+			const prepared = await prepareArchT3Cli({
+				home, env: options.env, fsImpl: options.fsImpl ?? fs, logger: log,
+				captureCommandImpl: options.captureCommandImpl ?? runCommandCapture,
+				runCommandImpl: options.runCommandImpl ?? runCommand,
+				latestStableImpl: options.latestStableImpl ?? latestT3Stable,
+			});
+			harnessEnv = { ...prepared.env, HOME: home };
 		}
 	} catch (error) {
-		return failedResult(
-			`T3 alias failed: ${error?.message ?? error}`,
-			"kept",
-			latestVersion,
-		);
+		return failedResult(`T3 alias failed: ${error?.message ?? error}`, "kept", latestVersion);
 	}
 
 	const releaseRoot = path.join(dataDir, "releases", latestVersion);
@@ -355,7 +313,7 @@ export async function configureAxstack(options = {}) {
 		let result;
 		try {
 			result = await runner(bunPath, args, {
-				env: { ...process.env, HOME: home },
+				env: harnessEnv,
 			});
 		} catch (error) {
 			result = {

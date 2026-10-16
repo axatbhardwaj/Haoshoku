@@ -47,6 +47,8 @@ subdl
 docker
 miniconda3
 bun-bin
+nodejs
+npm
 gitleaks
 pyenv
 cursor-bin

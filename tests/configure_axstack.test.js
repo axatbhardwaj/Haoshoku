@@ -15,17 +15,92 @@ const REGISTRY_URL = "https://registry.npmjs.org/axstack/latest";
 const homes = [];
 
 function configureAxstack(options) {
+	const alias = path.join(options.home ?? "/missing-fixture", ".local/bin/t3");
+	const exists = (file) =>
+		file === "/usr/bin/t3"
+			? Boolean(options.stableExists)
+			: fs.existsSync(file);
+	const capture = async (command) => {
+		if (command === "command -v t3") {
+			let resolved = options.which?.("t3");
+			if (!resolved) {
+				try {
+					fs.lstatSync(alias);
+					resolved = alias;
+				} catch {}
+			}
+			return { exitCode: resolved ? 0 : 1, stdout: resolved ?? "" };
+		}
+		if (command === "pacman -Qqo '/usr/bin/t3'")
+			return { exitCode: 0, stdout: "t3code-bin" };
+		if (command === "node --version")
+			return { exitCode: 0, stdout: "v24.10.0" };
+		if (command === "command -v node")
+			return { exitCode: 0, stdout: "/usr/bin/node" };
+		if (command === "npm --version") return { exitCode: 0, stdout: "10.9.3" };
+		if (
+			command === "/usr/bin/t3 --version" ||
+			command === "/usr/bin/t3-nightly --version"
+		)
+			return options.runner(command.split(" ")[0], ["--version"]);
+		if (command === "t3 --version") {
+			let target;
+			try {
+				target = fs.readlinkSync(alias);
+			} catch {}
+			if (target === "/usr/bin/t3" && options.stableExists)
+				return options.runner("/usr/bin/t3", ["--version"]);
+			if (fs.existsSync(alias)) return { exitCode: 0, stdout: "t3 v0.1.0" };
+			return { exitCode: 127, stdout: "" };
+		}
+		if (command.endsWith(" --version"))
+			return { exitCode: 0, stdout: "t3 v0.1.0" };
+		throw new Error(`unexpected T3 probe ${command}`);
+	};
 	return runConfigureAxstack({
 		bunPath: "/test/bin/bun",
 		detectOS: () => "debian-server",
 		which: () => null,
-		stableExists: false,
-		nightlyExists: true,
 		fetcher: registryFetcher(),
+		latestStableImpl: async () => "0.1.0",
+		fsImpl: {
+			...fs,
+			existsSync: exists,
+			statSync(file, ...args) {
+				if (file === "/usr/bin/t3-nightly") {
+					if (options.nightlyExists === false)
+						throw Object.assign(new Error("fixture absent"), {
+							code: "ENOENT",
+						});
+					return { isFile: () => true };
+				}
+				return fs.statSync(file, ...args);
+			},
+		},
+		captureCommandImpl: capture,
+		runCommandImpl: async (command) => {
+			const prefix = command.match(/--prefix '([^']+)'/)[1];
+			fs.mkdirSync(path.join(prefix, "lib/node_modules/t3/bin"), {
+				recursive: true,
+			});
+			fs.mkdirSync(path.join(prefix, "bin"), { recursive: true });
+			fs.writeFileSync(
+				path.join(prefix, "lib/node_modules/t3/bin/t3.js"),
+				"fixture",
+			);
+			fs.writeFileSync(
+				path.join(prefix, "lib/node_modules/t3/package.json"),
+				'{"name":"t3","version":"0.1.0","bin":{"t3":"bin/t3.js"}}',
+			);
+			fs.symlinkSync(
+				"../lib/node_modules/t3/bin/t3.js",
+				path.join(prefix, "bin/t3"),
+			);
+			return true;
+		},
 		...options,
 	});
 }
-
 function registryFetcher(downloaded = fixture(), requests = []) {
 	return async (url) => {
 		requests.push(url);
@@ -140,7 +215,7 @@ describe("configureAxstack", () => {
 		["debian-server", null, true, null, false],
 		["arch", null, true, "file", false],
 		["arch", null, true, "dangling", false],
-		["arch", "/local/t3", true, "managed", true],
+		["arch", null, true, "managed", true],
 	])("T3 alias: OS=%s PATH=%s stable=%s existing=%s", async (os, t3Path, stableExists, existing, created) => {
 		const home = makeHome();
 		const target = releasePaths(home);
@@ -171,12 +246,13 @@ describe("configureAxstack", () => {
 				return { exitCode: 0, stderr: "", stdout: "installed" };
 			},
 		});
-		expect(result.ok).toBe(true);
+		expect(result.ok).toBe(os !== "arch" || (!t3Path && !["file", "dangling"].includes(existing)));
 		if (created) expect(fs.readlinkSync(alias)).toBe("/usr/bin/t3");
 		else if (existing === "file")
 			expect(fs.readFileSync(alias, "utf8")).toBe("user t3");
 		else if (existing === "dangling")
 			expect(fs.readlinkSync(alias)).toBe("/missing/user-t3");
+		else if (os === "arch" && !t3Path) expect(fs.realpathSync(alias)).toBe(path.join(home,".local/lib/node_modules/t3/bin/t3.js"));
 		else expect(fs.existsSync(alias)).toBe(false);
 	});
 

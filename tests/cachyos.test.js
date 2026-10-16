@@ -1524,17 +1524,33 @@ describe("bounded T3 package hold in full Arch setup", () => {
 });
 
 describe("explicit stable T3 AUR source", () => {
-	it.each(["yay", "paru"])("keeps aur/t3code-bin through %s batch fallback and canonical status", async (aurHelper) => {
-		const commands = [], repositoryQueries = [];
-		const result = await installArchPackageBatch(["chromium", "t3code-bin", "aur-one"], {
-			aurHelper,
-			whichImpl: () => null,
-			getInstalledPackagesImpl: async () => new Set(),
-			packageInRepositoryImpl: async (pkg) => { repositoryQueries.push(pkg); return pkg !== "aur-one"; },
-			packageInAurImpl: async () => true,
-			captureCommandImpl: async () => ({ exitCode: 0, stdout: "t3code-bin 0.1.0-1" }),
-			runCommandImpl: async (command) => { commands.push(command); return !command.includes("--batchinstall"); },
-		});
+	it.each([
+		"yay",
+		"paru",
+	])("keeps aur/t3code-bin through %s batch fallback and canonical status", async (aurHelper) => {
+		const commands = [],
+			repositoryQueries = [];
+		const result = await installArchPackageBatch(
+			["chromium", "t3code-bin", "aur-one"],
+			{
+				aurHelper,
+				whichImpl: () => null,
+				getInstalledPackagesImpl: async () => new Set(),
+				packageInRepositoryImpl: async (pkg) => {
+					repositoryQueries.push(pkg);
+					return pkg !== "aur-one";
+				},
+				packageInAurImpl: async () => true,
+				captureCommandImpl: async () => ({
+					exitCode: 0,
+					stdout: "t3code-bin 0.1.0-1",
+				}),
+				runCommandImpl: async (command) => {
+					commands.push(command);
+					return !command.includes("--batchinstall");
+				},
+			},
+		);
 		expect(repositoryQueries).toEqual(["chromium", "aur-one"]);
 		expect(commands).toEqual([
 			"sudo -n pacman -S --needed --noconfirm chromium",
@@ -1546,45 +1562,77 @@ describe("explicit stable T3 AUR source", () => {
 		expect(result.failed).toEqual([]);
 	});
 
-	it.each([null, "yay"])("does not fall back to a repository T3 when AUR is unavailable (%s)", async (aurHelper) => {
+	it.each([
+		null,
+		"yay",
+	])("does not fall back to a repository T3 when AUR is unavailable (%s)", async (aurHelper) => {
 		const commands = [];
 		const result = await installArchPackageBatch(["t3code-bin"], {
-			aurHelper, whichImpl: () => null,
+			aurHelper,
+			whichImpl: () => null,
 			getInstalledPackagesImpl: async () => new Set(),
 			packageInRepositoryImpl: async () => true,
 			packageInAurImpl: async () => false,
-			runCommandImpl: async (command) => { commands.push(command); return true; },
+			runCommandImpl: async (command) => {
+				commands.push(command);
+				return true;
+			},
 		});
 		expect(result.missing).toEqual(["t3code-bin"]);
 		expect(commands).toEqual([]);
 	});
 
-	it.each(["0.0.45-1", "unknown", "0.1.0-nightly.1-1"])("holds installed unsuitable desktop %s with explicit operator remediation", async (version) => {
-		const commands = [], warnings = [];
+	it.each([
+		"0.0.45-1",
+		"unknown",
+		"0.1.0-nightly.1-1",
+	])("holds installed unsuitable desktop %s with explicit operator remediation", async (version) => {
+		const commands = [],
+			warnings = [];
 		const previous = log.warning;
 		log.warning = (message) => warnings.push(message);
 		try {
 			const result = await installArchPackageBatch(["t3code-bin", "chromium"], {
-				aurHelper: "yay", whichImpl: () => null,
+				aurHelper: "yay",
+				whichImpl: () => null,
 				getInstalledPackagesImpl: async () => new Set(["t3code-bin"]),
-				captureCommandImpl: async () => ({ exitCode: 0, stdout: `t3code-bin ${version}` }),
+				captureCommandImpl: async () => ({
+					exitCode: 0,
+					stdout: `t3code-bin ${version}`,
+				}),
 				packageInRepositoryImpl: async () => true,
-				runCommandImpl: async (command) => { commands.push(command); return true; },
+				runCommandImpl: async (command) => {
+					commands.push(command);
+					return true;
+				},
 			});
 			expect(result.held).toEqual(["t3code-bin"]);
 			expect(result.skipped).toEqual([]);
 			expect(result.installed).toEqual(["chromium"]);
-			expect(commands).toEqual(["sudo -n pacman -S --needed --noconfirm chromium"]);
+			expect(commands).toEqual([
+				"sudo -n pacman -S --needed --noconfirm chromium",
+			]);
 			expect(warnings.join(" ")).toContain("yay -S aur/t3code-bin");
-		} finally { log.warning = previous; }
+		} finally {
+			log.warning = previous;
+		}
 	});
 
-	it.each(["0.1.0-1", "0.2.0-1"])("preserves an already supported desktop %s without replacing it", async (version) => {
+	it.each([
+		"0.1.0-1",
+		"0.2.0-1",
+	])("preserves an already supported desktop %s without replacing it", async (version) => {
 		const result = await installArchPackageBatch(["t3code-bin"], {
-			aurHelper: "yay", whichImpl: () => null,
+			aurHelper: "yay",
+			whichImpl: () => null,
 			getInstalledPackagesImpl: async () => new Set(["t3code-bin"]),
-			captureCommandImpl: async () => ({ exitCode: 0, stdout: `t3code-bin ${version}` }),
-			runCommandImpl: async () => { throw new Error("must not replace desktop"); },
+			captureCommandImpl: async () => ({
+				exitCode: 0,
+				stdout: `t3code-bin ${version}`,
+			}),
+			runCommandImpl: async () => {
+				throw new Error("must not replace desktop");
+			},
 		});
 		expect(result.skipped).toEqual(["t3code-bin"]);
 		expect(result.held).toEqual([]);
@@ -1592,11 +1640,15 @@ describe("explicit stable T3 AUR source", () => {
 
 	it("does not announce success if a successful transaction leaves the desktop below floor", async () => {
 		const result = await installArchPackageBatch(["t3code-bin"], {
-			aurHelper: "yay", whichImpl: () => null,
+			aurHelper: "yay",
+			whichImpl: () => null,
 			getInstalledPackagesImpl: async () => new Set(),
 			packageInRepositoryImpl: async () => false,
 			packageInAurImpl: async () => true,
-			captureCommandImpl: async () => ({ exitCode: 0, stdout: "t3code-bin 0.0.45-1" }),
+			captureCommandImpl: async () => ({
+				exitCode: 0,
+				stdout: "t3code-bin 0.0.45-1",
+			}),
 			runCommandImpl: async () => true,
 		});
 		expect(result.installed).toEqual([]);

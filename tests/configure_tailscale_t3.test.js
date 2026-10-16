@@ -67,6 +67,9 @@ function fixture({ fresh = false, loggedOut = fresh } = {}) {
 		deviceType: "pc",
 		env: {},
 		fsImpl: {
+			lstatSync(file) { if (files.get(file)?.startsWith("symlink:")) return { isSymbolicLink: () => true }; throw Object.assign(new Error("absent fixture alias"), { code: "ENOENT" }); },
+			readlinkSync: (file) => files.get(file)?.slice("symlink:".length),
+			realpathSync: () => "/home/test/.local/lib/node_modules/t3/bin/t3.js",
 			existsSync: (file) => files.has(file),
 			readdirSync: () => [],
 			statSync: () => {
@@ -92,7 +95,10 @@ function fixture({ fresh = false, loggedOut = fresh } = {}) {
 			}
 			let stdout = "";
 			let exitCode = 0;
-			if (command.startsWith("systemctl --user show "))
+			if (command === "node --version") stdout = "v24.10.0";
+			else if (command === "command -v node") stdout = "/usr/bin/node";
+			else if (command === "npm --version") stdout = "10.9.3";
+			else if (command.startsWith("systemctl --user show "))
 				stdout = fresh
 					? "LoadState=not-found\nEnvironment=\n"
 					: "LoadState=loaded\nExecStart={ path=/home/test/.t3/runtime/versions/1/t3 ; argv[]=/home/test/.t3/runtime/versions/1/t3 __service-launcher ; }\nEnvironment=T3CODE_HOME=/home/test/.t3\n";
@@ -140,7 +146,7 @@ function fixture({ fresh = false, loggedOut = fresh } = {}) {
 			if (command.startsWith("sudo -n systemctl mask "))
 				for (const target of command.split(" ").slice(4))
 					masks.set(target, "masked");
-			if (command.startsWith("t3 service install")) serviceActive = true;
+			if (command.includes(" service install")) serviceActive = true;
 			if (command === "sudo -n tailscale up") {
 				expect(init).toMatchObject({ stdout: "inherit", stderr: "inherit" });
 				loggedOut = false;
@@ -583,6 +589,7 @@ describe("Arch T3 installation diagnostics", () => {
 	it("warns about a shadowing CLI with both paths and versions, without removing it", async () => {
 		const f = fixture();
 		f.files.set("/usr/bin/t3", "packaged CLI");
+		seedManagedNpm(f);
 		f.overrides.set("command -v t3", {
 			stdout: "/home/test/.local/bin/t3",
 			exitCode: 0,
@@ -605,6 +612,7 @@ describe("Arch T3 installation diagnostics", () => {
 
 	it("does not probe or warn about an absent packaged CLI", async () => {
 		const f = fixture();
+		seedManagedNpm(f);
 		f.overrides.set("command -v t3", {
 			stdout: "/home/test/.local/bin/t3",
 			exitCode: 0,
@@ -666,6 +674,7 @@ it.each([
 			}),
 		});
 	};
+	seedManagedNpm(f);
 	f.overrides.set("command -v t3", {
 		stdout: "/home/test/.local/bin/t3",
 		exitCode: 0,
@@ -969,6 +978,7 @@ describe("Arch full setup T3 failure summary", () => {
 		logRoots.push(root);
 		const run = startRunLog({ version: "test", env: { HOME: root } });
 		const events = [];
+		seedManagedNpm(f);
 		f.overrides.set("command -v t3", {
 			stdout: "/home/test/.local/bin/t3",
 			exitCode: 0,
@@ -1072,3 +1082,8 @@ it.each(["unavailable", "invalid", "below floor", "prerelease"])("holds Arch set
 	expect(f.events).not.toContain("pacman -Qqo '/usr/bin/t3'");
 	expect(f.warnings.join(" ")).toContain(kind === "unavailable" ? "stable registry unavailable" : "stable release unknown");
 });
+
+function seedManagedNpm(f) {
+	f.files.set("/home/test/.local/bin/t3", "symlink:../lib/node_modules/t3/bin/t3.js");
+	f.files.set("/home/test/.local/lib/node_modules/t3/package.json", '{"name":"t3","version":"0.1.0","bin":{"t3":"bin/t3.js"}}');
+}
