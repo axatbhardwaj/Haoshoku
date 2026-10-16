@@ -1,0 +1,14 @@
+**/.git
+**/node_modules
+**/.env*
+**/.npmrc
+**/.netrc
+**/.ssh
+**/.aws
+**/.t3
+**/.codex*
+**/.claude*
+**/auth.json
+**/service-account.env
+**/*.pem
+**/*.key
