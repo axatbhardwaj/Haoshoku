@@ -72,7 +72,7 @@ describe("Omarchy Lua workspace behavior", () => {
 	it("retains exact application bindings in both device profiles", () => {
 		const commands = [
 			'o.bind("SUPER + I", "Show/focus/hide AI assistants workspace", "haoshoku-special-workspace assistants")',
-			'o.bind("SUPER + T", "T3 Code", o.launch_sole("^com\\\\.t3tools\\\\.T3Code$", "t3code-nightly"))',
+			'o.bind("SUPER + T", "T3 Code", o.launch_sole("^com\\\\.t3tools\\\\.T3Code$", "t3code"))',
 			'o.bind("SUPER + B", "Toggle Flux Brave Origin workspace", "haoshoku-special-workspace browser-toggle flux")',
 			'o.bind("SUPER + D", "Toggle DeFi Brave Origin workspace", "haoshoku-special-workspace browser-toggle defi")',
 			'o.bind("SUPER + SHIFT + G", "Toggle gaming workspace", "haoshoku-gaming-workspace toggle")',

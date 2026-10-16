@@ -16,7 +16,7 @@ import {
 
 const BINDINGS_REQUIRE = 'require("hypr.haoshoku.bindings")';
 const WORKSPACES_REQUIRE = 'require("hypr.haoshoku.workspaces")';
-const PRIMARY_APP_DEFAULT = "t3code-nightly\ncom.t3tools.T3Code\n";
+const PRIMARY_APP_DEFAULT = "t3code\ncom.t3tools.T3Code\n";
 
 function writeAtomically(fsImpl, destination, contents) {
 	const temporary = path.join(
@@ -232,10 +232,12 @@ export async function configureOmarchyWorkspaces({
 	if ((fsImpl.statSync(primaryScript).mode & 0o111) !== 0o111)
 		fsImpl.chmodSync(primaryScript, 0o755);
 	const primaryConfig = path.join(home, ".config", "haoshoku", "primary-app");
-	// The retired Orca default moves to T3 Code Nightly; other choices stay.
+	// Migrate exact Haoshoku defaults; preserve custom executables and classes.
 	if (
 		!fsImpl.existsSync(primaryConfig) ||
-		fsImpl.readFileSync(primaryConfig, "utf8").trim() === "stably-orca"
+		["stably-orca\n", "t3code-nightly\ncom.t3tools.T3Code\n"].includes(
+			fsImpl.readFileSync(primaryConfig, "utf8"),
+		)
 	) {
 		fsImpl.mkdirSync(path.dirname(primaryConfig), { recursive: true });
 		writeAtomically(fsImpl, primaryConfig, PRIMARY_APP_DEFAULT);

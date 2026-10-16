@@ -119,7 +119,7 @@ describe("configureOmarchyWorkspaces", () => {
 				path.join(home, ".config", "haoshoku", "primary-app"),
 				"utf8",
 			),
-		).toBe("t3code-nightly\ncom.t3tools.T3Code\n");
+		).toBe("t3code\ncom.t3tools.T3Code\n");
 		expect(
 			fs.existsSync(path.join(hyprDirectory, "haoshoku", "primary_app.lua")),
 		).toBe(true);
@@ -144,7 +144,27 @@ describe("configureOmarchyWorkspaces", () => {
 				path.join(home, ".config", "haoshoku", "primary-app"),
 				"utf8",
 			),
-		).toBe("t3code-nightly\ncom.t3tools.T3Code\n");
+		).toBe("t3code\ncom.t3tools.T3Code\n");
+	});
+
+	it.each([
+		["t3code-nightly\ncom.t3tools.T3Code\n", "t3code\ncom.t3tools.T3Code\n"],
+		["t3code-nightly\nmy-custom-class\n", "t3code-nightly\nmy-custom-class\n"],
+		["my-editor\ncustom.Editor\n", "my-editor\ncustom.Editor\n"],
+	])("migrates only the exact managed primary app: %s", async (before, after) => {
+		fs.writeFileSync(
+			path.join(home, ".config/hypr/hyprland.lua"),
+			'require("hypr.defaults")\n',
+		);
+		const setting = path.join(home, ".config/haoshoku/primary-app");
+		fs.mkdirSync(path.dirname(setting), { recursive: true });
+		fs.writeFileSync(setting, before);
+		await configureV4();
+		expect(fs.readFileSync(setting, "utf8")).toBe(after);
+		const mtime = fs.statSync(setting).mtimeMs;
+		await configureV4();
+		expect(fs.readFileSync(setting, "utf8")).toBe(after);
+		expect(fs.statSync(setting).mtimeMs).toBe(mtime);
 	});
 
 	it("refuses without writing when the v4 hyprland.lua entrypoint is absent", async () => {

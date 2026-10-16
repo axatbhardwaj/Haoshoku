@@ -2,7 +2,7 @@ import fs from "node:fs";
 import { isIP } from "node:net";
 import path from "node:path";
 
-export const T3_VERSION_FLOOR = "0.0.46-nightly.20261003.2610";
+export const T3_VERSION_FLOOR = "0.1.0";
 export const SERVICE_ACTIVE_COMMAND =
 	"systemctl --user is-active --quiet t3code.service";
 const SERVE_STATUS_COMMAND = "tailscale serve status --json";
@@ -14,12 +14,21 @@ export function shellQuote(value) {
 	return `'${value.replaceAll("'", "'\\''")}'`;
 }
 
-export function meetsT3Floor(output) {
+export function parseT3Version(output) {
 	const version = (output ?? "").trim().replace(/^(?:t3 v|v)/, "");
+	return /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/.test(
+		version,
+	)
+		? version
+		: null;
+}
+
+export function meetsT3Floor(output) {
+	const version = parseT3Version(output);
 	return (
-		/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/.test(
-			version,
-		) && Bun.semver.order(version, T3_VERSION_FLOOR) >= 0
+		version !== null &&
+		!version.split("+", 1)[0].includes("-") &&
+		Bun.semver.order(version, T3_VERSION_FLOOR) >= 0
 	);
 }
 

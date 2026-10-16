@@ -14,7 +14,7 @@ local function first_lines(path)
   return app or "", class
 end
 
-local default_app, default_class = "t3code-nightly", "com.t3tools.T3Code"
+local default_app, default_class = "t3code", "com.t3tools.T3Code"
 local app, class = first_lines(config_home .. "/haoshoku/primary-app")
 if not app then
   app, class = default_app, default_class

@@ -19,7 +19,7 @@ function configureAxstack(options) {
 		bunPath: "/test/bin/bun",
 		detectOS: () => "debian-server",
 		which: () => null,
-		nightlyExists: false,
+		stableExists: false,
 		fetcher: registryFetcher(),
 		...options,
 	});
@@ -139,30 +139,39 @@ describe("configureAxstack", () => {
 		["debian-server", null, true, null, false],
 		["arch", null, true, "file", false],
 		["arch", null, true, "dangling", false],
-	])("T3 alias: OS=%s PATH=%s nightly=%s existing=%s", async (os, t3Path, nightlyExists, existing, created) => {
+		["arch", "/local/t3", true, "managed", true],
+	])("T3 alias: OS=%s PATH=%s stable=%s existing=%s", async (os, t3Path, stableExists, existing, created) => {
 		const home = makeHome();
 		const target = releasePaths(home);
 		const alias = path.join(target.binDir, "t3");
 		if (existing) {
 			fs.mkdirSync(target.binDir, { recursive: true });
 			if (existing === "file") fs.writeFileSync(alias, "user t3");
-			else fs.symlinkSync("/missing/user-t3", alias);
+			else
+				fs.symlinkSync(
+					existing === "managed" ? "/usr/bin/t3-nightly" : "/missing/user-t3",
+					alias,
+				);
 		}
 		const result = await configureAxstack({
 			...target,
 			home,
 			detectOS: () => os,
-			nightlyExists,
+			stableExists,
 			which: () => t3Path,
 			extractor: makeExtractor([]),
-			runner: async () => {
+			runner: async (executable) => {
+				if (executable === "/usr/bin/t3")
+					return { exitCode: 0, stdout: "t3 v0.1.0" };
+				if (executable === "/usr/bin/t3-nightly")
+					return { exitCode: 0, stdout: "t3 v0.0.46-nightly.20261004.1" };
 				// The alias must be ready before the harness installer runs.
-				if (created) expect(fs.readlinkSync(alias)).toBe("/usr/bin/t3-nightly");
+				if (created) expect(fs.readlinkSync(alias)).toBe("/usr/bin/t3");
 				return { exitCode: 0, stderr: "", stdout: "installed" };
 			},
 		});
 		expect(result.ok).toBe(true);
-		if (created) expect(fs.readlinkSync(alias)).toBe("/usr/bin/t3-nightly");
+		if (created) expect(fs.readlinkSync(alias)).toBe("/usr/bin/t3");
 		else if (existing === "file")
 			expect(fs.readFileSync(alias, "utf8")).toBe("user t3");
 		else if (existing === "dangling")

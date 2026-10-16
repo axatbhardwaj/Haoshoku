@@ -130,7 +130,7 @@ o.bind(
 )
 
 o.bind("SUPER + I", "Show/focus/hide AI assistants workspace", "haoshoku-special-workspace assistants")
-o.bind("SUPER + T", "T3 Code", o.launch_sole("^com\\.t3tools\\.T3Code$", "t3code-nightly"))
+o.bind("SUPER + T", "T3 Code", o.launch_sole("^com\\.t3tools\\.T3Code$", "t3code"))
 o.bind("SUPER + SHIFT + T", "Show/focus/hide Twitch workspace", "haoshoku-special-workspace twitch")
 o.bind("SUPER + M", "Show/focus/hide music workspace", "haoshoku-special-workspace music")
 o.bind("SUPER + O", "Show/focus/hide 1Password workspace", "haoshoku-special-workspace 1password")

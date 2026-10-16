@@ -19,8 +19,8 @@ trap on_exit EXIT
 
 config="${XDG_CONFIG_HOME:-$HOME/.config}/haoshoku/primary-app"
 # Line 1 is the executable; optional line 2 overrides the window class when the
-# desktop entry's StartupWMClass is wrong (T3 Code Nightly reports t3code).
-app=t3code-nightly
+# desktop entry's StartupWMClass is wrong (T3 Code reports t3code).
+app=t3code
 class=com.t3tools.T3Code
 if [[ -f "$config" ]]; then
   class=

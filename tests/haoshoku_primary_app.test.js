@@ -93,6 +93,24 @@ fi
 		return { code, output, dispatches };
 	}
 
+	it("uses stable when no primary app is configured", async () => {
+		fs.unlinkSync(path.join(home, ".config/haoshoku/primary-app"));
+		const result = Bun.spawnSync([script, "login"], {
+			env: {
+				...process.env,
+				HOME: home,
+				XDG_CONFIG_HOME: path.join(home, ".config"),
+				PATH: `${home}/bin:${process.env.PATH}`,
+				CLIENTS_FILE: `${home}/clients.json`,
+				DISPATCH_LOG: `${home}/dispatches`,
+			},
+		});
+		expect(result.exitCode).toBe(0);
+		expect(fs.readFileSync(`${home}/dispatches`, "utf8")).toContain(
+			'uwsm-app -- t3code")\n',
+		);
+	});
+
 	it("moves an existing app to workspace 6 and focuses it", async () => {
 		const result = await run(
 			"focus",
@@ -137,7 +155,7 @@ fi
 		expect(result.dispatches).not.toContain("exec_cmd");
 	});
 
-	it("defaults to T3 Code Nightly and its real window class without a setting", async () => {
+	it("defaults to T3 Code stable and its real window class without a setting", async () => {
 		fs.rmSync(path.join(home, ".config", "haoshoku", "primary-app"));
 		fs.writeFileSync(
 			path.join(home, "clients.json"),

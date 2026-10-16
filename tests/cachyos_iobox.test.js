@@ -108,7 +108,7 @@ describe("iobox packages", () => {
 		await installSystemPackages("paru", true, options);
 		expect(files).toEqual(["paru_applist_iobox.txt"]);
 		for (const pkg of [
-			"t3code-nightly-bin",
+			"t3code-bin",
 			"tailscale",
 			"github-cli",
 			"git",

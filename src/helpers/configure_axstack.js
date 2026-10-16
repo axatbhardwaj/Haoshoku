@@ -6,6 +6,8 @@ import { detectOS } from "../common/cli_utils.js";
 import { recordNextStep } from "../common/run_log.js";
 import { log } from "../common/utils.js";
 
+import { meetsT3Floor, parseT3Version } from "./t3_tailscale.js";
+
 const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?$/;
 
 async function latestRelease(fetcher) {
@@ -198,16 +200,41 @@ export async function configureAxstack(options = {}) {
 	}
 
 	try {
-		if (
-			(options.detectOS ?? detectOS)() === "arch" &&
-			!(options.which ?? Bun.which)("t3") &&
-			(options.nightlyExists ?? fs.existsSync("/usr/bin/t3-nightly"))
-		) {
-			fs.mkdirSync(binDir, { recursive: true });
+		if ((options.detectOS ?? detectOS)() === "arch") {
+			const alias = path.join(binDir, "t3");
+			let ownedNightly = false;
+			let occupied = false;
 			try {
-				fs.symlinkSync("/usr/bin/t3-nightly", path.join(binDir, "t3"));
+				const stat = fs.lstatSync(alias);
+				occupied = true;
+				ownedNightly =
+					stat.isSymbolicLink() &&
+					fs.readlinkSync(alias) === "/usr/bin/t3-nightly";
 			} catch (error) {
-				if (error.code !== "EEXIST") throw error;
+				if (error.code !== "ENOENT") throw error;
+			}
+			if (
+				(ownedNightly || (!occupied && !(options.which ?? Bun.which)("t3"))) &&
+				(options.stableExists ?? fs.existsSync("/usr/bin/t3"))
+			) {
+				const stable = await runner("/usr/bin/t3", ["--version"]);
+				if (stable.exitCode !== 0 || !meetsT3Floor(stable.stdout))
+					throw new Error("packaged T3 stable >=0.1.0 is required");
+				if (ownedNightly) {
+					const old = await runner("/usr/bin/t3-nightly", ["--version"]);
+					const oldVersion = parseT3Version(old.stdout);
+					if (
+						old.exitCode !== 0 ||
+						!oldVersion ||
+						Bun.semver.order(oldVersion, parseT3Version(stable.stdout)) > 0
+					)
+						throw new Error(
+							"nightly version unknown or newer than stable; migration held, inspect before replacing the managed link",
+						);
+					fs.unlinkSync(alias);
+				}
+				fs.mkdirSync(binDir, { recursive: true });
+				fs.symlinkSync("/usr/bin/t3", alias);
 			}
 		}
 	} catch (error) {

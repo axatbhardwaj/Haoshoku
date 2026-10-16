@@ -651,7 +651,7 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 			"chatgpt.desktop": "openai-codex-desktop",
 			"chromium.desktop": "chromium",
 			"com.anthropic.Claude.desktop": "claude-desktop",
-			"com.t3tools.T3Code.desktop": "t3code-nightly-bin",
+			"com.t3tools.T3Code.desktop": "t3code-bin",
 			"dev.zed.Zed.desktop": "zed",
 			"org.gnome.Nautilus.desktop": "nautilus",
 		};
