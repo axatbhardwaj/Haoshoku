@@ -46,12 +46,12 @@ The project is built using modern JavaScript (ES Modules) and runs on Bun.
 - **`src/common/cli_utils.js`**: The `MODE_FLAGS` registry and OS detection; every one-shot flag is registered there and exactly one may run per invocation.
 - **`src/helpers/`**: Standalone helper scripts (e.g., `configure_git.js`).
 
-T3 Code owns agent orchestration. Debian server setup requires its nightly
-service over Tailscale and Hermes Telegram transport. Its
+T3 Code owns agent orchestration. Debian server setup requires stable T3 Code
+0.1.0 or newer over Tailscale and Hermes Telegram transport. Its
 [tailnet SSH firewall](../README.md#debian-tailnet-ssh-firewall) checks readiness
 before UFW mutation and reports incomplete hardening through the overall setup
 result, including existing public rules and inactive-UFW enable refusal. Omarchy binds `Super+T`
-to launch or focus T3 Code Nightly. Both T3 setup helpers enforce the
+to launch or focus T3 Code stable (`t3code`). Both T3 setup helpers enforce the
 [single-backend preflight](../README.md#t3-single-backend-preflight), including reruns. See the [migration note](../README.md#existing-host-migration)
 for existing host artifacts that require manual retirement.
 

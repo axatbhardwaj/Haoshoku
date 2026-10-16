@@ -412,6 +412,7 @@ describe("batched Arch package installation", () => {
 			missing: [],
 			invalid: [],
 			skipped: ["already"],
+			held: [],
 		});
 	});
 
@@ -490,6 +491,7 @@ describe("batched Arch package installation", () => {
 			missing: [],
 			invalid: [],
 			skipped: [],
+			held: [],
 		});
 	});
 
@@ -517,6 +519,7 @@ describe("batched Arch package installation", () => {
 			missing: [],
 			invalid: [],
 			skipped: [],
+			held: [],
 		});
 	});
 
@@ -547,6 +550,7 @@ describe("batched Arch package installation", () => {
 			missing: ["aur-one"],
 			invalid: [],
 			skipped: [],
+			held: [],
 		});
 	});
 
@@ -580,6 +584,7 @@ describe("batched Arch package installation", () => {
 			missing: [],
 			invalid: [],
 			skipped: [],
+			held: [],
 		});
 	});
 
@@ -617,6 +622,7 @@ describe("batched Arch package installation", () => {
 			missing: ["missing"],
 			invalid: ["bad;name"],
 			skipped: ["skipped"],
+			held: [],
 		});
 	});
 });
@@ -1427,5 +1433,92 @@ describe("Arch T3 phone access integration", () => {
 		} finally {
 			log.error = original;
 		}
+	});
+});
+
+describe("stable T3 package transaction safety", () => {
+	it.each([
+		"nightly-package",
+		"unmanaged-cli",
+		"unmanaged-desktop",
+	])("holds only T3 and installs unrelated packages for %s", async (origin) => {
+		const commands = [];
+		const queries = [];
+		const warnings = [];
+		const original = log.warning;
+		log.warning = (message) => warnings.push(message);
+		try {
+			const result = await installArchPackageBatch(["chromium", "t3code-bin"], {
+				aurHelper: "paru",
+				getInstalledPackagesImpl: async () => new Set(origin === "nightly-package" ? ["t3code-nightly-bin"] : []),
+				whichImpl: (name) => (origin === "unmanaged-cli" && name === "t3") || (origin === "unmanaged-desktop" && name === "t3code") ? "/custom/t3" : null,
+				packageInRepositoryImpl: async (pkg) => { queries.push(pkg); return true; },
+				runCommandImpl: async (command) => { commands.push(command); return true; },
+			});
+			expect(result.held).toEqual(["t3code-bin"]);
+			expect(result.installed).toEqual(["chromium"]);
+			expect(queries).toEqual(["chromium"]);
+			expect(commands).toEqual(["sudo -n pacman -S --needed --noconfirm chromium"]);
+			expect(warnings.join(" ")).toContain("T3 stable migration held");
+		} finally { log.warning = original; }
+	});
+});
+
+
+describe("bounded T3 package hold in full Arch setup", () => {
+	it.each(["pc", "laptop", "iobox"])("continues unrelated work and keeps the existing %s T3 failure policy", async (deviceType) => {
+		const events = [], warnings = [], errors = [];
+		const originalWarning = log.warning, originalError = log.error;
+		log.warning = (message) => warnings.push(message);
+		log.error = (message) => errors.push(message);
+		const noop = async () => {};
+		try {
+			const result = await runCachyOSSetup({
+				readDeviceTypeImpl: () => deviceType,
+				promptDeviceTypeImpl: noop,
+				startSudoSessionImpl: async () => () => events.push("sudo-stop"),
+				prepareArchPackageManagerImpl: async () => true,
+				ensureRustToolchainImpl: noop,
+				ensureAurHelperImpl: async () => "paru",
+				installDevToolsImpl: noop,
+				commandExistsImpl: async () => true,
+				installSystemPackagesImpl: (aurHelper, isOmarchy, options) => installSystemPackages(aurHelper, isOmarchy, {
+					...options,
+					readFileImpl: () => "chromium\nt3code-bin\n",
+					getInstalledPackagesImpl: async () => new Set(["ttf-jetbrains-mono-nerd", "t3code-nightly-bin"]),
+					installArchPackageBatchImpl: (packages, batch) => installArchPackageBatch(packages, {
+						...batch,
+						getInstalledPackagesImpl: async () => new Set(["t3code-nightly-bin"]),
+						whichImpl: () => null,
+						packageInRepositoryImpl: async () => true,
+						runCommandImpl: async (command) => { events.push(command); return true; },
+					}),
+					promptUserImpl: async () => false,
+				}),
+				installFlatpakAppsImpl: async () => events.push("flatpaks"),
+				configureUserAppsImpl: async () => events.push("user-apps"),
+				configureTailscaleT3Impl: async () => { events.push("tailscale-t3"); return false; },
+				configureFleetSshImpl: async () => { events.push("fleet-ssh"); return true; },
+				configureBraveManagedPoliciesImpl: noop,
+				configureHyprmoncfgImpl: noop,
+				configureOmarchyWorkspacesImpl: async () => events.push("workspaces"),
+				configureOmarchyPluginsImpl: noop,
+				configureVoxtypeOsdImpl: noop,
+				configureKdeConnectCommandsImpl: noop,
+				configureOmarchyBarImpl: noop,
+				configureOmazedImpl: noop,
+				configureOmarchyAppearanceImpl: noop,
+			});
+			expect(result).toBe(deviceType !== "iobox");
+			expect(events).toEqual([
+				"sudo -n pacman -S --needed --noconfirm chromium",
+				...(deviceType === "iobox" ? [] : ["flatpaks"]),
+				"user-apps", "tailscale-t3",
+				...(deviceType === "iobox" ? [] : ["fleet-ssh", "workspaces"]),
+				"sudo-stop",
+			]);
+			expect(warnings.join(" ")).toContain("T3 stable migration held");
+			expect(errors.join(" ")).toContain("haoshoku --tailscale-t3");
+		} finally { log.warning = originalWarning; log.error = originalError; }
 	});
 });

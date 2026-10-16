@@ -271,7 +271,7 @@ describe("installUserScripts — deployment", () => {
 		const codex = path.join(fakePathBin, "codex");
 		fs.writeFileSync(
 			updater,
-			'#!/usr/bin/env bash\nset -euo pipefail\ncodex -s read-only -a untrusted app-server\n',
+			"#!/usr/bin/env bash\nset -euo pipefail\ncodex -s read-only -a untrusted app-server\n",
 		);
 		fs.writeFileSync(
 			codex,
@@ -445,5 +445,52 @@ describe("installUserScripts — .bak behavior for pre-existing different files"
 		expect(fs.existsSync(bakPath)).toBe(true);
 		// .bak must NOT be overwritten with current content
 		expect(fs.readFileSync(bakPath, "utf8")).toBe(ORIGINAL);
+	});
+});
+
+describe("deployed stable T3 launcher", () => {
+	it("launches stable after installing scripts and keeps custom app preferences on rerun", async () => {
+		const bin = path.join(tmpHome, ".local/bin");
+		const config = path.join(tmpHome, ".config/haoshoku/primary-app");
+		fs.mkdirSync(bin, { recursive: true });
+		for (const app of ["t3code", "my-editor"]) {
+			fs.writeFileSync(path.join(bin, app), "#!/bin/sh\nexit 0\n", {
+				mode: 0o755,
+			});
+		}
+		fs.writeFileSync(
+			path.join(bin, "hyprctl"),
+			`#!/bin/sh
+if [ "$1 $2" = "clients -j" ]; then echo '[]'; else echo "$2" >> "$HOME/dispatches"; fi
+`,
+			{ mode: 0o755 },
+		);
+		const deploy = () =>
+			userScripts.installUserScripts({
+				home: tmpHome,
+				projectRoot: path.resolve(import.meta.dir, ".."),
+			});
+		const launch = () =>
+			Bun.spawnSync([path.join(bin, "haoshoku-primary-app"), "login"], {
+				env: {
+					...process.env,
+					HOME: tmpHome,
+					XDG_CONFIG_HOME: path.join(tmpHome, ".config"),
+					PATH: `${bin}:${process.env.PATH}`,
+				},
+			});
+		await deploy();
+		expect(launch().exitCode).toBe(0);
+		expect(fs.readFileSync(path.join(tmpHome, "dispatches"), "utf8")).toContain(
+			'uwsm-app -- t3code")',
+		);
+		fs.mkdirSync(path.dirname(config), { recursive: true });
+		fs.writeFileSync(config, "my-editor\ncustom.Editor\n");
+		await deploy();
+		expect(fs.readFileSync(config, "utf8")).toBe("my-editor\ncustom.Editor\n");
+		expect(launch().exitCode).toBe(0);
+		expect(fs.readFileSync(path.join(tmpHome, "dispatches"), "utf8")).toContain(
+			'uwsm-app -- my-editor")',
+		);
 	});
 });

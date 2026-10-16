@@ -18,7 +18,7 @@ const silentLogger = {
 };
 
 const listenerCommand = "ss -Hltn 'sport = :3773'";
-const floor = "0.0.46-nightly.20261003.2610";
+const floor = "0.1.0";
 const serveConfig = {
 	TCP: { 443: { HTTPS: true } },
 	Web: {
@@ -30,7 +30,7 @@ const serveConfig = {
 const homes = [];
 afterEach(() => {
 	for (const home of homes.splice(0)) {
-		fs.rmSync(home, { recursive: true, force: true });
+		fs.rmSync(home, { recursive: true });
 	}
 });
 
@@ -71,6 +71,20 @@ function fixture({
 } = {}) {
 	const home = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-t3-"));
 	homes.push(home);
+	const cli = path.join(home, ".local/bin/t3");
+	const packageDir = path.join(home, ".local/lib/node_modules/t3");
+	const seedCli = () => {
+		fs.mkdirSync(path.join(packageDir, "bin"), { recursive: true });
+		fs.mkdirSync(path.dirname(cli), { recursive: true });
+		fs.writeFileSync(path.join(packageDir, "bin/t3.js"), "fixture launcher");
+		fs.writeFileSync(
+			path.join(packageDir, "package.json"),
+			JSON.stringify({ name: "t3", version: floor }),
+		);
+		if (!fs.existsSync(cli))
+			fs.symlinkSync("../lib/node_modules/t3/bin/t3.js", cli);
+	};
+	if (version !== null) seedCli();
 	const events = [];
 	const errors = [];
 	const overrides = new Map();
@@ -80,6 +94,7 @@ function fixture({
 	const options = {
 		home,
 		uid: 1000,
+		latestStableImpl: async () => floor,
 		user: "test",
 		env: {},
 		fsImpl: {
@@ -119,6 +134,8 @@ function fixture({
 			if (command === "tailscale status") return response("logged in");
 			if (command === "tailscale debug prefs")
 				return response('{"OperatorUser":"test"}');
+			if (command === "command -v t3")
+				return response(version === null ? "" : cli, version === null ? 1 : 0);
 			if (command === "t3 --version")
 				return response(version ?? "", version === null ? 127 : 0);
 			if (command === `${installedT3} --version`)
@@ -131,6 +148,7 @@ function fixture({
 		},
 		runCommandImpl: async (command) => {
 			events.push(command);
+			if (command.startsWith("npm --global")) seedCli();
 			if (command.endsWith("connect unlink")) desired = false;
 			if (command.includes(" service install")) {
 				expect(
@@ -198,6 +216,7 @@ describe("T3 server over Tailscale", () => {
 			"tailscale status",
 			"node",
 			"t3 --version",
+			"command -v t3",
 			"systemctl --user show t3code.service --property=LoadState,Environment,ExecStart,EnvironmentFiles",
 			"command -v t3code t3code-nightly",
 			"systemctl --user list-unit-files --no-legend --no-pager",
@@ -231,39 +250,55 @@ describe("T3 server over Tailscale", () => {
 	it.each([
 		null,
 		"t3 v0.0.45",
-		"t3 v0.0.46-nightly.20261003.2609",
-		"t3 v0.0.46-nightly.20261002.9999",
-		"garbage",
-		"0.0.99-nightly..1",
-		"00.0.99",
-		"t3 v0.0.99-nightly..1",
-		"t3 v00.0.99",
-		"t3 vv0.0.99",
-		"t3 v0.0.99 extra output",
-	])("installs the durable nightly CLI when PATH reports %s", async (version) => {
+		"t3 v0.0.46-nightly.20261004.2644",
+	])("installs the durable stable CLI when managed PATH reports %s", async (version) => {
 		const f = fixture({ version });
 		expect(await configureT3CodeServer(f.options)).toBe(true);
 		expect(f.events).toContain(
-			`npm --global --prefix '${f.home}/.local' install t3@nightly`,
+			`npm --global --prefix '${f.home}/.local' install t3@latest`,
 		);
 		expect(f.events).toContain(`${f.installedT3} --version`);
 		expect(f.events).toContain(
 			`${f.installedT3} service install --base-dir '${f.home}/.t3'`,
 		);
-		expect(f.events).not.toContain(
-			`t3 service install --base-dir '${f.home}/.t3'`,
-		);
 	});
 
 	it.each([
-		"t3 v0.0.46-nightly.20261004.2644",
-		"t3 v0.0.46",
-		"t3 v0.0.47-nightly.20261001.1",
-		"t3 v1.0.0",
-	])("keeps a newer CLI %s without installing npm packages", async (version) => {
+		"t3 v0.2.0",
+		"t3 v0.2.0-nightly.20261016.1",
+		"unknown",
+	])("holds newer or unknown runtime %s", async (version) => {
 		const f = fixture({ version });
-		expect(await configureT3CodeServer(f.options)).toBe(true);
+		expect(await configureT3CodeServer(f.options)).toBe(false);
+		expect(
+			f.events.some(
+				(event) =>
+					event.startsWith("npm ") || event.includes(" service install"),
+			),
+		).toBe(false);
+		expect(fs.existsSync(f.dropIns)).toBe(false);
+		expect(f.errors.join(" ")).toContain("held");
+	});
+
+	it("preserves an unmanaged CLI instead of silently replacing or reusing nightly", async () => {
+		const f = fixture({ version: "t3 v0.0.46-nightly.20261004.2644" });
+		const cli = path.join(f.home, ".local/bin/t3");
+		fs.unlinkSync(cli);
+		fs.writeFileSync(cli, "custom t3");
+		expect(await configureT3CodeServer(f.options)).toBe(false);
+		expect(fs.readFileSync(cli, "utf8")).toBe("custom t3");
 		expect(f.events.some((event) => event.startsWith("npm "))).toBe(false);
+		expect(f.errors.join(" ")).toContain("origin");
+	});
+
+	it("holds when the stable release cannot be verified", async () => {
+		const f = fixture();
+		f.options.latestStableImpl = async () => {
+			throw new Error("registry unavailable");
+		};
+		expect(await configureT3CodeServer(f.options)).toBe(false);
+		expect(fs.existsSync(f.dropIns)).toBe(false);
+		expect(f.errors.join(" ")).toContain("registry unavailable");
 	});
 
 	it.each([
@@ -283,9 +318,9 @@ describe("T3 server over Tailscale", () => {
 		expect(f.errors.join(" ")).toContain(floor);
 	});
 
-	it("stops when nightly installation fails", async () => {
+	it("stops when stable installation fails", async () => {
 		const f = fixture({ version: null });
-		const install = `npm --global --prefix '${f.home}/.local' install t3@nightly`;
+		const install = `npm --global --prefix '${f.home}/.local' install t3@latest`;
 		f.overrides.set(install, false);
 		expect(await configureT3CodeServer(f.options)).toBe(false);
 		expect(f.events.at(-1)).toBe(install);
@@ -295,7 +330,7 @@ describe("T3 server over Tailscale", () => {
 	it("unlinks enabled Connect and confirms disabled before installing the service", async () => {
 		const f = fixture({ desired: true });
 		expect(await configureT3CodeServer(f.options)).toBe(true);
-		expect(f.events.slice(8, 13)).toEqual([
+		expect(f.events.slice(9, 14)).toEqual([
 			"t3 connect status --json",
 			"t3 connect unlink",
 			"t3 connect status --json",
@@ -461,15 +496,8 @@ describe("T3 server over Tailscale", () => {
 	])("handles a missing or failing probe: %s", async (command) => {
 		const f = fixture();
 		f.overrides.set(command, new Error("missing executable"));
-		if (command === "t3 --version") {
-			expect(await configureT3CodeServer(f.options)).toBe(true);
-			expect(f.events).toContain(
-				`${f.installedT3} service install --base-dir '${f.home}/.t3'`,
-			);
-		} else {
-			expect(await configureT3CodeServer(f.options)).toBe(false);
-			expect(f.errors.length).toBeGreaterThan(0);
-		}
+		expect(await configureT3CodeServer(f.options)).toBe(false);
+		expect(f.errors.length).toBeGreaterThan(0);
 	});
 });
 
@@ -724,4 +752,17 @@ describe("Debian T3 listener verification", () => {
 		expect(warnings.join(" ")).toContain("bind could not be verified");
 		expect(f.errors).toEqual([]);
 	});
+});
+
+it("holds a newer managed npm package even if PATH no longer resolves it", async () => {
+	const f = fixture();
+	f.overrides.set("t3 --version", f.response("", 127));
+	f.overrides.set("command -v t3", f.response("", 1));
+	fs.writeFileSync(
+		path.join(f.home, ".local/lib/node_modules/t3/package.json"),
+		'{"name":"t3","version":"0.2.0"}',
+	);
+	expect(await configureT3CodeServer(f.options)).toBe(false);
+	expect(f.events.some((event) => event.startsWith("npm "))).toBe(false);
+	expect(f.errors.join(" ")).toContain("newer");
 });

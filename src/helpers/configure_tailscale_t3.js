@@ -13,6 +13,8 @@ import { preflightT3Desktop } from "./t3_desktop_preflight.js";
 import {
 	ensureTailscaleOperator,
 	meetsT3Floor,
+	parseT3Version,
+	latestT3Stable,
 	parseJson,
 	SERVICE_ACTIVE_COMMAND,
 	shellQuote,
@@ -29,6 +31,7 @@ export async function configureTailscaleT3({
 	user = userInfo().username,
 	env = process.env,
 	fsImpl = fs,
+	latestStableImpl = latestT3Stable,
 	captureCommandImpl = runCommandCapture,
 	runCommandImpl = runCommand,
 	fetchImpl = fetch,
@@ -122,9 +125,34 @@ export async function configureTailscaleT3({
 		}
 		if (!meetsT3Floor(version)) {
 			return fail(
-				`T3 must be >= ${T3_VERSION_FLOOR}; install/update t3code-nightly-bin and ensure t3 is on PATH`,
+				`T3 must be >= ${T3_VERSION_FLOOR}; install/update t3code-bin stable and ensure t3 is on PATH`,
 			);
 		}
+
+		const latest = await latestStableImpl();
+		if (
+			!meetsT3Floor(latest) ||
+			Bun.semver.order(parseT3Version(version), latest) > 0
+		)
+			return fail(
+				"T3 stable migration held: CLI newer than verified stable or stable release unknown; inspect before migration",
+			);
+		let packagedPath = resolved;
+		if (resolved === path.join(home, ".local/bin/t3")) {
+			try {
+				if (fsImpl.readlinkSync(resolved) === "/usr/bin/t3")
+					packagedPath = "/usr/bin/t3";
+			} catch {
+				/* An unmanaged executable is held by the package check. */
+			}
+		}
+		if (
+			!packagedPath ||
+			(await probe(`pacman -Qqo ${shellQuote(packagedPath)}`)) !== "t3code-bin"
+		)
+			return fail(
+				"T3 stable migration held: CLI origin is not t3code-bin; preserve the unmanaged executable and select the packaged stable CLI explicitly",
+			);
 
 		const desktop = await preflightT3Desktop({
 			home,
@@ -132,6 +160,8 @@ export async function configureTailscaleT3({
 			fsImpl,
 			captureCommandImpl,
 			fail,
+			stableVersion: latest,
+			cliVersion: parseT3Version(version),
 		});
 		if (!desktop) return false;
 		step = "linger";
@@ -194,7 +224,7 @@ export async function configureTailscaleT3({
 			if (error.code !== "ENOENT") throw error;
 			installed = false;
 		}
-		if (!installed) {
+		if (!installed || desktop.serviceNeedsUpdate) {
 			await run(`t3 service install --base-dir ${shellQuote(desktop.baseDir)}`);
 		} else {
 			if (changed) await run("systemctl --user daemon-reload");

@@ -6,7 +6,7 @@ import {
 	OP_ENV_FIX,
 	OP_ENV_PATH,
 } from "./configure_t3_op.js";
-import { shellQuote } from "./t3_tailscale.js";
+import { parseT3Version, shellQuote } from "./t3_tailscale.js";
 
 // T3's installed desktop defaults localEnvironmentEnabled to true, uses
 // T3CODE_HOME (otherwise ~/.t3), and stores desktop settings under userdata.
@@ -56,6 +56,8 @@ export async function preflightT3Desktop({
 	fsImpl,
 	captureCommandImpl,
 	fail,
+	stableVersion,
+	cliVersion,
 }) {
 	try {
 		if (env.T3CODE_DEV_SERVER_URL || env.T3CODE_DESKTOP_DEV_SERVER_URL)
@@ -284,6 +286,56 @@ export async function preflightT3Desktop({
 		}
 		if (desktop && baseDir !== desktopBase)
 			throw new Error("conflicting desktop and service directories");
+		let serviceNeedsUpdate = false;
+		const migrationHold = (reason) => {
+			throw new Error(
+				`T3 stable migration held: ${reason}. Inspect the existing server before retrying; never start a second server or automatically downgrade.`,
+			);
+		};
+		const serviceState = read(path.join(baseDir, "runtime/service-state.json"));
+		if (properties.LoadState === "loaded" || serviceState !== null) {
+			let state;
+			try {
+				state = JSON.parse(serviceState);
+			} catch {
+				migrationHold("unknown service version");
+			}
+			const activeVersion = parseT3Version(state?.activeVersion);
+			if (state?.protocol !== 3 || !activeVersion)
+				migrationHold("unknown service version or origin");
+			if (
+				Bun.semver.order(activeVersion, stableVersion) > 0 ||
+				Bun.semver.order(activeVersion, cliVersion) > 0
+			)
+				migrationHold("service is newer than the selected stable CLI");
+			if (
+				state.update?.status === "pending" ||
+				read(path.join(baseDir, "runtime/.restart-pending")) !== null
+			)
+				migrationHold("service update or restart is pending");
+			serviceNeedsUpdate = activeVersion !== cliVersion;
+		}
+		const runtimeState = read(
+			path.join(baseDir, "userdata/server-runtime.json"),
+		);
+		if (runtimeState !== null) {
+			let runtime;
+			try {
+				runtime = JSON.parse(runtimeState);
+			} catch {
+				migrationHold("unknown running server");
+			}
+			const runningVersion = parseT3Version(runtime?.serverVersion);
+			if (runtime?.serviceManaged !== true || !runningVersion)
+				migrationHold("running server version or service ownership is unknown");
+			if (
+				Bun.semver.order(runningVersion, stableVersion) > 0 ||
+				Bun.semver.order(runningVersion, cliVersion) > 0
+			)
+				migrationHold("running server is newer than the selected stable CLI");
+			serviceNeedsUpdate ||= runningVersion !== cliVersion;
+		}
+
 		let missingSettings;
 		for (const base of new Set([defaultBase, desktopBase, baseDir])) {
 			const settingsFile = path.join(base, "userdata/desktop-settings.json");
@@ -307,6 +359,11 @@ export async function preflightT3Desktop({
 				settings.localEnvironmentEnabled !== false
 			)
 				throw new Error("Local environment is enabled or unverified");
+			if (
+				settings.updateChannel !== undefined &&
+				settings.updateChannel !== "latest"
+			)
+				throw new Error("desktop update channel must be stable");
 		}
 		if (missingSettings) {
 			fsImpl.mkdirSync(path.dirname(missingSettings), { recursive: true });
@@ -316,12 +373,16 @@ export async function preflightT3Desktop({
 				{ flag: "wx", mode: 0o600 },
 			);
 		}
-		return { baseDir };
+		return { baseDir, serviceNeedsUpdate };
 	} catch (error) {
 		fail(
-			error.message === OP_ENV_FIX
-				? OP_ENV_FIX
-				: "T3 setup is incomplete: desktop Local environment or its data directory could not be confirmed safe. In T3 Code desktop, disable Local environment, then pair the desktop to the existing service. Resolve unreadable or conflicting desktop/service directory evidence, including service drop-ins, before retrying. Haoshoku leaves desktop settings and pairing tokens unchanged.",
+			error.message.startsWith("T3 stable migration held:")
+				? error.message
+				: error.message === "desktop update channel must be stable"
+					? "T3 setup held: desktop update channel is not stable. In desktop Settings, choose the Stable update channel (stored as latest), quit/reopen the stable desktop, keep Local environment disabled, then retry. Haoshoku preserves desktop preferences."
+					: error.message === OP_ENV_FIX
+						? OP_ENV_FIX
+						: "T3 setup is incomplete: desktop Local environment or its data directory could not be confirmed safe. In T3 Code desktop, disable Local environment, then pair the desktop to the existing service. Resolve unreadable or conflicting desktop/service directory evidence, including service drop-ins, before retrying. Haoshoku leaves desktop settings and pairing tokens unchanged.",
 		);
 		return null;
 	}

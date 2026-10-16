@@ -24,6 +24,7 @@ function fixture() {
 		messages = [],
 		writes = [];
 	const options = {
+		latestStableImpl: async () => "0.1.0",
 		home,
 		deviceType: "iobox",
 		user: "fixture",
@@ -55,8 +56,8 @@ function fixture() {
 			)
 				exitCode = 1;
 			else if (command === "command -v t3") stdout = "/usr/bin/t3";
-			else if (command === "t3 --version")
-				stdout = "t3 v0.0.46-nightly.20261004.2644";
+			else if (command.startsWith("pacman -Qqo ")) stdout = "t3code-bin";
+			else if (command === "t3 --version") stdout = "t3 v0.1.0";
 			else if (command === "tailscale status --json")
 				stdout = '{"BackendState":"Running"}';
 			else if (command === "tailscale debug prefs")

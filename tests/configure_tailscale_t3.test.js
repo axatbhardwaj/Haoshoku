@@ -45,6 +45,10 @@ function fixture({ fresh = false, loggedOut = fresh } = {}) {
 			? []
 			: [
 					[dropIn, content],
+					[
+						"/home/test/.t3/runtime/service-state.json",
+						'{"protocol":3,"activeVersion":"0.1.0"}',
+					],
 					[pathDropIn, pathContent],
 					[
 						"/home/test/.config/systemd/user/t3code.service",
@@ -56,6 +60,7 @@ function fixture({ fresh = false, loggedOut = fresh } = {}) {
 	const mutations = [];
 	const overrides = new Map();
 	const options = {
+		latestStableImpl: async () => "0.1.0",
 		home: "/home/test",
 		hostname: "fixture",
 		user: "test",
@@ -103,8 +108,8 @@ function fixture({ fresh = false, loggedOut = fresh } = {}) {
 			else if (command === listenerCommand)
 				stdout = "LISTEN 0 128 127.0.0.1:3773 0.0.0.0:*";
 			else if (command === "command -v t3") stdout = "/usr/bin/t3";
-			else if (command === "/usr/bin/t3 --version")
-				stdout = "t3 v0.0.46-nightly.20261004.2644";
+			else if (command.startsWith("pacman -Qqo ")) stdout = "t3code-bin";
+			else if (command === "/usr/bin/t3 --version") stdout = "t3 v0.1.0";
 			else if (command === "pacman -Q t3code-bin") exitCode = 1;
 			else if (command === "pacman -Q t3code-nightly-bin")
 				stdout = "t3code-nightly-bin 0.0.46";
@@ -119,8 +124,7 @@ function fixture({ fresh = false, loggedOut = fresh } = {}) {
 				});
 			else if (command === "tailscale debug prefs")
 				stdout = JSON.stringify({ OperatorUser: operator });
-			else if (command === "t3 --version")
-				stdout = "t3 v0.0.46-nightly.20261004.2644";
+			else if (command === "t3 --version") stdout = "t3 v0.1.0";
 			else if (command === "tailscale serve status --json")
 				stdout = JSON.stringify(serve);
 			else throw new Error(`Unexpected probe: ${command}`);
@@ -584,15 +588,15 @@ describe("Arch T3 installation diagnostics", () => {
 			exitCode: 0,
 		});
 		f.overrides.set("/usr/bin/t3 --version", {
-			stdout: "t3 v0.0.46-nightly.20261006.2735",
+			stdout: "t3 v0.1.0+package",
 			exitCode: 0,
 		});
 		expect(await configureTailscaleT3(f.options)).toBe(true);
 		for (const text of [
 			"/home/test/.local/bin/t3",
 			"/usr/bin/t3",
-			"20261004.2644",
-			"20261006.2735",
+			"0.1.0",
+			"0.1.0+package",
 		]) {
 			expect(f.warnings.join(" ")).toContain(text);
 		}
@@ -1035,4 +1039,36 @@ describe("Arch full setup T3 failure summary", () => {
 				expect(text).toContain("Probe: t3 --version\nExit: 127");
 		}
 	});
+});
+
+it.each([
+	"t3 v0.1.0-nightly.20261016.1",
+	"t3 v0.2.0",
+	"unknown",
+])("holds wrong or newer Arch CLI %s before service mutations", async (version) => {
+	const f = fixture();
+	f.overrides.set("t3 --version", { stdout: version, exitCode: 0 });
+	expect(await configureTailscaleT3(f.options)).toBe(false);
+	expect(f.mutations).toEqual([]);
+});
+
+it("holds an unmanaged Arch executable even when it reports a stable version", async () => {
+	const f = fixture();
+	f.overrides.set("pacman -Qqo '/usr/bin/t3'", { exitCode: 1, stdout: "" });
+	expect(await configureTailscaleT3(f.options)).toBe(false);
+	expect(f.mutations).toEqual([]);
+	expect(f.warnings.join(" ")).toContain("origin");
+});
+
+
+it.each(["unavailable", "invalid", "below floor", "prerelease"])("holds Arch setup when the stable registry is %s", async (kind) => {
+	const f = fixture();
+	f.options.latestStableImpl = async () => {
+		if (kind === "unavailable") throw new Error("stable registry unavailable");
+		return { invalid: "invalid", "below floor": "0.0.99", prerelease: "0.1.0-nightly.20261016.1" }[kind];
+	};
+	expect(await configureTailscaleT3(f.options)).toBe(false);
+	expect(f.mutations).toEqual([]);
+	expect(f.events).not.toContain("pacman -Qqo '/usr/bin/t3'");
+	expect(f.warnings.join(" ")).toContain(kind === "unavailable" ? "stable registry unavailable" : "stable release unknown");
 });

@@ -44,6 +44,16 @@ afterEach(() => {
 function fixture(entrypoint) {
 	const home = fs.mkdtempSync(path.join(os.tmpdir(), "t3-guard-"));
 	homes.push(home);
+	const cli = path.join(home, ".local/bin/t3");
+	const packageDir = path.join(home, ".local/lib/node_modules/t3");
+	fs.mkdirSync(path.join(packageDir, "bin"), { recursive: true });
+	fs.mkdirSync(path.dirname(cli), { recursive: true });
+	fs.writeFileSync(path.join(packageDir, "bin/t3.js"), "fixture");
+	fs.writeFileSync(
+		path.join(packageDir, "package.json"),
+		'{"name":"t3","version":"0.1.0"}',
+	);
+	fs.symlinkSync("../lib/node_modules/t3/bin/t3.js", cli);
 	const base = path.join(home, ".t3");
 	const settings = path.join(base, "userdata/desktop-settings.json");
 	const token = path.join(base, "userdata/pairing-token");
@@ -58,7 +68,13 @@ function fixture(entrypoint) {
 		fs.writeFileSync(file, value);
 	};
 	write(token, "fixture-pairing-secret");
+	for (const baseDir of [base, path.join(home, "custom-t3")])
+		write(
+			path.join(baseDir, "runtime/service-state.json"),
+			'{"protocol":3,"activeVersion":"0.1.0"}',
+		);
 	const options = {
+		latestStableImpl: async () => "0.1.0",
 		home,
 		uid: 1000,
 		user: "fixture",
@@ -123,9 +139,10 @@ function fixture(entrypoint) {
 			else if (command.startsWith("systemctl --user list-")) stdout = "";
 			else if (command === "ps -eo pid=,comm=,args=") stdout = "";
 			else if (command === "command -v t3code t3code-nightly") exitCode = 1;
-			else if (command === "command -v t3") stdout = "/usr/bin/t3";
-			else if (command.includes("--version"))
-				stdout = "t3 v0.0.46-nightly.20261004.2644";
+			else if (command === "command -v t3")
+				stdout = entrypoint === configureT3CodeServer ? cli : "/usr/bin/t3";
+			else if (command.startsWith("pacman -Qqo ")) stdout = "t3code-bin";
+			else if (command.includes("--version")) stdout = "t3 v0.1.0";
 			else if (command === "pacman -Q t3code-bin") exitCode = 1;
 			else if (command === "pacman -Q t3code-nightly-bin") exitCode = 1;
 			else if (command.startsWith("loginctl show-user ")) stdout = "Linger=yes";
@@ -189,6 +206,107 @@ for (const [name, entrypoint] of [
 	["Debian --server-t3-code", configureT3CodeServer],
 ]) {
 	describe(`${name} desktop preflight`, () => {
+		it("holds a nightly desktop updater without changing unrelated preferences", async () => {
+			const f = fixture(entrypoint);
+			const before = JSON.stringify({
+				localEnvironmentEnabled: false,
+				updateChannel: "nightly",
+				updateChannelConfiguredByUser: true,
+				custom: "keep",
+			});
+			f.write(f.settings, before);
+			expect(await f.run()).toBe(false);
+			expect(fs.readFileSync(f.settings, "utf8")).toBe(before);
+			expect(f.effects).toEqual([]);
+			expect(f.messages.join(" ")).toContain("update channel");
+		});
+
+		it.each([
+			["malformed", "{bad json", "unknown running server"],
+			["unknown version", JSON.stringify({ version: 1, serverVersion: "unknown", serviceManaged: true }), "running server version or service ownership is unknown"],
+			["newer than stable", JSON.stringify({ version: 1, serverVersion: "0.2.0", serviceManaged: true }), "running server is newer"],
+			["newer than CLI only", JSON.stringify({ version: 1, serverVersion: "0.1.1", serviceManaged: true }), "running server is newer"],
+		])("holds the running-server record for %s before service writes", async (kind, record, reason) => {
+			const f = fixture(entrypoint);
+			if (kind === "newer than CLI only") f.options.latestStableImpl = async () => "0.2.0";
+			f.write(path.join(f.base, "userdata/server-runtime.json"), record);
+			expect(await f.run()).toBe(false);
+			expect(f.effects).toEqual([]);
+			expect(f.messages.join(" ")).toContain(reason);
+			expect(fs.readFileSync(f.token, "utf8")).toBe("fixture-pairing-secret");
+			expect(fs.readFileSync(path.join(f.base, "userdata/server-runtime.json"), "utf8")).toBe(record);
+		});
+
+		it("holds a pending restart marker independently of pending service updates", async () => {
+			const f = fixture(entrypoint);
+			const marker = path.join(f.base, "runtime/.restart-pending");
+			f.write(marker, "pending restart\n");
+			expect(await f.run()).toBe(false);
+			expect(f.effects).toEqual([]);
+			expect(f.messages.join(" ")).toContain("restart is pending");
+			expect(fs.readFileSync(marker, "utf8")).toBe("pending restart\n");
+		});
+
+		it.each([
+			"missing",
+			"unknown",
+			"newer",
+			"nightly-newer",
+			"pending",
+			"manual-server",
+		])("holds unverifiable service/runtime state: %s", async (kind) => {
+			const f = fixture(entrypoint);
+			f.overrides.set(serviceShow, {
+				exitCode: 0,
+				stdout: loadedService(f.base),
+			});
+			const state = path.join(f.base, "runtime/service-state.json");
+			if (kind === "missing") fs.unlinkSync(state);
+			else if (kind === "manual-server")
+				f.write(
+					path.join(f.base, "userdata/server-runtime.json"),
+					JSON.stringify({
+						version: 1,
+						serverVersion: "0.1.0",
+						serviceManaged: false,
+					}),
+				);
+			else
+				f.write(
+					state,
+					JSON.stringify({
+						protocol: 3,
+						activeVersion:
+							kind === "unknown"
+								? "unknown"
+								: kind === "nightly-newer"
+									? "0.2.0-nightly.20261016.1"
+									: kind === "newer"
+										? "0.2.0"
+										: "0.1.0",
+						...(kind === "pending" ? { update: { status: "pending" } } : {}),
+					}),
+				);
+			expect(await f.run()).toBe(false);
+			expect(f.effects).toEqual([]);
+			expect(f.messages.join(" ")).toContain("migration held");
+		});
+
+		it("reconciles a known older nightly service to the stable CLI", async () => {
+			const f = fixture(entrypoint);
+			f.write(f.unit, `[Service]\nEnvironment=T3CODE_HOME=${f.base}\n`);
+			f.overrides.set(serviceShow, {
+				exitCode: 0,
+				stdout: loadedService(f.base),
+			});
+			f.write(
+				path.join(f.base, "runtime/service-state.json"),
+				'{"protocol":3,"activeVersion":"0.0.46-nightly.20261004.2644"}',
+			);
+			expect(await f.run()).toBe(true);
+			expect(f.effects).toContain(`t3 service install --base-dir '${f.base}'`);
+		});
+
 		it("permits loaded disabled service setup and rerun with omitted optional properties", async () => {
 			const f = fixture(entrypoint);
 			const value = '{"localEnvironmentEnabled":false}';
@@ -569,6 +687,10 @@ for (const [name, entrypoint] of [
 		it("accepts a quoted custom service directory with spaces", async () => {
 			const f = fixture(entrypoint);
 			const other = path.join(f.home, "custom t3");
+			f.write(
+				path.join(other, "runtime/service-state.json"),
+				'{"protocol":3,"activeVersion":"0.1.0"}',
+			);
 			f.options.env.T3CODE_HOME = other;
 			f.write(
 				path.join(other, "userdata/desktop-settings.json"),
@@ -699,11 +821,14 @@ for (const entrypoint of [configureTailscaleT3, configureT3CodeServer]) {
 		);
 		fs.chmodSync(envFile, kind === "mode" ? 0o644 : 0o600);
 		if (kind === "owner")
-			f.options.fsImpl.lstatSync = (file) => ({
-				...fs.lstatSync(file),
-				uid: process.getuid() + 1,
-				isFile: () => true,
-			});
+			f.options.fsImpl.lstatSync = (file) =>
+				file !== envFile
+					? fs.lstatSync(file)
+					: {
+							...fs.lstatSync(file),
+							uid: process.getuid() + 1,
+							isFile: () => true,
+						};
 		if (["directory", "dangling"].includes(kind)) {
 			fs.unlinkSync(envFile);
 			if (kind === "directory") fs.mkdirSync(envFile);

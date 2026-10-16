@@ -46,9 +46,14 @@ haoshoku --os arch
 Install the latest Axstack release from npm, verified against its registry
 SHA-512 integrity, and configure its Claude and Codex harness targets with
 `haoshoku --axstack`. Axstack requires Bun >= 1.3.14 and
-`t3` >= 0.0.46-nightly on PATH. On Arch/Omarchy, Haoshoku links
-`~/.local/bin/t3` to `/usr/bin/t3-nightly` when `t3` is absent, preserving
-any existing local `t3`.
+`t3` stable >= 0.1.0 on PATH. Haoshoku enforces that floor independently of
+Axstack. On Arch/Omarchy, desktop and iobox package lists select `t3code-bin`.
+Haoshoku links a missing `~/.local/bin/t3` to packaged `/usr/bin/t3`, and can
+migrate its exact old `/usr/bin/t3-nightly` link after verifying both versions.
+Unmanaged executables and links stay unchanged; unknown or newer nightly
+versions hold migration. Installing stable over an existing nightly package or
+unmanaged T3 also holds before the package transaction. Inspect the existing
+installation and arrange a backed-up migration before retrying.
 Run `haoshoku --axstack-check` to report the shim/version, each harness check,
 and `roles.json` presence at `~/.claude/skills/axstack/roles.json` and
 `~/.agents/skills/axstack/roles.json` separately. The role-file readback
@@ -76,7 +81,7 @@ The Arch setup:
   still-uninstalled packages individually when a batch fails;
 - installs only JetBrains Mono Nerd Font when neither its full nor Omarchy's
   `ttf-jetbrains-mono-nerd-basic` package is installed; keeps either existing package;
-- binds `Super+T` to launch or focus T3 Code Nightly with `t3code-nightly`,
+- binds `Super+T` to launch or focus T3 Code stable with `t3code`,
   matching only the anchored `^com\.t3tools\.T3Code$` window class;
 - installs Tailscale, enables `tailscaled.service`, and configures the T3 user
   service for tailnet HTTPS phone access after T3 is installed. Logged-out nodes
@@ -384,13 +389,15 @@ haoshoku --3-4-migrate
 On Omarchy, the primary desktop app starts on workspace 1. Meta+1 brings its
 window to workspace 1 and focuses it; Meta+6 brings it to workspace 6 and
 focuses it. If the app is closed, either key launches it before placing it on
-the selected workspace. The default is T3 Code Nightly (`t3code-nightly`).
+the selected workspace. The default is T3 Code stable (`t3code`).
 `~/.config/haoshoku/primary-app` holds the executable on line 1 and an optional
-window class on line 2; Nightly needs `com.t3tools.T3Code` there because its
-desktop entry reports the wrong class. Without line 2, the desktop entry's
+window class on line 2; the managed T3 default uses `com.t3tools.T3Code` for
+reliable window matching. Without line 2, the desktop entry's
 `StartupWMClass` identifies the window. Haoshoku creates this file on the first
-`--workspaces` setup, migrates the retired Orca default, and otherwise preserves
-your choice. Run `hyprctl reload` after editing it.
+`--workspaces` setup and migrates the exact old two-line nightly default
+(`t3code-nightly` / `com.t3tools.T3Code`) or retired Orca default. Custom
+executables and custom class overrides stay unchanged; reruns keep stable.
+Run `hyprctl reload` after editing it.
 
 Use `haoshoku --device-type pc`, `laptop` or `iobox` to override automatic detection.
 Later full Arch-family setups honor that stored explicit value.
@@ -465,8 +472,9 @@ for the new commands below; the installed 12.3.x package does not include them.
 1. Set the hostname to `iobox` (`sudo hostnamectl set-hostname iobox`).
 2. Install Bun (`yay -S --needed bun-bin`; Bun >= 1.3.14), then
    `git clone https://github.com/axatbhardwaj/Haoshoku.git` and `cd Haoshoku`.
-3. Install T3 desktop (`yay -S --needed t3code-nightly-bin`), open it once with
-   `t3code-nightly`, and disable **Local environment** in its settings. This creates
+3. Install T3 desktop (`yay -S --needed t3code-bin`), open it once with
+   `t3code`, choose the Stable update channel, and disable **Local environment**
+   in its settings. This creates
    the desktop settings file required by preflight; do this before the service step.
 4. Install Tailscale (`sudo pacman -S --needed tailscale`), enable it with
    `sudo systemctl enable --now tailscaled.service`, then run `sudo tailscale up`
@@ -600,12 +608,29 @@ then re-reads the preferences to verify it so T3 can manage its Serve route. You
 phone must also be logged in to the same tailnet. Haoshoku does not install
 Tailscale or log in for you.
 
-Haoshoku prepares a compatible Node.js runtime and reuses `t3` on PATH when
-`t3 --version` is at least `0.0.46-nightly.20261003.2610` (Axstack's floor).
-Otherwise, it installs a durable nightly CLI with
-`npm --global --prefix ~/.local install t3@nightly` and verifies the installed
-version. Setup reads `t3 connect status --json`, unlinks enabled Connect
-exposure, and confirms it is disabled before changing the service.
+Haoshoku prepares a compatible Node.js runtime and requires stable >= `0.1.0`.
+It verifies npm's current stable version before accepting an existing CLI.
+On Debian, it reuses the supported `~/.local` npm installation when stable;
+for a missing CLI or a known older managed nightly, it runs
+`npm --global --prefix ~/.local install t3@latest` and verifies the result.
+Unmanaged CLI origins, unknown versions, or versions newer than verified stable
+hold setup without replacing the executable or downgrading it.
+
+Upstream's [stable CLI](https://github.com/pingdotgg/t3code/blob/v0.1.0/apps/server/src/cli/update.ts)
+derives its default update channel from its installed version; `t3 update --channel stable`
+is the supported explicit channel command. Setup installs the stable npm CLI
+and reconciles the service through that CLI rather than invoking an updater or
+passing guessed channel flags to `service install`. Existing newer services,
+unknown launcher state, pending updates/restarts and unmanaged server records
+hold setup. Inspect CLI (`t3 --version`) and running-server versions separately
+before migration; an HTTPS response alone does not prove the server version.
+
+The desktop has a separate update preference. If it still selects nightly,
+setup holds: choose **Stable** in T3 desktop Settings (stored as `latest`),
+quit/reopen the stable desktop, keep **Local environment** disabled and retry.
+Haoshoku preserves desktop/provider preferences and never changes providers.
+Setup reads `t3 connect status --json`, unlinks enabled Connect exposure,
+and confirms it is disabled before changing the service.
 
 Before `t3 service install`, Haoshoku writes `axstack-path.conf` and
 `axstack-tailscale.conf` in `~/.config/systemd/user/t3code.service.d/`.
@@ -629,11 +654,38 @@ what to inspect and returns incomplete setup. T3 stays bound to localhost.
 After setup, pair the phone using `t3 pair --tailscale`. If the CLI was freshly
 installed and `~/.local/bin` is not on PATH yet, run
 `~/.local/bin/t3 pair --tailscale`. T3 Connect authorization is no longer part
-of this flow. If a service self-update has advanced past npm's nightly tag,
-a rerun may fail; inspect `t3 --version` and retry once the nightly tag catches
-up.
+of this flow. If the service has advanced past verified stable, setup holds.
+Inspect the CLI, service state and running-server version; do not force a downgrade.
 
 The full Debian path asks about Git and automatic worktree cleanup.
+
+### One-time current Omarchy palette in T3 desktop
+
+The [importable Aurora snapshot](configs/t3/omarchy-current.json) is an unchanged
+copy of io's Omarchy-generated `~/.t3/userdata/themes/omarchy.json`, read on
+2026-10-16. It already uses T3's version-1 custom-theme format; no converter is
+needed. To take a newer snapshot, use the current generated file on that desktop.
+
+**Manual import and visual verification remain pending.** In the stable desktop:
+
+1. Keep **Local environment** disabled and connect to the existing standalone
+   service. Do not start another server for appearance setup.
+2. Open **Settings → Appearance**, open the theme import dialog, choose the JSON
+   file above (or paste its contents), and import it. If Aurora is already saved,
+   keep that copy unless you explicitly intend to replace its colors.
+3. Select **Aurora** for the desired appearance preview (the snapshot is dark)
+   and confirm the desktop renders it. This is a client-local choice; do not
+   perform these steps in Android or another browser.
+
+Upstream documents [custom-theme import and environment-theme limits](https://github.com/pingdotgg/t3code/blob/v0.1.0/docs/user/appearance.md).
+With Local environment disabled, the desktop cannot receive this palette from
+its main local environment. The supported importer saves custom themes in
+client storage; Haoshoku does not edit Electron storage or pretend that
+`t3 theme set omarchy` imported a theme into this client. Re-running setup does
+not import, select or overwrite themes. There is no automatic palette sync,
+daemon or change to the current Omarchy theme. Providers and other preferences
+stay unchanged. Live import, rendering and fleet/phone verification are separate
+rollout checkpoints.
 
 ### VPS Hermes Telegram transport
 

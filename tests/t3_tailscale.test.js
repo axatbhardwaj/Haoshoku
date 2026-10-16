@@ -1,5 +1,8 @@
 import { expect, test } from "bun:test";
-import { ensureTailscaleOperator } from "../src/helpers/t3_tailscale.js";
+import {
+	meetsT3Floor,
+	ensureTailscaleOperator,
+} from "../src/helpers/t3_tailscale.js";
 
 function fixture(initial, verified = '{"OperatorUser":"xzat"}') {
 	let output = initial;
@@ -85,4 +88,19 @@ test("reports a failed sudo set with the exact retry hint", async () => {
 	expect(f.warnings[0]).toContain("Cannot set Tailscale operator to xzat");
 	expect(f.warnings[0]).toContain("sudo tailscale set --operator='xzat'");
 	expect(f.warnings[0]).toContain("haoshoku --tailscale-t3");
+});
+
+// This prerequisite is owned by Haoshoku even when Axstack is absent.
+test.each([
+	["t3 v0.1.0", true],
+	["0.1.1+build.2", true],
+	["v1.0.0", true],
+	["t3 v0.0.46-nightly.20261004.2644", false],
+	["t3 v0.1.0-nightly.20261016.1", false],
+	["1.0.0-preview.20261016.1", false],
+	["0.0.99", false],
+	["unknown", false],
+	["0.1.0 extra", false],
+])("requires a stable CLI independently: %s", (version, accepted) => {
+	expect(meetsT3Floor(version)).toBe(accepted);
 });

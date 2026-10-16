@@ -47,8 +47,9 @@ file rewrites. Failures warn and full setup continues; `--tailscale-t3` reruns
 only this step. System changes require non-interactive sudo authorization.
 It never enables Funnel and refuses to report public Funnel as tailnet-only.
 
-`configure_t3_code_server.js` owns the required Debian nightly T3 Code service
-over Tailscale. It checks the CLI floor, disables existing Connect exposure,
+`configure_t3_code_server.js` owns the required Debian stable >=0.1.0 T3 Code
+service over Tailscale. It uses `t3@latest` for supported CLI installation and
+holds unknown, unmanaged or newer-than-stable versions. It disables Connect exposure,
 writes the account's service drop-ins, and verifies service and tailnet HTTPS
 readiness. Tailscale login, provider authentication, and phone pairing remain
 manual prerequisites or follow-up steps. `configure_hermes_relay.js` verifies
