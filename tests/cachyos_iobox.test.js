@@ -86,6 +86,8 @@ describe("iobox packages", () => {
 					whichImpl: () => null,
 					getInstalledPackagesImpl: async () => installed,
 					packageInRepositoryImpl: async () => true,
+					packageInAurImpl: async () => true,
+					captureCommandImpl: async () => ({ stdout: "t3code-bin 0.1.0-1", exitCode: 0 }),
 					runCommandImpl: async (command) => {
 						commands.push(command);
 						return true;
@@ -133,7 +135,8 @@ describe("iobox packages", () => {
 		}
 		expect(prompts).toEqual([]);
 		expect(commands).toEqual([
-			`sudo -n pacman -S --needed --noconfirm ${requested.join(" ")}`,
+			`sudo -n pacman -S --needed --noconfirm ${requested.filter((pkg) => pkg !== "t3code-bin").join(" ")}`,
+			"paru -S --needed --noconfirm --batchinstall aur/t3code-bin",
 			"sudo -n pacman -S --needed --noconfirm ttf-jetbrains-mono-nerd",
 		]);
 		const firstRun = [...commands];
