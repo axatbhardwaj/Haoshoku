@@ -3,7 +3,7 @@ import { homedir, userInfo } from "node:os";
 import path from "node:path";
 import { ensureNode24Runtime } from "../common/node_24_runtime.js";
 import { log, runCommand, runCommandCapture } from "../common/utils.js";
-import { prepareT3Cli } from "./t3_cli.js";
+import { isT3NodeVersionSupported, prepareT3Cli } from "./t3_cli.js";
 import { preflightT3Desktop } from "./t3_desktop_preflight.js";
 import {
 	ensureTailscaleOperator,
@@ -25,17 +25,7 @@ function getNodeVersion() {
 	return new TextDecoder().decode(result.stdout).trim();
 }
 
-export function isT3NodeVersionSupported(version) {
-	const match = /^v?(\d+)\.(\d+)\.(\d+)$/.exec(version ?? "");
-	if (!match) return false;
-
-	const major = Number(match[1]);
-	const minor = Number(match[2]);
-	if (major === 22) return minor >= 16;
-	if (major === 23) return minor >= 11;
-	if (major === 24) return minor >= 10;
-	return major > 24;
-}
+export { isT3NodeVersionSupported } from "./t3_cli.js";
 
 export async function ensureT3NodeRuntime({
 	getNodeVersionImpl = getNodeVersion,
