@@ -1,5 +1,27 @@
 # Changelog
 
+## 12.5.1 - 2026-10-16
+
+### Fixed
+
+- Default T3 desktop packages, managed launchers and CLI links, Debian installs
+  and update channels to stable. Migrate proven managed nightly defaults and
+  links, including dangling links, while preserving custom apps and unmanaged
+  executables (#178).
+- Hold unsafe T3 migrations for unmanaged nightly installs or newer runtimes;
+  keep Arch package holds scoped to T3 so unrelated setup can continue (#178).
+
+### Documentation
+
+- Supply the current Omarchy Aurora palette and manual desktop import steps.
+  Import, selection and visual verification remain pending; automatic palette
+  synchronization is deferred (#178).
+
+### CI
+
+- Run the Bun suite for pull requests and stable-branch pushes in an isolated,
+  nonroot container with command guards and no network access (#178).
+
 ## 12.5.0 - 2026-10-08
 
 ### Added
