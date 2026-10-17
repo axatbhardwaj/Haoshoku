@@ -16,7 +16,8 @@ Preferences:
   unless I explicitly ask.
 - Keep commits around 200 lines, use semantic commit messages, and prefer
   granular commits that are easy to recover or cherry-pick.
-- We always use gh stack (the gh CLI extension) for stacked PRs.
+- Don't default to gh stack (the gh CLI extension); it is burdensome. Use
+  plain PRs, and use gh stack only when I ask for it.
 - Never request a review from a whole team. Request review only from the
   one specific person I name: no GitHub team reviewers (`org/team`), no
   CODEOWNERS, no bulk requests or re-requests to every collaborator. If a
