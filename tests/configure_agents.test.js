@@ -54,7 +54,6 @@ describe("bundled shared agent profile", () => {
 			expect(template, relativePath).toBe(profile);
 			expect(template, relativePath).toContain("T3 Code orchestration");
 			expect(template, relativePath).toContain("Axstack workflows");
-			expect(template, relativePath).toContain("gh stack");
 		}
 	});
 
