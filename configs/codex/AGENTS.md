@@ -3,21 +3,57 @@ industry, most of it in the web3 space, plus 2+ years building AI agents.
 
 Preferences:
 
-- The solutions should be simple straight-forward not over engineered
-- Software should be modular with clean separation of concerns. Follow
-  KISS, YAGNI, and SOLID when designing or implementing anything.
-- Keep things simple — in code and in conversation. No unnecessary
-  complexity.
+- Keep solutions and conversation simple and straightforward; never
+  over-engineer. Design and write modular software with clean separation
+  of concerns; follow KISS, YAGNI, and SOLID.
 - Be as autonomous as possible; don't rely on human intervention unless
   absolutely necessary.
-- Tools are there to help. If a tool fits the task (Playwright MCP for UI
-  testing, preview tools, etc.), use it freely — don't ask first.
+- Tools are there to help. If a tool fits the task, use it freely — don't ask
+  first.
+- Use Playwright MCP for browser navigation, inspection, interaction, and UI
+  testing instead of T3 Code's built-in web browser. Keep T3 agent browser
+  access disabled; do not use its `preview_*` browser tools or re-enable it
+  unless I explicitly ask.
 - Keep commits around 200 lines, use semantic commit messages, and prefer
   granular commits that are easy to recover or cherry-pick.
-- we always use the gh stack (the gh cli extension)
+- We always use gh stack (the gh CLI extension) for stacked PRs.
+- Never request a review from a whole team. Request review only from the
+  one specific person I name: no GitHub team reviewers (`org/team`), no
+  CODEOWNERS, no bulk requests or re-requests to every collaborator. If a
+  PR needs a human reviewer and I haven't named one, ask me who. Mass
+  requests waste teammates' time and tokens (they end up reviewing PRs
+  that are already reviewed or merged).
 
 Platform: agents run on T3 Code; I drive them from the T3 app on
 Android and desktop.
+
+## Working with me
+
+- I have ADHD. Format every reply to me so I can scan it fast:
+  - Lead with the answer or outcome in one line.
+  - Then short bullet points, one idea each; bold the key terms.
+  - Use numbered lists for steps, questions and options; use a table
+    when comparing things.
+  - No walls of text: break up any paragraph longer than about three lines.
+- My prompts are short, often typed on my phone. Read them for intent;
+  confirm a name only when it is ambiguous.
+- Answer a status ping ("sup", "what's left") in one screen: what runs and
+  on which host, what it waits on and for whom, the next step, and links.
+  Never stop silently; name the blocker in the same turn, to me or to the
+  driver that dispatched you.
+- Explain before asking me to decide. Number the questions, list each
+  question's options as bullets, and put the recommended option first
+  with its trade-off.
+- When you make a visual, show it inline in the reply, not behind links.
+- Include full PR, ticket, or comment URLs in every hand-off.
+- Draft text for other people (team chat, PM, tickets) short, plain,
+  specific and ready to paste; no markdown for chat. Label each question
+  for the person who owns the answer.
+- Before calling work done, verify it on the most real target your task
+  allows (headed Playwright, staging, Sentry or Azure logs). Say what
+  stays unverified.
+- When a failure repeats, find its cause and fix the class, not just this
+  instance; if the fix is outside your task, report it.
 
 ## Orchestration
 
@@ -64,15 +100,23 @@ artifact. Do not create or update Linear items for those repositories.
 
 Try to use relevant Axstack skills for all of the things you need to do.
 
+Axstack releases reinstall and verify on all four hosts: io (`xzat@io`),
+iobook, axat-vps, and iobox (`xzat@iobox`). Each host also runs the
+`axstack-default-sync` timer with the pool drop-in.
+
 ## Notifications
 
 Standing instruction: when a run you drive (a) ends a turn parked on my
-decision, (b) reaches merge-ready for the next PR awaiting merge or is fully
-merged (at most two such messages per run), or (c) hits a serious-risk hold,
+decision, including a `verification not proven` merge card you could not
+close yourself, (b) has an own PR otherwise ready but waiting 60 minutes on
+another person (one blocked ping per blocker), or a report-only notice that a
+comment stays unrated after a fresh rating, or (c) hits a serious-risk hold,
 send me one compact Telegram message through the `axstack-relay` skill
-(`hermes`, home channel). Never send progress or heartbeats. Record this as
-the run's Notification policy. Deduplicate through `axstack-relay`; act in
-the T3 driver thread/GitHub; a failed or uncertain delivery preserves the hold.
+(`hermes`, home channel). Own PRs merge automatically under the watch
+predicate; never send routine merge-ready or merged messages for them, and
+never send progress or heartbeats. Record this as the run's Notification
+policy. Deduplicate through `axstack-relay`; act in the T3 driver
+thread/GitHub; a failed or uncertain delivery preserves the hold.
 
 ## T3 provider settings
 
