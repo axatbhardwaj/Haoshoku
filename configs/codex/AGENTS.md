@@ -18,7 +18,7 @@ Preferences:
   granular commits that are easy to recover or cherry-pick.
 - Never request a review from a whole team. Request review only from the
   one specific person I name: no GitHub team reviewers (`org/team`), no
-  CODEOWNERS, no bulk requests or re-requests to every collaborator. If a
+  bulk requests or re-requests to every collaborator. If a
   PR needs a human reviewer and I haven't named one, ask me who. Mass
   requests waste teammates' time and tokens (they end up reviewing PRs
   that are already reviewed or merged).
