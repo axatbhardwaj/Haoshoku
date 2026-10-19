@@ -92,11 +92,15 @@ base_ref() {
 #   merged   = HEAD is an ancestor of the remote base branch.
 git_facts() {
   local wt=$1 dirty=0 unpushed=0 merged=0 n base
-  local status flags
+  local status flags ctime check
+  ctime=$(git -C "$wt" config --type=bool --default=true --get core.trustctime) || dirty=1
+  check=$(git -C "$wt" config --default=default --get core.checkStat) || dirty=1
+  # Do not trust a stat cache built with deliberately weakened comparisons.
+  [[ "$ctime" != true || "$check" != default ]] && dirty=1
   flags=$(git -C "$wt" ls-files -v 2>/dev/null) || dirty=1
   # Index promises (including sparse checkout) can suppress real tracked edits.
   grep -Eq '^[a-zS] ' <<< "$flags" && dirty=1
-  status=$(git -c core.fsmonitor=false -c core.untrackedCache=false -c core.fileMode=true -C "$wt" status --porcelain --untracked-files=all --ignore-submodules=none 2>/dev/null) || dirty=1
+  status=$(git -c core.fsmonitor=false -c core.untrackedCache=false -c core.fileMode=true -c core.trustctime=true -c core.checkStat=default -c core.ignoreStat=false -c core.ignoreCase=false -C "$wt" status --porcelain --untracked-files=all --ignore-submodules=none 2>/dev/null) || dirty=1
   [[ -n "$status" ]] && dirty=1
   n=$(git_history -C "$wt" rev-list --count HEAD --not --remotes 2>/dev/null) || n=1
   [[ "${n:-0}" -gt 0 ]] && unpushed=1
@@ -315,7 +319,7 @@ do_remove() {
   if ! worktree_history_referenced "$wt"; then
     PLAN_REVIEW+=("$wt|$branch|unreferenced HEAD reflog commits; kept"); return
   fi
-  if out=$(git -c core.fsmonitor=false -c core.untrackedCache=false -c status.showUntrackedFiles=all -C "$main_wt" worktree remove "$wt" 2>&1); then
+  if out=$(git -c core.fsmonitor=false -c core.untrackedCache=false -c core.fileMode=true -c core.trustctime=true -c core.checkStat=default -c core.ignoreStat=false -c core.ignoreCase=false -c status.showUntrackedFiles=all -C "$main_wt" worktree remove "$wt" 2>&1); then
     DONE_REMOVE+=("$wt|$branch|removed worktree (branch kept)")
   else
     ERRORS+=("$wt|$branch|${out//$'\n'/ }")
