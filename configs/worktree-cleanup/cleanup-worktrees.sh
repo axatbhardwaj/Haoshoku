@@ -171,6 +171,7 @@ handle_worktree() {
 process_repo() {
   local repo=$1
   plan_tagged_caches "$repo"
+  plan_branches "$repo"
   local -a blocks=()
   local wt="" branch="" det=0 line
 
@@ -297,6 +298,7 @@ apply_plan() {
     do_remove "$main_wt" "$wt" "$branch"
   done
   apply_caches
+  apply_branches
 }
 
 # ---------------------------------------------------------------------------
@@ -325,6 +327,9 @@ stale_active_work() {
     awk -v p="$wt" 'substr($0,1,length(p))==p {print NR"\t"$0}' "$ACTIVE_WORK"
   done
 }
+
+# shellcheck source=branches.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/branches.sh"
 
 # shellcheck source=caches.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/caches.sh"
@@ -399,6 +404,7 @@ main() {
   echo "  caches: planned=${#PLAN_CACHE[@]} removed=${#DONE_CACHE[@]}"
   local cache
   for cache in "${PLAN_CACHE[@]}"; do echo "  cache: ${cache%%|*}"; done
+  echo "  branches: planned=${#PLAN_BRANCH[@]} removed=${#DONE_BRANCH[@]}"
   echo "report: $HTML_OUT"
 
   # Apply-mode removal failures must fail the run so systemd marks the unit failed.
