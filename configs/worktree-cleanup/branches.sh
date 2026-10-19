@@ -24,7 +24,7 @@ plan_branches() {
 }
 
 apply_branches() {
-  local entry repo branch tip checked unpushed out
+  local entry repo branch tip checked unpushed out current
   for entry in "${PLAN_BRANCH[@]}"; do
     IFS='|' read -r repo branch tip <<< "$entry"
     checked=$(git -C "$repo" worktree list --porcelain) || {
@@ -37,6 +37,8 @@ apply_branches() {
     [[ -z "$unpushed" ]] || continue
     if out=$(git -C "$repo" update-ref -d "refs/heads/$branch" "$tip" 2>&1); then
       DONE_BRANCH+=("$repo|$branch|$tip")
+    elif current=$(git -C "$repo" for-each-ref --format='%(objectname)' "refs/heads/$branch") && [[ "$current" != "$tip" ]]; then
+      PLAN_KEEP+=("$repo|$branch|branch moved since planning; kept")
     else
       ERRORS+=("$repo|$branch|${out//$'\n'/ }")
     fi

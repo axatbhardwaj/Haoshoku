@@ -22,7 +22,8 @@ GH_OK=1
 process_repo "$REPO"
 git -C "$REPO" update-ref refs/heads/moved "$local_tip"
 apply_plan
-[[ ${#ERRORS[@]} -gt 0 ]] || { echo 'FAIL moved-tip compare/delete should report conflict'; exit 1; }
+[[ ${#ERRORS[@]} == 0 ]] || { echo 'FAIL moved-tip race should be KEEP without errors'; exit 1; }
+[[ "${PLAN_KEEP[*]}" == *'branch moved since planning; kept'* ]] || { echo 'FAIL moved branch was not reported KEEP'; exit 1; }
 if git -C "$REPO" show-ref --verify --quiet refs/heads/stale; then echo 'FAIL stale pushed branch kept'; exit 1; fi
 for branch in main unpushed checked recent moved; do git -C "$REPO" show-ref --verify --quiet "refs/heads/$branch"; done
 [[ "$(git -C "$REPO" rev-parse moved)" == "$local_tip" ]]

@@ -45,7 +45,8 @@ is part of author verification.
 - A local branch must be unchecked out everywhere, older than `STALE_DAYS`,
   fully reachable from remote refs, and different from the known origin default.
   Unknown origin default means no branch pruning. `update-ref -d` compares the
-  recorded tip; moved branches survive and the conflict fails the apply run.
+  recorded tip; moved or disappeared branches are reported KEEP. Ref-write
+  failures with an unchanged tip remain errors.
 
 ## Cache and temporary files
 
