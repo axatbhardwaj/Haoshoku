@@ -4,6 +4,12 @@
 git_history() {
   GIT_GRAFT_FILE=/dev/null git -c advice.graftFileDeprecated=false "$@"
 }
+supported_ref_storage() {
+  local storage
+  storage=$(git -C "$1" config --get extensions.refStorage) || [[ $? == 1 ]] || return 1
+  [[ -z "$storage" || "$storage" == files ]]
+}
+
 referenced_commits() {
   local common=$1 sha orphan
   shift
@@ -37,6 +43,7 @@ worktree_history_referenced() {
 
 registration_referenced() {
   local common=$1 wt=$2 tip=$3 gd location head found=0
+  supported_ref_storage "$common" || return 1
   referenced_commits "$common" "$tip" || return 1
   # Porcelain has the path, not the admin-dir ID. Inspect every matching record.
   for gd in "$common"/worktrees/*; do
@@ -53,6 +60,9 @@ registration_referenced() {
 
 prune_repo() {
   local common=$1 apply=$2 listing line wt="" tip="" prunable=0 blocked=0
+  if ! supported_ref_storage "$common"; then
+    PLAN_REVIEW+=("$common||unsupported ref storage; prune skipped"); return
+  fi
   listing=$(git --git-dir="$common" worktree list --porcelain) || {
     ERRORS+=("$common||cannot inspect registrations for prune"); return;
   }

@@ -180,6 +180,9 @@ handle_worktree() {
 # (block 0 is the primary worktree) and plan each.
 process_repo() {
   local repo=$1
+  if ! supported_ref_storage "$repo"; then
+    PLAN_REVIEW+=("$repo||unsupported ref storage; repository cleanup skipped"); return
+  fi
   plan_tagged_caches "$repo"
   plan_branches "$repo"
   local -a blocks=()

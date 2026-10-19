@@ -69,6 +69,9 @@ apply_branches() {
   local entry repo branch tip checked unpushed out current base symbolic
   for entry in "${PLAN_BRANCH[@]}"; do
     IFS='|' read -r repo branch tip <<< "$entry"
+    if ! supported_ref_storage "$repo"; then
+      PLAN_REVIEW+=("$repo|$branch|unsupported ref storage; kept"); continue
+    fi
     base=$(git -C "$repo" symbolic-ref --quiet refs/remotes/origin/HEAD) || continue
     [[ "$branch" == "${base#refs/remotes/origin/}" ]] && continue
     symbolic=$(git -C "$repo" for-each-ref --format='%(symref)' "refs/heads/$branch") || continue
