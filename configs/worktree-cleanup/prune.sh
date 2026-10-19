@@ -51,6 +51,7 @@ registration_referenced() {
     IFS= read -r location < "$gd/gitdir" || return 1
     [[ "$location" == "$wt/.git" ]] || continue
     found=1
+    git_operation "$gd" && return 1
     head=$(git --git-dir="$gd" rev-parse --verify 'HEAD^{commit}') || return 1
     referenced_commits "$common" "$head" || return 1
     reflog_referenced "$common" "$gd/logs/HEAD" || return 1
@@ -73,7 +74,7 @@ prune_repo() {
       prunable|prunable\ *) prunable=1 ;;
       '')
         if (( prunable )) && ! registration_referenced "$common" "$wt" "$tip"; then
-          PLAN_REVIEW+=("$wt||prunable worktree has unreferenced commits or unreadable history; repo prune skipped")
+          PLAN_REVIEW+=("$wt||prunable worktree has unreferenced commits, an in-progress operation or unreadable history; repo prune skipped")
           blocked=1
         fi
         wt="" ;;
