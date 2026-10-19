@@ -301,7 +301,7 @@ export async function runDebianServerSetup({
 	}
 	if (
 		await promptUser(
-			"Enable automatic git worktree cleanup? This enables a persistent weekly timer that runs cleanup-worktrees.sh --apply and deletes eligible worktrees.",
+			"Enable daily disk cleanup? This enables a persistent timer that removes eligible idle worktrees, branches, build caches and temporary files.",
 			false,
 		)
 	) {

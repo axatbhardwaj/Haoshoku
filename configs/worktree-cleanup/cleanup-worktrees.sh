@@ -1,15 +1,8 @@
 #!/usr/bin/env bash
-# cleanup-worktrees.sh — weekly hygiene for git worktrees under ~/defi.
-#
-# Removes ONLY worktrees that are provably safe to drop (clean working tree,
-# branch's PR merged — or branch merged into base — and every commit already on
-# a remote). Everything uncertain (dirty, detached, unpushed, closed-unmerged,
-# no-PR-and-unmerged) is REPORTED for manual review and never touched.
-#
-# Default mode is --dry-run (report only). Real removal requires --apply.
-#
-# Architecture (see test-cleanup.sh):
-#   collect facts (git + gh)  ->  decide() [PURE, unit-tested]  ->  execute
+# Daily disk hygiene: Git worktrees, local branches and bounded build caches.
+# Default --dry-run reports only; --apply executes the validated plan.
+# Filesystem/git/gh facts -> pure decide() -> execute; see test-cleanup.sh.
+# Temporary files are a separate service step via cleanup-temp.sh.
 #
 # NOTE: no global `set -e` — this file is sourced by test-cleanup.sh, which must
 # not inherit errexit. Strictness is enabled inside main() only.
@@ -36,6 +29,7 @@ ERRORS=()        # wt|branch|message  (apply mode, failed)
 # decide(): PURE function, facts -> verdict. No I/O. Unit-tested in
 # test-cleanup.sh — do not add side effects here.
 #   decide <is_main> <dirty> <detached> <unpushed> <pr_state> <merged_into_base>
+#          <has_artifacts> [in_use recent idle_days]
 #   echoes: KEEP | REMOVE | REVIEW:<reason>
 # ---------------------------------------------------------------------------
 decide() {
