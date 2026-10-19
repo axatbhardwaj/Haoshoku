@@ -36,9 +36,15 @@ ERRORS=()        # wt|branch|message  (apply mode, failed)
 decide() {
   local is_main=$1 dirty=$2 detached=$3 unpushed=$4 pr=$5 merged=$6 has_artifacts=$7
 
+  local in_use=${8:-0} recent=${9:-0} idle_days=${10:-0}
+
   # Order matters — most protective conditions first.
+  [[ "$in_use" == 1 || "$recent" == 1 ]] && { echo "KEEP"; return; }
   [[ "$is_main" == 1 ]] && { echo "KEEP"; return; }                          # never touch the primary worktree
   [[ "$dirty" == 1 ]] && { echo "REVIEW:uncommitted changes"; return; }       # unsaved work
+  if [[ "$detached" == 1 && "$unpushed" == 0 && "$has_artifacts" == 0 && "$idle_days" -ge "${STALE_DAYS:-7}" ]]; then
+    echo "REMOVE"; return
+  fi
   [[ "$detached" == 1 ]] && { echo "REVIEW:detached HEAD"; return; }          # commits on no branch
   [[ "$pr" == OPEN ]] && { echo "KEEP"; return; }                            # active PR
   [[ "$unpushed" == 1 ]] && { echo "REVIEW:unpushed commits"; return; }       # local-only commits beyond any merge

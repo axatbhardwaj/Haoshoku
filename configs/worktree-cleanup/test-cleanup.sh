@@ -104,6 +104,13 @@ check "unpushed takes precedence over artifacts reason" \
 check "closed-unmerged + artifacts still reports closed reason" \
   "REVIEW:PR closed unmerged" "$(decide 0 0 0 0 CLOSED 0 1)"
 
+# New activity facts are optional so historical fact rows retain their outcomes.
+check "in-use beats dirty and merged" "KEEP" "$(decide 0 1 0 0 MERGED 1 0 1 0 20)"
+check "recent beats detached" "KEEP" "$(decide 0 0 1 0 NONE 1 0 0 1 0)"
+check "idle pushed detached checkout removed" "REMOVE" "$(decide 0 0 1 0 NONE 0 0 0 0 8)"
+check "idle detached local commits reviewed" "REVIEW:detached HEAD" "$(decide 0 0 1 1 NONE 1 0 0 0 8)"
+check "detached artifacts preserved" "REVIEW:detached HEAD" "$(decide 0 0 1 0 NONE 1 1 0 0 8)"
+
 echo "----"
 printf '%d passed, %d failed\n' "$pass" "$fail"
 [[ $fail -eq 0 ]]
