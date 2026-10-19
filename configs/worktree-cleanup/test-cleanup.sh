@@ -113,6 +113,10 @@ check "detached artifacts preserved" "REVIEW:detached HEAD" "$(decide 0 0 1 0 NO
 
 check "configured stale threshold is an explicit decision input" "REMOVE" "$(decide 0 0 1 0 NONE 0 0 0 0 6 5)"
 
+check "locked merged worktree kept" "KEEP" "$(decide 0 0 0 0 MERGED 1 0 0 0 10 7 1)"
+check "locked detached stale worktree kept" "KEEP" "$(decide 0 0 1 0 NONE 0 0 0 0 10 7 1)"
+check "locked dirty worktree kept" "KEEP" "$(decide 0 1 0 1 NONE 0 0 0 0 10 7 1)"
+
 echo "----"
 printf '%d passed, %d failed\n' "$pass" "$fail"
 [[ $fail -eq 0 ]]
