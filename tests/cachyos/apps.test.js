@@ -13,6 +13,7 @@ describe("user app configuration", () => {
 		const events = [];
 		const noop = async () => {};
 		await configureUserApps({
+        syncWorktreeCleanupImpl: async () => {},
 			deviceType,
 			isOmarchy: true,
 			commandExistsImpl: noop,
@@ -53,6 +54,7 @@ describe("user app configuration", () => {
 		const noop = async () => {};
 		try {
 			await configureUserApps({
+        syncWorktreeCleanupImpl: async () => {},
 				deviceType: "iobox",
 				isOmarchy: true,
 				commandExistsImpl: noop,
@@ -88,6 +90,7 @@ describe("user app configuration", () => {
 		const record = (name) => async () => events.push(name);
 
 		await configureUserApps({
+        syncWorktreeCleanupImpl: async () => {},
 			promptUserImpl: async (message, initial) => {
 				prompts.push({ message, initial });
 				return true;
@@ -141,6 +144,7 @@ describe("user app configuration", () => {
 
 		try {
 			await configureUserApps({
+        syncWorktreeCleanupImpl: async () => {},
 				promptUserImpl: async () => false,
 				commandExistsImpl: async () => false,
 				configureGitImpl: noop,
@@ -188,6 +192,7 @@ describe("user app configuration", () => {
 		const noop = async () => {};
 		try {
 			await configureUserApps({
+        syncWorktreeCleanupImpl: async () => {},
 				promptUserImpl: async () => false,
 				commandExistsImpl: async () => false,
 				configureGitImpl: noop,

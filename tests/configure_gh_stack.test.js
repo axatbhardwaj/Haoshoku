@@ -11,6 +11,7 @@ const { installGhStack } = ghStack;
 
 function userAppDoubles(overrides = {}) {
 	return {
+        syncWorktreeCleanupImpl: async () => {},
 		promptUserImpl: async () => false,
 		commandExistsImpl: async () => false,
 		configureGitImpl: async () => {},

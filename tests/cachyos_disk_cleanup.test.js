@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { runCachyOSSetup } from "../src/os_scripts/cachyos.js";
+import { configureUserApps, runCachyOSSetup } from "../src/os_scripts/cachyos.js";
 
 // All host effects injected; exercise the same full Arch route as the fleet.
 describe("Arch daily disk cleanup", () => {
@@ -13,10 +13,21 @@ describe("Arch daily disk cleanup", () => {
       ensureRustToolchainImpl: noop, ensureAurHelperImpl: noop,
       installDevToolsImpl: noop, commandExistsImpl: async () => true,
       installSystemPackagesImpl: noop, installFlatpakAppsImpl: noop,
-      configureUserAppsImpl: async () => events.push("apps"),
+      configureUserAppsImpl: async (options) => {
+        events.push("apps");
+        return configureUserApps({ ...options,
+          promptUserImpl: noop, commandExistsImpl: noop, configureGitImpl: noop,
+          configureBrowserIntegrationImpl: noop, configureAudioImpl: noop,
+          configureBashImpl: noop, configureFastfetchImpl: noop,
+          configureGhosttyImpl: noop, runCommandImpl: noop, enableServicesImpl: noop,
+          configureClaudeImpl: noop, installGhStackImpl: noop, configureCodexImpl: noop,
+          syncAgentsConfigImpl: noop, configureAxstackImpl: async () => ({ ok: true }),
+          configureAgentAccountsImpl: noop,
+          syncWorktreeCleanupImpl: async () => events.push("cleanup"),
+        });
+      },
       configureTailscaleT3Impl: async () => true,
       configureFleetSshImpl: async () => true,
-      syncWorktreeCleanupImpl: async () => events.push("cleanup"),
       configureBraveManagedPoliciesImpl: noop, configureHyprmoncfgImpl: noop,
       configureOmarchyWorkspacesImpl: noop, configureOmarchyPluginsImpl: noop,
       configureVoxtypeOsdImpl: noop, configureKdeConnectCommandsImpl: noop,

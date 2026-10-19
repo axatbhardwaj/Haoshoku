@@ -328,6 +328,7 @@ export async function configureBrowserIntegration({
 }
 
 export async function configureUserApps({
+	syncWorktreeCleanupImpl = syncWorktreeCleanup,
 	isOmarchy = false,
 	deviceType = "pc",
 	commandExistsImpl = commandExists,
@@ -391,6 +392,13 @@ export async function configureUserApps({
 			`GitHub gh-stack extension installation failed (${err?.message ?? err}) — continuing with remaining app setup.`,
 		);
 	}
+	try {
+		await syncWorktreeCleanupImpl();
+	} catch (err) {
+		log.warning(
+			`Disk cleanup setup failed (${err?.message ?? err}). Retry: haoshoku --worktree-cleanup`,
+		);
+	}
 	let codexResult;
 	try {
 		codexResult = await configureCodexImpl();
@@ -439,7 +447,6 @@ export async function configureUserApps({
 }
 
 export async function runCachyOSSetup({
-	syncWorktreeCleanupImpl = syncWorktreeCleanup,
 	prepareArchPackageManagerImpl = prepareArchPackageManager,
 	ensureRustToolchainImpl = ensureRustToolchain,
 	ensureAurHelperImpl = ensureAurHelper,
@@ -495,13 +502,7 @@ export async function runCachyOSSetup({
 			isOmarchy,
 			deviceType,
 		});
-		try {
-			await syncWorktreeCleanupImpl();
-		} catch (err) {
-			log.warning(
-				`Disk cleanup setup failed (${err?.message ?? err}). Retry: haoshoku --worktree-cleanup`,
-			);
-		}
+
 		try {
 			if (!(await configureTailscaleT3Impl({ deviceType }))) {
 				if (isIobox) {

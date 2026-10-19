@@ -9,7 +9,6 @@ describe("Arch package-manager preflight", () => {
 			throw new Error("setup continued without an authenticated sudo session");
 		};
 		const result = await runCachyOSSetup({
-        syncWorktreeCleanupImpl: async () => {},
 			configureFleetSshImpl: async () => true,
 			configureTailscaleT3Impl: async () => true,
 			readDeviceTypeImpl: () => "pc",
@@ -55,7 +54,6 @@ describe("Arch package-manager preflight", () => {
 			);
 		};
 		const result = await runCachyOSSetup({
-        syncWorktreeCleanupImpl: async () => {},
 			configureFleetSshImpl: async () => true,
 			configureTailscaleT3Impl: async () => true,
 			readDeviceTypeImpl: () => "pc",
@@ -105,7 +103,6 @@ describe("Arch package-manager preflight", () => {
 			throw new Error("setup continued after injected failure");
 		};
 		const setup = runCachyOSSetup({
-        syncWorktreeCleanupImpl: async () => {},
 			configureFleetSshImpl: async () => true,
 			configureTailscaleT3Impl: async () => true,
 			readDeviceTypeImpl: () => "pc",
@@ -203,7 +200,6 @@ describe("Arch package-manager preflight", () => {
 			);
 		};
 		const result = await runCachyOSSetup({
-        syncWorktreeCleanupImpl: async () => {},
 			configureFleetSshImpl: async () => true,
 			configureTailscaleT3Impl: async () => true,
 			readDeviceTypeImpl: () => "pc",
@@ -246,7 +242,6 @@ describe("Arch package-manager preflight", () => {
 			);
 		};
 		const result = await runCachyOSSetup({
-        syncWorktreeCleanupImpl: async () => {},
 			configureFleetSshImpl: async () => true,
 			configureTailscaleT3Impl: async () => true,
 			readDeviceTypeImpl: () => "pc",
@@ -290,7 +285,6 @@ describe("Arch package-manager preflight", () => {
 				return result;
 			};
 			const result = await runCachyOSSetup({
-        syncWorktreeCleanupImpl: async () => {},
 				configureFleetSshImpl: async () => true,
 				configureTailscaleT3Impl: async () => true,
 				startSudoSessionImpl: async () => () => {},
@@ -368,7 +362,6 @@ describe("Arch package-manager preflight", () => {
 		};
 
 		await runCachyOSSetup({
-        syncWorktreeCleanupImpl: async () => {},
 			configureFleetSshImpl: async () => true,
 			configureTailscaleT3Impl: async () => true,
 			readDeviceTypeImpl: () => "pc",
@@ -414,7 +407,6 @@ describe("Arch package-manager preflight", () => {
 			let result;
 			try {
 				result = await runCachyOSSetup({
-        syncWorktreeCleanupImpl: async () => {},
 					configureFleetSshImpl: async () => true,
 					configureTailscaleT3Impl: async () => true,
 					startSudoSessionImpl: async () => () => {},
@@ -481,7 +473,6 @@ describe("Arch package-manager preflight", () => {
 					}
 				};
 				const result = await runCachyOSSetup({
-        syncWorktreeCleanupImpl: async () => {},
 					configureFleetSshImpl: async () => true,
 					configureTailscaleT3Impl: async () => true,
 					startSudoSessionImpl: async () => () => {},
@@ -539,7 +530,6 @@ describe("Arch T3 phone access integration", () => {
 		log.error = (message) => errors.push(message);
 		try {
 			const result = await runCachyOSSetup({
-        syncWorktreeCleanupImpl: async () => {},
 				readDeviceTypeImpl: () => deviceType,
 				promptDeviceTypeImpl: async () => {},
 				startSudoSessionImpl: async () => () => events.push("sudo-stop"),

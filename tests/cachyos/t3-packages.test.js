@@ -40,7 +40,6 @@ describe("bounded T3 package hold in full Arch setup", () => {
 		const noop = async () => {};
 		try {
 			const result = await runCachyOSSetup({
-        syncWorktreeCleanupImpl: async () => {},
 				readDeviceTypeImpl: () => deviceType,
 				promptDeviceTypeImpl: noop,
 				startSudoSessionImpl: async () => () => events.push("sudo-stop"),

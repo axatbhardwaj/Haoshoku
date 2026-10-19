@@ -47,7 +47,6 @@ describe("Omarchy deviceType routing", () => {
 		const home = makeHome();
 		const startedAt = performance.now();
 		const result = await runCachyOSSetup({
-        syncWorktreeCleanupImpl: async () => {},
 			configureFleetSshImpl: async () => true,
 			configureTailscaleT3Impl: async () => true,
 			startSudoSessionImpl: async () => () => {},
