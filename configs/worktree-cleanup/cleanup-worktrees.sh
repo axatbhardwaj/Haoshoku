@@ -427,7 +427,9 @@ main() {
   done
   if [[ $FETCH -eq 1 ]]; then
     for repo in "${repos[@]}"; do
-      git -C "$repo" fetch --all --prune --quiet >/dev/null 2>&1 || true
+      if ! git -C "$repo" fetch --all --prune --quiet >/dev/null 2>&1; then
+        echo "WARNING: git fetch failed for $repo; using existing remote refs" >&2
+      fi
     done
   fi
 

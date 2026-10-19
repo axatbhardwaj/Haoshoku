@@ -19,24 +19,34 @@ checked_branches() {
   done
 }
 
+stale_branch() {
+  local repo=$1 branch=$2 tip=$3 stamp selector updated
+  stamp=$(git -C "$repo" show -s --format=%ct "$tip") || return 1
+  selector=$(git -C "$repo" reflog show -1 --format=%gD --date=unix "refs/heads/$branch") || return 1
+  if [[ "$selector" =~ @\{([0-9]+)\} ]]; then
+    updated=${BASH_REMATCH[1]}
+    (( updated > stamp )) && stamp=$updated
+  fi
+  (( $(date +%s) - stamp >= STALE_DAYS * 86400 ))
+}
+
 plan_branches() {
-  local repo=$1 base checked ref tip stamp branch unpushed now
+  local repo=$1 base checked ref tip branch unpushed
   repo=$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir) || return
   base=$(git -C "$repo" symbolic-ref --quiet refs/remotes/origin/HEAD 2>/dev/null) || return 0
   # Without a known remote default, we cannot prove the default is protected.
   [[ -n "$base" ]] || return 0
   base=${base#refs/remotes/origin/}
   checked=$(checked_branches "$repo") || return
-  now=$(date +%s)
-  while IFS=$'\t' read -r ref tip stamp; do
+  while IFS=$'\t' read -r ref tip; do
     branch=${ref#refs/heads/}
     [[ "$branch" == "$base" || "$branch" == *'|'* ]] && continue
     grep -Fxq "branch $ref" <<< "$checked" && continue
-    (( now - stamp >= STALE_DAYS * 86400 )) || continue
+    stale_branch "$repo" "$branch" "$tip" || continue
     unpushed=$(git -C "$repo" rev-list "$tip" --not --remotes) || continue
     [[ -z "$unpushed" ]] || continue
     PLAN_BRANCH+=("$repo|$branch|$tip")
-  done < <(git -C "$repo" for-each-ref --format='%(refname)%09%(objectname)%09%(committerdate:unix)' refs/heads/)
+  done < <(git -C "$repo" for-each-ref --format='%(refname)%09%(objectname)' refs/heads/)
 }
 
 apply_branches() {
@@ -51,6 +61,7 @@ apply_branches() {
       ERRORS+=("$repo|$branch|cannot recheck remote reachability"); continue;
     }
     [[ -z "$unpushed" ]] || continue
+    stale_branch "$repo" "$branch" "$tip" || continue
     if out=$(git -C "$repo" update-ref -d "refs/heads/$branch" "$tip" 2>&1); then
       DONE_BRANCH+=("$repo|$branch|$tip")
     elif current=$(git -C "$repo" for-each-ref --format='%(objectname)' "refs/heads/$branch") && [[ "$current" != "$tip" ]]; then
