@@ -5,6 +5,7 @@ remain `haoshoku --worktree-cleanup` and `--worktree-cleanup-backup`.
 
 | File | Live location / purpose |
 |------|-------------------------|
+| `cleanup-disk.sh` | Same directory; daily entrypoint, always runs both steps and fails if either fails |
 | `cleanup-worktrees.sh` | `~/.local/share/disk-cleanup/`; executable entry, dry-run by default |
 | `branches.sh`, `caches.sh`, `report.sh` | Same directory; sourced runtime modules |
 | `cleanup-temp.sh`, `disk-cleanup-tmpfiles.conf` | Same directory; tmpfiles wrapper and 3d `/tmp`, 7d `/var/tmp` policy |
@@ -18,8 +19,9 @@ manual staging. Backup copies the runtime files and units back to this directory
 The full Arch app setup syncs cleanup; Debian retains its opt-in setup prompt.
 
 The service uses `%h` paths, a Git/gh/tmpfiles PATH, Nice=10 and idle I/O. It runs
-the worktree script with `--apply`, followed by the temp wrapper with `--apply`.
-Both scripts default to dry-run when invoked directly. No live-host deployment
+`cleanup-disk.sh --apply`, which attempts worktree cleanup and temp cleanup
+even if the first step fails.
+All entry scripts default to dry-run when invoked directly. No live-host deployment
 is part of author verification.
 
 ## Discovery and retention
@@ -30,14 +32,16 @@ is part of author verification.
   override the root with `T3_WORKTREES_ROOT`. Deduplicate by absolute Git common dir.
   Every registered checkout is planned, including `.git/axstack/runs/*/checkouts/*`.
   Unregistered T3 directories are report-only.
-- Keep primary worktrees, readable `/proc/*/cwd` activity at/inside a checkout,
+- Keep locked and primary worktrees, readable `/proc/*/cwd` activity at/inside a checkout,
   and activity within `MIN_IDLE_HOURS` (24). Activity is the newest worktree
   gitdir `HEAD`, `index`, `logs/HEAD` mtime, collected before worktree Git probes.
   Every Git probe uses `GIT_OPTIONAL_LOCKS=0` to avoid refreshing the index.
 - Dirty, unpushed, closed-unmerged, unknown/unmerged and legacy `superpowers/`
   artifacts remain for review; open PRs stay. Clean pushed merged worktrees can
   be removed. Detached pushed checkouts require `STALE_DAYS` (7) of inactivity.
-  Removal uses `git worktree remove` without force, followed by prune.
+  Removal uses `git worktree remove` without force. Apply prunes once per repo
+  through its stable Git common directory, even when no worktree was removed.
+  Missing directories are not in use; dry-run never prunes their registrations.
 - A local branch must be unchecked out everywhere, older than `STALE_DAYS`,
   fully reachable from remote refs, and different from the known origin default.
   Unknown origin default means no branch pruning. `update-ref -d` compares the
@@ -68,7 +72,9 @@ archival are outside this job. In-use detection covers only readable proc links.
 
 HTML defaults to `~/.local/state/disk-cleanup/last-run.html`; override with
 `--html PATH`. Journald summary: `journalctl --user -u disk-cleanup.service`.
-Apply failures return 1. Cache and branch tables describe the plan; summary
+Real apply failures return 1. Benign activity/content/lock races are reported
+as KEEP. Worktree removal keeps its branch for the separate compare-and-delete
+pass. No discovered repos means a diagnostic and exit 0, with an HTML report. Cache and branch tables describe the plan; summary
 counts and errors distinguish actual removals. Use `--dry-run --no-fetch` for
 local inspection without updating remote refs or deleting anything.
 

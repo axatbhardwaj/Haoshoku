@@ -4,6 +4,17 @@ import path from "node:path";
 
 const CLI = path.resolve(import.meta.dir, "..", "haoshoku.js");
 const README = path.resolve(import.meta.dir, "..", "README.md");
+function readReadme() {
+	const directory = path.join(path.dirname(README), "README");
+	return [
+		fs.readFileSync(README, "utf8"),
+		...fs
+			.readdirSync(directory)
+			.filter((file) => file.endsWith(".md"))
+			.sort()
+			.map((file) => fs.readFileSync(path.join(directory, file), "utf8")),
+	].join("\n");
+}
 
 function output(args) {
 	const result = Bun.spawnSync([process.execPath, CLI, ...args], {
@@ -15,7 +26,7 @@ function output(args) {
 
 describe("haoshoku CLI help", () => {
 	it("lists the existing-host artifacts that require manual migration", () => {
-		const readme = fs.readFileSync(README, "utf8");
+		const readme = readReadme();
 		const note =
 			readme.split("### Existing-host migration")[1]?.split("\n## ")[0] ?? "";
 		for (const artifact of [
@@ -103,7 +114,7 @@ describe("haoshoku CLI help", () => {
 	});
 
 	it("documents Tailscale prerequisites and pairing for the required T3 server", () => {
-		const readme = fs.readFileSync(README, "utf8");
+		const readme = readReadme();
 		expect(readme).toContain("t3 pair --tailscale");
 		expect(readme).toContain("tailscale status");
 		expect(readme).toContain("HTTPS certificates");

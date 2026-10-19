@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+### Changed
+
+- Keep branches after removing a worktree; the separate stale-branch pass uses
+  compare-and-delete rather than immediate `git branch -d` after removal.
+- Hosts with no discovered repositories now report that condition and succeed,
+  so the daily disk-cleanup unit can still clean temporary files.
+
+### Fixed
+
+- Always run the temp step even when repository cleanup fails; keep real errors
+  failing the job while benign activity/content races and locked worktrees stay
+  KEEP. Prune stale missing worktree registrations once per repository in apply
+  mode, without changing registration metadata in dry-run.
+
 ### Added
 
 - Generalize worktree cleanup into daily fleet disk hygiene: discover normal and

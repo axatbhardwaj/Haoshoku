@@ -33,4 +33,4 @@ Template configuration files copied to user's `~/.config/` during setup.
 | `mimeapps/`     | XDG default-application associations (`mimeapps.list`) — fully portable, no device routing | Changing default apps for MIME types or URI scheme handlers |
 | `omarchy/`      | Omarchy 4 Hyprland Lua overlays and keybinding-swap registry | Read `omarchy/CLAUDE.md` before changing overlays, require wiring, keybindings, or ownership boundaries |
 | `scripts/`      | Executable shell wrappers deployed to `~/.local/bin/` | Adding PATH-shadow wrappers, game-launch hooks |
-| `worktree-cleanup/` | Safe DeFi worktree cleanup script and weekly systemd user timer | Modifying cleanup eligibility, deployment, or scheduling |
+| `worktree-cleanup/` | Safe fleet disk-cleanup scripts and daily systemd user timer | Modifying cleanup eligibility, deployment, or scheduling |
