@@ -9,7 +9,14 @@ const HOME_DEFAULT = homedir();
 
 const SCRIPT = "cleanup-worktrees.sh";
 const UNITS = ["disk-cleanup.service", "disk-cleanup.timer"];
-const RUNTIME_FILES = [SCRIPT, "cleanup-temp.sh", "report.sh", "caches.sh", "branches.sh", "disk-cleanup-tmpfiles.conf"];
+const RUNTIME_FILES = [
+  SCRIPT,
+  "cleanup-temp.sh",
+  "report.sh",
+  "caches.sh",
+  "branches.sh",
+  "disk-cleanup-tmpfiles.conf",
+];
 const LEGACY_UNITS = ["defi-worktree-cleanup.timer", "defi-worktree-cleanup.service"];
 const TIMER_UNIT = "disk-cleanup.timer";
 const ENABLE_HINT =

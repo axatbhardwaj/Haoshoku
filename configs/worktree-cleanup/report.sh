@@ -143,4 +143,3 @@ HTML_HEAD
   } >"$tmp"
   mv -f "$tmp" "$out"
 }
-

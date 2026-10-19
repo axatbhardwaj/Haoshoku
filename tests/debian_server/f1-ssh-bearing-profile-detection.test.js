@@ -103,4 +103,3 @@ describe("F1 SSH-bearing profile detection", () => {
 		});
 	});
 });
-

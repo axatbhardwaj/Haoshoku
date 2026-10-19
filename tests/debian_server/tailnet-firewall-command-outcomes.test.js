@@ -107,4 +107,3 @@ describe("tailnet firewall command outcomes", () => {
 			expect(calls).toEqual([]);
 		});
 });
-

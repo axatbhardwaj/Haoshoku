@@ -269,4 +269,3 @@
   user manager and UID 0 daemon status.
 - Run the NodeSource and Node.js installation steps without `sudo` when already
   root, while preserving the existing non-root setup path.
-

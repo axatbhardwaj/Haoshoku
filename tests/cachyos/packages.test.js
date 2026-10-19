@@ -502,4 +502,3 @@ describe("portable gaming setup", () => {
 		expect(commands).toHaveLength(2);
 	});
 });
-

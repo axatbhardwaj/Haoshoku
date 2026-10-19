@@ -356,4 +356,3 @@ describe("Omarchy-owned defaults", () => {
 		expect(packages).not.toContain("stremio");
 	});
 });
-

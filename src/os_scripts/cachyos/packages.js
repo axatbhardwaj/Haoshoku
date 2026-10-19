@@ -277,4 +277,3 @@ export async function installPackagesFromFile(filePath, installerCmd) {
 		);
 	}
 }
-

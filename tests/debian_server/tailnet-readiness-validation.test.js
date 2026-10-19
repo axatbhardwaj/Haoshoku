@@ -87,4 +87,3 @@ describe("tailnet readiness validation", () => {
 		expect(calls).toEqual([]);
 	});
 });
-

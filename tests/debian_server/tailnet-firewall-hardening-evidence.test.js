@@ -117,4 +117,3 @@ describe("tailnet firewall hardening evidence", () => {
 		expect(calls).toEqual([]);
 	});
 });
-

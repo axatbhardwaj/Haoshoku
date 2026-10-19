@@ -65,4 +65,3 @@ describe("tailnet malformed readiness fields", () => {
 			expect(calls).toEqual([]);
 		});
 });
-

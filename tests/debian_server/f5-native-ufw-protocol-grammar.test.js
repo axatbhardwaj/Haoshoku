@@ -224,4 +224,3 @@ describe("F5 native UFW protocol grammar", () => {
 		});
 	});
 });
-

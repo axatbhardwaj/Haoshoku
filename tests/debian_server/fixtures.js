@@ -262,4 +262,3 @@ export function f1Capture({
 	};
 	return { capture, probes };
 }
-

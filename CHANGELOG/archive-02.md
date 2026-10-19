@@ -201,4 +201,3 @@
   autostart entry, so phone sync is reliably available from login.
 - Remove the retired Caelestia subsystem while retaining device-type routing as
   shared configuration for Omarchy and audio setup.
-

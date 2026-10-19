@@ -87,4 +87,3 @@ describe("F1 profile inspection safety", () => {
 			expect(calls).toEqual([]);
 		});
 });
-

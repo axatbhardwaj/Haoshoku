@@ -101,4 +101,3 @@ describe("F1 legitimate firewall coexistence", () => {
 		});
 	});
 });
-

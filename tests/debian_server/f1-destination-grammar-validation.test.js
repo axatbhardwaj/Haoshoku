@@ -29,4 +29,3 @@ describe("F1 destination grammar validation", () => {
 			expect(calls).toEqual([]);
 		});
 });
-

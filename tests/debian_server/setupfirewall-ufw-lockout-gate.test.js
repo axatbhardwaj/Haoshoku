@@ -42,4 +42,3 @@ describe("setupFirewall (UFW lockout gate)", () => {
 		expect(calls.some((c) => c === sshRule)).toBe(true);
 	});
 });
-

@@ -24,4 +24,3 @@ describe("buildFail2banJail", () => {
 		expect(buildFail2banJail()).toBe(jail);
 	});
 });
-

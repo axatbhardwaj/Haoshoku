@@ -101,4 +101,3 @@
 - Add animated intro video for README.
 - Add new Conqueror's Haki themed logo.
 - Add Remotion video project for intro generation.
-

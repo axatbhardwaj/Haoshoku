@@ -260,4 +260,3 @@
 - Quote every argument the special-workspace launcher hands to Hyprland, so app
   and browser shortcuts keep their arguments intact instead of letting the shell
   re-split anything containing spaces or punctuation.
-
