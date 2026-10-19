@@ -4,6 +4,8 @@
 
 ### Changed
 
+- System rules exclude `systemd-private-*` directories themselves; their inner
+  `tmp` contents use the `/tmp` age, as in the distro default.
 - Tighten only `/tmp` to 3 days; retain the distro default 30-day `/var/tmp`
   age in the replacement tmpfiles policy for preserved temporary state.
 - Keep branches after removing a worktree; the separate stale-branch pass uses
@@ -13,6 +15,14 @@
 
 ### Fixed
 
+- Protect every prunable registration's HEAD and reflog history, including empty
+  mount points; preserve operation state and reflog-only commits on ordinary
+  worktree and branch deletion too. Skip unsupported ref storage.
+- Keep worktrees and build caches during Git operations and pause repository
+  branch cleanup, including stacked rebase update-refs and detached bisect.
+- Make status checks independent of hiding config/index flags; protect symbolic
+  refs and changed defaults, bypass local graph overrides, and keep caches when
+  sibling symlink scans fail or reference an ancestor of the cache.
 - Preserve primary-worktree build caches and caches referenced by symlinks in
   another worktree. Review ignored non-cache files before removing a checkout.
 - Skip repository pruning when a missing registration holds commits unreachable

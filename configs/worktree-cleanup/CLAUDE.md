@@ -7,7 +7,7 @@ remain `haoshoku --worktree-cleanup` and `--worktree-cleanup-backup`.
 |------|-------------------------|
 | `cleanup-disk.sh` | Same directory; daily entrypoint, always runs both steps and fails if either fails |
 | `cleanup-worktrees.sh` | `~/.local/share/disk-cleanup/`; executable entry, dry-run by default |
-| `branches.sh`, `caches.sh`, `report.sh` | Same directory; sourced runtime modules |
+| `branches.sh`, `caches.sh`, `prune.sh`, `report.sh` | Same directory; sourced runtime modules |
 | `cleanup-temp.sh`, `disk-cleanup-tmpfiles.conf` | Same directory; tmpfiles wrapper and 3d `/tmp`, 30d `/var/tmp` policy |
 | `disk-cleanup.service`, `disk-cleanup.timer` | `~/.config/systemd/user/`; daily, persistent, up to 1h jitter |
 | `test-cleanup.sh`, `tests/` | Repository-only decision and real Git fixture tests |
@@ -36,6 +36,15 @@ is part of author verification.
   and activity within `MIN_IDLE_HOURS` (24). Activity is the newest worktree
   gitdir `HEAD`, `index`, `logs/HEAD` mtime, collected before worktree Git probes.
   Every Git probe uses `GIT_OPTIONAL_LOCKS=0` to avoid refreshing the index.
+  Status always scans all untracked paths, disables fsmonitor/untracked caches,
+  exposes file-mode and case-only changes, and includes submodule changes.
+  Assume-unchanged/skip-worktree entries and weakened `core.trustctime` or
+  `core.checkStat` settings require review rather than trusting cached status.
+- Any in-progress Git operation keeps the worktree and its build caches. Markers
+  include rebase-merge (head-name/update-refs included), rebase-apply, MERGE_HEAD,
+  CHERRY_PICK_HEAD, REVERT_HEAD, BISECT_START/BISECT_LOG, sequencer, index/HEAD locks.
+  While any registered worktree has an operation, branch cleanup pauses for the
+  whole repo so stacked rebase refs and detached bisect state remain protected.
 - Dirty, unpushed, closed-unmerged, unknown/unmerged and legacy `superpowers/`
   artifacts remain for review; open PRs stay. Clean pushed merged worktrees can
   be removed. Detached pushed checkouts require `STALE_DAYS` (7) of inactivity.
@@ -45,17 +54,23 @@ is part of author verification.
   legacy `superpowers/` review reason remains. Recheck before removal.
   Removal uses `git worktree remove` without force. Apply prunes once per repo
   through its stable Git common directory, even when no worktree was removed.
-  Missing directories are not in use. If any missing registration's recorded
-  HEAD has commits unreachable from branches, tags and remote refs, REVIEW and
-  skip pruning that entire repo. Dry-run reports this without pruning.
+  Missing directories are not in use. Prune candidates come from Git's
+  `prunable` records, including existing mount points with a missing `.git`.
+  Check HEAD and both SHAs in every `logs/HEAD` entry. Any commit unreachable
+  from branches, tags or remote refs, operation state, or unreadable history
+  requires REVIEW and skips prune for that entire repo. Dry-run only reports.
+  Ordinary worktree removal also preserves unreferenced HEAD reflog history.
+  Reftable/unknown ref storage is report-only because these history guards
+  inspect file-backed reflogs. Graph proofs ignore replace refs and grafts.
 - A local branch must be unchecked out everywhere, older than `STALE_DAYS`,
   fully reachable from remote refs, and different from the known origin default.
-  Staleness uses the newer of tip commit date and last reflog update. Rebase
-  `head-name` and `BISECT_START` also mark branches checked out, even while HEAD
-  is detached. Recheck activity and operation state before compare-and-delete.
+  Staleness uses the newer of tip commit date and last reflog update. Preserve
+  unreferenced commits in branch reflogs too. Symbolic local refs stay; apply
+  rechecks the default, ref type, activity and operation state. Deletion uses
+  `update-ref --no-deref -d` and the recorded tip to protect dereference races.
   Failed fetches warn and retain the existing remote-ref snapshot.
-  Unknown origin default means no branch pruning. `update-ref -d` compares the
-  recorded tip; moved or disappeared branches are reported KEEP. Ref-write
+  Unknown origin default means no branch pruning. Moved or disappeared branches
+  are reported KEEP. Ref-write
   failures with an unchanged tip remain errors.
 
 ## Cache and temporary files
@@ -63,8 +78,9 @@ is part of author verification.
 Never prune build caches in the primary worktree. In retained linked worktrees
 idle for `CACHE_IDLE_DAYS` (3), remove only ignored `node_modules`, `target`,
 `cargo-target`, `.next`, `.turbo` directories. Keep cache targets referenced by
-symlinks in another worktree of the same repo, including references appearing
-between planning and apply. Kept worktrees with ignored non-cache files still
+symlinks in another worktree of the same repo, including symlinks to an ancestor
+inside the owning worktree and references appearing between planning and apply.
+If a sibling symlink scan fails, preserve the cache. Kept worktrees with ignored non-cache files still
 qualify for this bounded cache cleanup. Check
 tracked and nonignored contents again before deletion. Paths must be canonical
 absolute descendants; symlinks and paths through symlinked parents are rejected.
@@ -77,8 +93,11 @@ and no file modified within `CACHE_IDLE_DAYS`. Untagged evidence stays.
 --replace=/etc/tmpfiles.d/tmp.conf <conf>`, with `/tmp` and `/var/tmp` prefixes to
 avoid unrelated system cleanup. Only `/tmp` tightens to 3 days; `/var/tmp`
 retains the distro default 30 days for preserved temporary state. Because this
-replaces the whole `tmp.conf`, both entries must remain. Replacement loads other distro configurations,
-retaining systemd-private and X11 exclusions. Nonroot permission-denied-only
+replaces the whole `tmp.conf`, both entries must remain. Other distro configs
+still exclude the `systemd-private-*` directories themselves and X11 sockets.
+As in the distro default, inner `systemd-private-*/tmp` contents age with the
+`/tmp` threshold (now 3 days); the directory exclusion does not preserve those
+contents indefinitely. This affects root's cleanup where it can access them. Nonroot permission-denied-only
 failures are expected; other or mixed failures return 1. Do not replace this
 with direct recursive deletion of shared temporary roots.
 
