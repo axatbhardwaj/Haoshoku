@@ -12,6 +12,8 @@ git -C "$REPO" worktree add -q --detach "$REPO/.git/axstack/runs/x/checkouts/rev
 old "$REPO/.git/axstack/runs/x/checkouts/reviewer"
 # A T3 worktree discovers its owning repo even outside the configured roots.
 git clone -q "$FIXTURE/remote.git" "$FIXTURE/outside"
+git -C "$FIXTURE/outside" branch stale-away main
+git -C "$FIXTURE/outside" push -q origin stale-away
 git -C "$FIXTURE/outside" worktree add -qb t3 "$T3_WORKTREES_ROOT/project/t3" main
 old "$T3_WORKTREES_ROOT/project/t3"
 (cd "$FIXTURE/in-use" && exec sleep 120) &
@@ -26,6 +28,7 @@ run_cleanup --apply
 assert_absent "$FIXTURE/merged"
 assert_absent "$REPO/.git/axstack/runs/x/checkouts/reviewer"
 assert_absent "$T3_WORKTREES_ROOT/project/t3"
+if git -C "$FIXTURE/outside" show-ref --verify --quiet refs/heads/stale-away; then echo 'FAIL stale branch survived representative checkout removal'; exit 1; fi
 for branch in dirty unpushed open-pr in-use recent; do assert_exists "$FIXTURE/$branch"; done
 assert_exists "$T3_WORKTREES_ROOT/project/orphan"
 [[ "$(stat -c %Y "$index")" == "$before" ]] || { echo 'FAIL git probe refreshed index'; exit 1; }

@@ -5,6 +5,7 @@ DONE_BRANCH=()
 
 plan_branches() {
   local repo=$1 base checked ref tip stamp branch unpushed now
+  repo=$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir) || return
   base=$(git -C "$repo" symbolic-ref --quiet refs/remotes/origin/HEAD 2>/dev/null) || return 0
   # Without a known remote default, we cannot prove the default is protected.
   [[ -n "$base" ]] || return 0
