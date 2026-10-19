@@ -54,11 +54,34 @@ plan_build_caches() {
   done < <(git -C "$wt" ls-files --others --ignored --exclude-standard --directory -z)
 }
 
-idle_tagged_cache() {
-  local root=$1 target=$2 signature='Signature: 8a477f597d28d172789f06886806bc55' newer
-  safe_directory "$root" "$target" || return 1
+valid_cache_tag() {
+  local target=$1 signature='Signature: 8a477f597d28d172789f06886806bc55'
   [[ -f "$target/CACHEDIR.TAG" && ! -L "$target/CACHEDIR.TAG" ]] || return 1
-  [[ "$(head -c "${#signature}" -- "$target/CACHEDIR.TAG")" == "$signature" ]] || return 1
+  [[ "$(head -c "${#signature}" -- "$target/CACHEDIR.TAG")" == "$signature" ]]
+}
+
+# Return true for ignored content that must survive worktree removal.
+ignored_non_cache_files() {
+  local wt=$1 listing rel target
+  # Capture the status as well as the list: failed probes must preserve data.
+  listing=$(git -C "$wt" ls-files --others --ignored --exclude-standard --directory) || return 0
+  while IFS= read -r rel; do
+    [[ -n "$rel" ]] || continue
+    target="$wt/${rel%/}"
+    [[ -L "$target" ]] && continue
+    if [[ -d "$target" ]]; then
+      case "${target##*/}" in node_modules|target|cargo-target|.next|.turbo) continue ;; esac
+      valid_cache_tag "$target" && continue
+    fi
+    return 0
+  done <<< "$listing"
+  return 1
+}
+
+idle_tagged_cache() {
+  local root=$1 target=$2 newer
+  safe_directory "$root" "$target" || return 1
+  valid_cache_tag "$target" || return 1
   newer=$(find "$target" -type f -newermt "$CACHE_IDLE_DAYS days ago" -print -quit) || return 1
   [[ -z "$newer" ]]
 }

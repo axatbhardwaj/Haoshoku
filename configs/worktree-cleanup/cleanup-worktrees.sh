@@ -29,20 +29,21 @@ ERRORS=()        # wt|branch|message  (apply mode, failed)
 # decide(): PURE function, facts -> verdict. No I/O. Unit-tested in
 # test-cleanup.sh — do not add side effects here.
 #   decide <is_main> <dirty> <detached> <unpushed> <pr_state> <merged_into_base>
-#          <has_artifacts> [in_use recent idle_days stale_days locked]
+#          <has_artifacts> [in_use recent idle_days stale_days locked ignored_non_cache]
 #   echoes: KEEP | REMOVE | REVIEW:<reason>
 # ---------------------------------------------------------------------------
 decide() {
   local is_main=$1 dirty=$2 detached=$3 unpushed=$4 pr=$5 merged=$6 has_artifacts=$7
 
-  local in_use=${8:-0} recent=${9:-0} idle_days=${10:-0} stale_days=${11:-7} locked=${12:-0}
+  local in_use=${8:-0} recent=${9:-0} idle_days=${10:-0} stale_days=${11:-7} locked=${12:-0} ignored=${13:-0}
 
   # Order matters — most protective conditions first.
   [[ "$locked" == 1 || "$in_use" == 1 || "$recent" == 1 ]] && { echo "KEEP"; return; }
   [[ "$is_main" == 1 ]] && { echo "KEEP"; return; }                          # never touch the primary worktree
   [[ "$dirty" == 1 ]] && { echo "REVIEW:uncommitted changes"; return; }       # unsaved work
   if [[ "$detached" == 1 && "$unpushed" == 0 && "$has_artifacts" == 0 && "$idle_days" -ge "$stale_days" ]]; then
-    echo "REMOVE"; return
+    if [[ "$ignored" == 1 ]]; then echo "REVIEW:ignored non-cache files"; else echo "REMOVE"; fi
+    return
   fi
   [[ "$detached" == 1 ]] && { echo "REVIEW:detached HEAD"; return; }          # commits on no branch
   [[ "$pr" == OPEN ]] && { echo "KEEP"; return; }                            # active PR
@@ -52,6 +53,7 @@ decide() {
   # docs under ./superpowers/ as their only local copy. Never auto-remove it. This
   # wraps exactly the two REMOVE outcomes below; KEEP/other-REVIEW are untouched.
   local artifact_review=""
+  [[ "$ignored" == 1 ]] && artifact_review="REVIEW:ignored non-cache files"
   [[ "$has_artifacts" == 1 ]] && artifact_review="REVIEW:local ./superpowers/ artifacts"
 
   [[ "$pr" == MERGED ]] && { echo "${artifact_review:-REMOVE}"; return; }     # done: PR merged
@@ -136,7 +138,7 @@ pr_state_for() {
 # handle_worktree <repo> <main_wt> <wt> <branch> <detached> <is_main>
 handle_worktree() {
   local repo=$1 main_wt=$2 wt=$3 branch=$4 detached=$5 is_main=$6 locked=${7:-0}
-  local dirty=0 unpushed=0 merged=0 pr=NONE artifacts=0 verdict
+  local dirty=0 unpushed=0 merged=0 pr=NONE artifacts=0 ignored=0 verdict
   local idle recent=0 busy=0
   if [[ ! -d "$wt" ]]; then
     PLAN_KEEP+=("$wt|$branch|missing directory; registration eligible for prune"); return
@@ -149,9 +151,10 @@ handle_worktree() {
     IFS='|' read -r dirty unpushed merged <<<"$(git_facts "$wt")"
     pr=$(pr_state_for "$wt" "$branch")
     artifacts=$(has_artifacts "$wt")
+    ignored_non_cache_files "$wt" && ignored=1
   fi
 
-  verdict=$(decide "$is_main" "$dirty" "$detached" "$unpushed" "$pr" "$merged" "$artifacts" "$busy" "$recent" "$((idle / 86400))" "$STALE_DAYS" "$locked")
+  verdict=$(decide "$is_main" "$dirty" "$detached" "$unpushed" "$pr" "$merged" "$artifacts" "$busy" "$recent" "$((idle / 86400))" "$STALE_DAYS" "$locked" "$ignored")
 
   case "$verdict" in
     REMOVE)    PLAN_REMOVE+=("$wt|$branch|$pr|$main_wt") ;;
@@ -289,6 +292,9 @@ do_remove() {
   IFS='|' read -r dirty unpushed merged <<< "$(git_facts "$wt")"
   if [[ "$dirty" == 1 || "$unpushed" == 1 ]]; then
     PLAN_KEEP+=("$wt|$branch|changed since planning; kept"); return
+  fi
+  if ignored_non_cache_files "$wt"; then
+    PLAN_REVIEW+=("$wt|$branch|ignored non-cache files; changed since planning"); return
   fi
   if out=$(git -C "$main_wt" worktree remove "$wt" 2>&1); then
     DONE_REMOVE+=("$wt|$branch|removed worktree (branch kept)")

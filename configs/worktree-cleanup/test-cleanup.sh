@@ -117,6 +117,9 @@ check "locked merged worktree kept" "KEEP" "$(decide 0 0 0 0 MERGED 1 0 0 0 10 7
 check "locked detached stale worktree kept" "KEEP" "$(decide 0 0 1 0 NONE 0 0 0 0 10 7 1)"
 check "locked dirty worktree kept" "KEEP" "$(decide 0 1 0 1 NONE 0 0 0 0 10 7 1)"
 
+check "merged ignored non-cache files reviewed" "REVIEW:ignored non-cache files" "$(decide 0 0 0 0 MERGED 1 0 0 0 10 7 0 1)"
+check "detached ignored non-cache files reviewed" "REVIEW:ignored non-cache files" "$(decide 0 0 1 0 NONE 1 0 0 0 10 7 0 1)"
+
 echo "----"
 printf '%d passed, %d failed\n' "$pass" "$fail"
 [[ $fail -eq 0 ]]
