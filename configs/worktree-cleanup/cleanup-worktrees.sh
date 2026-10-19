@@ -29,16 +29,16 @@ ERRORS=()        # wt|branch|message  (apply mode, failed)
 # decide(): PURE function, facts -> verdict. No I/O. Unit-tested in
 # test-cleanup.sh — do not add side effects here.
 #   decide <is_main> <dirty> <detached> <unpushed> <pr_state> <merged_into_base>
-#          <has_artifacts> [in_use recent idle_days stale_days locked ignored_non_cache]
+#          <has_artifacts> [in_use recent idle_days stale_days locked ignored_non_cache operation]
 #   echoes: KEEP | REMOVE | REVIEW:<reason>
 # ---------------------------------------------------------------------------
 decide() {
   local is_main=$1 dirty=$2 detached=$3 unpushed=$4 pr=$5 merged=$6 has_artifacts=$7
 
-  local in_use=${8:-0} recent=${9:-0} idle_days=${10:-0} stale_days=${11:-7} locked=${12:-0} ignored=${13:-0}
+  local in_use=${8:-0} recent=${9:-0} idle_days=${10:-0} stale_days=${11:-7} locked=${12:-0} ignored=${13:-0} operation=${14:-0}
 
   # Order matters — most protective conditions first.
-  [[ "$locked" == 1 || "$in_use" == 1 || "$recent" == 1 ]] && { echo "KEEP"; return; }
+  [[ "$operation" == 1 || "$locked" == 1 || "$in_use" == 1 || "$recent" == 1 ]] && { echo "KEEP"; return; }
   [[ "$is_main" == 1 ]] && { echo "KEEP"; return; }                          # never touch the primary worktree
   [[ "$dirty" == 1 ]] && { echo "REVIEW:uncommitted changes"; return; }       # unsaved work
   if [[ "$detached" == 1 && "$unpushed" == 0 && "$has_artifacts" == 0 && "$idle_days" -ge "$stale_days" ]]; then
@@ -139,13 +139,14 @@ pr_state_for() {
 handle_worktree() {
   local repo=$1 main_wt=$2 wt=$3 branch=$4 detached=$5 is_main=$6 locked=${7:-0}
   local dirty=0 unpushed=0 merged=0 pr=NONE artifacts=0 ignored=0 verdict
-  local idle recent=0 busy=0
+  local idle recent=0 busy=0 operation=0
   if [[ ! -d "$wt" ]]; then
     PLAN_KEEP+=("$wt|$branch|missing directory; registration eligible for prune"); return
   fi
   idle=$(idle_seconds "$wt")
   (( idle < MIN_IDLE_HOURS * 3600 )) && recent=1
   in_use "$wt" && busy=1
+  worktree_operation "$wt" && operation=1
 
   if [[ "$is_main" != 1 ]]; then
     IFS='|' read -r dirty unpushed merged <<<"$(git_facts "$wt")"
@@ -154,14 +155,14 @@ handle_worktree() {
     ignored_non_cache_files "$wt" && ignored=1
   fi
 
-  verdict=$(decide "$is_main" "$dirty" "$detached" "$unpushed" "$pr" "$merged" "$artifacts" "$busy" "$recent" "$((idle / 86400))" "$STALE_DAYS" "$locked" "$ignored")
+  verdict=$(decide "$is_main" "$dirty" "$detached" "$unpushed" "$pr" "$merged" "$artifacts" "$busy" "$recent" "$((idle / 86400))" "$STALE_DAYS" "$locked" "$ignored" "$operation")
 
   case "$verdict" in
     REMOVE)    PLAN_REMOVE+=("$wt|$branch|$pr|$main_wt") ;;
     REVIEW:*)  PLAN_REVIEW+=("$wt|$branch|${verdict#REVIEW:}") ;;
     KEEP)      PLAN_KEEP+=("$wt|$branch|$([[ "$locked" == 1 ]] && echo locked || echo "$pr")") ;;
   esac
-  if [[ "$is_main" != 1 && "$verdict" != REMOVE && "$busy" == 0 && "$locked" == 0 ]] && (( idle >= CACHE_IDLE_DAYS * 86400 )); then
+  if [[ "$is_main" != 1 && "$verdict" != REMOVE && "$busy" == 0 && "$locked" == 0 && "$operation" == 0 ]] && (( idle >= CACHE_IDLE_DAYS * 86400 )); then
     plan_build_caches "$wt"
   fi
 }
@@ -288,6 +289,9 @@ do_remove() {
   fi
   if [[ -f "$(git -C "$wt" rev-parse --absolute-git-dir 2>/dev/null)/locked" ]]; then
     PLAN_KEEP+=("$wt|$branch|became locked; kept"); return
+  fi
+  if worktree_operation "$wt"; then
+    PLAN_KEEP+=("$wt|$branch|Git operation in progress; kept"); return
   fi
   IFS='|' read -r dirty unpushed merged <<< "$(git_facts "$wt")"
   if [[ "$dirty" == 1 || "$unpushed" == 1 ]]; then

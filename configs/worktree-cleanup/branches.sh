@@ -3,19 +3,31 @@
 PLAN_BRANCH=()  # repo|branch|recorded tip
 DONE_BRANCH=()
 
-# Detached HEADs can still own a branch during rebase or bisect.
+git_operation() {
+  local gd=$1 state
+  for state in rebase-merge rebase-apply MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD BISECT_START BISECT_LOG sequencer index.lock HEAD.lock; do
+    [[ -e "$gd/$state" || -L "$gd/$state" ]] && return 0
+  done
+  return 1
+}
+
+worktree_operation() {
+  local gd
+  gd=$(git -C "$1" rev-parse --absolute-git-dir 2>/dev/null) || return 0
+  git_operation "$gd"
+}
+
 checked_branches() {
-  local common=$1 gd state branch
+  local common=$1 gd
   git -C "$common" worktree list --porcelain || return 1
   for gd in "$common" "$common"/worktrees/*; do
     [[ -d "$gd" ]] || continue
-    for state in rebase-merge/head-name rebase-apply/head-name BISECT_START; do
-      [[ -f "$gd/$state" ]] || continue
-      IFS= read -r branch < "$gd/$state" || continue
-      [[ -n "$branch" ]] || continue
-      branch=${branch#refs/heads/}
-      printf 'branch refs/heads/%s\n' "$branch"
-    done
+    if git_operation "$gd"; then
+      # Operations can own refs via update-refs, sequencer OIDs or bisect state.
+      # Hold every branch in this repo rather than guessing those file formats.
+      git -C "$common" for-each-ref --format='branch %(refname)' refs/heads/
+      return
+    fi
   done
 }
 

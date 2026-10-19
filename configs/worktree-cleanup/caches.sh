@@ -107,7 +107,7 @@ apply_caches() {
     # A parent tagged cache may already have removed this planned descendant.
     [[ -e "$target" || -L "$target" ]] || continue
     if [[ "$kind" == build ]]; then
-      if in_use "$root" || (( $(idle_seconds "$root") < CACHE_IDLE_DAYS * 86400 )) || ! ignored_build_cache "$root" "$target" || ! private_build_cache "$root" "$target"; then
+      if in_use "$root" || worktree_operation "$root" || (( $(idle_seconds "$root") < CACHE_IDLE_DAYS * 86400 )) || ! ignored_build_cache "$root" "$target" || ! private_build_cache "$root" "$target"; then
         PLAN_KEEP+=("$target||cache changed since planning; kept"); continue
       fi
     elif ! idle_tagged_cache "$root" "$target"; then
