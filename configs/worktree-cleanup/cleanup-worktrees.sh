@@ -14,7 +14,12 @@
 # NOTE: no global `set -e` — this file is sourced by test-cleanup.sh, which must
 # not inherit errexit. Strictness is enabled inside main() only.
 
-DEFI_ROOT="${DEFI_ROOT:-$HOME/defi}"
+# Prevent read-only status probes from refreshing the index activity timestamp.
+export GIT_OPTIONAL_LOCKS=0
+CLEANUP_REPO_ROOTS="${CLEANUP_REPO_ROOTS:-$HOME/defi:$HOME/dev:$HOME/Work}"
+T3_WORKTREES_ROOT="${T3_WORKTREES_ROOT:-$HOME/.t3/worktrees}"
+MIN_IDLE_HOURS="${MIN_IDLE_HOURS:-24}"
+STALE_DAYS="${STALE_DAYS:-7}"
 ACTIVE_WORK="${ACTIVE_WORK:-$HOME/ACTIVE-WORK.md}"
 
 # Set by main() after checking gh auth. Lets pr_state_for() degrade gracefully.
@@ -88,8 +93,10 @@ base_ref() {
 #   merged   = HEAD is an ancestor of the remote base branch.
 git_facts() {
   local wt=$1 dirty=0 unpushed=0 merged=0 n base
-  [[ -n "$(git -C "$wt" status --porcelain 2>/dev/null)" ]] && dirty=1
-  n=$(git -C "$wt" rev-list --count HEAD --not --remotes 2>/dev/null || echo 0)
+  local status
+  status=$(git -C "$wt" status --porcelain 2>/dev/null) || dirty=1
+  [[ -n "$status" ]] && dirty=1
+  n=$(git -C "$wt" rev-list --count HEAD --not --remotes 2>/dev/null) || n=1
   [[ "${n:-0}" -gt 0 ]] && unpushed=1
   base=$(base_ref "$wt")
   if [[ -n "$base" ]] && git -C "$wt" merge-base --is-ancestor HEAD "$base" 2>/dev/null; then
@@ -136,6 +143,10 @@ pr_state_for() {
 handle_worktree() {
   local repo=$1 main_wt=$2 wt=$3 branch=$4 detached=$5 is_main=$6
   local dirty=0 unpushed=0 merged=0 pr=NONE artifacts=0 verdict
+  local idle recent=0 busy=0
+  idle=$(idle_seconds "$wt")
+  (( idle < MIN_IDLE_HOURS * 3600 )) && recent=1
+  in_use "$wt" && busy=1
 
   if [[ "$is_main" != 1 ]]; then
     IFS='|' read -r dirty unpushed merged <<<"$(git_facts "$wt")"
@@ -143,7 +154,7 @@ handle_worktree() {
     artifacts=$(has_artifacts "$wt")
   fi
 
-  verdict=$(decide "$is_main" "$dirty" "$detached" "$unpushed" "$pr" "$merged" "$artifacts")
+  verdict=$(decide "$is_main" "$dirty" "$detached" "$unpushed" "$pr" "$merged" "$artifacts" "$busy" "$recent" "$((idle / 86400))")
 
   case "$verdict" in
     REMOVE)    PLAN_REMOVE+=("$wt|$branch|$pr|$main_wt") ;;
@@ -182,19 +193,72 @@ process_repo() {
   done
 }
 
-# discover_repos: echo one representative worktree dir per distinct repo under
-# ~/defi (deduped by the shared git common-dir; non-git dirs are skipped).
+# Filesystem-only activity collection must precede git status or other probes.
+idle_seconds() {
+  local wt=$1 gd="$1/.git" value newest=0 stamp now
+  if [[ -f "$gd" ]]; then
+    IFS= read -r value < "$gd"
+    [[ "$value" == "gitdir: "* ]] || { echo 0; return; }
+    gd=${value#gitdir: }
+    [[ "$gd" == /* ]] || gd="$wt/$gd"
+  fi
+  for value in HEAD index logs/HEAD; do
+    stamp=$(stat -c %Y "$gd/$value" 2>/dev/null) || continue
+    (( stamp > newest )) && newest=$stamp
+  done
+  now=$(date +%s)
+  if (( newest == 0 || newest > now )); then echo 0; else echo "$((now - newest))"; fi
+}
+
+in_use() {
+  local wt cwd
+  wt=$(realpath -e -- "$1") || return 0
+  while IFS= read -r -d '' cwd; do
+    [[ "$cwd" == "$wt" || "$cwd" == "$wt/"* ]] && return 0
+  done < <(readlink -z -- /proc/[0-9]*/cwd 2>/dev/null)
+  return 1
+}
+
+registered_worktree() {
+  local d=$1 top
+  top=$(git -C "$d" rev-parse --show-toplevel 2>/dev/null) || return 1
+  [[ "$top" == "$d" ]] || return 1
+  git -C "$d" worktree list --porcelain | grep -Fxq "worktree $d"
+}
+
+repo_candidates() {
+  local root d
+  local -a roots
+  IFS=: read -ra roots <<< "$CLEANUP_REPO_ROOTS"
+  for root in "${roots[@]}"; do
+    [[ -d "$root" ]] || continue
+    find "$root" -mindepth 1 -maxdepth 1 -type d -print0
+  done
+  [[ -d "$T3_WORKTREES_ROOT" ]] || return 0
+  while IFS= read -r -d '' d; do
+    registered_worktree "$d" && printf '%s\0' "$d"
+  done < <(find "$T3_WORKTREES_ROOT" -mindepth 2 -maxdepth 2 -type d -print0)
+}
+
 discover_repos() {
   local d common
   declare -A seen=()
-  for d in "$DEFI_ROOT"/*/; do
-    d="${d%/}"
+  while IFS= read -r -d '' d; do
     common=$(git -C "$d" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || continue
+    common=$(realpath -e -- "$common") || continue
     if [[ -z "${seen[$common]:-}" ]]; then
       seen[$common]=1
       echo "$d"
     fi
-  done
+  done < <(repo_candidates)
+}
+
+report_orphans() {
+  local d
+  [[ -d "$T3_WORKTREES_ROOT" ]] || return 0
+  while IFS= read -r -d '' d; do
+    registered_worktree "$d" || PLAN_REVIEW+=("$d||unregistered T3 directory (report only)")
+  done < <(find "$T3_WORKTREES_ROOT" -mindepth 2 -maxdepth 2 -type d -print0)
 }
 
 # ---------------------------------------------------------------------------
@@ -204,13 +268,19 @@ discover_repos() {
 # do_remove <main_wt> <wt> <branch>
 do_remove() {
   local main_wt=$1 wt=$2 branch=$3 out
+  local dirty unpushed merged
+  if in_use "$wt" || (( $(idle_seconds "$wt") < MIN_IDLE_HOURS * 3600 )); then
+    ERRORS+=("$wt|$branch|became active; kept"); return
+  fi
+  IFS='|' read -r dirty unpushed merged <<< "$(git_facts "$wt")"
+  if [[ "$dirty" == 1 || "$unpushed" == 1 ]]; then
+    ERRORS+=("$wt|$branch|changed since planning; kept"); return
+  fi
   if out=$(git -C "$main_wt" worktree remove "$wt" 2>&1); then
-    git -C "$main_wt" worktree prune >/dev/null 2>&1 || true
-    if [[ -n "$branch" ]] && git -C "$main_wt" branch -d "$branch" >/dev/null 2>&1; then
-      DONE_REMOVE+=("$wt|$branch|removed worktree + merged branch")
-    else
-      DONE_REMOVE+=("$wt|$branch|removed worktree (branch kept)")
+    if ! git -C "$main_wt" worktree prune; then
+      ERRORS+=("$wt|$branch|worktree prune failed")
     fi
+    DONE_REMOVE+=("$wt|$branch|removed worktree (branch kept)")
   else
     ERRORS+=("$wt|$branch|${out//$'\n'/ }")
   fi
@@ -252,135 +322,8 @@ stale_active_work() {
   done
 }
 
-html_escape() { sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g'; }
-esc() { printf '%s' "$1" | html_escape; }
-
-emit_html() {
-  local out=$1 mode=$2 ts=$3
-  local tmp="${out}.tmp.$$"
-  local n_remove=${#PLAN_REMOVE[@]} n_review=${#PLAN_REVIEW[@]} n_keep=${#PLAN_KEEP[@]} n_err=${#ERRORS[@]}
-  local remove_label="Would remove"
-  [[ "$mode" == apply ]] && remove_label="Removed"
-
-  {
-    cat <<'HTML_HEAD'
-<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>~/defi worktree cleanup</title>
-<style>
-:root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--muted:#8b949e;--accent:#58a6ff;
---ok:#3fb950;--warn:#d29922;--bad:#f85149}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
-.wrap{max-width:1100px;margin:0 auto;padding:40px 24px 80px}
-h1{font-size:1.6rem;margin:0 0 4px}
-h2{font-size:1.05rem;margin:36px 0 12px;color:var(--accent);font-weight:600}
-.sub{color:var(--muted);margin:0 0 28px}
-.cards{display:flex;gap:14px;flex-wrap:wrap;margin:0 0 8px}
-.card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px 20px;min-width:130px}
-.card .n{font-size:1.8rem;font-weight:700}
-.card .l{color:var(--muted);font-size:.85rem;text-transform:uppercase;letter-spacing:.04em}
-.card.remove .n{color:var(--ok)} .card.review .n{color:var(--warn)}
-.card.keep .n{color:var(--accent)} .card.err .n{color:var(--bad)}
-table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden}
-th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:top}
-th{color:var(--muted);font-weight:600;font-size:.8rem;text-transform:uppercase;letter-spacing:.04em}
-tr:last-child td{border-bottom:none}
-code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.86em;color:var(--fg)}
-.path{color:var(--fg)} .branch{color:var(--accent)}
-.reason{color:var(--warn)}
-.badge{display:inline-block;padding:1px 8px;border-radius:20px;font-size:.78rem;border:1px solid var(--border)}
-.badge.MERGED{color:var(--ok);border-color:var(--ok)} .badge.OPEN{color:var(--accent);border-color:var(--accent)}
-.badge.CLOSED{color:var(--bad);border-color:var(--bad)} .badge.NONE,.badge.UNKNOWN{color:var(--muted)}
-.empty{color:var(--muted);font-style:italic;padding:8px 2px}
-footer{margin-top:48px;color:var(--muted);font-size:.82rem;border-top:1px solid var(--border);padding-top:16px}
-.mode{display:inline-block;padding:2px 10px;border-radius:6px;font-size:.8rem;font-weight:600}
-.mode.dry{background:#1f2937;color:var(--warn)} .mode.apply{background:#10240f;color:var(--ok)}
-</style></head><body><div class="wrap">
-HTML_HEAD
-
-    echo "<h1>~/defi worktree cleanup</h1>"
-    printf '<p class="sub">%s &nbsp;·&nbsp; mode: <span class="mode %s">%s</span></p>\n' \
-      "$(esc "$ts")" "$([[ $mode == apply ]] && echo apply || echo dry)" \
-      "$([[ $mode == apply ]] && echo APPLY || echo 'DRY-RUN (nothing deleted)')"
-
-    echo '<div class="cards">'
-    printf '<div class="card remove"><div class="n">%s</div><div class="l">%s</div></div>' "$n_remove" "$remove_label"
-    printf '<div class="card review"><div class="n">%s</div><div class="l">Needs review</div></div>' "$n_review"
-    printf '<div class="card keep"><div class="n">%s</div><div class="l">Kept (active)</div></div>' "$n_keep"
-    [[ $mode == apply ]] && printf '<div class="card err"><div class="n">%s</div><div class="l">Errors</div></div>' "$n_err"
-    echo '</div>'
-
-    # removed / would-remove
-    echo "<h2>$remove_label</h2>"
-    if [[ $mode == apply ]]; then
-      if [[ ${#DONE_REMOVE[@]} -eq 0 ]]; then echo '<p class="empty">none</p>'; else
-        echo '<table><tr><th>Worktree</th><th>Branch</th><th>Result</th></tr>'
-        local e wt br note
-        for e in "${DONE_REMOVE[@]}"; do IFS='|' read -r wt br note <<<"$e"
-          printf '<tr><td class="path"><code>%s</code></td><td class="branch"><code>%s</code></td><td>%s</td></tr>' \
-            "$(esc "$wt")" "$(esc "$br")" "$(esc "$note")"; done
-        echo '</table>'
-      fi
-    else
-      if [[ ${#PLAN_REMOVE[@]} -eq 0 ]]; then echo '<p class="empty">none</p>'; else
-        echo '<table><tr><th>Worktree</th><th>Branch</th><th>PR</th></tr>'
-        local e wt br pr
-        for e in "${PLAN_REMOVE[@]}"; do IFS='|' read -r wt br pr _m <<<"$e"
-          printf '<tr><td class="path"><code>%s</code></td><td class="branch"><code>%s</code></td><td><span class="badge %s">%s</span></td></tr>' \
-            "$(esc "$wt")" "$(esc "$br")" "$(esc "$pr")" "$(esc "$pr")"; done
-        echo '</table>'
-      fi
-    fi
-
-    # errors
-    if [[ $mode == apply && ${#ERRORS[@]} -gt 0 ]]; then
-      echo '<h2>Errors</h2><table><tr><th>Worktree</th><th>Branch</th><th>Message</th></tr>'
-      local e wt br msg
-      for e in "${ERRORS[@]}"; do IFS='|' read -r wt br msg <<<"$e"
-        printf '<tr><td class="path"><code>%s</code></td><td class="branch"><code>%s</code></td><td>%s</td></tr>' \
-          "$(esc "$wt")" "$(esc "$br")" "$(esc "$msg")"; done
-      echo '</table>'
-    fi
-
-    # needs review
-    echo '<h2>Needs review (kept — decide manually)</h2>'
-    if [[ ${#PLAN_REVIEW[@]} -eq 0 ]]; then echo '<p class="empty">none</p>'; else
-      echo '<table><tr><th>Worktree</th><th>Branch</th><th>Why</th></tr>'
-      local e wt br why
-      for e in "${PLAN_REVIEW[@]}"; do IFS='|' read -r wt br why <<<"$e"
-        printf '<tr><td class="path"><code>%s</code></td><td class="branch"><code>%s</code></td><td class="reason">%s</td></tr>' \
-          "$(esc "$wt")" "$(esc "$br")" "$(esc "$why")"; done
-      echo '</table>'
-    fi
-
-    # stale ACTIVE-WORK.md
-    local stale; stale=$(stale_active_work "$mode")
-    if [[ -n "$stale" ]]; then
-      echo '<h2>Stale ~/ACTIVE-WORK.md entries (removed worktrees — prune by hand)</h2>'
-      echo '<table><tr><th>Line</th><th>Entry</th></tr>'
-      while IFS=$'\t' read -r ln rest; do
-        [[ -z "$ln" ]] && continue
-        printf '<tr><td><code>%s</code></td><td><code>%s</code></td></tr>' "$(esc "$ln")" "$(esc "$rest")"
-      done <<<"$stale"
-      echo '</table>'
-    fi
-
-    echo '<h2>Kept (active / primary)</h2>'
-    if [[ ${#PLAN_KEEP[@]} -eq 0 ]]; then echo '<p class="empty">none</p>'; else
-      echo '<table><tr><th>Worktree</th><th>Branch</th><th>PR</th></tr>'
-      local e wt br pr
-      for e in "${PLAN_KEEP[@]}"; do IFS='|' read -r wt br pr <<<"$e"
-        printf '<tr><td class="path"><code>%s</code></td><td class="branch"><code>%s</code></td><td><span class="badge %s">%s</span></td></tr>' \
-          "$(esc "$wt")" "$(esc "$br")" "$(esc "$pr")" "$(esc "$pr")"; done
-      echo '</table>'
-    fi
-
-    printf '<footer>Generated by <code>cleanup-worktrees.sh</code>. Logs: <code>journalctl --user -u defi-worktree-cleanup</code>. Re-run report: <code>%s/.worktree-cleanup/cleanup-worktrees.sh --dry-run</code>.</footer>\n' "$(esc "$DEFI_ROOT")"
-    echo '</div></body></html>'
-  } >"$tmp"
-  mv -f "$tmp" "$out"
-}
+# shellcheck source=report.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/report.sh"
 
 usage() {
   cat <<EOF
@@ -389,9 +332,9 @@ Usage: cleanup-worktrees.sh [--dry-run|--apply] [--no-fetch] [--html PATH]
   --dry-run   plan and report only; delete nothing (default)
   --apply     actually remove the provably-safe worktrees
   --no-fetch  skip the per-repo 'git fetch' (faster; stale remote refs)
-  --html PATH write the HTML report here (default: \$DEFI_ROOT/.worktree-cleanup/last-run.html)
+  --html PATH write the HTML report here (default: ~/.local/state/disk-cleanup/last-run.html)
 
-Scope: every git repo under \$DEFI_ROOT (default ~/defi).
+Scope: repos under CLEANUP_REPO_ROOTS (colon-separated) and T3_WORKTREES_ROOT.
 EOF
 }
 
@@ -399,7 +342,7 @@ main() {
   set -uo pipefail   # deliberately NOT -e: many calls (grep/gh/merge-base) return non-zero by design
 
   local APPLY=0 FETCH=1
-  local HTML_OUT="$DEFI_ROOT/.worktree-cleanup/last-run.html"
+  local HTML_OUT="$HOME/.local/state/disk-cleanup/last-run.html"
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --apply) APPLY=1 ;;
@@ -416,10 +359,7 @@ main() {
 
   local -a repos=()
   mapfile -t repos < <(discover_repos)
-  if [[ ${#repos[@]} -eq 0 ]]; then
-    echo "no git repos found under $DEFI_ROOT" >&2
-    return 1
-  fi
+  report_orphans
 
   local repo
   if [[ $FETCH -eq 1 ]]; then
@@ -437,7 +377,8 @@ main() {
   [[ $APPLY -eq 1 ]] && apply_plan
 
   local ts; ts="$(date '+%Y-%m-%d %H:%M %Z')"
-  emit_html "$HTML_OUT" "$mode" "$ts"
+  mkdir -p -- "$(dirname "$HTML_OUT")" || return 1
+  emit_html "$HTML_OUT" "$mode" "$ts" || return 1
 
   # stdout summary -> journald under systemd
   if [[ $APPLY -eq 1 ]]; then
