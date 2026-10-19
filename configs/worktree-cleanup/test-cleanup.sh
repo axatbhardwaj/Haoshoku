@@ -123,6 +123,9 @@ check "detached ignored non-cache files reviewed" "REVIEW:ignored non-cache file
 check "in-progress operation beats dirty and merged" "KEEP" "$(decide 0 1 0 0 MERGED 1 0 0 0 10 7 0 0 1)"
 check "in-progress operation keeps detached stale checkout" "KEEP" "$(decide 0 0 1 0 NONE 1 0 0 0 10 7 0 0 1)"
 
+check "merged reflog-only history reviewed" "REVIEW:unreferenced HEAD reflog commits" "$(decide 0 0 0 0 MERGED 1 0 0 0 10 7 0 0 0 1)"
+check "detached reflog-only history reviewed" "REVIEW:unreferenced HEAD reflog commits" "$(decide 0 0 1 0 NONE 1 0 0 0 10 7 0 0 0 1)"
+
 echo "----"
 printf '%d passed, %d failed\n' "$pass" "$fail"
 [[ $fail -eq 0 ]]

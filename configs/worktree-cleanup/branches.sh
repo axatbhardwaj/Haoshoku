@@ -58,6 +58,9 @@ plan_branches() {
     stale_branch "$repo" "$branch" "$tip" || continue
     unpushed=$(git -C "$repo" rev-list "$tip" --not --remotes) || continue
     [[ -z "$unpushed" ]] || continue
+    if ! reflog_referenced "$repo" "$repo/logs/refs/heads/$branch"; then
+      PLAN_REVIEW+=("$repo|$branch|unreferenced branch reflog commits; kept"); continue
+    fi
     PLAN_BRANCH+=("$repo|$branch|$tip")
   done < <(git -C "$repo" for-each-ref --format='%(refname)%09%(objectname)%09%(symref)' refs/heads/)
 }
@@ -78,7 +81,14 @@ apply_branches() {
       ERRORS+=("$repo|$branch|cannot recheck remote reachability"); continue;
     }
     [[ -z "$unpushed" ]] || continue
+    current=$(git -C "$repo" for-each-ref --format='%(objectname)' "refs/heads/$branch") || continue
+    if [[ "$current" != "$tip" ]]; then
+      PLAN_KEEP+=("$repo|$branch|branch moved since planning; kept"); continue
+    fi
     stale_branch "$repo" "$branch" "$tip" || continue
+    if ! reflog_referenced "$repo" "$repo/logs/refs/heads/$branch"; then
+      PLAN_REVIEW+=("$repo|$branch|branch reflog changed since planning; kept"); continue
+    fi
     if out=$(git -C "$repo" update-ref --no-deref -d "refs/heads/$branch" "$tip" 2>&1); then
       DONE_BRANCH+=("$repo|$branch|$tip")
     elif current=$(git -C "$repo" for-each-ref --format='%(objectname)' "refs/heads/$branch") && [[ "$current" != "$tip" ]]; then

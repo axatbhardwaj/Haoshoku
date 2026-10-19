@@ -29,20 +29,20 @@ ERRORS=()        # wt|branch|message  (apply mode, failed)
 # decide(): PURE function, facts -> verdict. No I/O. Unit-tested in
 # test-cleanup.sh — do not add side effects here.
 #   decide <is_main> <dirty> <detached> <unpushed> <pr_state> <merged_into_base>
-#          <has_artifacts> [in_use recent idle_days stale_days locked ignored_non_cache operation]
+#          <has_artifacts> [in_use recent idle_days stale_days locked ignored_non_cache operation unreferenced_history]
 #   echoes: KEEP | REMOVE | REVIEW:<reason>
 # ---------------------------------------------------------------------------
 decide() {
   local is_main=$1 dirty=$2 detached=$3 unpushed=$4 pr=$5 merged=$6 has_artifacts=$7
 
-  local in_use=${8:-0} recent=${9:-0} idle_days=${10:-0} stale_days=${11:-7} locked=${12:-0} ignored=${13:-0} operation=${14:-0}
+  local in_use=${8:-0} recent=${9:-0} idle_days=${10:-0} stale_days=${11:-7} locked=${12:-0} ignored=${13:-0} operation=${14:-0} history=${15:-0}
 
   # Order matters — most protective conditions first.
   [[ "$operation" == 1 || "$locked" == 1 || "$in_use" == 1 || "$recent" == 1 ]] && { echo "KEEP"; return; }
   [[ "$is_main" == 1 ]] && { echo "KEEP"; return; }                          # never touch the primary worktree
   [[ "$dirty" == 1 ]] && { echo "REVIEW:uncommitted changes"; return; }       # unsaved work
   if [[ "$detached" == 1 && "$unpushed" == 0 && "$has_artifacts" == 0 && "$idle_days" -ge "$stale_days" ]]; then
-    if [[ "$ignored" == 1 ]]; then echo "REVIEW:ignored non-cache files"; else echo "REMOVE"; fi
+    if [[ "$ignored" == 1 ]]; then echo "REVIEW:ignored non-cache files"; elif [[ "$history" == 1 ]]; then echo "REVIEW:unreferenced HEAD reflog commits"; else echo "REMOVE"; fi
     return
   fi
   [[ "$detached" == 1 ]] && { echo "REVIEW:detached HEAD"; return; }          # commits on no branch
@@ -53,6 +53,7 @@ decide() {
   # docs under ./superpowers/ as their only local copy. Never auto-remove it. This
   # wraps exactly the two REMOVE outcomes below; KEEP/other-REVIEW are untouched.
   local artifact_review=""
+  [[ "$history" == 1 ]] && artifact_review="REVIEW:unreferenced HEAD reflog commits"
   [[ "$ignored" == 1 ]] && artifact_review="REVIEW:ignored non-cache files"
   [[ "$has_artifacts" == 1 ]] && artifact_review="REVIEW:local ./superpowers/ artifacts"
 
@@ -141,7 +142,7 @@ pr_state_for() {
 # handle_worktree <repo> <main_wt> <wt> <branch> <detached> <is_main>
 handle_worktree() {
   local repo=$1 main_wt=$2 wt=$3 branch=$4 detached=$5 is_main=$6 locked=${7:-0}
-  local dirty=0 unpushed=0 merged=0 pr=NONE artifacts=0 ignored=0 verdict
+  local dirty=0 unpushed=0 merged=0 pr=NONE artifacts=0 ignored=0 history=0 verdict
   local idle recent=0 busy=0 operation=0
   if [[ ! -d "$wt" ]]; then
     PLAN_KEEP+=("$wt|$branch|missing directory; registration eligible for prune"); return
@@ -156,9 +157,12 @@ handle_worktree() {
     pr=$(pr_state_for "$wt" "$branch")
     artifacts=$(has_artifacts "$wt")
     ignored_non_cache_files "$wt" && ignored=1
+    if [[ "$dirty" == 0 && "$unpushed" == 0 && "$recent" == 0 && "$busy" == 0 && "$operation" == 0 ]]; then
+      worktree_history_referenced "$wt" || history=1
+    fi
   fi
 
-  verdict=$(decide "$is_main" "$dirty" "$detached" "$unpushed" "$pr" "$merged" "$artifacts" "$busy" "$recent" "$((idle / 86400))" "$STALE_DAYS" "$locked" "$ignored" "$operation")
+  verdict=$(decide "$is_main" "$dirty" "$detached" "$unpushed" "$pr" "$merged" "$artifacts" "$busy" "$recent" "$((idle / 86400))" "$STALE_DAYS" "$locked" "$ignored" "$operation" "$history")
 
   case "$verdict" in
     REMOVE)    PLAN_REMOVE+=("$wt|$branch|$pr|$main_wt") ;;
@@ -302,6 +306,9 @@ do_remove() {
   fi
   if ignored_non_cache_files "$wt"; then
     PLAN_REVIEW+=("$wt|$branch|ignored non-cache files; changed since planning"); return
+  fi
+  if ! worktree_history_referenced "$wt"; then
+    PLAN_REVIEW+=("$wt|$branch|unreferenced HEAD reflog commits; kept"); return
   fi
   if out=$(git -c core.fsmonitor=false -c core.untrackedCache=false -c status.showUntrackedFiles=all -C "$main_wt" worktree remove "$wt" 2>&1); then
     DONE_REMOVE+=("$wt|$branch|removed worktree (branch kept)")

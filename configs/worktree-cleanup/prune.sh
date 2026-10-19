@@ -1,16 +1,39 @@
 #!/usr/bin/env bash
 # A prunable registration can hold the only surviving history of a checkout.
-referenced_commit() {
-  local common=$1 sha=$2 orphan
-  [[ "$sha" =~ ^([[:xdigit:]]{40}|[[:xdigit:]]{64})$ ]] || return 1
-  [[ "$sha" =~ ^0+$ ]] && return 0  # reflog's null old/new OID
-  orphan=$(git --git-dir="$common" rev-list -n1 "$sha" --not --branches --tags --remotes) || return 1
+referenced_commits() {
+  local common=$1 sha orphan
+  shift
+  local -a commits=()
+  for sha in "$@"; do
+    [[ "$sha" =~ ^([[:xdigit:]]{40}|[[:xdigit:]]{64})$ ]] || return 1
+    [[ "$sha" =~ ^0+$ ]] || commits+=("$sha")  # null old/new OIDs are not commits
+  done
+  (( ${#commits[@]} == 0 )) && return 0
+  orphan=$(git --git-dir="$common" rev-list -n1 "${commits[@]}" --not --branches --tags --remotes) || return 1
   [[ -z "$orphan" ]]
 }
 
+reflog_referenced() {
+  local common=$1 log=$2 old new rest
+  local -a commits=()
+  [[ -e "$log" ]] || return 0
+  [[ -r "$log" ]] || return 1
+  while read -r old new rest || [[ -n "$old$new$rest" ]]; do
+    commits+=("$old" "$new")
+  done < "$log"
+  referenced_commits "$common" "${commits[@]}"
+}
+
+worktree_history_referenced() {
+  local wt=$1 common tip
+  common=$(git -C "$wt" rev-parse --path-format=absolute --git-common-dir) || return 1
+  tip=$(git -C "$wt" rev-parse --verify 'HEAD^{commit}') || return 1
+  registration_referenced "$common" "$wt" "$tip"
+}
+
 registration_referenced() {
-  local common=$1 wt=$2 tip=$3 gd location old new rest head found=0
-  referenced_commit "$common" "$tip" || return 1
+  local common=$1 wt=$2 tip=$3 gd location head found=0
+  referenced_commits "$common" "$tip" || return 1
   # Porcelain has the path, not the admin-dir ID. Inspect every matching record.
   for gd in "$common"/worktrees/*; do
     [[ -d "$gd" && -r "$gd/gitdir" ]] || continue
@@ -18,13 +41,8 @@ registration_referenced() {
     [[ "$location" == "$wt/.git" ]] || continue
     found=1
     head=$(git --git-dir="$gd" rev-parse --verify 'HEAD^{commit}') || return 1
-    referenced_commit "$common" "$head" || return 1
-    if [[ -e "$gd/logs/HEAD" ]]; then
-      [[ -r "$gd/logs/HEAD" ]] || return 1
-      while read -r old new rest || [[ -n "$old$new$rest" ]]; do
-        referenced_commit "$common" "$old" && referenced_commit "$common" "$new" || return 1
-      done < "$gd/logs/HEAD"
-    fi
+    referenced_commits "$common" "$head" || return 1
+    reflog_referenced "$common" "$gd/logs/HEAD" || return 1
   done
   (( found ))
 }
