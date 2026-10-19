@@ -21,9 +21,11 @@ if [[ "$*" == *'worktree remove'* ]]; then echo attempted > "$REMOVE_LOG"; exit 
 exec "$REAL_GIT" "$@"
 STUB
 chmod 755 "$FIXTURE/bin/git"
+hash -r
 # shellcheck source=../cleanup-worktrees.sh
 source "$TEST_DIR/cleanup-worktrees.sh"
 do_remove "$REPO" "$FIXTURE/link" linked
 [[ ! -e "$REMOVE_LOG" ]] || { echo 'FAIL symlink reached destructive git call'; exit 1; }
-[[ ${#ERRORS[@]} -gt 0 ]]
+assert_exists "$FIXTURE/linked"
+[[ ${#ERRORS[@]} -gt 0 ]] || { echo 'FAIL unsafe path was not reported'; exit 1; }
 echo 'PASS unknown-default protection and validated removal paths'
