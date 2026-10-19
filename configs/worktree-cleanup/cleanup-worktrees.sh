@@ -380,7 +380,17 @@ main() {
   report_orphans
   [[ ${#repos[@]} -eq 0 ]] && echo "no git repos found under configured roots; nothing to prune"
 
-  local repo
+  local repo common
+  local -a prune_repos=()
+  if [[ $APPLY -eq 1 ]]; then
+    for repo in "${repos[@]}"; do
+      if common=$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir); then
+        prune_repos+=("$common")
+      else
+        ERRORS+=("$repo||cannot locate git common directory for prune")
+      fi
+    done
+  fi
   if [[ $FETCH -eq 1 ]]; then
     for repo in "${repos[@]}"; do
       git -C "$repo" fetch --all --prune --quiet >/dev/null 2>&1 || true
@@ -395,9 +405,9 @@ main() {
   [[ $APPLY -eq 1 ]] && mode="apply"
   if [[ $APPLY -eq 1 ]]; then
     apply_plan
-    for repo in "${repos[@]}"; do
-      if ! git -C "$repo" worktree prune; then
-        ERRORS+=("$repo||worktree prune failed")
+    for common in "${prune_repos[@]}"; do
+      if ! git --git-dir="$common" worktree prune; then
+        ERRORS+=("$common||worktree prune failed")
       fi
     done
   fi
