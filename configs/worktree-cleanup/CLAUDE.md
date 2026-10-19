@@ -7,7 +7,7 @@ remain `haoshoku --worktree-cleanup` and `--worktree-cleanup-backup`.
 |------|-------------------------|
 | `cleanup-disk.sh` | Same directory; daily entrypoint, always runs both steps and fails if either fails |
 | `cleanup-worktrees.sh` | `~/.local/share/disk-cleanup/`; executable entry, dry-run by default |
-| `branches.sh`, `caches.sh`, `prune.sh`, `report.sh` | Same directory; sourced runtime modules |
+| `branches.sh`, `caches.sh`, `discovery.sh`, `prune.sh`, `report.sh` | Same directory; sourced runtime modules |
 | `cleanup-temp.sh`, `disk-cleanup-tmpfiles.conf` | Same directory; tmpfiles wrapper and 3d `/tmp`, 30d `/var/tmp` policy |
 | `disk-cleanup.service`, `disk-cleanup.timer` | `~/.config/systemd/user/`; daily, persistent, up to 1h jitter |
 | `test-cleanup.sh`, `tests/` | Repository-only decision and real Git fixture tests |

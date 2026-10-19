@@ -260,48 +260,6 @@ in_use() {
   return 1
 }
 
-registered_worktree() {
-  local d=$1 top
-  top=$(git -C "$d" rev-parse --show-toplevel 2>/dev/null) || return 1
-  [[ "$top" == "$d" ]] || return 1
-  git -C "$d" worktree list --porcelain | grep -Fxq "worktree $d"
-}
-
-repo_candidates() {
-  local root d
-  local -a roots
-  IFS=: read -ra roots <<< "$CLEANUP_REPO_ROOTS"
-  for root in "${roots[@]}"; do
-    [[ -d "$root" ]] || continue
-    find "$root" -mindepth 1 -maxdepth 1 -type d -print0
-  done
-  [[ -d "$T3_WORKTREES_ROOT" ]] || return 0
-  while IFS= read -r -d '' d; do
-    registered_worktree "$d" && printf '%s\0' "$d"
-  done < <(find "$T3_WORKTREES_ROOT" -mindepth 2 -maxdepth 2 -type d -print0)
-}
-
-discover_repos() {
-  local d common
-  declare -A seen=()
-  while IFS= read -r -d '' d; do
-    common=$(git -C "$d" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || continue
-    common=$(realpath -e -- "$common") || continue
-    if [[ -z "${seen[$common]:-}" ]]; then
-      seen[$common]=1
-      echo "$d"
-    fi
-  done < <(repo_candidates)
-}
-
-report_orphans() {
-  local d
-  [[ -d "$T3_WORKTREES_ROOT" ]] || return 0
-  while IFS= read -r -d '' d; do
-    registered_worktree "$d" || PLAN_REVIEW+=("$d||unregistered T3 directory (report only)")
-  done < <(find "$T3_WORKTREES_ROOT" -mindepth 2 -maxdepth 2 -type d -print0)
-}
-
 # ---------------------------------------------------------------------------
 # execution (only reached in --apply mode)
 # ---------------------------------------------------------------------------
@@ -381,6 +339,9 @@ stale_active_work() {
     awk -v p="$wt" 'substr($0,1,length(p))==p {print NR"\t"$0}' "$ACTIVE_WORK"
   done
 }
+
+# shellcheck source=discovery.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/discovery.sh"
 
 # shellcheck source=prune.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/prune.sh"
