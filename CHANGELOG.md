@@ -4,6 +4,8 @@
 
 ### Changed
 
+- Tighten only `/tmp` to 3 days; retain the distro default 30-day `/var/tmp`
+  age in the replacement tmpfiles policy for preserved temporary state.
 - Keep branches after removing a worktree; the separate stale-branch pass uses
   compare-and-delete rather than immediate `git branch -d` after removal.
 - Hosts with no discovered repositories now report that condition and succeed,

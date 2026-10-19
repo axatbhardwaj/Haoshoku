@@ -290,7 +290,8 @@ Run `haoshoku --help` for the complete current list.
 
 ## Debian Server
 
-The full Debian path includes the optional daily disk-cleanup job.
+The full Debian path includes the optional daily disk-cleanup job. Its tmpfiles
+policy uses 3 days for `/tmp` and retains the distro default 30 days for `/var/tmp`.
 
 [Read this section](README/debian-server.md#debian-server).
 

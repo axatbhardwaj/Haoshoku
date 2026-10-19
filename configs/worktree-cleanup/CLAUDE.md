@@ -8,7 +8,7 @@ remain `haoshoku --worktree-cleanup` and `--worktree-cleanup-backup`.
 | `cleanup-disk.sh` | Same directory; daily entrypoint, always runs both steps and fails if either fails |
 | `cleanup-worktrees.sh` | `~/.local/share/disk-cleanup/`; executable entry, dry-run by default |
 | `branches.sh`, `caches.sh`, `report.sh` | Same directory; sourced runtime modules |
-| `cleanup-temp.sh`, `disk-cleanup-tmpfiles.conf` | Same directory; tmpfiles wrapper and 3d `/tmp`, 7d `/var/tmp` policy |
+| `cleanup-temp.sh`, `disk-cleanup-tmpfiles.conf` | Same directory; tmpfiles wrapper and 3d `/tmp`, 30d `/var/tmp` policy |
 | `disk-cleanup.service`, `disk-cleanup.timer` | `~/.config/systemd/user/`; daily, persistent, up to 1h jitter |
 | `test-cleanup.sh`, `tests/` | Repository-only decision and real Git fixture tests |
 
@@ -61,7 +61,9 @@ and no file modified within `CACHE_IDLE_DAYS`. Untagged evidence stays.
 
 `cleanup-temp.sh` invokes `systemd-tmpfiles --clean
 --replace=/etc/tmpfiles.d/tmp.conf <conf>`, with `/tmp` and `/var/tmp` prefixes to
-avoid unrelated system cleanup. Replacement loads other distro configurations,
+avoid unrelated system cleanup. Only `/tmp` tightens to 3 days; `/var/tmp`
+retains the distro default 30 days for preserved temporary state. Because this
+replaces the whole `tmp.conf`, both entries must remain. Replacement loads other distro configurations,
 retaining systemd-private and X11 exclusions. Nonroot permission-denied-only
 failures are expected; other or mixed failures return 1. Do not replace this
 with direct recursive deletion of shared temporary roots.

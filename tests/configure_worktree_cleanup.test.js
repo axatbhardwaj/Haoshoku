@@ -37,7 +37,7 @@ afterEach(() => {
 function seedRepo({ withClaudeMd = false, withTest = false } = {}) {
   const d = repoDir();
   fs.writeFileSync(path.join(d, SCRIPT), SCRIPT_CONTENT);
-  fs.writeFileSync(path.join(d, "disk-cleanup-tmpfiles.conf"), "q /tmp 1777 root root 3d\nq /var/tmp 1777 root root 7d\n");
+  fs.writeFileSync(path.join(d, "disk-cleanup-tmpfiles.conf"), "q /tmp 1777 root root 3d\nq /var/tmp 1777 root root 30d\n");
   fs.writeFileSync(path.join(d, SERVICE), SERVICE_CONTENT);
   fs.writeFileSync(path.join(d, TIMER), TIMER_CONTENT);
   if (withClaudeMd) fs.writeFileSync(path.join(d, "CLAUDE.md"), "# doc\n");
