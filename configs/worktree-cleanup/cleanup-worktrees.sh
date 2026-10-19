@@ -272,11 +272,11 @@ do_remove() {
     ERRORS+=("$wt|$branch|unsafe worktree path; kept"); return
   fi
   if in_use "$wt" || (( $(idle_seconds "$wt") < MIN_IDLE_HOURS * 3600 )); then
-    ERRORS+=("$wt|$branch|became active; kept"); return
+    PLAN_KEEP+=("$wt|$branch|became active; kept"); return
   fi
   IFS='|' read -r dirty unpushed merged <<< "$(git_facts "$wt")"
   if [[ "$dirty" == 1 || "$unpushed" == 1 ]]; then
-    ERRORS+=("$wt|$branch|changed since planning; kept"); return
+    PLAN_KEEP+=("$wt|$branch|changed since planning; kept"); return
   fi
   if out=$(git -C "$main_wt" worktree remove "$wt" 2>&1); then
     if ! git -C "$main_wt" worktree prune; then

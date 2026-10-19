@@ -65,10 +65,10 @@ apply_caches() {
     [[ -e "$target" || -L "$target" ]] || continue
     if [[ "$kind" == build ]]; then
       if in_use "$root" || (( $(idle_seconds "$root") < CACHE_IDLE_DAYS * 86400 )) || ! ignored_build_cache "$root" "$target"; then
-        ERRORS+=("$target||cache changed since planning; kept"); continue
+        PLAN_KEEP+=("$target||cache changed since planning; kept"); continue
       fi
     elif ! idle_tagged_cache "$root" "$target"; then
-      ERRORS+=("$target||tagged cache changed since planning; kept"); continue
+      PLAN_KEEP+=("$target||tagged cache changed since planning; kept"); continue
     fi
     # No force, no variable glob, and no symlink traversal by rm.
     if rm -r -- "${target:?}"; then
