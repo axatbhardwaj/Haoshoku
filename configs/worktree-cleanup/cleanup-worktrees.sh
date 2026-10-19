@@ -158,7 +158,7 @@ handle_worktree() {
     REVIEW:*)  PLAN_REVIEW+=("$wt|$branch|${verdict#REVIEW:}") ;;
     KEEP)      PLAN_KEEP+=("$wt|$branch|$([[ "$locked" == 1 ]] && echo locked || echo "$pr")") ;;
   esac
-  if [[ "$verdict" != REMOVE && "$busy" == 0 && "$locked" == 0 ]] && (( idle >= CACHE_IDLE_DAYS * 86400 )); then
+  if [[ "$is_main" != 1 && "$verdict" != REMOVE && "$busy" == 0 && "$locked" == 0 ]] && (( idle >= CACHE_IDLE_DAYS * 86400 )); then
     plan_build_caches "$wt"
   fi
 }
