@@ -13,6 +13,13 @@
 
 ### Fixed
 
+- Preserve primary-worktree build caches and caches referenced by symlinks in
+  another worktree. Review ignored non-cache files before removing a checkout.
+- Skip repository pruning when a missing registration holds commits unreachable
+  from branches, tags or remotes; protect rebase/bisect branches and fresh
+  reflog activity from stale-branch deletion. Warn when fetch fails.
+- Preserve enabled legacy units during copy-only cleanup configuration sync
+  and log a retirement hint.
 - Always run the temp step even when repository cleanup fails; keep real errors
   failing the job while benign activity/content races and locked worktrees stay
   KEEP. Prune stale missing worktree registrations once per repository in apply

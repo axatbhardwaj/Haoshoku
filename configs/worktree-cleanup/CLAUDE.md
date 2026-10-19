@@ -39,19 +39,33 @@ is part of author verification.
 - Dirty, unpushed, closed-unmerged, unknown/unmerged and legacy `superpowers/`
   artifacts remain for review; open PRs stay. Clean pushed merged worktrees can
   be removed. Detached pushed checkouts require `STALE_DAYS` (7) of inactivity.
+  Before any REMOVE, ignored entries must be allowlisted cache directories,
+  directories with a valid `CACHEDIR.TAG`, or symlinks. Other ignored content
+  (including `.env` and `notes/`) means REVIEW: ignored non-cache files. The
+  legacy `superpowers/` review reason remains. Recheck before removal.
   Removal uses `git worktree remove` without force. Apply prunes once per repo
   through its stable Git common directory, even when no worktree was removed.
-  Missing directories are not in use; dry-run never prunes their registrations.
+  Missing directories are not in use. If any missing registration's recorded
+  HEAD has commits unreachable from branches, tags and remote refs, REVIEW and
+  skip pruning that entire repo. Dry-run reports this without pruning.
 - A local branch must be unchecked out everywhere, older than `STALE_DAYS`,
   fully reachable from remote refs, and different from the known origin default.
+  Staleness uses the newer of tip commit date and last reflog update. Rebase
+  `head-name` and `BISECT_START` also mark branches checked out, even while HEAD
+  is detached. Recheck activity and operation state before compare-and-delete.
+  Failed fetches warn and retain the existing remote-ref snapshot.
   Unknown origin default means no branch pruning. `update-ref -d` compares the
   recorded tip; moved or disappeared branches are reported KEEP. Ref-write
   failures with an unchanged tip remain errors.
 
 ## Cache and temporary files
 
-In retained worktrees idle for `CACHE_IDLE_DAYS` (3), remove only ignored
-`node_modules`, `target`, `cargo-target`, `.next`, `.turbo` directories. Check
+Never prune build caches in the primary worktree. In retained linked worktrees
+idle for `CACHE_IDLE_DAYS` (3), remove only ignored `node_modules`, `target`,
+`cargo-target`, `.next`, `.turbo` directories. Keep cache targets referenced by
+symlinks in another worktree of the same repo, including references appearing
+between planning and apply. Kept worktrees with ignored non-cache files still
+qualify for this bounded cache cleanup. Check
 tracked and nonignored contents again before deletion. Paths must be canonical
 absolute descendants; symlinks and paths through symlinked parents are rejected.
 
