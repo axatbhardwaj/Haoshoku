@@ -5,5 +5,6 @@ Description=Daily safe disk cleanup
 Type=oneshot
 Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
 ExecStart=%h/.local/share/disk-cleanup/cleanup-worktrees.sh --apply
+ExecStart=%h/.local/share/disk-cleanup/cleanup-temp.sh --apply
 Nice=10
 IOSchedulingClass=idle

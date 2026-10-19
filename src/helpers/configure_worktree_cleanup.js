@@ -9,7 +9,7 @@ const HOME_DEFAULT = homedir();
 
 const SCRIPT = "cleanup-worktrees.sh";
 const UNITS = ["disk-cleanup.service", "disk-cleanup.timer"];
-const RUNTIME_FILES = [SCRIPT, "report.sh", "caches.sh", "branches.sh", "disk-cleanup-tmpfiles.conf"];
+const RUNTIME_FILES = [SCRIPT, "cleanup-temp.sh", "report.sh", "caches.sh", "branches.sh", "disk-cleanup-tmpfiles.conf"];
 const LEGACY_UNITS = ["defi-worktree-cleanup.timer", "defi-worktree-cleanup.service"];
 const TIMER_UNIT = "disk-cleanup.timer";
 const ENABLE_HINT =
@@ -95,7 +95,7 @@ export async function syncWorktreeCleanup(opts = {}) {
     if (!fs.existsSync(src)) continue;
     const dest = path.join(liveScriptDir, file);
     fs.copyFileSync(src, dest);
-    fs.chmodSync(dest, file === SCRIPT ? 0o755 : 0o644);
+    fs.chmodSync(dest, file.endsWith(".sh") ? 0o755 : 0o644);
   }
 
   const legacy = LEGACY_UNITS.filter((unit) =>
