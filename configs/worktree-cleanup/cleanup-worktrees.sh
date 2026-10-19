@@ -303,6 +303,36 @@ do_remove() {
   fi
 }
 
+# Missing registrations can be the only remaining reference to detached work.
+prune_repo() {
+  local common=$1 apply=$2 listing line wt="" tip="" orphan blocked=0
+  listing=$(git --git-dir="$common" worktree list --porcelain) || {
+    ERRORS+=("$common||cannot inspect registrations for prune"); return;
+  }
+  while IFS= read -r line; do
+    case "$line" in
+      'worktree '*) wt=${line#worktree }; tip="" ;;
+      'HEAD '*) tip=${line#HEAD } ;;
+      '')
+        if [[ -n "$wt" && ! -d "$wt" ]]; then
+          if [[ -z "$tip" ]] || ! orphan=$(git --git-dir="$common" rev-list -n1 "$tip" --not --branches --tags --remotes); then
+            PLAN_REVIEW+=("$wt||cannot prove missing worktree commits are referenced; repo prune skipped")
+            blocked=1
+          elif [[ -n "$orphan" ]]; then
+            PLAN_REVIEW+=("$wt||missing worktree has unreferenced commits; repo prune skipped")
+            blocked=1
+          fi
+        fi
+        wt="" ;;
+    esac
+  done <<< "$listing"$'\n'
+  if (( apply && ! blocked )); then
+    if ! git --git-dir="$common" worktree prune; then
+      ERRORS+=("$common||worktree prune failed")
+    fi
+  fi
+}
+
 apply_plan() {
   local entry wt branch main_wt
   for entry in "${PLAN_REMOVE[@]}"; do
@@ -388,15 +418,13 @@ main() {
 
   local repo common
   local -a prune_repos=()
-  if [[ $APPLY -eq 1 ]]; then
-    for repo in "${repos[@]}"; do
-      if common=$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir); then
-        prune_repos+=("$common")
-      else
-        ERRORS+=("$repo||cannot locate git common directory for prune")
-      fi
-    done
-  fi
+  for repo in "${repos[@]}"; do
+    if common=$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir); then
+      prune_repos+=("$common")
+    else
+      ERRORS+=("$repo||cannot locate git common directory for prune")
+    fi
+  done
   if [[ $FETCH -eq 1 ]]; then
     for repo in "${repos[@]}"; do
       git -C "$repo" fetch --all --prune --quiet >/dev/null 2>&1 || true
@@ -411,12 +439,10 @@ main() {
   [[ $APPLY -eq 1 ]] && mode="apply"
   if [[ $APPLY -eq 1 ]]; then
     apply_plan
-    for common in "${prune_repos[@]}"; do
-      if ! git --git-dir="$common" worktree prune; then
-        ERRORS+=("$common||worktree prune failed")
-      fi
-    done
   fi
+  for common in "${prune_repos[@]}"; do
+    prune_repo "$common" "$APPLY"
+  done
 
   local ts; ts="$(date '+%Y-%m-%d %H:%M %Z')"
   mkdir -p -- "$(dirname "$HTML_OUT")" || return 1
