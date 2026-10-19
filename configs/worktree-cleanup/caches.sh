@@ -38,6 +38,9 @@ private_build_cache() {
     while IFS= read -r -d '' link; do
       resolved=$(realpath -e -- "$link" 2>/dev/null) || continue
       [[ "$resolved" == "$target" || "$resolved" == "$target/"* ]] && return 1
+      if [[ "$resolved" == "$wt" || "$resolved" == "$wt/"* ]] && [[ "$target" == "$resolved/"* ]]; then
+        return 1
+      fi
     done < <(find "$other" -type l -print0)
   done <<< "$listing"
   return 0
