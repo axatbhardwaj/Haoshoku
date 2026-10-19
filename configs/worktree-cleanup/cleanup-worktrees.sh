@@ -10,7 +10,7 @@
 # Prevent read-only status probes from refreshing the index activity timestamp.
 export GIT_OPTIONAL_LOCKS=0
 # Reachability must describe stored commits, not local graph substitutions.
-export GIT_NO_REPLACE_OBJECTS=1 GIT_GRAFT_FILE=/dev/null
+export GIT_NO_REPLACE_OBJECTS=1
 CLEANUP_REPO_ROOTS="${CLEANUP_REPO_ROOTS:-$HOME/defi:$HOME/dev:$HOME/Work}"
 T3_WORKTREES_ROOT="${T3_WORKTREES_ROOT:-$HOME/.t3/worktrees}"
 MIN_IDLE_HOURS="${MIN_IDLE_HOURS:-24}"
@@ -98,10 +98,10 @@ git_facts() {
   grep -Eq '^[a-zS] ' <<< "$flags" && dirty=1
   status=$(git -c core.fsmonitor=false -c core.untrackedCache=false -c core.fileMode=true -C "$wt" status --porcelain --untracked-files=all --ignore-submodules=none 2>/dev/null) || dirty=1
   [[ -n "$status" ]] && dirty=1
-  n=$(git -C "$wt" rev-list --count HEAD --not --remotes 2>/dev/null) || n=1
+  n=$(git_history -C "$wt" rev-list --count HEAD --not --remotes 2>/dev/null) || n=1
   [[ "${n:-0}" -gt 0 ]] && unpushed=1
   base=$(base_ref "$wt")
-  if [[ -n "$base" ]] && git -C "$wt" merge-base --is-ancestor HEAD "$base" 2>/dev/null; then
+  if [[ -n "$base" ]] && git_history -C "$wt" merge-base --is-ancestor HEAD "$base" 2>/dev/null; then
     merged=1
   fi
   echo "${dirty}|${unpushed}|${merged}"

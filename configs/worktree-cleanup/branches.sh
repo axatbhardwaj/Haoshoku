@@ -33,7 +33,7 @@ checked_branches() {
 
 stale_branch() {
   local repo=$1 branch=$2 tip=$3 stamp selector updated
-  stamp=$(git -C "$repo" show -s --format=%ct "$tip") || return 1
+  stamp=$(git_history -C "$repo" show -s --format=%ct "$tip") || return 1
   selector=$(git -C "$repo" reflog show -1 --format=%gD --date=unix "refs/heads/$branch") || return 1
   if [[ "$selector" =~ @\{([0-9]+)\} ]]; then
     updated=${BASH_REMATCH[1]}
@@ -56,7 +56,7 @@ plan_branches() {
     [[ "$branch" == "$base" || "$branch" == *'|'* ]] && continue
     grep -Fxq "branch $ref" <<< "$checked" && continue
     stale_branch "$repo" "$branch" "$tip" || continue
-    unpushed=$(git -C "$repo" rev-list "$tip" --not --remotes) || continue
+    unpushed=$(git_history -C "$repo" rev-list "$tip" --not --remotes) || continue
     [[ -z "$unpushed" ]] || continue
     if ! reflog_referenced "$repo" "$repo/logs/refs/heads/$branch"; then
       PLAN_REVIEW+=("$repo|$branch|unreferenced branch reflog commits; kept"); continue
@@ -77,7 +77,7 @@ apply_branches() {
       ERRORS+=("$repo|$branch|cannot recheck worktrees"); continue;
     }
     grep -Fxq "branch refs/heads/$branch" <<< "$checked" && continue
-    unpushed=$(git -C "$repo" rev-list "$tip" --not --remotes) || {
+    unpushed=$(git_history -C "$repo" rev-list "$tip" --not --remotes) || {
       ERRORS+=("$repo|$branch|cannot recheck remote reachability"); continue;
     }
     [[ -z "$unpushed" ]] || continue

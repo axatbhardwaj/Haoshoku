@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 # A prunable registration can hold the only surviving history of a checkout.
+# Isolate graph overrides to history probes; do not add graft warnings to every Git call.
+git_history() {
+  GIT_GRAFT_FILE=/dev/null git -c advice.graftFileDeprecated=false "$@"
+}
 referenced_commits() {
   local common=$1 sha orphan
   shift
@@ -9,7 +13,7 @@ referenced_commits() {
     [[ "$sha" =~ ^0+$ ]] || commits+=("$sha")  # null old/new OIDs are not commits
   done
   (( ${#commits[@]} == 0 )) && return 0
-  orphan=$(git --git-dir="$common" rev-list -n1 "${commits[@]}" --not --branches --tags --remotes) || return 1
+  orphan=$(git_history --git-dir="$common" rev-list -n1 "${commits[@]}" --not --branches --tags --remotes) || return 1
   [[ -z "$orphan" ]]
 }
 
