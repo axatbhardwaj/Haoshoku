@@ -8,17 +8,19 @@ import { log } from "../common/utils.js";
 const HOME_DEFAULT = homedir();
 
 const SCRIPT = "cleanup-worktrees.sh";
-const UNITS = ["defi-worktree-cleanup.service", "defi-worktree-cleanup.timer"];
-const TIMER_UNIT = "defi-worktree-cleanup.timer";
+const UNITS = ["disk-cleanup.service", "disk-cleanup.timer"];
+const RUNTIME_FILES = [SCRIPT, "disk-cleanup-tmpfiles.conf"];
+const LEGACY_UNITS = ["defi-worktree-cleanup.timer", "defi-worktree-cleanup.service"];
+const TIMER_UNIT = "disk-cleanup.timer";
 const ENABLE_HINT =
-  "systemctl --user daemon-reload && systemctl --user enable --now defi-worktree-cleanup.timer";
+  "systemctl --user daemon-reload && systemctl --user enable --now disk-cleanup.timer";
 
 /**
  * Resolve repo + live paths from injected home/projectRoot (defaults to real
  * $HOME and the haoshoku project root). Pulled out so tests can swap temp dirs.
  *
  * The script and the systemd units deploy to two different live locations:
- *   - cleanup-worktrees.sh -> ~/defi/.worktree-cleanup/
+ *   - cleanup-worktrees.sh -> ~/.local/share/disk-cleanup/
  *   - *.service / *.timer  -> ~/.config/systemd/user/
  *
  * @param {{ home?: string, projectRoot?: string }} opts
@@ -29,7 +31,7 @@ function resolvePaths({
 } = {}) {
   return {
     repoDir: path.join(projectRoot, "configs", "worktree-cleanup"),
-    liveScriptDir: path.join(home, "defi", ".worktree-cleanup"),
+    liveScriptDir: path.join(home, ".local", "share", "disk-cleanup"),
     liveSystemdDir: path.join(home, ".config", "systemd", "user"),
   };
 }
@@ -68,7 +70,7 @@ function enableTimer(runner) {
  * Deploy configs/worktree-cleanup/ → live, then (unless enable === false)
  * daemon-reload + enable --now the timer.
  *
- * Copies cleanup-worktrees.sh to ~/defi/.worktree-cleanup/ (chmod 755) and the
+ * Copies cleanup-worktrees.sh to ~/.local/share/disk-cleanup/ (chmod 755) and the
  * two systemd units to ~/.config/systemd/user/. CLAUDE.md and test-cleanup.sh
  * are repo-only and never deployed. If the repo dir is absent, logs a warning
  * and skips.
@@ -87,14 +89,26 @@ export async function syncWorktreeCleanup(opts = {}) {
     return;
   }
 
-  // Script → ~/defi/.worktree-cleanup/ (executable)
   fs.mkdirSync(liveScriptDir, { recursive: true });
-  const scriptSrc = path.join(repoDir, SCRIPT);
-  if (fs.existsSync(scriptSrc)) {
-    const scriptDest = path.join(liveScriptDir, SCRIPT);
-    fs.copyFileSync(scriptSrc, scriptDest);
-    fs.chmodSync(scriptDest, 0o755);
-    log.info(`Synced worktree-cleanup/${SCRIPT}`);
+  for (const file of RUNTIME_FILES) {
+    const src = path.join(repoDir, file);
+    if (!fs.existsSync(src)) continue;
+    const dest = path.join(liveScriptDir, file);
+    fs.copyFileSync(src, dest);
+    fs.chmodSync(dest, file === SCRIPT ? 0o755 : 0o644);
+  }
+
+  const legacy = LEGACY_UNITS.filter((unit) =>
+    fs.existsSync(path.join(liveSystemdDir, unit)),
+  );
+  if (legacy.length > 0) {
+    if (enable !== false) {
+      const result = runner(["systemctl", "--user", "disable", "--now", ...legacy]);
+      if (result?.exitCode !== 0) {
+        throw new Error("Could not retire legacy worktree-cleanup units");
+      }
+    }
+    for (const unit of legacy) fs.unlinkSync(path.join(liveSystemdDir, unit));
   }
 
   // Units → ~/.config/systemd/user/
@@ -108,7 +122,7 @@ export async function syncWorktreeCleanup(opts = {}) {
   }
 
   log.success(
-    "worktree-cleanup synced (script → ~/defi/.worktree-cleanup/, units → ~/.config/systemd/user/)",
+    "worktree-cleanup synced (script → ~/.local/share/disk-cleanup/, units → ~/.config/systemd/user/)",
   );
 
   if (enable !== false) {
@@ -119,7 +133,7 @@ export async function syncWorktreeCleanup(opts = {}) {
 /**
  * Snapshot live → configs/worktree-cleanup/.
  *
- * Copies cleanup-worktrees.sh from ~/defi/.worktree-cleanup/ and the two units
+ * Copies cleanup-worktrees.sh from ~/.local/share/disk-cleanup/ and the two units
  * from ~/.config/systemd/user/ back into the repo. Creates the repo dir if
  * missing. If the live script dir is absent, logs a warning and skips.
  *
@@ -137,10 +151,9 @@ export async function backupWorktreeCleanup(opts = {}) {
 
   fs.mkdirSync(repoDir, { recursive: true });
 
-  const scriptSrc = path.join(liveScriptDir, SCRIPT);
-  if (fs.existsSync(scriptSrc)) {
-    fs.copyFileSync(scriptSrc, path.join(repoDir, SCRIPT));
-    log.info(`Backed up worktree-cleanup/${SCRIPT}`);
+  for (const file of RUNTIME_FILES) {
+    const src = path.join(liveScriptDir, file);
+    if (fs.existsSync(src)) fs.copyFileSync(src, path.join(repoDir, file));
   }
 
   for (const unit of UNITS) {
