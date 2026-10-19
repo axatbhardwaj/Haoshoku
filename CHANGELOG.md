@@ -16,6 +16,9 @@
 
 ### Fixed
 
+- Report worktrees with initialized submodules as REVIEW:
+  initialized submodules; remove manually. Check both the worktree's admin
+  `modules` path and populated index gitlinks, including before applying removal.
 - Protect every prunable registration's HEAD and reflog history, including empty
   mount points; preserve operation state and reflog-only commits on ordinary
   worktree and branch deletion too. Skip unsupported ref storage.

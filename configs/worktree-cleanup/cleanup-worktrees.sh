@@ -123,11 +123,17 @@ has_artifacts() {
   fi
 }
 
-# Git refuses worktree removal while this per-worktree submodule admin path exists.
+# Mirror Git's submodule refusal: admin modules or a populated index gitlink.
 initialized_submodules() {
-  local gd
+  local gd entry path
   gd=$(git -C "$1" rev-parse --absolute-git-dir 2>/dev/null) || return 1
-  [[ -e "$gd/modules" ]]
+  [[ -e "$gd/modules" ]] && return 0
+  while IFS= read -r -d '' entry; do
+    [[ "$entry" == '160000 '* ]] || continue
+    path=${entry#*$'\t'}
+    [[ -e "$1/$path/.git" ]] && return 0
+  done < <(git -C "$1" ls-files --stage -z)
+  return 1
 }
 
 # pr_state_for <wt> <branch>: echoes MERGED|CLOSED|OPEN|NONE|UNKNOWN.

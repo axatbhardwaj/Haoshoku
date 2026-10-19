@@ -51,7 +51,9 @@ is part of author verification.
   Before any REMOVE, ignored entries must be allowlisted cache directories,
   directories with a valid `CACHEDIR.TAG`, or symlinks. Other ignored content
   (including `.env` and `notes/`) means REVIEW: ignored non-cache files. The
-  legacy `superpowers/` review reason remains. Recheck before removal.
+  legacy `superpowers/` review reason remains. Initialized submodules (a gitdir
+  `modules` path or an index gitlink containing its own `.git` file/directory)
+  mean REVIEW: initialized submodules; remove manually. Recheck before removal.
   Removal uses `git worktree remove` without force. Apply prunes once per repo
   through its stable Git common directory, even when no worktree was removed.
   Missing directories are not in use. Prune candidates come from Git's
