@@ -138,6 +138,9 @@ handle_worktree() {
   local repo=$1 main_wt=$2 wt=$3 branch=$4 detached=$5 is_main=$6 locked=${7:-0}
   local dirty=0 unpushed=0 merged=0 pr=NONE artifacts=0 verdict
   local idle recent=0 busy=0
+  if [[ ! -d "$wt" ]]; then
+    PLAN_KEEP+=("$wt|$branch|missing directory; registration eligible for prune"); return
+  fi
   idle=$(idle_seconds "$wt")
   (( idle < MIN_IDLE_HOURS * 3600 )) && recent=1
   in_use "$wt" && busy=1
@@ -213,7 +216,8 @@ idle_seconds() {
 
 in_use() {
   local wt cwd
-  wt=$(realpath -e -- "$1") || return 0
+  [[ -d "$1" ]] || return 1
+  wt=$(realpath -e -- "$1" 2>/dev/null) || return 0
   while IFS= read -r -d '' cwd; do
     [[ "$cwd" == "$wt" || "$cwd" == "$wt/"* ]] && return 0
   done < <(readlink -z -- /proc/[0-9]*/cwd 2>/dev/null)
@@ -270,6 +274,9 @@ report_orphans() {
 do_remove() {
   local main_wt=$1 wt=$2 branch=$3 out
   local dirty unpushed merged
+  if [[ ! -d "$wt" ]]; then
+    PLAN_KEEP+=("$wt|$branch|directory disappeared; kept"); return
+  fi
   if [[ "$wt" != /* || "$wt" == / || -L "$wt" || "$(realpath -e -- "$wt")" != "$wt" ]]; then
     ERRORS+=("$wt|$branch|unsafe worktree path; kept"); return
   fi
@@ -284,9 +291,6 @@ do_remove() {
     PLAN_KEEP+=("$wt|$branch|changed since planning; kept"); return
   fi
   if out=$(git -C "$main_wt" worktree remove "$wt" 2>&1); then
-    if ! git -C "$main_wt" worktree prune; then
-      ERRORS+=("$wt|$branch|worktree prune failed")
-    fi
     DONE_REMOVE+=("$wt|$branch|removed worktree (branch kept)")
   else
     ERRORS+=("$wt|$branch|${out//$'\n'/ }")
@@ -374,6 +378,7 @@ main() {
   local -a repos=()
   mapfile -t repos < <(discover_repos)
   report_orphans
+  [[ ${#repos[@]} -eq 0 ]] && echo "no git repos found under configured roots; nothing to prune"
 
   local repo
   if [[ $FETCH -eq 1 ]]; then
@@ -388,7 +393,14 @@ main() {
 
   local mode="dry-run"
   [[ $APPLY -eq 1 ]] && mode="apply"
-  [[ $APPLY -eq 1 ]] && apply_plan
+  if [[ $APPLY -eq 1 ]]; then
+    apply_plan
+    for repo in "${repos[@]}"; do
+      if ! git -C "$repo" worktree prune; then
+        ERRORS+=("$repo||worktree prune failed")
+      fi
+    done
+  fi
 
   local ts; ts="$(date '+%Y-%m-%d %H:%M %Z')"
   mkdir -p -- "$(dirname "$HTML_OUT")" || return 1
