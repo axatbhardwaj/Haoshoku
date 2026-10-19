@@ -15,7 +15,7 @@ remain `haoshoku --worktree-cleanup` and `--worktree-cleanup-backup`.
 Sync copies runtime files, disables/stops installed legacy
 `defi-worktree-cleanup.{timer,service}`, removes their unit files, reloads systemd,
 and enables the new timer. `enable:false` is a copy-only option for tests and
-manual staging. Backup copies the runtime files and units back to this directory.
+manual staging; it preserves legacy units and logs a disable hint. Backup copies the runtime files and units back to this directory.
 The full Arch app setup syncs cleanup; Debian retains its opt-in setup prompt.
 
 The service uses `%h` paths, a Git/gh/tmpfiles PATH, Nice=10 and idle I/O. It runs

@@ -115,8 +115,12 @@ export async function syncWorktreeCleanup(opts = {}) {
       if (result?.exitCode !== 0) {
         throw new Error("Could not retire legacy worktree-cleanup units");
       }
+      for (const unit of legacy) fs.unlinkSync(path.join(liveSystemdDir, unit));
+    } else {
+      log.warning(
+        `Kept legacy units during copy-only sync. Retire before removing:\n  systemctl --user disable --now ${legacy.join(" ")}`,
+      );
     }
-    for (const unit of legacy) fs.unlinkSync(path.join(liveSystemdDir, unit));
   }
 
   // Units → ~/.config/systemd/user/

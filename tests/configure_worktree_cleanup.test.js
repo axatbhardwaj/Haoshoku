@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
+import { log } from "../src/common/utils.js";
 import * as wtc from "../src/helpers/configure_worktree_cleanup.js";
 
 const PROJECT_ROOT = path.resolve(__dirname, "..");
@@ -309,3 +310,29 @@ describe("seeded configs/worktree-cleanup/ (in-tree static files)", () => {
    expect(fs.readFileSync(path.join(tmpHome, ".local/state/disk-cleanup/last-run.html"), "utf8")).toContain("Daily disk cleanup");
    expect(fs.statSync(path.join(liveScriptDir(), "cleanup-temp.sh")).mode & 0o777).toBe(0o755);
  });
+
+it("copy-only sync preserves enabled legacy units and explains retirement", async () => {
+  seedRepo();
+  const legacy = path.join(liveSystemdDir(), "defi-worktree-cleanup.timer");
+  const wants = path.join(liveSystemdDir(), "timers.target.wants");
+  fs.mkdirSync(wants, { recursive: true });
+  fs.writeFileSync(legacy, "legacy timer");
+  const enabled = path.join(wants, "defi-worktree-cleanup.timer");
+  fs.symlinkSync("../defi-worktree-cleanup.timer", enabled);
+  const calls = [];
+  const warnings = [];
+  const original = log.warning;
+  log.warning = (message) => warnings.push(message);
+  try {
+    await wtc.syncWorktreeCleanup({
+      home: tmpHome, projectRoot: tmpProjectRoot, enable: false,
+      runner: (args) => { calls.push(args); return { exitCode: 0 }; },
+    });
+    expect(fs.readFileSync(enabled, "utf8")).toBe("legacy timer");
+    expect(calls).toHaveLength(0);
+    expect(warnings.join("\n")).toContain("systemctl --user disable --now defi-worktree-cleanup.timer");
+    expect(fs.existsSync(path.join(liveScriptDir(), SCRIPT))).toBe(true);
+  } finally {
+    log.warning = original;
+  }
+});
