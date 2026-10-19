@@ -43,28 +43,33 @@ stale_branch() {
 }
 
 plan_branches() {
-  local repo=$1 base checked ref tip branch unpushed
+  local repo=$1 base checked ref tip symbolic branch unpushed
   repo=$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir) || return
   base=$(git -C "$repo" symbolic-ref --quiet refs/remotes/origin/HEAD 2>/dev/null) || return 0
   # Without a known remote default, we cannot prove the default is protected.
   [[ -n "$base" ]] || return 0
   base=${base#refs/remotes/origin/}
   checked=$(checked_branches "$repo") || return
-  while IFS=$'\t' read -r ref tip; do
+  while IFS=$'\t' read -r ref tip symbolic; do
     branch=${ref#refs/heads/}
+    [[ -n "$symbolic" ]] && continue
     [[ "$branch" == "$base" || "$branch" == *'|'* ]] && continue
     grep -Fxq "branch $ref" <<< "$checked" && continue
     stale_branch "$repo" "$branch" "$tip" || continue
     unpushed=$(git -C "$repo" rev-list "$tip" --not --remotes) || continue
     [[ -z "$unpushed" ]] || continue
     PLAN_BRANCH+=("$repo|$branch|$tip")
-  done < <(git -C "$repo" for-each-ref --format='%(refname)%09%(objectname)' refs/heads/)
+  done < <(git -C "$repo" for-each-ref --format='%(refname)%09%(objectname)%09%(symref)' refs/heads/)
 }
 
 apply_branches() {
-  local entry repo branch tip checked unpushed out current
+  local entry repo branch tip checked unpushed out current base symbolic
   for entry in "${PLAN_BRANCH[@]}"; do
     IFS='|' read -r repo branch tip <<< "$entry"
+    base=$(git -C "$repo" symbolic-ref --quiet refs/remotes/origin/HEAD) || continue
+    [[ "$branch" == "${base#refs/remotes/origin/}" ]] && continue
+    symbolic=$(git -C "$repo" for-each-ref --format='%(symref)' "refs/heads/$branch") || continue
+    [[ -n "$symbolic" ]] && continue
     checked=$(checked_branches "$repo") || {
       ERRORS+=("$repo|$branch|cannot recheck worktrees"); continue;
     }
@@ -74,7 +79,7 @@ apply_branches() {
     }
     [[ -z "$unpushed" ]] || continue
     stale_branch "$repo" "$branch" "$tip" || continue
-    if out=$(git -C "$repo" update-ref -d "refs/heads/$branch" "$tip" 2>&1); then
+    if out=$(git -C "$repo" update-ref --no-deref -d "refs/heads/$branch" "$tip" 2>&1); then
       DONE_BRANCH+=("$repo|$branch|$tip")
     elif current=$(git -C "$repo" for-each-ref --format='%(objectname)' "refs/heads/$branch") && [[ "$current" != "$tip" ]]; then
       PLAN_KEEP+=("$repo|$branch|branch moved since planning; kept")
