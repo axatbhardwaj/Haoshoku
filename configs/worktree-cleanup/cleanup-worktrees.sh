@@ -274,6 +274,9 @@ report_orphans() {
 do_remove() {
   local main_wt=$1 wt=$2 branch=$3 out
   local dirty unpushed merged
+  if [[ "$wt" != /* || "$wt" == / || -L "$wt" || "$(realpath -e -- "$wt")" != "$wt" ]]; then
+    ERRORS+=("$wt|$branch|unsafe worktree path; kept"); return
+  fi
   if in_use "$wt" || (( $(idle_seconds "$wt") < MIN_IDLE_HOURS * 3600 )); then
     ERRORS+=("$wt|$branch|became active; kept"); return
   fi

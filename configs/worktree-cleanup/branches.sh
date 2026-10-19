@@ -5,10 +5,10 @@ DONE_BRANCH=()
 
 plan_branches() {
   local repo=$1 base checked ref tip stamp branch unpushed now
-  base=$(base_ref "$repo")
+  base=$(git -C "$repo" symbolic-ref --quiet refs/remotes/origin/HEAD 2>/dev/null) || return 0
   # Without a known remote default, we cannot prove the default is protected.
   [[ -n "$base" ]] || return 0
-  base=${base#*/}
+  base=${base#refs/remotes/origin/}
   checked=$(git -C "$repo" worktree list --porcelain) || return
   now=$(date +%s)
   while IFS=$'\t' read -r ref tip stamp; do
