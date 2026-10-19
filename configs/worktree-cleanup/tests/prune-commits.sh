@@ -16,7 +16,7 @@ touch -d '1 year ago' "$safe_gitdir/gitdir"
 run_cleanup --apply
 assert_exists "$gitdir/HEAD"
 assert_exists "$safe_gitdir/HEAD"
-grep -q 'missing worktree has unreferenced commits' "$FIXTURE/report.html"
+grep -q 'prunable worktree has unreferenced commits' "$FIXTURE/report.html"
 # Once a ref preserves the commit, ordinary git defaults may prune both.
 git -C "$REPO" tag saved "$commit"
 run_cleanup --apply

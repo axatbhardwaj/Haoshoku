@@ -16,6 +16,7 @@ const RUNTIME_FILES = [
   "report.sh",
   "caches.sh",
   "branches.sh",
+  "prune.sh",
   "disk-cleanup-tmpfiles.conf",
 ];
 const LEGACY_UNITS = ["defi-worktree-cleanup.timer", "defi-worktree-cleanup.service"];

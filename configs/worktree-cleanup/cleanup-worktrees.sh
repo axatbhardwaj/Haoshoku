@@ -303,36 +303,6 @@ do_remove() {
   fi
 }
 
-# Missing registrations can be the only remaining reference to detached work.
-prune_repo() {
-  local common=$1 apply=$2 listing line wt="" tip="" orphan blocked=0
-  listing=$(git --git-dir="$common" worktree list --porcelain) || {
-    ERRORS+=("$common||cannot inspect registrations for prune"); return;
-  }
-  while IFS= read -r line; do
-    case "$line" in
-      'worktree '*) wt=${line#worktree }; tip="" ;;
-      'HEAD '*) tip=${line#HEAD } ;;
-      '')
-        if [[ -n "$wt" && ! -d "$wt" ]]; then
-          if [[ -z "$tip" ]] || ! orphan=$(git --git-dir="$common" rev-list -n1 "$tip" --not --branches --tags --remotes); then
-            PLAN_REVIEW+=("$wt||cannot prove missing worktree commits are referenced; repo prune skipped")
-            blocked=1
-          elif [[ -n "$orphan" ]]; then
-            PLAN_REVIEW+=("$wt||missing worktree has unreferenced commits; repo prune skipped")
-            blocked=1
-          fi
-        fi
-        wt="" ;;
-    esac
-  done <<< "$listing"$'\n'
-  if (( apply && ! blocked )); then
-    if ! git --git-dir="$common" worktree prune; then
-      ERRORS+=("$common||worktree prune failed")
-    fi
-  fi
-}
-
 apply_plan() {
   local entry wt branch main_wt
   for entry in "${PLAN_REMOVE[@]}"; do
@@ -369,6 +339,9 @@ stale_active_work() {
     awk -v p="$wt" 'substr($0,1,length(p))==p {print NR"\t"$0}' "$ACTIVE_WORK"
   done
 }
+
+# shellcheck source=prune.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/prune.sh"
 
 # shellcheck source=branches.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/branches.sh"
