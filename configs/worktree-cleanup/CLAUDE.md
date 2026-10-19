@@ -96,7 +96,8 @@ retains the distro default 30 days for preserved temporary state. Because this
 replaces the whole `tmp.conf`, both entries must remain. Other distro configs
 still exclude the `systemd-private-*` directories themselves and X11 sockets.
 As in the distro default, inner `systemd-private-*/tmp` contents age with the
-`/tmp` threshold (now 3 days); the directory exclusion does not preserve those
+parent's threshold: 3 days under `/tmp`, 30 days under `/var/tmp`;
+the directory exclusion does not preserve those
 contents indefinitely. This affects root's cleanup where it can access them. Nonroot permission-denied-only
 failures are expected; other or mixed failures return 1. Do not replace this
 with direct recursive deletion of shared temporary roots.

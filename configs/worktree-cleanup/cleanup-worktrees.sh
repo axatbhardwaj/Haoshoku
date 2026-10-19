@@ -123,6 +123,13 @@ has_artifacts() {
   fi
 }
 
+# Git refuses worktree removal while this per-worktree submodule admin path exists.
+initialized_submodules() {
+  local gd
+  gd=$(git -C "$1" rev-parse --absolute-git-dir 2>/dev/null) || return 1
+  [[ -e "$gd/modules" ]]
+}
+
 # pr_state_for <wt> <branch>: echoes MERGED|CLOSED|OPEN|NONE|UNKNOWN.
 #   Tries a PR number embedded in the branch name first (review/pr-103,
 #   pr-101-review), then a PR whose head branch == this branch.
@@ -169,6 +176,9 @@ handle_worktree() {
   fi
 
   verdict=$(decide "$is_main" "$dirty" "$detached" "$unpushed" "$pr" "$merged" "$artifacts" "$busy" "$recent" "$((idle / 86400))" "$STALE_DAYS" "$locked" "$ignored" "$operation" "$history")
+  if [[ "$verdict" == REMOVE ]] && initialized_submodules "$wt"; then
+    verdict="REVIEW:initialized submodules; remove manually"
+  fi
 
   case "$verdict" in
     REMOVE)    PLAN_REMOVE+=("$wt|$branch|$pr|$main_wt") ;;
@@ -308,6 +318,9 @@ do_remove() {
   fi
   if worktree_operation "$wt"; then
     PLAN_KEEP+=("$wt|$branch|Git operation in progress; kept"); return
+  fi
+  if initialized_submodules "$wt"; then
+    PLAN_REVIEW+=("$wt|$branch|initialized submodules; remove manually"); return
   fi
   IFS='|' read -r dirty unpushed merged <<< "$(git_facts "$wt")"
   if [[ "$dirty" == 1 || "$unpushed" == 1 ]]; then

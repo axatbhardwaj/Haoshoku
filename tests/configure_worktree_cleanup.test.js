@@ -311,6 +311,25 @@ describe("seeded configs/worktree-cleanup/ (in-tree static files)", () => {
    expect(fs.statSync(path.join(liveScriptDir(), "cleanup-temp.sh")).mode & 0o777).toBe(0o755);
  });
 
+it("deploys every module sourced by the deployed shell scripts", async () => {
+  await wtc.syncWorktreeCleanup({ home: tmpHome, projectRoot: PROJECT_ROOT, enable: false });
+  const sourced = new Set();
+  for (const file of fs.readdirSync(liveScriptDir()).filter((name) => name.endsWith(".sh"))) {
+    const script = fs.readFileSync(path.join(CONFIGS_DIR, file), "utf8");
+    for (const line of script.split("\n")) {
+      const match = line.match(/^\s*(?:source|\.)\s+.*\/([\w.-]+\.sh)["']?\s*$/);
+      if (match) sourced.add(match[1]);
+    }
+  }
+  expect(sourced.size).toBeGreaterThan(0);
+  for (const module of sourced) {
+    expect(fs.existsSync(path.join(liveScriptDir(), module)), `missing sourced runtime: ${module}`).toBe(true);
+    expect(fs.readFileSync(path.join(liveScriptDir(), module), "utf8")).toBe(
+      fs.readFileSync(path.join(CONFIGS_DIR, module), "utf8"),
+    );
+  }
+});
+
 it("copy-only sync preserves enabled legacy units and explains retirement", async () => {
   seedRepo();
   const legacy = path.join(liveSystemdDir(), "defi-worktree-cleanup.timer");

@@ -5,7 +5,8 @@
 ### Changed
 
 - System rules exclude `systemd-private-*` directories themselves; their inner
-  `tmp` contents use the `/tmp` age, as in the distro default.
+  `tmp` contents use their parent's threshold: 3 days under `/tmp`, 30 days under
+  `/var/tmp`, as in the distro default.
 - Tighten only `/tmp` to 3 days; retain the distro default 30-day `/var/tmp`
   age in the replacement tmpfiles policy for preserved temporary state.
 - Keep branches after removing a worktree; the separate stale-branch pass uses
