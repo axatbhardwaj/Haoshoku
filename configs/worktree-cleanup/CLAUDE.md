@@ -7,7 +7,7 @@ remain `haoshoku --worktree-cleanup` and `--worktree-cleanup-backup`.
 |------|-------------------------|
 | `cleanup-disk.sh` | Same directory; daily entrypoint, always runs both steps and fails if either fails |
 | `cleanup-worktrees.sh` | `~/.local/share/disk-cleanup/`; executable entry, dry-run by default |
-| `branches.sh`, `caches.sh`, `prune.sh`, `report.sh` | Same directory; sourced runtime modules |
+| `branches.sh`, `caches.sh`, `discovery.sh`, `prune.sh`, `report.sh` | Same directory; sourced runtime modules |
 | `cleanup-temp.sh`, `disk-cleanup-tmpfiles.conf` | Same directory; tmpfiles wrapper and 3d `/tmp`, 30d `/var/tmp` policy |
 | `disk-cleanup.service`, `disk-cleanup.timer` | `~/.config/systemd/user/`; daily, persistent, up to 1h jitter |
 | `test-cleanup.sh`, `tests/` | Repository-only decision and real Git fixture tests |
@@ -51,7 +51,9 @@ is part of author verification.
   Before any REMOVE, ignored entries must be allowlisted cache directories,
   directories with a valid `CACHEDIR.TAG`, or symlinks. Other ignored content
   (including `.env` and `notes/`) means REVIEW: ignored non-cache files. The
-  legacy `superpowers/` review reason remains. Recheck before removal.
+  legacy `superpowers/` review reason remains. Initialized submodules (a gitdir
+  `modules` path or an index gitlink containing its own `.git` file/directory)
+  mean REVIEW: initialized submodules; remove manually. Recheck before removal.
   Removal uses `git worktree remove` without force. Apply prunes once per repo
   through its stable Git common directory, even when no worktree was removed.
   Missing directories are not in use. Prune candidates come from Git's
@@ -96,7 +98,8 @@ retains the distro default 30 days for preserved temporary state. Because this
 replaces the whole `tmp.conf`, both entries must remain. Other distro configs
 still exclude the `systemd-private-*` directories themselves and X11 sockets.
 As in the distro default, inner `systemd-private-*/tmp` contents age with the
-`/tmp` threshold (now 3 days); the directory exclusion does not preserve those
+parent's threshold: 3 days under `/tmp`, 30 days under `/var/tmp`;
+the directory exclusion does not preserve those
 contents indefinitely. This affects root's cleanup where it can access them. Nonroot permission-denied-only
 failures are expected; other or mixed failures return 1. Do not replace this
 with direct recursive deletion of shared temporary roots.

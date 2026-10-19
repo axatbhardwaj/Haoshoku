@@ -123,6 +123,19 @@ has_artifacts() {
   fi
 }
 
+# Mirror Git's submodule refusal: admin modules or a populated index gitlink.
+initialized_submodules() {
+  local gd entry path
+  gd=$(git -C "$1" rev-parse --absolute-git-dir 2>/dev/null) || return 1
+  [[ -e "$gd/modules" ]] && return 0
+  while IFS= read -r -d '' entry; do
+    [[ "$entry" == '160000 '* ]] || continue
+    path=${entry#*$'\t'}
+    [[ -e "$1/$path/.git" ]] && return 0
+  done < <(git -C "$1" ls-files --stage -z)
+  return 1
+}
+
 # pr_state_for <wt> <branch>: echoes MERGED|CLOSED|OPEN|NONE|UNKNOWN.
 #   Tries a PR number embedded in the branch name first (review/pr-103,
 #   pr-101-review), then a PR whose head branch == this branch.
@@ -169,6 +182,9 @@ handle_worktree() {
   fi
 
   verdict=$(decide "$is_main" "$dirty" "$detached" "$unpushed" "$pr" "$merged" "$artifacts" "$busy" "$recent" "$((idle / 86400))" "$STALE_DAYS" "$locked" "$ignored" "$operation" "$history")
+  if [[ "$verdict" == REMOVE ]] && initialized_submodules "$wt"; then
+    verdict="REVIEW:initialized submodules; remove manually"
+  fi
 
   case "$verdict" in
     REMOVE)    PLAN_REMOVE+=("$wt|$branch|$pr|$main_wt") ;;
@@ -244,48 +260,6 @@ in_use() {
   return 1
 }
 
-registered_worktree() {
-  local d=$1 top
-  top=$(git -C "$d" rev-parse --show-toplevel 2>/dev/null) || return 1
-  [[ "$top" == "$d" ]] || return 1
-  git -C "$d" worktree list --porcelain | grep -Fxq "worktree $d"
-}
-
-repo_candidates() {
-  local root d
-  local -a roots
-  IFS=: read -ra roots <<< "$CLEANUP_REPO_ROOTS"
-  for root in "${roots[@]}"; do
-    [[ -d "$root" ]] || continue
-    find "$root" -mindepth 1 -maxdepth 1 -type d -print0
-  done
-  [[ -d "$T3_WORKTREES_ROOT" ]] || return 0
-  while IFS= read -r -d '' d; do
-    registered_worktree "$d" && printf '%s\0' "$d"
-  done < <(find "$T3_WORKTREES_ROOT" -mindepth 2 -maxdepth 2 -type d -print0)
-}
-
-discover_repos() {
-  local d common
-  declare -A seen=()
-  while IFS= read -r -d '' d; do
-    common=$(git -C "$d" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || continue
-    common=$(realpath -e -- "$common") || continue
-    if [[ -z "${seen[$common]:-}" ]]; then
-      seen[$common]=1
-      echo "$d"
-    fi
-  done < <(repo_candidates)
-}
-
-report_orphans() {
-  local d
-  [[ -d "$T3_WORKTREES_ROOT" ]] || return 0
-  while IFS= read -r -d '' d; do
-    registered_worktree "$d" || PLAN_REVIEW+=("$d||unregistered T3 directory (report only)")
-  done < <(find "$T3_WORKTREES_ROOT" -mindepth 2 -maxdepth 2 -type d -print0)
-}
-
 # ---------------------------------------------------------------------------
 # execution (only reached in --apply mode)
 # ---------------------------------------------------------------------------
@@ -308,6 +282,9 @@ do_remove() {
   fi
   if worktree_operation "$wt"; then
     PLAN_KEEP+=("$wt|$branch|Git operation in progress; kept"); return
+  fi
+  if initialized_submodules "$wt"; then
+    PLAN_REVIEW+=("$wt|$branch|initialized submodules; remove manually"); return
   fi
   IFS='|' read -r dirty unpushed merged <<< "$(git_facts "$wt")"
   if [[ "$dirty" == 1 || "$unpushed" == 1 ]]; then
@@ -362,6 +339,9 @@ stale_active_work() {
     awk -v p="$wt" 'substr($0,1,length(p))==p {print NR"\t"$0}' "$ACTIVE_WORK"
   done
 }
+
+# shellcheck source=discovery.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/discovery.sh"
 
 # shellcheck source=prune.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/prune.sh"

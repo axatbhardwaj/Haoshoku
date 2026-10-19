@@ -16,6 +16,7 @@ const RUNTIME_FILES = [
   "report.sh",
   "caches.sh",
   "branches.sh",
+  "discovery.sh",
   "prune.sh",
   "disk-cleanup-tmpfiles.conf",
 ];
