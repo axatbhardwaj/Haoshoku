@@ -11,6 +11,7 @@ const SCRIPT = "cleanup-worktrees.sh";
 const UNITS = ["disk-cleanup.service", "disk-cleanup.timer"];
 const RUNTIME_FILES = [
   SCRIPT,
+  "cleanup-disk.sh",
   "cleanup-temp.sh",
   "report.sh",
   "caches.sh",
