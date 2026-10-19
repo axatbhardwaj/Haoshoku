@@ -18,8 +18,8 @@ ignored_build_cache() {
   case "${target##*/}" in node_modules|target|cargo-target|.next|.turbo) ;; *) return 1 ;; esac
   rel=${target#"$wt/"}
   git -C "$wt" check-ignore -q -- "$rel/" || return 1
-  tracked=$(git -C "$wt" ls-files -- "$rel") || return 1
-  other=$(git -C "$wt" ls-files --others --exclude-standard -- "$rel") || return 1
+  tracked=$(git -c core.fsmonitor=false -c core.untrackedCache=false -C "$wt" ls-files -- "$rel") || return 1
+  other=$(git -c core.fsmonitor=false -c core.untrackedCache=false -C "$wt" ls-files --others --exclude-standard -- "$rel") || return 1
   [[ -z "$tracked" && -z "$other" ]]
 }
 
@@ -51,7 +51,7 @@ plan_build_caches() {
     if ignored_build_cache "$wt" "$target" && private_build_cache "$wt" "$target"; then
       PLAN_CACHE+=("$target|$wt|build")
     fi
-  done < <(git -C "$wt" ls-files --others --ignored --exclude-standard --directory -z)
+  done < <(git -c core.fsmonitor=false -c core.untrackedCache=false -C "$wt" ls-files --others --ignored --exclude-standard --directory -z)
 }
 
 valid_cache_tag() {
@@ -64,7 +64,7 @@ valid_cache_tag() {
 ignored_non_cache_files() {
   local wt=$1 listing rel target
   # Capture the status as well as the list: failed probes must preserve data.
-  listing=$(git -C "$wt" ls-files --others --ignored --exclude-standard --directory) || return 0
+  listing=$(git -c core.fsmonitor=false -c core.untrackedCache=false -C "$wt" ls-files --others --ignored --exclude-standard --directory 2>/dev/null) || return 0
   while IFS= read -r rel; do
     [[ -n "$rel" ]] || continue
     target="$wt/${rel%/}"

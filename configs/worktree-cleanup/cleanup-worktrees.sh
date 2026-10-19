@@ -90,7 +90,7 @@ base_ref() {
 git_facts() {
   local wt=$1 dirty=0 unpushed=0 merged=0 n base
   local status
-  status=$(git -C "$wt" status --porcelain 2>/dev/null) || dirty=1
+  status=$(git -c core.fsmonitor=false -c core.untrackedCache=false -C "$wt" status --porcelain --untracked-files=all --ignore-submodules=none 2>/dev/null) || dirty=1
   [[ -n "$status" ]] && dirty=1
   n=$(git -C "$wt" rev-list --count HEAD --not --remotes 2>/dev/null) || n=1
   [[ "${n:-0}" -gt 0 ]] && unpushed=1
@@ -296,7 +296,7 @@ do_remove() {
   if ignored_non_cache_files "$wt"; then
     PLAN_REVIEW+=("$wt|$branch|ignored non-cache files; changed since planning"); return
   fi
-  if out=$(git -C "$main_wt" worktree remove "$wt" 2>&1); then
+  if out=$(git -c core.fsmonitor=false -c core.untrackedCache=false -c status.showUntrackedFiles=all -C "$main_wt" worktree remove "$wt" 2>&1); then
     DONE_REMOVE+=("$wt|$branch|removed worktree (branch kept)")
   else
     ERRORS+=("$wt|$branch|${out//$'\n'/ }")
