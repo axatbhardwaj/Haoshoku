@@ -18,6 +18,8 @@ while IFS= read -r line; do
   "${args[@]}"
 done < "$TEST_DIR/disk-cleanup.service"
 [[ -f "$TMPFILES_LOG" ]] || { echo 'FAIL service did not invoke tmpfiles'; exit 1; }
+grep -Fxq -- '--prefix=/tmp' "$TMPFILES_LOG"
+grep -Fxq -- '--prefix=/var/tmp' "$TMPFILES_LOG"
 grep -Fxq -- '--clean' "$TMPFILES_LOG"
 grep -Fxq -- '--replace=/etc/tmpfiles.d/tmp.conf' "$TMPFILES_LOG"
 if grep -Fxq -- '--dry-run' "$TMPFILES_LOG"; then echo 'FAIL service must apply temp policy'; exit 1; fi
