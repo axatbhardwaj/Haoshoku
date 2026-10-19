@@ -2,10 +2,9 @@
 
 import { homedir } from "node:os";
 import { Command } from "commander";
+import preflightExecutorArgs from "./src/common/haoshoku/preflight.js";
 import {
 	configureExecutorClients,
-	validateExecutorClientInput,
-	EXECUTOR_CLIENT_USAGE,
 } from "./src/helpers/configure_executor_clients.js";
 import prompts from "prompts";
 import { startRunLog } from "./src/common/run_log.js";
@@ -44,7 +43,6 @@ import {
 } from "./src/helpers/configure_codex.js";
 import {
 	configureExecutorServer,
-	parseExecutorOrigin,
 } from "./src/helpers/configure_executor_server.js";
 import { configureDiscordTheme } from "./src/helpers/configure_discord_theme.js";
 import {
@@ -114,75 +112,7 @@ if (retiredOption) {
 	process.exit(2);
 }
 
-const clientArgs = process.argv.slice(2);
-const clientMode = clientArgs.some(
-	(arg) => arg.split("=")[0] === "--executor-clients",
-);
-let clientEndpoint;
-if (clientMode && !clientArgs.some((arg) => ["--help", "-h"].includes(arg))) {
-	try {
-		const inline = clientArgs[0]?.startsWith("--executor-clients=");
-		if (
-			!(inline && clientArgs.length === 1) &&
-			!(clientArgs[0] === "--executor-clients" && clientArgs.length === 2)
-		)
-			throw new Error(EXECUTOR_CLIENT_USAGE);
-		clientEndpoint = validateExecutorClientInput(
-			inline
-				? clientArgs[0].slice("--executor-clients=".length)
-				: clientArgs[1],
-		);
-	} catch (error) {
-		console.error(error.message);
-		process.exit(2);
-	}
-}
-
-const executorArgs = process.argv.slice(2);
-const executorIndex = executorArgs.findIndex(
-	(arg) => arg.split("=")[0] === "--server-executor",
-);
-let executorOrigin;
-if (executorIndex !== -1 && !executorArgs.includes("--help")) {
-	const flag = executorArgs[executorIndex];
-	const value = flag.includes("=")
-		? flag.slice(flag.indexOf("=") + 1)
-		: executorArgs[executorIndex + 1];
-	executorOrigin = parseExecutorOrigin(value);
-	const extra = executorArgs.some(
-		(arg, index) =>
-			index !== executorIndex &&
-			index !== executorIndex + (flag.includes("=") ? 0 : 1) &&
-			!arg.startsWith("-") &&
-			executorArgs[index - 1] !== "--os",
-	);
-	if (
-		!executorOrigin ||
-		extra ||
-		executorArgs.filter((arg) => arg.split("=")[0] === "--server-executor")
-			.length !== 1
-	) {
-		console.error(
-			"Usage: haoshoku --server-executor <https-origin>. Supply HTTPS, a host and optional port only; no credentials, paths, query or fragment.",
-		);
-		process.exit(2);
-	}
-	const osOption = executorArgs.find((arg) => arg.startsWith("--os="));
-	const explicitOS = osOption
-		? osOption.slice(5)
-		: executorArgs.includes("--os")
-			? executorArgs[executorArgs.indexOf("--os") + 1]
-			: undefined;
-	if (
-		detectOS() !== "debian-server" ||
-		(explicitOS !== undefined && explicitOS !== "debian-server")
-	) {
-		console.error(
-			"--server-executor requires a Debian-family host; configure external DNS/TLS/nginx first.",
-		);
-		process.exit(2);
-	}
-}
+const { clientMode, clientEndpoint, executorIndex, executorOrigin } = preflightExecutorArgs();
 
 const program = new Command();
 
@@ -276,11 +206,11 @@ program
 	)
 	.option(
 		"--worktree-cleanup",
-		"Deploy the ~/defi git-worktree cleanup script + systemd timer (configs/worktree-cleanup/ → live) and enable the Friday timer",
+		"Deploy disk cleanup to ~/.local/share/disk-cleanup/ and enable the daily disk-cleanup timer",
 	)
 	.option(
 		"--worktree-cleanup-backup",
-		"Backup the ~/defi worktree-cleanup script + systemd units to configs/worktree-cleanup/",
+		"Backup live disk-cleanup scripts, config and systemd units to configs/worktree-cleanup/",
 	)
 	.option("--device-type <type>", "Set device type (pc, laptop or iobox)")
 	.option(

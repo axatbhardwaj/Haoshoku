@@ -62,6 +62,7 @@ const TEST_CALLER_CONTRACTS = new Map([
 	[
 		"configureUser" + "Apps",
 		[
+            "syncWorktreeCleanupImpl",
 			"commandExistsImpl",
 			"promptUserImpl",
 			"configureGitImpl",
@@ -163,7 +164,7 @@ function providedOptions(source, argumentsSource, requiredOptions) {
 function testCallerViolations() {
 	const violations = [];
 	const testFiles = fs
-		.readdirSync(import.meta.dir)
+		.readdirSync(import.meta.dir, { recursive: true })
 		.filter((file) => file.endsWith(".test.js"))
 		.sort();
 

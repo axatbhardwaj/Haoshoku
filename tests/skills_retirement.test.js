@@ -296,7 +296,8 @@ describe("selected integration retirement", () => {
 						configureOmarchyWorkspacesImpl: noop, configureOmarchyPluginsImpl: noop,
 						configureVoxtypeOsdImpl: noop, configureKdeConnectCommandsImpl: noop,
 						configureOmarchyBarImpl: noop, configureOmazedImpl: noop, configureOmarchyAppearanceImpl: noop,
-						configureUserAppsImpl: (options) => configureUserApps({ ...options,
+						configureUserAppsImpl: (options) => configureUserApps({
+        syncWorktreeCleanupImpl: async () => {}, ...options,
 							commandExistsImpl: async () => false,
 							promptUserImpl: testUtils.promptUser, configureGitImpl: noop,
 							configureBrowserIntegrationImpl: noop, configureAudioImpl: noop, configureBashImpl: noop,

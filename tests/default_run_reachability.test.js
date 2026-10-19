@@ -202,6 +202,7 @@ function runArchDefaultPath({ isOmarchy = true, gitAnswer = true } = {}) {
 				installSystemPackagesImpl: record("systemPackages"),
 				installFlatpakAppsImpl: record("flatpaks"),
 				configureUserAppsImpl: (options) => configureUserApps({
+        syncWorktreeCleanupImpl: async () => {},
 					...options,
 					promptUserImpl: undefined,
 					commandExistsImpl: async () => false,
@@ -359,6 +360,7 @@ function defaultSetupOverrides({
 
 function userAppDoubles(overrides = {}) {
 	return {
+        syncWorktreeCleanupImpl: async () => {},
 		promptUserImpl: async () => false,
 		commandExistsImpl: async () => false,
 		configureGitImpl: async () => {},

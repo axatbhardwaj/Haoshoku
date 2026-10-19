@@ -83,172 +83,19 @@ Claude and Codex setup skip config synchronization when their CLI installation f
 
 ## Arch and Omarchy behavior
 
-The Arch setup:
-
-- skips git configuration on Omarchy, which sets your identity at install,
-  leaving existing `~/.gitconfig` and git profile files untouched; other Arch
-  hosts still get the "Configure git?" prompt;
-- authenticates sudo once up front and keeps that authorization alive with
-  silent, non-interactive refreshes until setup finishes or aborts. Later
-  Haoshoku sudo calls are non-interactive and fail instead of prompting again;
-- performs a full system upgrade before package installation through
-  `omarchy update -y` on Omarchy or `pacman -Syu` on other Arch-family
-  systems, aborting setup if that preflight fails;
-- prefers Omarchy's `yay`, falls back to `paru`, and bootstraps an AUR helper
-  only when neither is available;
-- uses `pacman` for repository packages and the AUR helper only for AUR
-  packages;
-- batches repository and AUR packages, filters missing targets, and retries only
-  still-uninstalled packages individually when a batch fails;
-- installs only JetBrains Mono Nerd Font when neither its full nor Omarchy's
-  `ttf-jetbrains-mono-nerd-basic` package is installed; keeps either existing package;
-- binds `Super+T` to launch or focus T3 Code stable with `t3code`,
-  matching only the anchored `^com\.t3tools\.T3Code$` window class;
-- installs Tailscale, enables `tailscaled.service`, and configures the T3 user
-  service for tailnet HTTPS phone access after T3 is installed. Logged-out nodes
-  print a browser login URL and wait; logged-in nodes skip login. Matching
-  service drop-ins are left untouched. The [single-backend preflight](#t3-single-backend-preflight)
-  must pass before T3 service changes. Failures warn and setup continues;
-- prints the verified HTTPS URL and `t3 pair --tailscale` phone pairing hint.
-  Rerun this step alone with `haoshoku --tailscale-t3` on Arch. System changes
-  use `sudo -n`; standalone runs require an existing sudo authorization
-  (`sudo -v`). Tailnet HTTPS certificates must be enabled;
-- keeps Bash as the account shell and adds portable aliases and tool
-  initialization through `~/.config/haoshoku/bashrc`;
-- preserves Omarchy's `.bashrc`, lock screen, and core Quickshell/Hyprland
-  configuration. It asks Omarchy to apply the pinned Aurora theme, selected
-  background, and font from `configs/omarchy/appearance.json`; it does not
-  copy generated `current/theme` state between machines. Displaced Omarchy
-  keybindings are
-  relocated or explicitly superseded and documented in
-  [`configs/omarchy/keybinding-swaps.json`](configs/omarchy/keybinding-swaps.json),
-  the canonical swap record;
-- deploys `~/.config/hypr/haoshoku/{bindings,workspaces}.lua` and appends
-  exactly two `require` lines to `~/.config/hypr/hyprland.lua`; Omarchy 4
-  loads user config via `require()` and no longer sources `.conf` files;
-- selects `pc`, `laptop` or `iobox` in order: explicit flag, stored choice,
-  hostname in `configs/fleet.json`, Linux DMI/battery detection, then prompt;
-  saves the selected type to `~/.haoshoku.json` before device-routed setup.
-  A stored choice that disagrees with the fleet hostname warns and stays unchanged;
-  `haoshoku --device-type pc|laptop|iobox` is the explicit override. Skip persists
-  nothing and leaves device-specific audio unset;
-- without interactive confirmation—including piped stdin—Haoshoku declines real
-  user decisions immediately and does not treat input as answers;
-- adds a device-routed behavior-only Lua workspace overlay. The hyprmoncfg
-  plugin owns the generated `~/.config/hypr/monitors.lua`; Haoshoku owns only
-  `~/.config/hyprmoncfg/profiles/*.json`, the source profile JSON that
-  hyprmoncfg reads to generate that Lua file, and never writes
-  `monitors.lua` directly. Monitor-bound workspace rules live in the
-  hyprmoncfg PC profile, matched by hardware identity instead of connector
-  name so they survive DP connector swaps; laptop workspace rules are
-  monitor-independent and remain in the Lua overlay;
-- adds two-key special-workspace toggles under `Super`: A Haki (the tagged Warp
-  `haki` tab), I AI assistants (Claude Desktop and Codex Desktop) on ordinary
-  workspace 1,
-  M music, O 1Password, G communication, B Flux Brave Origin,
-  D DeFi Brave Origin,
-  S Steam, and `Super+Shift+X` X (`Super+Shift+S` stashes the focused window,
-  `Super+Alt+S` toggles the stash workspace);
-  see the canonical swaps JSON above for every Omarchy default relocated or
-  superseded to make room;
-- starts Steam silently in special:steam at login and binds `Super+2` to
-  Omakade on demand, keeping `Super+Shift+G` as the gaming-workspace toggle
-  that ensures Omakade. Steam login autostart is configurable
-  (`~/.config/haoshoku/gaming.json` defaults to Steam on, Omakade off):
-  `haoshoku --gaming-steam-autostart enabled|disabled` and
-  `haoshoku --gaming-omakade-autostart enabled|disabled`. Use
-  `haoshoku-gaming-workspace place -- %command%` as a Steam launch option to
-  move the launched game's process-tree windows there. The same wrapper lifts
-  the kernel split-lock penalty while the game runs and restores it on exit
-  once `haoshoku --gaming-split-lock` has installed its narrow sudoers rule
-  (Division 2 otherwise sits near 50 fps with an idle CPU and GPU);
-- starts Flux, DeFi, WhatsApp, and Notion with empty Brave Origin profiles
-  below `~/.config/brave-haoshoku/`; existing Chromium profile data remains
-  untouched at `~/.config/chromium-haoshoku/` for manual import;
-- installs packaged Omazed and safely points Zed at its generated theme so Zed
-  follows the active Omarchy palette. Haoshoku never runs Omazed's manual
-  installer or deletes unrelated Zed themes;
-- adds a non-locking `Screens Off` command to every paired KDE Connect device.
-  It turns off all Hyprland displays through DPMS; keyboard or mouse input, or
-  an existing phone-side Wake command, turns them back on. Pair new phones
-  first, then run `haoshoku --kde-connect-commands` to add the command;
-- continues after individual optional application failures and reports them.
-
-Haoshoku deliberately does not configure Fish, KDE Plasma, KWin, SDDM, or
-arbitrary application themes. Omarchy remains responsible for generating and
-applying all files downstream of the declared appearance.
+[Read this section](README/arch-and-omarchy-behavior.md#arch-and-omarchy-behavior).
 
 ## Omarchy appearance
 
-[`configs/omarchy/appearance.json`](configs/omarchy/appearance.json) declares a
-public theme repository at an immutable Git commit, one background filename
-inside that theme, and the font family. Full Arch setup and
-`haoshoku --omarchy-appearance` reconcile the theme under
-`~/.config/omarchy/themes/`, then call Omarchy's own theme, background, and font
-commands. `haoshoku --discord-theme` then deploys that theme's Vencord CSS from
-`configs/discord/theme.json` into Vesktop and Vencord, setting `enabledThemes`
-while preserving every other settings key.
-
-An existing checkout from another repository is never replaced. A matching
-checkout with local changes is preserved and applied as-is; a clean matching
-checkout advances to the declared commit. The manifest may identify exact
-legacy revisions from older local-origin installs. Those recognized checkouts
-are moved to a timestamped sibling backup before Haoshoku installs the clean
-pinned theme, and a failed install restores the original checkout. This keeps
-custom work recoverable while making a fresh laptop reproduce the tracked
-appearance.
+[Read this section](README/omarchy-appearance.md#omarchy-appearance).
 
 ## Omarchy plugins
 
-On Arch-family desktops, Haoshoku installs the plugins listed in
-[`common/omarchy-plugins.json`](common/omarchy-plugins.json) by running
-`omarchy plugin add <url> --enable --yes` for each one. Each repository is
-cloned and enabled at its current default branch HEAD — there is no commit
-or tag pinning. An entry may declare `disableOnInstall` to switch off a stock
-widget it replaces. That list is applied only when Haoshoku first creates the
-plugin and is never re-applied, so a user can re-enable a displaced widget
-without a later Haoshoku run overriding the choice. Every run otherwise
-reconciles manifest plugins back to installed and enabled. If
-`omarchy plugin list --json` cannot provide a trustworthy snapshot, the helper
-performs no plugin work and returns `snapshotUnavailable: true`; the
-side-effect-free manual-auth checklist is still printed.
-
-The manifest includes the Speech Orb dictation HUD. Setup turns off voxtype's
-own OSD (`voxtype config set osd.enabled false`) and restarts a running
-`voxtype.service`, so only the orb appears while you dictate.
-
-These plugins run as arbitrary, unsandboxed code inside the long-lived
-omarchy-shell process — the same risk Omarchy's own CLI warns about when
-adding plugins manually. The `--yes` flag is passed deliberately so setup
-stays unattended and non-interactive; this also suppresses Omarchy's
-per-plugin confirmation/warning prompt, so only add this manifest to
-machines where you trust and have reviewed those repositories. Plugins
-that need manual setup afterwards (API tokens, OAuth, device pairing) are
-printed as a manual-auth checklist after installation.
-The Galaxy Buds plugin is installed from `aislandener/galaxy-buds-control` and
-reports Bluetooth pairing in that checklist; it requires no credentials.
-Pullbar (`io.github.ciryon.pullbar`) replaces both the former GitHub widget
-(`robzolkos.github`) and Agent Usage Plus on the right side of the bar. The full Arch setup deploys its required
-`~/.local/bin/omarchy-agent-usage-update` wrapper before installing plugins. If
-running only selected steps, run `haoshoku --scripts` before
-`haoshoku --omarchy-plugins`. That wrapper also scopes the Omarchy 4.0.0 Codex
-collector's retired `-a untrusted` compatibility translation to usage refreshes;
-ordinary Codex commands still execute the user's normal binary unchanged.
+[Read this section](README/omarchy-plugins.md#omarchy-plugins).
 
 ## Omarchy bar
 
-Use `haoshoku --omarchy-bar` to deploy `configs/omarchy/bar.json`, and use
-`haoshoku --omarchy-bar-backup` to capture the live bar back into the repo.
-The same commands deploy and back up Haoshoku's bundled `xzat.tray` plugin at
-`~/.config/omarchy/plugins/xzat.tray`. Its overflow drawer combines status
-notifier items with Galaxy Buds, hyprmoncfg, Display, and No Sleep controls.
-The full Arch setup restores the plugin and layout automatically; no separate
-clone step is needed. Feishin and Omarchy's generic MPRIS widget remain in the
-left section, while Pullbar and the stock Agents widget stay visible on the right.
-Haoshoku claims the `bar` key of `~/.config/omarchy/shell.json` wholesale,
-including bar-widget enablement. Disabling a bar widget through Omarchy's UI is
-therefore reverted on the next deploy. Every other top-level key — including
-`idle`, `plugins`, `disabledPlugins`, `version`, and unknown keys — is preserved.
+[Read this section](README/omarchy-bar.md#omarchy-bar).
 
 ## Agent and orchestration policy
 
@@ -435,317 +282,38 @@ Run `haoshoku --help` for the complete current list.
 
 ## iobox profile and fleet
 
-The axnet fleet in [`configs/fleet.json`](configs/fleet.json) is io (PC, control),
-iobook (laptop, access), iobox (always-on Omarchy agent box running T3, worker),
-and axat-vps (Debian VPS running Executor and Hermes, worker). Everything is reached over Tailscale only.
-Use MagicDNS short names (`ssh io`, `ssh iobook`, `ssh iobox`, `ssh axat-vps`);
-Arch hosts use Tailscale SSH, and axat-vps keeps OpenSSH. Agents may SSH to any
-fleet host and act there. Accepted risk: one compromised agent reaches every host.
-
-`--device-type iobox` stores the profile; a later full setup uses
-[`common/paru_applist_iobox.txt`](common/paru_applist_iobox.txt), including T3,
-Tailscale, Claude/Codex dependencies, Git/gh and 1Password desktop plus `op` CLI.
-It keeps Axstack, gh-stack, shared agent instructions, user scripts and Omarchy
-appearance. It skips Flatpaks, gaming/Steam, uosc/MPV, the Bluetooth prompt,
-Brave/Chromium profiles, KDE Connect, voxtype, bar/plugins, workspaces,
-hyprmoncfg and audio. Standalone `--workspaces`, `--monitors`,
-`--hyprmoncfg-backup`, `--audio` and `--audio-backup` refuse iobox. Reruns keep
-previously installed apps; switching profiles does not uninstall anything.
-
-The Arch T3 step enables and verifies user linger. On iobox it also masks and
-verifies `sleep.target`, `suspend.target`, `hibernate.target`,
-`hybrid-sleep.target` and `suspend-then-hibernate.target`. T3, Tailscale, linger
-or sleep-mask failures stop iobox setup with the failed step named.
-
-`--fleet-ssh` runs only fleet SSH setup on an Arch fleet host; Debian and
-non-fleet hosts are refused without changes. Tailscale must report `BackendState`
-`Running` and `MagicDNSSuffix` matching the manifest tailnet (`tail140c22.ts.net`)
-before fleet actions. Otherwise standalone mode exits non-zero without writing
-files; full Arch setup skips fleet SSH with a message.
-It enables/verifies Tailscale SSH, writes `~/.ssh/config.d/haoshoku-fleet`, and
-puts its Include first in `~/.ssh/config`, preserving user Host/Match blocks.
-Arch peer keys from Tailscale go to `~/.ssh/known_hosts_fleet` with strict host
-checking; offline peers retain their cached keys. VPS connections use
-`~/.ssh/id_ed25519_vps` and `accept-new`, recording the first key in ordinary
-`known_hosts`. Haoshoku does not create SSH keys, authorize them or edit ACLs.
-
-`--agent-accounts` is opt-in elsewhere and runs by default on iobox after
-Claude/Codex and shared-profile setup. It creates `~/.claude-alt` and
-`~/.codex-alt`, sharing every other primary-home top-level entry by symlink
-except these private entries:
-
-| Home | Private entries (never linked) |
-| --- | --- |
-| Claude | `.credentials.json`, `.claude.json`, `history.jsonl`, `sessions`, `session-env`, `shell-snapshots`, `cache`, `backups`, `security`, `mcp-needs-auth-cache.json`, `.last-cleanup` |
-| Codex | `auth.json`, `config.toml`, `models_cache.json`, `log`, `memories`, `tmp` |
-
-Codex `config.toml` is copied once when the alt file is missing. Other runtime
-state stays shared, including Claude `projects` and Codex `history.jsonl`,
-`sessions` and SQLite files. Existing real entries and wrong/dangling links
-are reported and preserved; private symlinks report incomplete account isolation.
-Missing primary homes are skipped. Logins and T3 provider settings remain manual.
+[Read this section](README/iobox-profile-and-fleet.md#iobox-profile-and-fleet).
 
 ### Bring-up checklist
 
-Run each host's setup locally. Until 12.4.0 ships, use a git checkout with Bun
-for the new commands below; the installed 12.3.x package does not include them.
-
-1. Set the hostname to `iobox` (`sudo hostnamectl set-hostname iobox`).
-2. Install Bun (`yay -S --needed bun-bin`; Bun >= 1.3.14), then
-   `git clone https://github.com/axatbhardwaj/Haoshoku.git` and `cd Haoshoku`.
-3. Install T3 desktop (`yay -S aur/t3code-bin`; verify the proposed stable
-   version is >=0.1.0), open it once with
-   `t3code`, choose the Stable update channel, and disable **Local environment**
-   in its settings. This creates
-   the desktop settings file required by preflight; do this before the service step.
-4. Install Tailscale (`sudo pacman -S --needed tailscale`), enable it with
-   `sudo systemctl enable --now tailscaled.service`, then run `sudo tailscale up`
-   and finish tailnet login. Haoshoku verifies it is installed, enabled and logged in.
-5. In the checkout, run `bun install`, `bun haoshoku.js --device-type iobox`, then
-   `bun haoshoku.js` as the ordinary setup user. If the T3 step stops, fix the
-   reported condition (including desktop settings), then rerun `bun haoshoku.js`.
-6. Complete two Claude paste-code logins: launch `claude`, use `/login`, then
-   repeat with `CLAUDE_CONFIG_DIR=~/.claude-alt claude`.
-7. Complete two Codex device logins: `codex login --device-auth`, then
-   `CODEX_HOME=~/.codex-alt codex login --device-auth`.
-   After completing the primary logins, rerun `bun haoshoku.js --axstack` if
-   the first setup reported incomplete Axstack harness setup.
-8. Supply `EXECUTOR_AUTHORIZATION` securely as described in
-   [Executor clients](#opt-in-executor-clients), then register once per home:
-
-   ```bash
-   bun haoshoku.js --executor-clients https://axat-vps.tail140c22.ts.net/mcp
-   CLAUDE_CONFIG_DIR=~/.claude-alt CODEX_HOME=~/.codex-alt bun haoshoku.js --executor-clients https://axat-vps.tail140c22.ts.net/mcp
-   ```
-
-   In T3, manually map provider instance `claudeAlt` to `CLAUDE_CONFIG_DIR=~/.claude-alt`
-   and `codexAlt` to `CODEX_HOME=~/.codex-alt` (use absolute home paths in settings).
-9. Run `gh auth login` and set your Git name/email; Omarchy skips Git identity setup.
-   Then rerun `bun haoshoku.js --gh-stack` if the first setup skipped gh-stack.
-   The end-of-run **Next steps** block lists incomplete gh-stack and Axstack
-   setup, the reason, and the exact `haoshoku` command to rerun.
-10. Create the iobox key with `ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519_vps` and
-    authorize its public key on axat-vps by hand. Keep the private key local.
-11. Create `~/.config/op/service-account.env` as a regular file owned by your user,
-    mode 0600, containing exactly one non-empty `OP_SERVICE_ACCOUNT_TOKEN=` assignment
-    (one trailing newline allowed). Never log or commit the value. Retry
-    `bun haoshoku.js --tailscale-t3` to install the managed `haoshoku-op.conf` drop-in;
-    an absent file only prints guidance. After token rotation or later creation
-    with an existing drop-in, run `systemctl --user restart t3code`.
-12. Complete T3 pairing using the service's pairing flow.
-13. Ensure tailnet policy allows port 22 and a fleet SSH rule with `action: accept`.
-    An overlapping `check` rule wins and breaks unattended SSH; policy edits are manual.
-14. Smoke-test `ssh -o BatchMode=yes <peer> true` for each peer (from iobox:
-    io, iobook and axat-vps). Check authenticated Executor tool discovery separately
-    in both primary and alt T3 instances; registration alone does not prove access.
+[Read this section](README/iobox-profile-and-fleet.md#bring-up-checklist).
 
 ## Debian Server
 
-```bash
-haoshoku --os debian-server
-```
+The full Debian path includes the optional daily disk-cleanup job. Its tmpfiles
+policy uses 3 days for `/tmp` and retains the distro default 30 days for `/var/tmp`.
 
-The Debian path remains deliberately headless. In addition to server hardening,
-it installs the portable Claude/Codex policy, Axstack, and Hermes
-Telegram transport.
-T3 Code is required and runs without a prompt; an incomplete T3 setup fails
-Debian setup. `haoshoku --server-t3-code` runs the same step on its own.
+[Read this section](README/debian-server.md#debian-server).
 
 ### T3 single-backend preflight
 
-Both `--tailscale-t3` on Arch and `--server-t3-code` on Debian check desktop
-Local environment before writing T3 service configuration, installing, starting,
-or restarting the service. This check also runs on an already configured rerun.
-Runtime and CLI installation can precede this guard; refusal does not mean that
-no prerequisite work occurred. The intended workstation topology is one service
-backend shared by the desktop and phone, with desktop Local environment disabled.
-The operator pairs each client separately; source checks do not prove pairing.
-
-Haoshoku reads `desktop-settings.json` under the effective T3 base directory's
-`userdata` folder, normally `~/.t3/userdata`. It checks the service's effective
-`T3CODE_HOME`, pending unit configuration, and desktop installation, unit and
-process evidence. Only an explicit JSON `localEnvironmentEnabled: false` proves
-Local environment is disabled. A missing key means enabled. When desktop
-settings are missing and a desktop installation, unit or process is detected,
-Haoshoku creates them with Local environment off after checking the directories.
-You do not need to open the desktop first. Creation is exclusive: an existing
-settings file is never overwritten. Headless setups can proceed without settings;
-an unused listening port does not prove a headless setup.
-
-Enabled, malformed, unreadable or conflicting directory/settings evidence, and
-failed probes, return incomplete setup before T3 service changes. Disable
-**Local environment** in the T3 Code desktop, then pair the desktop to the
-existing service. Resolve directory conflicts or unreadable evidence and retry.
-Haoshoku never rewrites existing desktop settings or reads or changes existing
-pairing state. Explicitly disabled desktops and headless setups can proceed;
-service installation/restart uses the checked base directory. Environment-file
-and unsupported launch-directory overrides require manual reconciliation.
-
-At the end of a successful Arch T3 step on a host in `configs/fleet.json`,
-Haoshoku mints one `t3 pair --tailscale` link per other fleet client (roles
-`control` or `access`). Workers do not pair outbound. Each link is labeled with
-its target host and expires after 15 minutes; paste it in that client's
-**Add environment** dialog. The local desktop can pair to its own service with
-`t3 pair --tailscale`; the phone pairing hint is also printed. Haoshoku leaves
-the encrypted desktop connection catalog unchanged. Link minting requires
-Tailscale `Running` with the fleet's `MagicDNSSuffix`; a mismatched tailnet or
-failed mint produces a warning and does not fail service setup.
+[Read this section](README/debian-server.md#t3-single-backend-preflight).
 
 ### Debian tailnet SSH firewall
 
-Debian setup keeps OpenSSH and its existing key/deploy behavior. Before any UFW
-change, it requires logged-in, running Tailscale with kernel networking and a
-working, UP `tailscale0` carrying every reported valid IPv4/IPv6 tailnet address.
-Missing addresses, a userspace-only interface or unreadable state fail preflight. Install Tailscale,
-log in and verify `tailscale status --json` and
-`ip -j address show dev tailscale0`, then retry Debian setup.
-
-Setup adds `ufw allow in on tailscale0 to any app OpenSSH` before changing
-defaults, retains HTTP/HTTPS rules, and keeps the **Enable UFW now?** confirmation.
-UFW IPv6 support must already be enabled (`IPV6=yes` in `/etc/default/ufw`);
-Haoshoku verifies active IPv4 and IPv6 tailnet SSH rules. Active UFW follows the
-same checks and ordering without reset. Declining enable on inactive UFW,
-skipping or failing configuration, or failing verification makes overall Debian
-setup incomplete with retry guidance.
-
-Existing public SSH allow/limit rules are preserved and reported as incomplete
-hardening, including IPv6 rules and saved rules on inactive UFW. Confirm working
-tailnet access, then separately inspect and migrate/remove broad rules as the
-operator before retrying. Named application profiles are resolved through
-read-only `ufw app info` port inspection, so web/mail profiles can coexist with
-tailnet SSH. Failed, malformed or unresolved profile inspection remains
-incomplete; correct the profile or inspection prerequisite and retry. Haoshoku
-does not guess that an unknown profile is safe.
-It never enables Tailscale SSH, disables sshd, changes tailnet ACLs, or deletes
-existing firewall rules. Custom rules outside UFW's managed rules require a
-separate operator audit.
+[Read this section](README/debian-server.md#debian-tailnet-ssh-firewall).
 
 ### Debian T3 service setup
 
-Before setup, install Tailscale yourself and log in to your tailnet. Confirm
-that `tailscale status` succeeds. Enable HTTPS certificates in the tailnet
-admin console. For a non-root service account, Haoshoku sets the Tailscale
-operator with `sudo -n tailscale set --operator=$USER` when unset or different,
-then re-reads the preferences to verify it so T3 can manage its Serve route. Your
-phone must also be logged in to the same tailnet. Haoshoku does not install
-Tailscale or log in for you.
-
-Haoshoku prepares a compatible Node.js runtime and requires stable >= `0.1.0`.
-It verifies npm's current stable version before accepting an existing CLI.
-On Debian, it reuses the supported `~/.local` npm installation when stable;
-for a missing CLI or a known older managed nightly, it runs
-`npm --global --prefix ~/.local install t3@latest` and verifies the result.
-Unmanaged CLI origins, unknown versions, or versions newer than verified stable
-hold setup without replacing the executable or downgrading it.
-
-Upstream's [stable CLI](https://github.com/pingdotgg/t3code/blob/v0.1.0/apps/server/src/cli/update.ts)
-derives its default update channel from its installed version; `t3 update --channel stable`
-is the supported explicit channel command. Setup installs the stable npm CLI
-and reconciles the service through that CLI rather than invoking an updater or
-passing guessed channel flags to `service install`. Existing newer services,
-unknown launcher state, pending updates/restarts and unmanaged server records
-hold setup. Inspect CLI (`t3 --version`) and running-server versions separately
-before migration; an HTTPS response alone does not prove the server version.
-
-The desktop has a separate update preference. If it still selects nightly,
-setup holds: choose **Stable** in T3 desktop Settings (stored as `latest`),
-quit/reopen the stable desktop, keep **Local environment** disabled and retry.
-Haoshoku preserves desktop/provider preferences and never changes providers.
-Setup reads `t3 connect status --json`, unlinks enabled Connect exposure,
-and confirms it is disabled before changing the service.
-
-Before `t3 service install`, Haoshoku writes `axstack-path.conf` and
-`axstack-tailscale.conf` in `~/.config/systemd/user/t3code.service.d/`.
-They set `T3CODE_TAILSCALE_SERVE=true` and keep the user's Grok CLI on the
-service PATH:
-
-```ini
-PATH=%h/.local/bin:%h/.bun/bin:%h/.grok/bin:/usr/local/bin:/usr/bin:/bin
-```
-
-Only root gets
-`axstack-sandbox.conf` with `IS_SANDBOX=1`. The service belongs to the account
-that runs Haoshoku, including root when root ownership is intentional.
-
-Setup requires an active `t3code.service`, a `tailscale serve status --json`
-HTTPS mapping to `http://127.0.0.1:3773`, and a successful response from the
-tailnet HTTPS URL. Readiness retries are bounded to 30 attempts with a
-five-second HTTPS timeout and two seconds between attempts. Failure reports
-what to inspect and returns incomplete setup. T3 stays bound to localhost.
-
-After setup, pair the phone using `t3 pair --tailscale`. If the CLI was freshly
-installed and `~/.local/bin` is not on PATH yet, run
-`~/.local/bin/t3 pair --tailscale`. T3 Connect authorization is no longer part
-of this flow. If the service has advanced past verified stable, setup holds.
-Inspect the CLI, service state and running-server version; do not force a downgrade.
-
-The full Debian path asks about Git and automatic worktree cleanup.
+[Read this section](README/debian-server.md#debian-t3-service-setup).
 
 ### One-time current Omarchy palette in T3 desktop
 
-The [importable Aurora snapshot](configs/t3/omarchy-current.json) is an unchanged
-copy of io's Omarchy-generated `~/.t3/userdata/themes/omarchy.json`, read on
-2026-10-16. It already uses T3's version-1 custom-theme format; no converter is
-needed. To take a newer snapshot, use the current generated file on that desktop.
-
-**Manual import and visual verification remain pending.** In the stable desktop:
-
-1. Keep **Local environment** disabled and connect to the existing standalone
-   service. Do not start another server for appearance setup.
-2. Open **Settings → Appearance**, open the theme import dialog, choose the JSON
-   file above (or paste its contents), and import it. If Aurora is already saved,
-   keep that copy unless you explicitly intend to replace its colors.
-3. Select **Aurora** for the desired appearance preview (the snapshot is dark)
-   and confirm the desktop renders it. This is a client-local choice; do not
-   perform these steps in Android or another browser.
-
-Upstream documents [custom-theme import and environment-theme limits](https://github.com/pingdotgg/t3code/blob/v0.1.0/docs/user/appearance.md).
-With Local environment disabled, the desktop cannot receive this palette from
-its main local environment. The supported importer saves custom themes in
-client storage; Haoshoku does not edit Electron storage or pretend that
-`t3 theme set omarchy` imported a theme into this client. Re-running setup does
-not import, select or overwrite themes. There is no automatic palette sync,
-daemon or change to the current Omarchy theme. Providers and other preferences
-stay unchanged. Live import, rendering and fleet/phone verification are separate
-rollout checkpoints.
+[Read this section](README/debian-server.md#one-time-current-omarchy-palette-in-t3-desktop).
 
 ### VPS Hermes Telegram transport
 
-`haoshoku --server-hermes-relay` verifies Hermes Telegram transport on a
-Debian-family server. Full Debian setup fails if Hermes readiness is incomplete.
-Arch/Omarchy setup never calls it.
-
-An existing usable Hermes installation is kept without upgrading or replacing
-it. If Hermes is absent, Haoshoku downloads the official installer and installs
-the pinned commit from
-[`configs/hermes-relay/hermes-runtime.json`](configs/hermes-relay/hermes-runtime.json)
-with `--skip-setup --skip-browser --skip-computer-use --non-interactive`.
-Credentials and gateway setup remain manual. Complete these private steps
-without placing secrets in this repository:
-
-1. Run `hermes setup` so `$HERMES_HOME/config.yaml` exists (`HERMES_HOME`
-   defaults to `~/.hermes`). Configure `TELEGRAM_BOT_TOKEN` in its `.env`.
-2. Set exactly one owner in `TELEGRAM_ALLOWED_USERS`. Set the private Telegram
-   home channel in `TELEGRAM_HOME_CHANNEL` or
-   `platforms.telegram.home_channel.chat_id` in `config.yaml` to that same ID.
-3. Install startup with
-   `hermes gateway install --no-start-now --start-on-login`, start or verify the
-   gateway manually, then rerun `haoshoku --server-hermes-relay`.
-
-The command succeeds only when Hermes is usable, its config exists, the bot
-token is configured, the private home channel resolves, and the gateway reports
-running. Missing or unverifiable readiness returns failure with retry guidance.
-A busy running gateway passes. Haoshoku never prompts for activation, restarts
-the gateway, or deploys or enables a relay plugin.
-It preserves existing Hermes config, credentials, plugins, plugin data, and
-legacy relay markers. Telegram notifications use `hermes send`.
-
-Debian Server does not ask for `deviceType`: that value only selects desktop
-audio and Hyprland/Omarchy variants. For the same reason the Debian path does
-not deploy audio, browser/MIME integration, the desktop-oriented user-script
-bundle, Brave managed policies, Hyprland monitors/workspaces, or Omazed. Those
-steps remain on the Arch/Omarchy path instead of being installed onto a
-headless server for superficial symmetry.
+[Read this section](README/debian-server.md#vps-hermes-telegram-transport).
 
 ## Logs and troubleshooting
 
@@ -791,158 +359,8 @@ bun run lint
 
 ## Opt-in Executor server
 
-```bash
-haoshoku --server-executor https://axat-vps.tail140c22.ts.net
-```
-
-Run this command as root on Debian with Docker, Docker Compose v2 and `ss`
-already available. Executor is never provisioned by default Arch or Debian
-setup. Supply an explicit HTTPS origin (host and optional port, optionally a
-trailing `/`). Credentials, other paths, queries and fragments are rejected.
-The origin is omitted from Haoshoku run logs; no credentials are requested or
-written by this installer.
-
-The default is a tailnet-only HTTPS origin via operator-managed Tailscale Serve:
-`https://axat-vps.<tailnet>.ts.net` (fleet: `https://axat-vps.tail140c22.ts.net`).
-Forward it to `127.0.0.1:4788`, including `/api`, `/mcp` and `/.well-known`;
-run setup and clients with tailnet access. Public reachability is not required.
-Only OAuth providers that fetch callbacks or client metadata
-server-side need temporary public exposure via operator-managed Funnel; arrange
-that exception for their flow and restore tailnet-only access afterwards.
-Haoshoku never changes nginx, DNS, TLS, firewall rules, Tailscale Serve/Funnel or
-OAuth client credentials. The hand-edited VPS compose remains operator-managed:
-a rerun refuses a differing compose rather than undoing the move to Serve.
-
-A fresh deployment pulls `ghcr.io/usefulsoftwareco/executor-selfhost:latest`,
-resolves its digest, checks the image's `65532:65532` runtime user and `/data`
-volume, and pins that digest in `/srv/executor/docker-compose.yml`. The only
-published port is `127.0.0.1:4788:4788`. `EXECUTOR_WEB_BASE_URL` supplies the
-explicit HTTPS origin. Haoshoku creates a private empty `data/` directory and
-changes ownership of that directory once; it never recursively changes data
-ownership. Upstream persists its database and generated encryption/session keys
-there. `haoshoku-executor.json` records the managed format and pulled digest.
-
-An existing manually configured deployment, differing compose file, unknown
-path, symlink, partial deployment, incompatible data ownership or conflicting
-container/port stops before pulling or starting anything. Existing files remain
-intact. Inspect and manage such deployments manually; there is no force,
-automatic adoption, migration, cleanup or upgrade path. A matching managed rerun
-checks the running `executor-selfhost` container and application without pulling,
-recreating, restarting, updating or rewriting it. Supported managed data files
-are `data.db` (plus SQLite `-wal`/`-shm` files), `secret.key` and `auth-secret.key`;
-additional files require manual inspection.
-
-Readiness checks require `/api/health` JSON with `status: "ok"` and Executor's
-OAuth authorization-server metadata advertising the configured origin and
-`/api/auth/mcp` endpoints, on both loopback and the configured HTTPS origin. Each
-request, including its body, has a five-second deadline and a 16 KiB limit;
-verification makes at most five attempts, with one second between failed attempts
-(at most four retries). Redirects, proxy HTML, generic error
-responses and wrong metadata fail. A failed step exits nonzero and preserves
-partial state for manual inspection; rerunning never tries destructive repair.
-
-“Container ready” does not prove owner onboarding, an authenticated MCP
-handshake or healthy integrations. Complete first-owner signup yourself in the
-tailnet web UI, then configure authentication, policies and integrations there.
-Haoshoku does not create owners, API keys, policies or OAuth connections.
+[Read this section](README/opt-in-executor-server.md#opt-in-executor-server).
 
 ## Opt-in Executor clients
 
-For an ordinary agent user, run this standalone command after making the existing
-Executor HTTPS MCP endpoint and its authentication available:
-
-```bash
-# Supply EXECUTOR_AUTHORIZATION securely in this process environment first.
-haoshoku --executor-clients https://executor.example.net/mcp
-```
-
-`EXECUTOR_AUTHORIZATION` must contain the **complete** Authorization header value:
-`Bearer ` followed by the API key/token accepted by that endpoint. Do not put the
-secret in CLI arguments, a tracked file, or shell history. Missing, empty, raw-token,
-and newline-bearing values are rejected without printing them. The command stores
-the full header inline in both private client configs (mode 0600). Future harness
-sessions do not need this environment variable. HTTPS is required;
-ports and endpoint paths such as `/mcp` are supported, credentials/query/fragment
-are rejected. This endpoint differs from `--server-executor`'s origin-only input.
-
-The command adds an `executor` HTTP entry for **both Claude Code and Codex**.
-It requires no root privileges or harness subprocess and can run from any directory.
-It is separate from server provisioning and never creates accounts, keys, policy
-rules, or integrations. It is not part of default OS setup and cannot be combined
-with another mode or `--os`.
-
-Supported configuration locations:
-
-- Claude Code: `$HOME/.claude.json`, or `$CLAUDE_CONFIG_DIR/.claude.json` when that
-  override is nonempty. The entry lives in the top-level `mcpServers` map (user
-  scope), with `headers.Authorization` set to the complete supplied header.
-- Codex: `$CODEX_HOME/config.toml`, defaulting to `$HOME/.codex/config.toml`.
-  The `[mcp_servers.executor]` table uses
-  `http_headers = { Authorization = "Bearer <API key/token>" }`.
-
-Claude's legacy `$HOME/.claude/.config.json` or
-`$CLAUDE_CONFIG_DIR/.config.json` takes precedence over the standard file.
-If that path exists (including a link), or its layout cannot be safely inspected,
-setup refuses before writing either client. A default `$HOME/.claude` directory
-with group write permissions or a resolvable symlink is supported when no legacy
-file exists and lookup succeeds; it is only a lookup path. Actual write-target ownership, permissions
-and link checks still apply, including to an explicit `CLAUDE_CONFIG_DIR`.
-It never reads, adopts or rewrites the legacy file. Use manual user-scope MCP
-setup in the intended Claude/Codex environment for these layouts. An explicitly empty `CLAUDE_CONFIG_DIR` is
-ambiguous for legacy lookup; unset it for the default home or set an absolute home.
-
-Nonempty `CLAUDE_CODE_CUSTOM_OAUTH_URL`, `USE_STAGING_OAUTH` or `USE_LOCAL_OAUTH`
-also causes refusal before either write; use manual setup with that environment.
-Custom OAuth selects `.claude-custom-oauth.json`. The installed production Claude
-2.1.292 fixes its staging/local filename selector to production; other builds'
-`.claude-staging-oauth.json` / `.claude-local-oauth.json` targets are unsupported.
-The switches are refused conservatively for any nonempty value, including `0`
-or `false`; setup does not interpret their value semantics or change them.
-
-Use absolute homes for the intended non-root user; `XDG_CONFIG_HOME` does not
-redirect these MCP files. Both clients use the saved header verbatim, including
-`Bearer `. The file locations were checked against Claude Code **2.1.292**,
-Codex **0.160.1**, and the
-[Claude MCP documentation](https://code.claude.com/docs/en/mcp),
-[Claude environment settings](https://code.claude.com/docs/en/env-vars), and
-[Codex MCP](https://developers.openai.com/codex/mcp) /
-[config-home documentation](https://developers.openai.com/codex/config-advanced).
-Earlier native offline readback verified the previous environment-reference entries;
-the inline entries and connectivity check are covered by local stub-server tests.
-Live native client and T3 session access, older versions and other Claude builds
-remain unverified.
-
-Both files are inspected before writes. A matching entry already at mode 0600 is
-a config no-op, including timestamps. Readable existing configs are restricted
-to mode 0600. A differing or unknown `executor`
-entry stops: reconcile it manually in the effective user config, then retry.
-Matching inline headers are reused; differing credentials and old environment-reference
-entries require manual reconciliation. They are never printed or migrated automatically.
-Unrelated JSON bytes, settings, TOML sections, and comments are retained. Duplicate
-JSON keys, malformed configs, linked files/directories, foreign ownership, and
-shared write permissions are refused. The additive TOML path conservatively refuses
-multiline strings and inline/dotted `mcp_servers` parent definitions; use regular
-MCP tables or configure the entry manually for those shapes.
-
-Config files use mode 0600 and new directories 0700. Existing files are updated
-in place, with changed-input checks before writing and restoration from memory after caught write failures. No secret-bearing
-backups or temporary config copies are created. Run with other config writers
-stopped: these two file updates are not an atomic transaction across crashes or
-power loss. An incomplete/recovery warning requires manual inspection of both
-files before retrying; empty directories may remain after a failed fresh setup.
-
-For **T3-launched sessions**, run setup with the homes of the user that runs the
-future T3 backend/harness. That backend and its future child sessions must use
-the same `HOME`, `CODEX_HOME`, and/or `CLAUDE_CONFIG_DIR`. The inline header is
-read from those files; no service or login-shell environment setup is needed.
-This command does not alter T3 provider settings, services, launch environments, or sessions. Managed/project config and explicit launch overrides
-can take precedence over these user entries.
-
-“Configuration written” or “already matches” reports local registration. The command
-then sends an authenticated MCP `initialize` request, accepting JSON or event-stream
-responses, and an `initialized` notification. The check has a five-second total
-timeout and refuses redirects. “Executor connected” confirms that check only;
-OAuth, tool discovery and account/integration access remain unverified. A failed
-check prints “Executor connection failed”, exits nonzero, and keeps the private
-configs for inspection and retry. Headers, server responses and transport errors
-are never printed. Verify expected tool access separately in the future harness session.
+[Read this section](README/opt-in-executor-clients.md#opt-in-executor-clients).
