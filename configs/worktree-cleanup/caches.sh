@@ -42,6 +42,8 @@ private_build_cache() {
         return 1
       fi
     done < <(find "$other" -type l -print0)
+    # An unreadable sibling cannot prove that this cache is private.
+    wait "$!" || return 1
   done <<< "$listing"
   return 0
 }
