@@ -16,6 +16,9 @@ echo tracked > "$FIXTURE/open-cache/tracked/target/data"
 git -C "$FIXTURE/open-cache" add -f tracked/target/data
 git -C "$FIXTURE/open-cache" commit -qm tracked
 ln -s "$FIXTURE/outside-cache" "$FIXTURE/open-cache/cargo-target"
+mkdir -p "$FIXTURE/open-cache/plain/target" "$FIXTURE/open-cache/.next" "$FIXTURE/open-cache/.turbo"
+printf '!plain/target/\n!plain/target/**\n' >> "$FIXTURE/open-cache/.gitignore"
+echo precious > "$FIXTURE/open-cache/plain/target/data"
 old "$FIXTURE/open-cache"
 touch "$(git -C "$FIXTURE/recent" rev-parse --git-path HEAD)"
 (cd "$FIXTURE/in-use" && exec sleep 120) &
@@ -41,6 +44,9 @@ assert_exists "$evidence/tagged"
 run_cleanup --apply
 assert_absent "$FIXTURE/open-cache/node_modules"
 assert_absent "$FIXTURE/open-cache/target"
+assert_absent "$FIXTURE/open-cache/.next"
+assert_absent "$FIXTURE/open-cache/.turbo"
+assert_exists "$FIXTURE/open-cache/plain/target/data"
 assert_exists "$FIXTURE/open-cache/keep/data"
 assert_exists "$FIXTURE/open-cache/tracked/target/data"
 assert_exists "$FIXTURE/open-cache/cargo-target"

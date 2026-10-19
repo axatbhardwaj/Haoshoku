@@ -298,3 +298,14 @@ describe("seeded configs/worktree-cleanup/ (in-tree static files)", () => {
     expect(calls).toContain("systemctl --user disable --now defi-worktree-cleanup.timer defi-worktree-cleanup.service");
     expect(calls.indexOf("systemctl --user disable --now defi-worktree-cleanup.timer defi-worktree-cleanup.service")).toBeLessThan(calls.indexOf("systemctl --user enable --now disk-cleanup.timer"));
  });
+
+ it("deploys a complete runtime that writes its default dry-run report", async () => {
+   await wtc.syncWorktreeCleanup({ home: tmpHome, projectRoot: PROJECT_ROOT, enable: false });
+   const result = Bun.spawnSync(["bash", path.join(liveScriptDir(), SCRIPT), "--dry-run", "--no-fetch"], {
+     env: { ...process.env, HOME: tmpHome, CLEANUP_REPO_ROOTS: path.join(tmpHome, "absent"), T3_WORKTREES_ROOT: path.join(tmpHome, "absent-t3") },
+   });
+   expect(result.exitCode).toBe(0);
+   expect(result.stdout.toString()).toContain("DRY-RUN");
+   expect(fs.readFileSync(path.join(tmpHome, ".local/state/disk-cleanup/last-run.html"), "utf8")).toContain("Daily disk cleanup");
+   expect(fs.statSync(path.join(liveScriptDir(), "cleanup-temp.sh")).mode & 0o777).toBe(0o755);
+ });
