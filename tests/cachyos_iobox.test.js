@@ -21,6 +21,7 @@ describe("iobox full setup", () => {
 			return result;
 		};
 		const result = await runCachyOSSetup({
+        syncWorktreeCleanupImpl: async () => {},
 			promptDeviceTypeImpl: record("device", "pc"),
 			readDeviceTypeImpl: () => "iobox",
 			startSudoSessionImpl: async () => record("sudo-stop"),
@@ -159,6 +160,7 @@ it("exits the full iobox CLI non-zero naming linger when the service step fails"
 		mock.module(${JSON.stringify(setup)}, () => ({
 			...arch,
 			runCachyOSSetup: () => runSetup({
+        syncWorktreeCleanupImpl: async () => {},
 				promptDeviceTypeImpl: async () => {},
 				readDeviceTypeImpl: () => "iobox",
 				startSudoSessionImpl: async () => () => console.log("SUDO_STOPPED"),
@@ -212,6 +214,7 @@ it.each([
 		log.warning = log.error = (message) => messages.push(message);
 		try {
 			const result = await runCachyOSSetup({
+        syncWorktreeCleanupImpl: async () => {},
 				readDeviceTypeImpl: () => deviceType,
 				promptDeviceTypeImpl: async () => {},
 				startSudoSessionImpl: async () => () => events.push("stop"),
