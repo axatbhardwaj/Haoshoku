@@ -161,12 +161,16 @@ handle_worktree() {
     REVIEW:*)  PLAN_REVIEW+=("$wt|$branch|${verdict#REVIEW:}") ;;
     KEEP)      PLAN_KEEP+=("$wt|$branch|$pr") ;;
   esac
+  if [[ "$verdict" != REMOVE && "$busy" == 0 ]] && (( idle >= CACHE_IDLE_DAYS * 86400 )); then
+    plan_build_caches "$wt"
+  fi
 }
 
 # process_repo <repo_dir>: parse `git worktree list --porcelain` into blocks
 # (block 0 is the primary worktree) and plan each.
 process_repo() {
   local repo=$1
+  plan_tagged_caches "$repo"
   local -a blocks=()
   local wt="" branch="" det=0 line
 
@@ -288,11 +292,11 @@ do_remove() {
 
 apply_plan() {
   local entry wt branch main_wt
-  [[ ${#PLAN_REMOVE[@]} -eq 0 ]] && return
   for entry in "${PLAN_REMOVE[@]}"; do
     IFS='|' read -r wt branch _pr main_wt <<<"$entry"
     do_remove "$main_wt" "$wt" "$branch"
   done
+  apply_caches
 }
 
 # ---------------------------------------------------------------------------
@@ -321,6 +325,9 @@ stale_active_work() {
     awk -v p="$wt" 'substr($0,1,length(p))==p {print NR"\t"$0}' "$ACTIVE_WORK"
   done
 }
+
+# shellcheck source=caches.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/caches.sh"
 
 # shellcheck source=report.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/report.sh"
@@ -389,6 +396,9 @@ main() {
     echo "[$ts] worktree-cleanup DRY-RUN: would-remove=${#PLAN_REMOVE[@]} review=${#PLAN_REVIEW[@]} kept=${#PLAN_KEEP[@]}"
     local e; for e in "${PLAN_REMOVE[@]:-}"; do [[ -n "$e" ]] && echo "  would-remove: ${e%%|*}"; done
   fi
+  echo "  caches: planned=${#PLAN_CACHE[@]} removed=${#DONE_CACHE[@]}"
+  local cache
+  for cache in "${PLAN_CACHE[@]}"; do echo "  cache: ${cache%%|*}"; done
   echo "report: $HTML_OUT"
 
   # Apply-mode removal failures must fail the run so systemd marks the unit failed.
