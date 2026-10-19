@@ -13,6 +13,7 @@ import {
 	safeCopyFile,
 	startSudoSession,
 } from "../common/utils.js";
+import { syncWorktreeCleanup } from "../helpers/configure_worktree_cleanup.js";
 import { syncAgentsConfig } from "../helpers/configure_agents.js";
 import { configureAudio } from "../helpers/configure_audio.js";
 import { configureAxstack } from "../helpers/configure_axstack.js";
@@ -438,6 +439,7 @@ export async function configureUserApps({
 }
 
 export async function runCachyOSSetup({
+	syncWorktreeCleanupImpl = syncWorktreeCleanup,
 	prepareArchPackageManagerImpl = prepareArchPackageManager,
 	ensureRustToolchainImpl = ensureRustToolchain,
 	ensureAurHelperImpl = ensureAurHelper,
@@ -493,6 +495,13 @@ export async function runCachyOSSetup({
 			isOmarchy,
 			deviceType,
 		});
+		try {
+			await syncWorktreeCleanupImpl();
+		} catch (err) {
+			log.warning(
+				`Disk cleanup setup failed (${err?.message ?? err}). Retry: haoshoku --worktree-cleanup`,
+			);
+		}
 		try {
 			if (!(await configureTailscaleT3Impl({ deviceType }))) {
 				if (isIobox) {
