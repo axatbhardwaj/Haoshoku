@@ -89,8 +89,11 @@ base_ref() {
 #   merged   = HEAD is an ancestor of the remote base branch.
 git_facts() {
   local wt=$1 dirty=0 unpushed=0 merged=0 n base
-  local status
-  status=$(git -c core.fsmonitor=false -c core.untrackedCache=false -C "$wt" status --porcelain --untracked-files=all --ignore-submodules=none 2>/dev/null) || dirty=1
+  local status flags
+  flags=$(git -C "$wt" ls-files -v 2>/dev/null) || dirty=1
+  # Index promises (including sparse checkout) can suppress real tracked edits.
+  grep -Eq '^[a-zS] ' <<< "$flags" && dirty=1
+  status=$(git -c core.fsmonitor=false -c core.untrackedCache=false -c core.fileMode=true -C "$wt" status --porcelain --untracked-files=all --ignore-submodules=none 2>/dev/null) || dirty=1
   [[ -n "$status" ]] && dirty=1
   n=$(git -C "$wt" rev-list --count HEAD --not --remotes 2>/dev/null) || n=1
   [[ "${n:-0}" -gt 0 ]] && unpushed=1
