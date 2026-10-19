@@ -2,6 +2,8 @@ import { describe, expect, it } from "bun:test";
 import fs from "node:fs";
 import path from "node:path";
 
+import { readChangelogHistory } from "./changelog_history.js";
+
 const root = path.join(import.meta.dir, "..");
 const activeTextRouteFiles = [
 	"configs/omarchy/haoshoku/workspaces-pc.lua",
@@ -63,7 +65,7 @@ describe("active terminal caller boundary", () => {
 		expect(
 			fs.existsSync(path.join(root, "configs", "alacritty", "alacritty.toml")),
 		).toBe(true);
-		const changelog = fs.readFileSync(path.join(root, "CHANGELOG.md"), "utf8");
+		const changelog = readChangelogHistory(root);
 		expect(changelog).toContain(
 			"Keep one dedicated home-rooted ghostty terminal on workspace 7",
 		);

@@ -2,11 +2,13 @@ import { describe, expect, it } from "bun:test";
 import fs from "node:fs";
 import path from "node:path";
 
+import { readChangelogHistory } from "./changelog_history.js";
+
 const root = path.resolve(import.meta.dir, "..");
 
 describe("Omarchy migration documentation", () => {
 	it("accurately documents all v4-gated helpers and hyprctl dispatch semantics", () => {
-		const changelog = fs.readFileSync(path.join(root, "CHANGELOG.md"), "utf8");
+		const changelog = readChangelogHistory(root);
 		expect(changelog.replace(/\s+/g, " ")).toContain(
 			"Migration, workspaces, hyprmoncfg, and plugin helpers gate on the installed Omarchy major version.",
 		);
