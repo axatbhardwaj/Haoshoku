@@ -3,6 +3,22 @@
 PLAN_BRANCH=()  # repo|branch|recorded tip
 DONE_BRANCH=()
 
+# Detached HEADs can still own a branch during rebase or bisect.
+checked_branches() {
+  local common=$1 gd state branch
+  git -C "$common" worktree list --porcelain || return 1
+  for gd in "$common" "$common"/worktrees/*; do
+    [[ -d "$gd" ]] || continue
+    for state in rebase-merge/head-name rebase-apply/head-name BISECT_START; do
+      [[ -f "$gd/$state" ]] || continue
+      IFS= read -r branch < "$gd/$state" || continue
+      [[ -n "$branch" ]] || continue
+      branch=${branch#refs/heads/}
+      printf 'branch refs/heads/%s\n' "$branch"
+    done
+  done
+}
+
 plan_branches() {
   local repo=$1 base checked ref tip stamp branch unpushed now
   repo=$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir) || return
@@ -10,7 +26,7 @@ plan_branches() {
   # Without a known remote default, we cannot prove the default is protected.
   [[ -n "$base" ]] || return 0
   base=${base#refs/remotes/origin/}
-  checked=$(git -C "$repo" worktree list --porcelain) || return
+  checked=$(checked_branches "$repo") || return
   now=$(date +%s)
   while IFS=$'\t' read -r ref tip stamp; do
     branch=${ref#refs/heads/}
@@ -27,7 +43,7 @@ apply_branches() {
   local entry repo branch tip checked unpushed out current
   for entry in "${PLAN_BRANCH[@]}"; do
     IFS='|' read -r repo branch tip <<< "$entry"
-    checked=$(git -C "$repo" worktree list --porcelain) || {
+    checked=$(checked_branches "$repo") || {
       ERRORS+=("$repo|$branch|cannot recheck worktrees"); continue;
     }
     grep -Fxq "branch refs/heads/$branch" <<< "$checked" && continue
