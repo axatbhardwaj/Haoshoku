@@ -9,6 +9,8 @@
 
 # Prevent read-only status probes from refreshing the index activity timestamp.
 export GIT_OPTIONAL_LOCKS=0
+# Reachability must describe stored commits, not local graph substitutions.
+export GIT_NO_REPLACE_OBJECTS=1 GIT_GRAFT_FILE=/dev/null
 CLEANUP_REPO_ROOTS="${CLEANUP_REPO_ROOTS:-$HOME/defi:$HOME/dev:$HOME/Work}"
 T3_WORKTREES_ROOT="${T3_WORKTREES_ROOT:-$HOME/.t3/worktrees}"
 MIN_IDLE_HOURS="${MIN_IDLE_HOURS:-24}"
