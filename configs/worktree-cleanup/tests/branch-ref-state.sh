@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 if [[ $# == 0 ]]; then
-  for scenario in symbolic default symbolic-race; do bash "$0" "$scenario" || exit 1; done
+  for scenario in symbolic default symbolic-race unknown-default; do bash "$0" "$scenario" || exit 1; done
   exit 0
 fi
 # shellcheck source=fixture.sh
@@ -16,7 +16,9 @@ else
   # shellcheck source=../cleanup-worktrees.sh
   source "$TEST_DIR/cleanup-worktrees.sh"
   plan_branches "$REPO"
-  if [[ "$1" == default ]]; then
+  if [[ "$1" == unknown-default ]]; then
+    git -C "$REPO" symbolic-ref refs/remotes/origin/HEAD refs/remotes/upstream/candidate
+  elif [[ "$1" == default ]]; then
     git -C "$REPO" symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/candidate
   else
     git -C "$REPO" symbolic-ref refs/heads/candidate refs/heads/main

@@ -47,7 +47,7 @@ plan_branches() {
   repo=$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir) || return
   base=$(git -C "$repo" symbolic-ref --quiet refs/remotes/origin/HEAD 2>/dev/null) || return 0
   # Without a known remote default, we cannot prove the default is protected.
-  [[ -n "$base" ]] || return 0
+  [[ "$base" == refs/remotes/origin/* ]] || return 0
   base=${base#refs/remotes/origin/}
   checked=$(checked_branches "$repo") || return
   while IFS=$'\t' read -r ref tip symbolic; do
@@ -73,6 +73,7 @@ apply_branches() {
       PLAN_REVIEW+=("$repo|$branch|unsupported ref storage; kept"); continue
     fi
     base=$(git -C "$repo" symbolic-ref --quiet refs/remotes/origin/HEAD) || continue
+    [[ "$base" == refs/remotes/origin/* ]] || continue
     [[ "$branch" == "${base#refs/remotes/origin/}" ]] && continue
     symbolic=$(git -C "$repo" for-each-ref --format='%(symref)' "refs/heads/$branch") || continue
     [[ -n "$symbolic" ]] && continue
