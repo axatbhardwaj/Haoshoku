@@ -507,8 +507,8 @@ describe("Omarchy plugin installer", () => {
 				disableOnInstall: ["omarchy.workspaces"],
 			},
 			{
-				id: "io.github.vk2r.battle-station",
-				url: "https://github.com/vk2r/battle-station.git",
+				id: "io.github.woogy7.vitals",
+				url: "https://github.com/Woogy7/omarchy-vitals.git",
 				manualAuth: null,
 			},
 			{
