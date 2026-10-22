@@ -13,6 +13,15 @@ reconciles manifest plugins back to installed and enabled. If
 performs no plugin work and returns `snapshotUnavailable: true`; the
 side-effect-free manual-auth checklist is still printed.
 
+BattleStation (`io.github.vk2r.battle-station`) replaces the former
+`dizziee.system-stats` widget in the center of the bar. It shows CPU, RAM and
+GPU meters (plus local LLM runtime state for llama.cpp, Ollama, LM Studio and
+vLLM when present) and ships a prebuilt x86_64 Rust engine, so it needs
+Omarchy Quattro on x86_64 and `btop` for its Trace action. Haoshoku never
+uninstalls plugins, so existing machines keep the old `dizziee.system-stats`
+files until they are removed manually with
+`omarchy plugin remove dizziee.system-stats`.
+
 The manifest includes the Speech Orb dictation HUD. Setup turns off voxtype's
 own OSD (`voxtype config set osd.enabled false`) and restarts a running
 `voxtype.service`, so only the orb appears while you dictate.

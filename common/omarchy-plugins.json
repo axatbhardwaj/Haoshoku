@@ -28,13 +28,11 @@
 		"id": "io.github.thetrueferret.decent-workspaces",
 		"url": "https://github.com/TheTrueFerret/omarchy-decent-workspaces.git",
 		"manualAuth": null,
-		"disableOnInstall": [
-			"omarchy.workspaces"
-		]
+		"disableOnInstall": ["omarchy.workspaces"]
 	},
 	{
-		"id": "dizziee.system-stats",
-		"url": "https://github.com/JJDizz1L/dizziee.system-stats.git",
+		"id": "io.github.vk2r.battle-station",
+		"url": "https://github.com/vk2r/battle-station.git",
 		"manualAuth": null
 	},
 	{

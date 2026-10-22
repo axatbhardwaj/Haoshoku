@@ -511,7 +511,7 @@ it("places every manifest bar widget in the shipped bar layout", () => {
 		"omaconnect",
 		"io.github.thetrueferret.decent-workspaces",
 		"io.github.nag3sy.feishin",
-		"dizziee.system-stats",
+		"io.github.vk2r.battle-station",
 		"aislandener.galaxy-buds",
 		"io.github.nodrej.speech-orb",
 	]);
