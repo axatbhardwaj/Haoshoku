@@ -343,7 +343,10 @@ describe("Omarchy plugin installer", () => {
 					requirement:
 						"Needs the hyprmoncfg AUR package and daemon (installed separately; not handled by this installer)",
 				},
-				{ id: "io.github.ciryon.pullbar", requirement: "GitHub CLI auth (`gh auth login`)" },
+				{
+					id: "io.github.ciryon.pullbar",
+					requirement: "GitHub CLI auth (`gh auth login`)",
+				},
 				{
 					id: "io.github.treramey.raindrop-bookmarks",
 					requirement: "Raindrop API token",
@@ -482,11 +485,11 @@ describe("Omarchy plugin installer", () => {
 				url: "https://github.com/nightdevil00/white.nights.git",
 				manualAuth: null,
 			},
-		{
-			id: "io.github.ciryon.pullbar",
-			url: "https://github.com/ciryon/omarchy-pullbar.git",
-			manualAuth: "GitHub CLI auth (`gh auth login`)",
-		},
+			{
+				id: "io.github.ciryon.pullbar",
+				url: "https://github.com/ciryon/omarchy-pullbar.git",
+				manualAuth: "GitHub CLI auth (`gh auth login`)",
+			},
 			{
 				id: "io.github.treramey.raindrop-bookmarks",
 				url: "https://github.com/treramey/omarchy-raindrop-bookmarks.git",
@@ -504,12 +507,12 @@ describe("Omarchy plugin installer", () => {
 				disableOnInstall: ["omarchy.workspaces"],
 			},
 			{
-				id: "dizziee.system-stats",
-				url: "https://github.com/JJDizz1L/dizziee.system-stats.git",
+				id: "io.github.vk2r.battle-station",
+				url: "https://github.com/vk2r/battle-station.git",
 				manualAuth: null,
 			},
-		{
-			id: "aislandener.galaxy-buds",
+			{
+				id: "aislandener.galaxy-buds",
 				url: "https://github.com/aislandener/galaxy-buds-control.git",
 				manualAuth: "Galaxy Buds Bluetooth pairing",
 			},

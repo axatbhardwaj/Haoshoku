@@ -4,6 +4,10 @@
 
 ### Changed
 
+- Replace the `dizziee.system-stats` Omarchy bar widget with BattleStation
+  (`io.github.vk2r.battle-station`) in the same center bar slot, adding GPU
+  and local-LLM runtime monitoring. Haoshoku never uninstalls plugins, so
+  existing machines keep the old plugin files until manually removed.
 - System rules exclude `systemd-private-*` directories themselves; their inner
   `tmp` contents use their parent's threshold: 3 days under `/tmp`, 30 days under
   `/var/tmp`, as in the distro default.
