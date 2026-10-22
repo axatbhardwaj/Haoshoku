@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Replace BattleStation (`io.github.vk2r.battle-station`) with Vitals
+  (`io.github.woogy7.vitals`) in the same center bar slot. Vitals gives a
+  tabbed btop-style panel with per-core CPU usage and temperatures, fans,
+  GPU utilisation/clocks/temperature/power/VRAM, all machine sensors, disks
+  and processes, instead of bar meters only. Haoshoku never uninstalls
+  plugins, so existing machines keep the old plugin files until manually
+  removed.
+
 ## 12.5.3 - 2026-10-22
 
 ### Changed

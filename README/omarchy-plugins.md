@@ -13,14 +13,18 @@ reconciles manifest plugins back to installed and enabled. If
 performs no plugin work and returns `snapshotUnavailable: true`; the
 side-effect-free manual-auth checklist is still printed.
 
-BattleStation (`io.github.vk2r.battle-station`) replaces the former
-`dizziee.system-stats` widget in the center of the bar. It shows CPU, RAM and
-GPU meters (plus local LLM runtime state for llama.cpp, Ollama, LM Studio and
-vLLM when present) and ships a prebuilt x86_64 Rust engine, so it needs
-Omarchy Quattro on x86_64 and `btop` for its Trace action. Haoshoku never
-uninstalls plugins, so existing machines keep the old `dizziee.system-stats`
-files until they are removed manually with
-`omarchy plugin remove dizziee.system-stats`.
+Vitals (`io.github.woogy7.vitals`) occupies the system-monitor slot in the
+center of the bar, replacing BattleStation (`io.github.vk2r.battle-station`),
+which itself replaced `dizziee.system-stats`. The bar shows a chip icon;
+clicking it opens a tabbed btop-style panel covering CPU (per-core usage and
+temperature, frequency, fans, package power), memory, disks (including NVMe
+temperatures), network, GPU (busy %, clocks, temperature, power, VRAM),
+every machine sensor, and a sortable process list with terminate/kill
+actions. Its Python collector is standard-library only and runs only while
+the panel is open, so a closed panel costs nothing. Haoshoku never
+uninstalls plugins, so existing machines keep the old BattleStation files
+until they are removed manually with
+`omarchy plugin remove io.github.vk2r.battle-station`.
 
 The manifest includes the Speech Orb dictation HUD. Setup turns off voxtype's
 own OSD (`voxtype config set osd.enabled false`) and restarts a running
