@@ -61,6 +61,13 @@ function fixture({
 		},
 		fsImpl: new Proxy(fs, {
 			get(target, key) {
+				// Executable discovery must see fixture files, never host Python installs.
+				if (key === "statSync")
+					return (file, ...args) => {
+						if (!path.resolve(file).startsWith(`${home}${path.sep}`))
+							throw new Error(`No fixture file: ${file}`);
+						return target.statSync(file, ...args);
+					};
 				if (mutators.has(key))
 					return (...args) => {
 						writes.push([key, args[0]]);
