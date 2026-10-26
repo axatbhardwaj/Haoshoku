@@ -123,6 +123,10 @@ describe("findActiveModeFlags", () => {
 		).toEqual([]);
 	});
 
+	it("ignores the retired agent accounts mode", () => {
+		expect(findActiveModeFlags({ agentAccounts: true })).toEqual([]);
+	});
+
 	it("ignores retired Paseo profile sync and backup modes", () => {
 		expect(
 			findActiveModeFlags({ paseoProfiles: true, paseoProfilesBackup: true }),

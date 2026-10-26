@@ -44,7 +44,6 @@ describe("Arch daily disk cleanup", () => {
 						configureCodexImpl: noop,
 						syncAgentsConfigImpl: noop,
 						configureAxstackImpl: async () => ({ ok: true }),
-						configureAgentAccountsImpl: noop,
 						syncWorktreeCleanupImpl: async () => events.push("cleanup"),
 					});
 				},

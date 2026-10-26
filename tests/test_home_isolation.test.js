@@ -3,16 +3,12 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-it("isolates default agent-account writes before setup modules load", () => {
+it("isolates default home writes before setup modules load", () => {
 	const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "test-home-guard-"));
 	const original = path.join(scratch, "original-home");
 	const testFile = path.join(scratch, "default-home.test.js");
 	fs.mkdirSync(original);
 	fs.writeFileSync(path.join(original, "preserve"), "original-home bytes\n");
-	const helper = path.resolve(
-		import.meta.dir,
-		"../src/helpers/configure_agent_accounts.js",
-	);
 	fs.writeFileSync(
 		testFile,
 		`
@@ -20,14 +16,12 @@ it("isolates default agent-account writes before setup modules load", () => {
 		import fs from "node:fs";
 		import { homedir } from "node:os";
 		import path from "node:path";
-		import { configureAgentAccounts } from ${JSON.stringify(helper)};
 		it("uses a disposable home even without a helper stub", () => {
 			const home = homedir();
 			expect(home).not.toBe(${JSON.stringify(original)});
 			fs.mkdirSync(path.join(home, ".claude"));
 			fs.writeFileSync(path.join(home, ".claude", "CLAUDE.md"), "fixture profile");
-			expect(configureAgentAccounts()).toBe(true);
-			expect(fs.realpathSync(path.join(home, ".claude-alt", "CLAUDE.md"))).toBe(path.join(home, ".claude", "CLAUDE.md"));
+			expect(fs.readFileSync(path.join(homedir(), ".claude", "CLAUDE.md"), "utf8")).toBe("fixture profile");
 		});
 	`,
 	);

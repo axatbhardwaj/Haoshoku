@@ -23,7 +23,6 @@ function userAppDoubles(overrides = {}) {
 		configureCodexImpl: async () => {},
 		syncAgentsConfigImpl: async () => {},
 		configureAxstackImpl: async () => ({ ok: true }),
-		configureAgentAccountsImpl: async () => true,
 		...overrides,
 	};
 }
@@ -107,7 +106,6 @@ describe("device-aware user apps", () => {
 			configureCodexImpl: record("codex", { ok: true }),
 			syncAgentsConfigImpl: record("agents"),
 			configureAxstackImpl: record("axstack", { ok: true }),
-			configureAgentAccountsImpl: async () => true,
 		});
 		expect(result).toEqual({ claude: { ok: true }, codex: { ok: true } });
 		expect(calls).toEqual([

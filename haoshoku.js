@@ -22,7 +22,6 @@ import {
 	backupAgentsConfig,
 	syncAgentsConfig,
 } from "./src/helpers/configure_agents.js";
-import { configureAgentAccounts } from "./src/helpers/configure_agent_accounts.js";
 import {
 	backupAudioConfig,
 	syncAudioConfig,
@@ -162,10 +161,6 @@ program
 	.option(
 		"--agents-backup",
 		"Backup live Claude profile to configs/agent-profile/PROFILE.md",
-	)
-	.option(
-		"--agent-accounts",
-		"Create Claude and Codex alt-account credential overlays",
 	)
 	.option("--axstack", "Install or update the pinned Axstack release")
 	.option("--axstack-check", "Check Axstack release and harness setup")
@@ -402,11 +397,6 @@ async function runAction(options) {
 
 	if (options.agents) {
 		await syncAgentsConfig();
-		return;
-	}
-
-	if (options.agentAccounts) {
-		if (!configureAgentAccounts()) process.exitCode = 1;
 		return;
 	}
 

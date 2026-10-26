@@ -231,7 +231,6 @@ haoshoku --executor-clients https://executor.example.net/mcp
 haoshoku --device-type laptop
 haoshoku --device-type iobox
 haoshoku --fleet-ssh
-haoshoku --agent-accounts
 haoshoku --kde-connect-commands
 haoshoku --audio
 haoshoku --audio-backup
@@ -283,6 +282,10 @@ Run `haoshoku --help` for the complete current list.
 ## iobox profile and fleet
 
 [Read this section](README/iobox-profile-and-fleet.md#iobox-profile-and-fleet).
+
+### Subscriptions via CLIProxyAPI hub
+
+[Read this section](README/iobox-profile-and-fleet.md#subscriptions-via-cliproxyapi-hub).
 
 ### Bring-up checklist
 

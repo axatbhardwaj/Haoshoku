@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Removed
+
+- Retire `--agent-accounts` and its iobox default run. Claude and Codex
+  subscriptions are pooled by the CLIProxyAPI hub on axat-vps, so setup no
+  longer creates `~/.claude-alt` or `~/.codex-alt`; existing directories are
+  left untouched. The iobox docs and shared agent profile describe the hub
+  logins and the single `claudeAgent`/`codex` T3 pool instances.
+
 ## 12.5.4 - 2026-10-22
 
 ### Changed
