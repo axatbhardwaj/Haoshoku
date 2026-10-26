@@ -27,7 +27,6 @@ function userAppDoubles(overrides = {}) {
 		configureCodexImpl: async () => {},
 		syncAgentsConfigImpl: async () => {},
 		configureAxstackImpl: async () => ({ ok: true }),
-		configureAgentAccountsImpl: async () => true,
 		...overrides,
 	};
 }
