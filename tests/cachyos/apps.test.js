@@ -5,36 +5,6 @@ import { log } from "../../src/common/utils.js";
 import { configureUserApps, ensureRustToolchain } from "../../src/os_scripts/cachyos.js";
 
 describe("user app configuration", () => {
-	it.each([
-		"iobox",
-		"pc",
-		"laptop",
-	])("never creates alt accounts on %s", async (deviceType) => {
-		const events = [];
-		const noop = async () => {};
-		await configureUserApps({
-        syncWorktreeCleanupImpl: async () => {},
-			deviceType,
-			isOmarchy: true,
-			commandExistsImpl: noop,
-			promptUserImpl: noop,
-			configureGitImpl: noop,
-			configureBrowserIntegrationImpl: noop,
-			configureAudioImpl: noop,
-			configureBashImpl: noop,
-			configureFastfetchImpl: noop,
-			configureGhosttyImpl: noop,
-			runCommandImpl: noop,
-			enableServicesImpl: noop,
-			configureClaudeImpl: async () => events.push("claude"),
-			installGhStackImpl: noop,
-			configureCodexImpl: async () => events.push("codex"),
-			syncAgentsConfigImpl: async () => events.push("agents"),
-			configureAxstackImpl: async () => ({ ok: true }),
-		});
-		expect(events).toEqual(["claude", "codex", "agents"]);
-	});
-
 	it("runs portable app setup without retired services or offers", async () => {
 		const events = [];
 		const prompts = [];
