@@ -119,9 +119,12 @@ thread/GitHub; a failed or uncertain delivery preserves the hold.
 
 ## T3 provider settings
 
+Subscriptions are pooled through the CLIProxyAPI hub on axat-vps
+(`https://axat-vps.tail140c22.ts.net:8317`); each host has one `claudeAgent`
+and one `codex` pool instance. Never print the hub client or management key.
 After changing T3 provider settings (`~/.t3/userdata/settings.json`
-providerInstances) or account homes (`~/.codex-alt`, `~/.claude-alt`), run
-`t3-provider-fix` (in `~/.local/bin`; `--dry-run` to preview). Use absolute
+providerInstances), run `t3-provider-fix` (in `~/.local/bin`; `--dry-run` to
+preview). Use absolute
 real binaries for `binaryPath`, never bare names or `~/.local/bin` mise
 wrappers. Never leave real files or backups inside a Codex shadow home except
 `auth.json`.
