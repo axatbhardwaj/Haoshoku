@@ -19,6 +19,7 @@ artifact. Do not create or update Linear items for those repositories.
 | `CHANGELOG.md`  | Version history                   | Checking release notes                          |
 | `info.txt`      | Theme names and resource links    | Reference for KDE theme components              |
 | `bun.lock`      | Dependency lockfile (Bun)         | Checking exact dependency versions              |
+| `bunfig.toml`   | Test preload that isolates HOME   | Debugging test isolation                        |
 | `install.sh`    | No-Bun Linux binary installer     | Changing install locations or release downloads |
 | `AGENTS.md`     | Codex copy of this file; keep both in sync | Editing repo guidance for either harness |
 | `biome.json`    | Lint/format config and fixture excludes | Changing lint rules or excluded fixtures |
@@ -34,6 +35,9 @@ artifact. Do not create or update Linear items for those repositories.
 | `tests/`    | Test suite                        | Writing tests, debugging test failures          |
 | `scripts/`  | Build and release scripts         | Modifying release process                       |
 | `docs/`     | Additional documentation          | Understanding project details                   |
+| `CHANGELOG/`| Archived changelog pages          | Checking older release notes                    |
+| `README/`   | Split README topic pages (iobox, Executor, Debian, Omarchy) | Reading setup details linked from README.md |
+| `.github/`  | CI, npm publish and Linux binary release workflows | Changing CI or release automation   |
 | `deskback/` | Wallpaper assets                  | Adding wallpapers                               |
 | `icons/`    | Icon assets                       | Adding icons                                    |
 | `video/`    | Remotion project for the README intro animation | Regenerating `icons/haoshoku-readme.gif`       |
@@ -60,7 +64,7 @@ route. Reruns do not uninstall existing copies. See the README for all eleven
 retired CLI forms and current T3, tailnet SSH and opt-in Executor contracts.
 
 The [current reconciliation notice](README.md#current-reconciliation-and-authority)
-supersedes historical human-only merge/no-release gates. T1–T7 are merged for
+supersedes historical human-only merge/no-release gates. T1–T7 shipped in
 12.3.0; the owning driver handles and verifies tag, npm and Linux binary
 publication separately. Preserve dated specs, plans and approvals. Author
 candidates stop locally; live-host changes remain deferred and separately authorized.

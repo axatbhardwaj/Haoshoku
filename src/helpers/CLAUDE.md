@@ -10,12 +10,16 @@ Standalone setup scripts for specific tools.
 | `configure_brave_managed_policies.js` | Brave theme/default-browser managed policies plus policy-tree repair | Modifying browser policies, theme color sync, or policy ownership |
 | `configure_chromium_profiles.js` | Validated shared browser-profile registry seeding in `~/.haoshoku.json` | Modifying managed browser profiles or session-name validation |
 | `configure_claude.js` | Claude config sync, backup, update     | Adding Claude config features, debugging sync |
+| `configure_agents.js` | Deploys the shared `PROFILE.md` to Claude, Codex, Opencode and Antigravity | Changing global agent instruction deploy |
+| `agent_instructions.js` | Preserves the Axstack-owned block when replacing the profile | Changing profile/Axstack block handling |
 | `configure_axstack.js` | Latest npm Axstack release install with registry SHA-512 integrity verification under `~/.local/share/axstack/releases/<version>` with the `~/.local/bin/axstack` shim, no silent downgrade, then `axstack install --harness claude\|codex`; `checkAxstack` reports shim/version/harness state and both roles.json paths; Arch harnesses reuse an already runnable stable CLI >=0.1.0 on the caller PATH without ownership, Node/npm or T3 registry prerequisites; absent CLI and exact managed nightly links use shared supported npm CLI preparation, retaining origin/version checks and staged replacement that preserves the old alias on failure; unmanaged CLI mutation and service migration still hold | Changing registry resolution or install verification, or debugging `--axstack`/`--axstack-check` |
 | `configure_codex.js` | Codex CLI plus personal config sync/backup | Adding Codex setup features or debugging config sync |
+| `codex_status_line.js` | Codex status-line export and merge into live config | Changing Codex status-line sync |
 | `configure_gh_stack.js` | Idempotent `github/gh-stack` extension install | Adding or debugging stacked-PR tooling setup |
 | `configure_executor_clients.js` | Explicit Claude/Codex user-scope Executor registration, endpoint/auth validation and truthful config-only result | Changing `--executor-clients` |
 | `executor_client_config.js` | Byte-preserving JSON insertion and TOML append with duplicate/unsupported/conflict refusals | Changing supported client config contracts |
 | `executor_client_files.js` | Actual write-parent trust checks (distinct from default Claude legacy lookup), no-op detection, changed-input checks and in-memory recovery without backups | Changing client file preservation |
+| `executor_client_connection.js` | Short authenticated Executor initialize check | Changing client connectivity checks |
 | `configure_executor_server.js` | Opt-in Debian Executor prerequisites, image digest pinning and truthful provisioning result | Changing `--server-executor` or its injected process boundary |
 | `executor_deployment.js` | Managed compose generation and read-only filesystem/container/port preservation checks | Changing Executor deployment identity or data ownership rules |
 | `executor_readiness.js` | Local/public health and OAuth metadata probes: at most five attempts, four retries | Changing Executor application/origin verification |
@@ -23,6 +27,9 @@ Standalone setup scripts for specific tools.
 | `configure_tailnet_firewall.js` | Debian UFW tailnet prerequisites, interface OpenSSH rule, dual-stack verification and incomplete hardening result | Changing Debian firewall safety or command probes |
 | `configure_t3_code_server.js` | Debian stable >=0.1.0 T3 service over Tailscale with `t3@latest` installation and version/origin holds; runtime/CLI prerequisites can precede desktop preflight; service changes require it; disables Connect and verifies HTTPS readiness | Changing CLI floor checks, service drop-ins, Tailscale mapping, or pairing guidance |
 | `configure_tailscale_t3.js` | Arch Tailscale package, browser login, operator and T3 user-service reconciliation | Debugging `--tailscale-t3` or Arch phone access |
+| `configure_fleet_ssh.js` | Fleet SSH host config from the fleet manifest | Changing fleet SSH setup |
+| `configure_t3_op.js` | iobox T3 1Password service-account token wiring (status only, no token logging) | Changing `op` setup for T3 |
+| `t3_cli.js` | Shared stable T3 CLI preparation with staged replacement | Changing T3 CLI install |
 | `t3_desktop_preflight.js` | Read-only desktop Local environment and effective-directory guard shared by both T3 entrypoints | Changing safe service preflight or desktop evidence probes |
 | `t3_tailscale.js` | Shared CLI floor, Tailscale drop-in, HTTPS mapping/readiness and pairing output | Changing common T3/Tailscale behavior across Arch and Debian |
 | `configure_git.js`    | Git user and signing setup             | Modifying automated git configuration         |
