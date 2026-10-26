@@ -70,8 +70,8 @@ candidates stop locally; live-host changes remain deferred and separately author
 The fleet is io (PC), iobook (laptop), iobox (always-on T3 agent box), and
 axat-vps (Debian Executor/Hermes VPS), reached over Tailscale only. Agents may
 SSH to any fleet host and act there; one compromised agent can reach all hosts.
-See [iobox bring-up](README.md#iobox-profile-and-fleet) for setup, alt-account
-homes and `op`, and [Executor](README.md#opt-in-executor-server) for the default
+See [iobox bring-up](README.md#iobox-profile-and-fleet) for setup, CLIProxyAPI
+subscriptions and `op`, and [Executor](README.md#opt-in-executor-server) for the default
 tailnet-only origin and temporary Funnel OAuth exception.
 
 ## Test

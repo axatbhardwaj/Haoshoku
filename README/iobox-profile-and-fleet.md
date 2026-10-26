@@ -34,21 +34,38 @@ checking; offline peers retain their cached keys. VPS connections use
 `~/.ssh/id_ed25519_vps` and `accept-new`, recording the first key in ordinary
 `known_hosts`. Haoshoku does not create SSH keys, authorize them or edit ACLs.
 
-`--agent-accounts` is opt-in elsewhere and runs by default on iobox after
-Claude/Codex and shared-profile setup. It creates `~/.claude-alt` and
-`~/.codex-alt`, sharing every other primary-home top-level entry by symlink
-except these private entries:
+### Subscriptions via CLIProxyAPI hub
 
-| Home | Private entries (never linked) |
+Claude and Codex subscriptions are pooled by the CLIProxyAPI hub on axat-vps at
+`https://axat-vps.tail140c22.ts.net:8317` (tailnet-only). Haoshoku no longer
+creates `~/.claude-alt` or `~/.codex-alt`; existing directories are left untouched.
+
+Account logins happen once, on the hub (`cd /root/cliproxyapi` on axat-vps):
+
+- Claude: `./cli-proxy-api -config config.yaml -claude-login -no-browser`, open
+  the printed URL, then paste the `localhost:54545/callback` URL back.
+- Codex: `./cli-proxy-api -config config.yaml -codex-device-login`.
+
+Each host's T3 has one Claude and one Codex pool instance, set manually in
+T3 provider settings. The key is the hub client key from
+`/root/cliproxyapi/client-key` on axat-vps; never print or commit it.
+
+| Instance | Settings |
 | --- | --- |
-| Claude | `.credentials.json`, `.claude.json`, `history.jsonl`, `sessions`, `session-env`, `shell-snapshots`, `cache`, `backups`, `security`, `mcp-needs-auth-cache.json`, `.last-cleanup` |
-| Codex | `auth.json`, `config.toml`, `models_cache.json`, `log`, `memories`, `tmp` |
+| `claudeAgent` ("Claude Pool") | env `ANTHROPIC_BASE_URL` = hub URL; sensitive env `ANTHROPIC_AUTH_TOKEN` = hub client key |
+| `codex` ("Codex Pool") | sensitive env `CLIPROXY_API_KEY` = hub client key; empty `shadowHomePath`; launch args below |
 
-Codex `config.toml` is copied once when the alt file is missing. Other runtime
-state stays shared, including Claude `projects` and Codex `history.jsonl`,
-`sessions` and SQLite files. Existing real entries and wrong/dangling links
-are reported and preserved; private symlinks report incomplete account isolation.
-Missing primary homes are skipped. Logins and T3 provider settings remain manual.
+```text
+-c model_provider=cliproxy -c model_providers.cliproxy.name=CLIProxyAPI
+-c model_providers.cliproxy.base_url=https://axat-vps.tail140c22.ts.net:8317/v1
+-c model_providers.cliproxy.wire_api=responses
+-c model_providers.cliproxy.env_key=CLIPROXY_API_KEY
+-c model_providers.cliproxy.requires_openai_auth=false
+-c model_providers.cliproxy.supports_websockets=true
+```
+
+Pooled quota shows in T3 under Settings > Providers > Usage providers (hub URL
+plus management key). Run `t3-provider-fix` after changing provider instances.
 
 ### Bring-up checklist
 
@@ -69,22 +86,17 @@ for the new commands below; the installed 12.3.x package does not include them.
 5. In the checkout, run `bun install`, `bun haoshoku.js --device-type iobox`, then
    `bun haoshoku.js` as the ordinary setup user. If the T3 step stops, fix the
    reported condition (including desktop settings), then rerun `bun haoshoku.js`.
-6. Complete two Claude paste-code logins: launch `claude`, use `/login`, then
-   repeat with `CLAUDE_CONFIG_DIR=~/.claude-alt claude`.
-7. Complete two Codex device logins: `codex login --device-auth`, then
-   `CODEX_HOME=~/.codex-alt codex login --device-auth`.
-   After completing the primary logins, rerun `bun haoshoku.js --axstack` if
-   the first setup reported incomplete Axstack harness setup.
+6. Configure the T3 `claudeAgent` and `codex` pool instances as described in
+   [Subscriptions via CLIProxyAPI hub](#subscriptions-via-cliproxyapi-hub); no
+   per-host Claude or Codex subscription logins are needed.
+7. Rerun `bun haoshoku.js --axstack` if the first setup reported incomplete
+   Axstack harness setup.
 8. Supply `EXECUTOR_AUTHORIZATION` securely as described in
-   [Executor clients](../README.md#opt-in-executor-clients), then register once per home:
+   [Executor clients](../README.md#opt-in-executor-clients), then register once:
 
    ```bash
    bun haoshoku.js --executor-clients https://axat-vps.tail140c22.ts.net/mcp
-   CLAUDE_CONFIG_DIR=~/.claude-alt CODEX_HOME=~/.codex-alt bun haoshoku.js --executor-clients https://axat-vps.tail140c22.ts.net/mcp
    ```
-
-   In T3, manually map provider instance `claudeAlt` to `CLAUDE_CONFIG_DIR=~/.claude-alt`
-   and `codexAlt` to `CODEX_HOME=~/.codex-alt` (use absolute home paths in settings).
 9. Run `gh auth login` and set your Git name/email; Omarchy skips Git identity setup.
    Then rerun `bun haoshoku.js --gh-stack` if the first setup skipped gh-stack.
    The end-of-run **Next steps** block lists incomplete gh-stack and Axstack
