@@ -245,7 +245,8 @@ describe("syncKdeActivities", () => {
 		);
 	});
 
-	it("installs and enables the placement script before writing rules", async () => {
+	// Root bypasses the mode-0444 write failure this ordering assertion requires.
+	it.skipIf(process.getuid?.() === 0)("installs and enables the placement script before writing rules", async () => {
 		const { syncKdeActivities } = await activitiesModule();
 		const db = activityDb([
 			[IDS.flux, "flux"],
