@@ -97,7 +97,14 @@ describe("haoshoku CLI help", () => {
 
 	it("omits the retired alt-account overlay mode", () => {
 		expect(output(["--help"])).not.toContain("--agent-accounts");
-		expect(fs.existsSync(path.resolve(import.meta.dir, "../src/helpers/configure_agent_accounts.js"))).toBe(false);
+		expect(
+			fs.existsSync(
+				path.resolve(
+					import.meta.dir,
+					"../src/helpers/configure_agent_accounts.js",
+				),
+			),
+		).toBe(false);
 	});
 
 	it("documents the Debian-only T3 Code server mode", () => {
