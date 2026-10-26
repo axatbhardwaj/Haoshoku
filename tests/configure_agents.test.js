@@ -50,7 +50,7 @@ describe("bundled shared agent profile", () => {
 			"configs/claude/CLAUDE.md",
 		]) {
 			const template = read(relativePath);
-			expect(template, relativePath).toContain("## Notifications");
+			expect(template, relativePath).toContain("## Merging and tooling");
 			expect(template, relativePath).toBe(profile);
 			expect(template, relativePath).toContain("T3 Code orchestration");
 			expect(template, relativePath).toContain("Axstack workflows");
