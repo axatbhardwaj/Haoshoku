@@ -7,6 +7,7 @@ Template configuration files copied to user's `~/.config/` during setup.
 | File                  | What                          | When to read                              |
 | --------------------- | ----------------------------- | ----------------------------------------- |
 | `kde_shortcuts.kksrc` | KDE keyboard shortcuts        | Modifying KDE shortcuts                   |
+| `fleet.json`         | axnet fleet manifest (hosts, tailnet, roles) | Changing fleet hosts or SSH setup |
 | `README.md`           | Copy-vs-symlink rationale and Claude bundle boundary | Understanding the deployment model |
 
 ## Subdirectories
@@ -23,6 +24,7 @@ Template configuration files copied to user's `~/.config/` during setup.
 | `discord/`      | Discord theme manifest deploying the Omarchy theme's Vencord CSS into Vesktop/Vencord | Modifying which theme CSS or enabled themes Discord clients receive |
 | `claude/`       | Claude Code compact personal policy (copied) | Modifying policy backup/restore       |
 | `codex/`        | Codex compact personal policy | Modifying deployed Codex agent guidance   |
+| `t3/`          | Importable T3 Aurora theme snapshot (not deployed by setup) | Editing the T3 theme |
 | `agent-profile/` | Shared T3 Code profile (PROFILE.md) deployed to Claude, Codex, Opencode and Antigravity, plus harness-specific appendices (e.g. GEMINI.append.md) | Modifying the single configurable agent identity |
 | `hermes-relay/` | Immutable Hermes runtime bootstrap pin | Updating the Hermes runtime pin |
 | `hyprmoncfg/`   | Authored monitor/workspace profile JSON consumed by hyprmoncfg; Haoshoku NEVER writes generated `monitors.lua` | Modifying monitor layouts or monitor-bound workspace rules without crossing the hyprmoncfg ownership boundary |

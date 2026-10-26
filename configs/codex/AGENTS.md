@@ -103,19 +103,23 @@ Axstack releases reinstall and verify on all four hosts: io (`xzat@io`),
 iobook, axat-vps, and iobox (`xzat@iobox`). Each host also runs the
 `axstack-default-sync` timer with the pool drop-in.
 
-## Notifications
+## Merging and tooling (set 2026-10-23)
 
-Standing instruction: when a run you drive (a) ends a turn parked on my
-decision, including a `verification not proven` merge card you could not
-close yourself, (b) has an own PR otherwise ready but waiting 60 minutes on
-another person (one blocked ping per blocker), or a report-only notice that a
-comment stays unrated after a fresh rating, or (c) hits a serious-risk hold,
-send me one compact Telegram message through the `axstack-relay` skill
-(`hermes`, home channel). Own PRs merge automatically under the watch
-predicate; never send routine merge-ready or merged messages for them, and
-never send progress or heartbeats. Record this as the run's Notification
-policy. Deduplicate through `axstack-relay`; act in the T3 driver
-thread/GitHub; a failed or uncertain delivery preserves the hold.
+- Merge my own PRs as soon as CI is green and review findings are
+  addressed. Never wait for my or anyone's approval, never re-request
+  review, and never hand the merge to me. Stop at merge-ready only when
+  the diff touches migrations, auth, secrets, money paths or prod config,
+  and tell me why.
+- When I correct the same thing twice, write it here as one rule that day.
+
+## Holds
+
+When a run you drive parks on my decision or hits a serious risk, state the
+hold in its T3 thread (what you need, PR URL, where to act) and park there.
+Send no Telegram or Hermes alerts. My scheduled sweep thread on axat-vps,
+"Review GitHub and Linear Activity" (T3 thread
+`bb239085-f3d0-4fef-810a-7bb408852333`), checks periodically for reviews and
+holds blocked on me.
 
 ## T3 provider settings
 
@@ -123,8 +127,8 @@ Subscriptions are pooled through the CLIProxyAPI hub on axat-vps
 (`https://axat-vps.tail140c22.ts.net:8317`); each host has one `claudeAgent`
 and one `codex` pool instance. Never print the hub client or management key.
 After changing T3 provider settings (`~/.t3/userdata/settings.json`
-providerInstances), run `t3-provider-fix` (in `~/.local/bin`; `--dry-run` to
-preview). Use absolute
+providerInstances) or account homes (`~/.codex-alt`, `~/.claude-alt`), run
+`t3-provider-fix` (in `~/.local/bin`; `--dry-run` to preview). Use absolute
 real binaries for `binaryPath`, never bare names or `~/.local/bin` mise
 wrappers. Never leave real files or backups inside a Codex shadow home except
 `auth.json`.
