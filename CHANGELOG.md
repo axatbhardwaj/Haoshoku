@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Shared agent profile: replace the retired Telegram Notifications section
+  with Merging and Holds. Agents merge their own PRs once CI is green and
+  review findings are addressed, without waiting for approval; diffs touching
+  migrations, auth, secrets, money paths or prod config stop at merge-ready.
+- Index previously undocumented files in the repo `CLAUDE.md`/`AGENTS.md`
+  tables.
+
+### Fixed
+
+- Tests isolate network sharing CLIs, Hermes Python discovery and the KDE
+  write-permission precondition under root.
+
 ## 12.6.0 - 2026-10-26
 
 ### Removed
