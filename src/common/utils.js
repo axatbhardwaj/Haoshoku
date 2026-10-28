@@ -393,7 +393,7 @@ export function copyDirRecursive(src, dest, options = {}) {
 	}
 }
 
-export const DEVICE_TYPES = Object.freeze(["pc", "laptop", "iobox"]);
+export const DEVICE_TYPES = Object.freeze(["pc", "laptop", "iobox", "iosatellite"]);
 const DEFAULT_DEVICE_TYPE = "pc";
 
 /** Return the explicitly configured known deviceType, or null when unset. */
@@ -419,7 +419,7 @@ export function readConfiguredDeviceType(home) {
 /**
  * Read deviceType from ~/.haoshoku.json (populated during Omarchy setup or by
  * `haoshoku --device-type`). Returns the literal string if it's a known variant
- * (`"pc"`, `"laptop"` or `"iobox"`); otherwise returns `DEFAULT_DEVICE_TYPE` (`"pc"`).
+ * (`"pc"`, `"laptop"`, `"iobox"` or `"iosatellite"`); otherwise returns `DEFAULT_DEVICE_TYPE` (`"pc"`).
  * This fallback is for config families where the PC variant is the safest
  * mainstream default. Hardware-specific flows that must not guess (for example
  * WirePlumber audio routing) should call readConfiguredDeviceType() instead.

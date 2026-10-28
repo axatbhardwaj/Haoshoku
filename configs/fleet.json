@@ -27,6 +27,14 @@
 			"transport": "tailscale"
 		},
 		{
+			"hostname": "iosatellite",
+			"role": "worker",
+			"os": "arch",
+			"deviceType": "iosatellite",
+			"sshUser": "xzat",
+			"transport": "tailscale"
+		},
+		{
 			"hostname": "axat-vps",
 			"role": "worker",
 			"os": "debian",

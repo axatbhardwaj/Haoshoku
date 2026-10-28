@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Add the persisted `iosatellite` profile for a planned Dell Inspiron 7570
+  Omarchy worker. Reuse iobox engineering packages, exclusions, strict service
+  failures, optional existing `op` wiring and five sleep-target masks.
+- Install and verify iosatellite-only logind lid ignores without restarting
+  logind; report reboot requirements and desktop lid inhibitors. Real closed-lid
+  AC job, SSH and T3 checks remain required after local setup.
+- Document planned fleet membership and local bring-up. No live deployment,
+  credentials, timers, keys, peer sync or tailnet ACL changes are performed.
+
 ## 12.6.1 - 2026-10-27
 
 ### Changed

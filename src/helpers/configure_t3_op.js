@@ -30,7 +30,7 @@ export function checkOpEnvironment(home, fsImpl, uid = process.getuid()) {
 	}
 }
 
-/** Called only after iobox T3 service setup succeeds. */
+/** Called only after engineering-worker T3 service setup succeeds. */
 export async function configureT3Op({ home, fsImpl, runCommandImpl, logger }) {
 	logger.info(
 		"Token rotation or later creation requires: systemctl --user restart t3code",

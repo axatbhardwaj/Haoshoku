@@ -154,7 +154,7 @@ describe("--workspaces CLI mode", () => {
 
 		expect(result.exitCode).toBe(2);
 		expect(result.stderr.toString()).toContain(
-			"Device type must be pc, laptop or iobox",
+			"Device type must be pc, laptop, iobox or iosatellite",
 		);
 		expect(fs.existsSync(path.join(tmpHome, ".haoshoku.json"))).toBe(false);
 	});
@@ -171,7 +171,7 @@ describe("--workspaces CLI mode", () => {
 
 		expect(result.exitCode).toBe(2);
 		expect(result.stderr.toString()).toContain(
-			"Device type must be pc, laptop or iobox",
+			"Device type must be pc, laptop, iobox or iosatellite",
 		);
 		expect(fs.existsSync(path.join(tmpHome, ".haoshoku.json"))).toBe(false);
 	});

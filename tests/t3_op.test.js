@@ -2,6 +2,12 @@ import { afterEach, expect, it } from "bun:test";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import {
+	lidContent,
+	lidDropIn,
+	lidConfigProbe,
+	inhibitorProbe,
+} from "./configure_tailscale_t3/fixture.js";
 import { configureTailscaleT3 } from "../src/helpers/configure_tailscale_t3.js";
 
 const homes = [];
@@ -31,6 +37,8 @@ function fixture() {
 		env: {},
 		fsImpl: {
 			...fs,
+			readFileSync: (file, ...args) =>
+				file === lidDropIn ? lidContent : fs.readFileSync(file, ...args),
 			readdirSync: (dir) =>
 				dir.startsWith(home) && fs.existsSync(dir) ? fs.readdirSync(dir) : [],
 			statSync: (file) => {
@@ -46,7 +54,11 @@ function fixture() {
 		captureCommandImpl: async (command) => {
 			let stdout = "",
 				exitCode = 0;
-			if (command.includes("show t3code.service"))
+			if (command === lidConfigProbe) stdout = lidContent;
+			else if (command.startsWith("busctl get-property "))
+				stdout = 's "ignore"';
+			else if (command === inhibitorProbe) stdout = "";
+			else if (command.includes("show t3code.service"))
 				stdout = "LoadState=not-found\n";
 			else if (command.includes("list-") || command.startsWith("ps "))
 				stdout = "";
@@ -114,11 +126,14 @@ function fixture() {
 	};
 }
 
-it.each([
-	true,
-	false,
-])("activates a valid iobox token only once (newline=%s)", async (newline) => {
+it.each(
+	[true, false].flatMap((newline) => [
+		[newline, "iobox"],
+		[newline, "iosatellite"],
+	]),
+)("activates a valid token only once (newline=%s, host=%s)", async (newline, deviceType) => {
 	const f = fixture();
+	f.options.deviceType = deviceType;
 	f.token(`OP_SERVICE_ACCOUNT_TOKEN=${secret}${newline ? "\n" : ""}`);
 	expect(await f.run()).toBe(true);
 	expect(fs.existsSync(f.drop)).toBe(true);
@@ -169,7 +184,9 @@ it.each([
 		if (kind === "directory") fs.mkdirSync(f.envFile);
 		else if (kind === "fifo")
 			f.options.fsImpl.lstatSync = (file, ...args) =>
-				file === f.envFile ? { isFile: () => false } : fs.lstatSync(file, ...args);
+				file === f.envFile
+					? { isFile: () => false }
+					: fs.lstatSync(file, ...args);
 		else
 			fs.symlinkSync(
 				kind === "link" ? path.join(f.home, "target") : "/missing-fixture",

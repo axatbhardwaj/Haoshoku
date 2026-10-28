@@ -1,3 +1,4 @@
+import { isEngineeringWorker } from "../common/device_type.js";
 import fs from "node:fs";
 import { homedir, hostname as getHostname, userInfo } from "node:os";
 import path from "node:path";
@@ -8,6 +9,7 @@ import {
 	runCommand,
 	runCommandCapture,
 } from "../common/utils.js";
+import { configureIosatellitePower } from "./configure_iosatellite_power.js";
 import { prepareArchT3Cli } from "./t3_cli.js";
 import { configureT3Op } from "./configure_t3_op.js";
 import { preflightT3Desktop } from "./t3_desktop_preflight.js";
@@ -38,7 +40,7 @@ export async function configureTailscaleT3({
 	logger = log,
 } = {}) {
 	const fail = (message) => {
-		if (deviceType === "iobox") throw new Error(message);
+		if (isEngineeringWorker(deviceType)) throw new Error(message);
 		logger.warning(
 			`${message} — continuing setup. Retry haoshoku --tailscale-t3.`,
 		);
@@ -97,7 +99,7 @@ export async function configureTailscaleT3({
 				logger,
 			}))
 		) {
-			if (deviceType === "iobox")
+			if (isEngineeringWorker(deviceType))
 				return fail("Tailscale operator configuration failed");
 			return false;
 		}
@@ -135,7 +137,7 @@ export async function configureTailscaleT3({
 					return fail("linger was not enabled after enable-linger");
 			}
 		}
-		if (deviceType === "iobox") {
+		if (isEngineeringWorker(deviceType)) {
 			step = "sleep mask";
 			const targets = [
 				"sleep.target",
@@ -158,6 +160,15 @@ export async function configureTailscaleT3({
 					if ((await probe(maskCommand(target))) !== "masked")
 						return fail(`sleep mask: ${target} was not masked`);
 			}
+		}
+		if (deviceType === "iosatellite") {
+			step = "lid policy";
+			await configureIosatellitePower({
+				fsImpl,
+				runCommandImpl,
+				captureCommandImpl,
+				logger,
+			});
 		}
 		step = "T3 service";
 		let changed = writeServiceDropIn(
@@ -215,7 +226,7 @@ export async function configureTailscaleT3({
 			retryFlag: "--tailscale-t3",
 			tailnetOnly: true,
 		});
-		if (ready && deviceType === "iobox") {
+		if (ready && isEngineeringWorker(deviceType)) {
 			step = "1Password token drop-in";
 			await configureT3Op({ home, fsImpl, runCommandImpl, logger });
 		}
@@ -229,7 +240,7 @@ export async function configureTailscaleT3({
 			});
 		return ready;
 	} catch (error) {
-		if (deviceType === "iobox")
+		if (isEngineeringWorker(deviceType))
 			throw new Error(`${step} failed: ${error.message}`);
 		return fail(`${step} configuration failed: ${error.message}`);
 	}

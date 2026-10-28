@@ -193,6 +193,7 @@ describe("promptDeviceType", () => {
 			{ title: "PC (io)", value: "pc" },
 			{ title: "Laptop (iobook)", value: "laptop" },
 			{ title: "Agent box (iobox)", value: "iobox" },
+			{ title: "Laptop worker (iosatellite)", value: "iosatellite" },
 			{ title: "Skip — don't persist", value: null },
 		]);
 		expect(JSON.parse(fs.readFileSync(configPath, "utf8"))).toEqual({

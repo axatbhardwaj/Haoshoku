@@ -9,7 +9,7 @@ import {
 import prompts from "prompts";
 import { startRunLog } from "./src/common/run_log.js";
 import { detectOS, findActiveModeFlags } from "./src/common/cli_utils.js";
-import { promptDeviceType } from "./src/common/device_type.js";
+import { isEngineeringWorker, promptDeviceType } from "./src/common/device_type.js";
 import { getBanner, showBanner } from "./src/common/ui.js";
 import {
 	DEVICE_TYPES,
@@ -207,7 +207,7 @@ program
 		"--worktree-cleanup-backup",
 		"Backup live disk-cleanup scripts, config and systemd units to configs/worktree-cleanup/",
 	)
-	.option("--device-type <type>", "Set device type (pc, laptop or iobox)")
+	.option("--device-type <type>", "Set device type (pc, laptop, iobox or iosatellite)")
 	.option(
 		"--scripts",
 		"Deploy user scripts (configs/scripts/ → ~/.local/bin/) and prune retired entries",
@@ -341,10 +341,10 @@ async function runAction(options) {
 			"audio",
 			"audioBackup",
 		].includes(activeFlags[0]) &&
-		readConfiguredDeviceType(homedir()) === "iobox"
+		isEngineeringWorker(readConfiguredDeviceType(homedir()))
 	) {
 		log.error(
-			"Device-routed workspace, monitor and audio commands are not supported on iobox.",
+			`Device-routed workspace, monitor and audio commands are not supported on ${readConfiguredDeviceType(homedir())}.`,
 		);
 		process.exitCode = 1;
 		return;
@@ -495,7 +495,7 @@ async function runAction(options) {
 
 	if (options.deviceType !== undefined) {
 		if (!DEVICE_TYPES.includes(options.deviceType)) {
-			log.error("Device type must be pc, laptop or iobox.");
+			log.error("Device type must be pc, laptop, iobox or iosatellite.");
 			process.exitCode = 2;
 			return;
 		}
