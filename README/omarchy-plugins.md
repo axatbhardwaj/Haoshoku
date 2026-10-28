@@ -26,6 +26,15 @@ uninstalls plugins, so existing machines keep the old BattleStation files
 until they are removed manually with
 `omarchy plugin remove io.github.vk2r.battle-station`.
 
+Advanced Audio Control (`ssupt.audio-control`) adds per-app audio routing, so
+Spotify can play through a USB speaker while other apps use headphones. It
+replaces the stock audio widget in the same bar slot; stock `omarchy.audio` is
+disabled on first install. To remove it, run
+`omarchy plugin remove ssupt.audio-control`, then
+`omarchy plugin enable omarchy.audio`. Haoshoku reruns restore the default
+plugin and bar layout; for a lasting change, also remove its manifest entry and
+restore `omarchy.audio` in `configs/omarchy/bar.json`.
+
 The manifest includes the Speech Orb dictation HUD. Setup turns off voxtype's
 own OSD (`voxtype config set osd.enabled false`) and restarts a running
 `voxtype.service`, so only the orb appears while you dictate.
