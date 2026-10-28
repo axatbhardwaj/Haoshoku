@@ -15,6 +15,8 @@ import {
 	content,
 	pathDropIn,
 	pathContent,
+	loopbackDropIn,
+	loopbackContent,
 } from "./configure_tailscale_t3/fixture.js";
 describe("Arch T3 over Tailscale", () => {
 	it.each([
@@ -131,6 +133,12 @@ describe("Arch T3 over Tailscale", () => {
 
 	it("installs and enables a fresh laptop in order, then prints HTTPS and pairing", async () => {
 		const f = fixture({ fresh: true });
+		const run = f.options.runCommandImpl;
+		f.options.runCommandImpl = async (command, options) => {
+			if (command.includes(" service install"))
+				expect(f.files.get(loopbackDropIn)).toBe(loopbackContent);
+			return run(command, options);
+		};
 		expect(await configureTailscaleT3(f.options)).toBe(true);
 		expect(f.mutations.filter((event) => !event.startsWith("mkdir"))).toEqual([
 			"sudo -n pacman -S --needed --noconfirm tailscale",
@@ -138,6 +146,7 @@ describe("Arch T3 over Tailscale", () => {
 			"sudo -n tailscale up",
 			"sudo -n tailscale set --operator='test'",
 			`write ${dropIn}`,
+			`write ${loopbackDropIn}`,
 			`write ${pathDropIn}`,
 			"t3 service install --base-dir '/home/test/.t3'",
 		]);

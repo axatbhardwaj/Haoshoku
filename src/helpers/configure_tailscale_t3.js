@@ -180,6 +180,13 @@ export async function configureTailscaleT3({
 		changed =
 			writeServiceDropIn(
 				home,
+				"axstack-loopback.conf",
+				'[Service]\nEnvironment="T3CODE_HOST=127.0.0.1"\n',
+				fsImpl,
+			) || changed;
+		changed =
+			writeServiceDropIn(
+				home,
 				"axstack-path.conf",
 				'[Service]\nEnvironment="PATH=%h/.local/bin:%h/.bun/bin:%h/.local/share/mise/shims:/usr/local/bin:/usr/bin:/bin"\n',
 				fsImpl,

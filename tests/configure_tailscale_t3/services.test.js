@@ -10,6 +10,8 @@ import {
 	dropIn,
 	pathDropIn,
 	pathContent,
+	loopbackDropIn,
+	loopbackContent,
 } from "./fixture.js";
 describe("T3 exposure and service guards", () => {
 	it("does not claim readiness when a newly installed service is inactive", async () => {
@@ -218,4 +220,30 @@ it("immediately reports a non-loopback iobox listener without retrying HTTPS", a
 	expect(sleeps).toEqual([]);
 	expect(f.events.filter((event) => event === url)).toHaveLength(1);
 	expect(f.messages.join(" ")).not.toContain("are ready");
+});
+
+describe("Arch T3 loopback reconciliation", () => {
+	it.each([
+		null,
+		"stale",
+	])("repairs %s binding before restart and leaves a rerun unchanged", async (value) => {
+		const f = fixture();
+		if (value === null) f.files.delete(loopbackDropIn);
+		else f.files.set(loopbackDropIn, value);
+		const run = f.options.runCommandImpl;
+		f.options.runCommandImpl = async (command, options) => {
+			if (command.includes(" service restart"))
+				expect(f.files.get(loopbackDropIn)).toBe(loopbackContent);
+			return run(command, options);
+		};
+		expect(await configureTailscaleT3(f.options)).toBe(true);
+		expect(f.mutations.filter((event) => !event.startsWith("mkdir"))).toEqual([
+			`write ${loopbackDropIn}`,
+			"systemctl --user daemon-reload",
+			"t3 service restart --base-dir '/home/test/.t3'",
+		]);
+		f.mutations.length = 0;
+		expect(await configureTailscaleT3(f.options)).toBe(true);
+		expect(f.mutations).toEqual([]);
+	});
 });

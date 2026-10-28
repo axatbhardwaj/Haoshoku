@@ -47,18 +47,26 @@ export async function ensureT3NodeRuntime({
 }
 
 function writeServiceDropIns(home, uid, fsImpl) {
-	writeServiceDropIn(
+	let changed = writeServiceDropIn(
 		home,
 		"axstack-path.conf",
 		'[Service]\nEnvironment="PATH=%h/.local/bin:%h/.bun/bin:%h/.grok/bin:/usr/local/bin:/usr/bin:/bin"\n',
 		fsImpl,
 	);
-	writeServiceDropIn(
-		home,
-		"axstack-tailscale.conf",
-		"[Service]\nEnvironment=T3CODE_TAILSCALE_SERVE=true\n",
-		fsImpl,
-	);
+	changed =
+		writeServiceDropIn(
+			home,
+			"axstack-tailscale.conf",
+			"[Service]\nEnvironment=T3CODE_TAILSCALE_SERVE=true\n",
+			fsImpl,
+		) || changed;
+	changed =
+		writeServiceDropIn(
+			home,
+			"axstack-loopback.conf",
+			'[Service]\nEnvironment="T3CODE_HOST=127.0.0.1"\n',
+			fsImpl,
+		) || changed;
 	for (const [name, content] of [
 		["axstack-sandbox.conf", "[Service]\nEnvironment=IS_SANDBOX=1\n"],
 		[
@@ -67,16 +75,20 @@ function writeServiceDropIns(home, uid, fsImpl) {
 		],
 	]) {
 		if (uid === 0) {
-			writeServiceDropIn(home, name, content, fsImpl);
+			changed = writeServiceDropIn(home, name, content, fsImpl) || changed;
 		} else {
 			const file = path.join(
 				home,
 				".config/systemd/user/t3code.service.d",
 				name,
 			);
-			if (fsImpl.existsSync(file)) fsImpl.unlinkSync(file);
+			if (fsImpl.existsSync(file)) {
+				fsImpl.unlinkSync(file);
+				changed = true;
+			}
 		}
 	}
+	return changed;
 }
 
 export async function configureT3CodeServer({
@@ -163,18 +175,46 @@ export async function configureT3CodeServer({
 		});
 	}
 
+	let changed;
 	try {
-		writeServiceDropIns(home, uid, fsImpl);
+		changed = writeServiceDropIns(home, uid, fsImpl);
 	} catch (error) {
 		return fail(
 			`Cannot write T3 service drop-ins: ${error.message}. Fix permissions and retry haoshoku --server-t3-code.`,
 		);
 	}
-	const serviceInstall = `${t3} service install --base-dir ${shellQuote(desktop.baseDir)}`;
-	if (!(await runCommandImpl(serviceInstall))) {
-		return fail(
-			`T3 service installation failed. Retry with: ${serviceInstall}`,
+	const runService = async (command) =>
+		(await runCommandImpl(command)) ||
+		fail(`T3 service configuration failed. Retry with: ${command}`);
+	const installed = fsImpl.existsSync(
+		path.join(home, ".config/systemd/user/t3code.service"),
+	);
+	if (!installed || desktop.serviceNeedsUpdate) {
+		if (
+			!(await runService(
+				`${t3} service install --base-dir ${shellQuote(desktop.baseDir)}`,
+			))
+		)
+			return false;
+	} else {
+		if (changed && !(await runService("systemctl --user daemon-reload")))
+			return false;
+		const enabled = await probe(
+			"systemctl --user is-enabled --quiet t3code.service",
 		);
+		const active = await probe(SERVICE_ACTIVE_COMMAND);
+		if (enabled === null || active === null) {
+			if (!(await runService("systemctl --user enable --now t3code.service")))
+				return false;
+		}
+		if (
+			changed &&
+			active !== null &&
+			!(await runService(
+				`${t3} service restart --base-dir ${shellQuote(desktop.baseDir)}`,
+			))
+		)
+			return false;
 	}
 	if (!(await runCommandImpl(SERVICE_ACTIVE_COMMAND))) {
 		return fail(

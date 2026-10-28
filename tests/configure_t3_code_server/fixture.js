@@ -92,6 +92,11 @@ export function fixture({
 				return response();
 			if (command === "command -v t3code t3code-nightly")
 				return response("", 1);
+			if (
+				command === "systemctl --user is-active --quiet t3code.service" ||
+				command === "systemctl --user is-enabled --quiet t3code.service"
+			)
+				return response();
 			if (command === listenerCommand)
 				return response("LISTEN 0 128 127.0.0.1:3773 0.0.0.0:*");
 			if (command === "tailscale status") return response("logged in");
