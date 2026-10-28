@@ -514,6 +514,7 @@ it("places every manifest bar widget in the shipped bar layout", () => {
 		"io.github.woogy7.vitals",
 		"aislandener.galaxy-buds",
 		"io.github.nodrej.speech-orb",
+		"ssupt.audio-control",
 	]);
 	const manifestIds = new Set(
 		JSON.parse(fs.readFileSync(SHIPPED_MANIFEST, "utf8")).map(({ id }) => id),
@@ -535,6 +536,25 @@ it("places every manifest bar widget in the shipped bar layout", () => {
 		),
 	).toEqual(expectedBarWidgetIds);
 	expect([...expectedBarWidgetIds].every((id) => barIds.has(id))).toBe(true);
+});
+
+it("replaces stock audio with Advanced Audio Control in the same right bar slot", () => {
+	const bar = JSON.parse(fs.readFileSync(SHIPPED_BAR, "utf8"));
+	const allIds = Object.values(bar.layout)
+		.flat()
+		.flatMap(({ id, embeddedWidgets = [] }) => [
+			id,
+			...embeddedWidgets.map(({ id }) => id),
+		]);
+	const rightIds = bar.layout.right.map(({ id }) => id);
+
+	expect(allIds).not.toContain("omarchy.audio");
+	expect(allIds.filter((id) => id === "ssupt.audio-control")).toHaveLength(1);
+	expect(rightIds.slice(-3)).toEqual([
+		"omarchy.network",
+		"ssupt.audio-control",
+		"omarchy.power",
+	]);
 });
 
 it("ships Omarchy's generic media widget in the left bar section", () => {
