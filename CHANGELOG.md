@@ -410,15 +410,9 @@ migration remain separately authorized.
   Haki, and agents are recognized instead of falling back to Ghostty's default
   class and creating duplicates.
 
-## 11.13.3 - 2026-09-22
-
-- Make `Super+7` switch to workspace 7 and focus its owned Ghostty when present,
-  reclaim it when stranded, or create it when absent, while keeping login-time
-  startup non-focusing.
-
 ## Earlier releases
 
-- [11.13.2 - 2026-09-22 through 11.6.1 - 2026-09-08](CHANGELOG/archive-01.md)
+- [11.13.3 - 2026-09-22 through 11.6.1 - 2026-09-08](CHANGELOG/archive-01.md)
 - [11.6.0 - 2026-09-08 through 9.1.0 - 2026-08-16](CHANGELOG/archive-02.md)
 - [9.0.0 - 2026-08-16 through 7.7.0 - 2026-08-07](CHANGELOG/archive-03.md)
 - [7.6.0 - 2026-08-07 through 6.0.1 - 2026-08-01](CHANGELOG/archive-04.md)
