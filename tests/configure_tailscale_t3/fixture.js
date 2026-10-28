@@ -2,6 +2,10 @@ import { expect } from "bun:test";
 export const dropIn =
 	"/home/test/.config/systemd/user/t3code.service.d/axstack-tailscale.conf";
 export const content = '[Service]\nEnvironment="T3CODE_TAILSCALE_SERVE=true"\n';
+export const loopbackDropIn =
+	"/home/test/.config/systemd/user/t3code.service.d/axstack-loopback.conf";
+export const loopbackContent =
+	'[Service]\nEnvironment="T3CODE_HOST=127.0.0.1"\n';
 export const pathDropIn =
 	"/home/test/.config/systemd/user/t3code.service.d/axstack-path.conf";
 export const pathContent =
@@ -43,6 +47,7 @@ export function fixture({ fresh = false, loggedOut = fresh } = {}) {
 			? []
 			: [
 					[dropIn, content],
+					[loopbackDropIn, loopbackContent],
 					[
 						"/home/test/.t3/runtime/service-state.json",
 						'{"protocol":3,"activeVersion":"0.1.0"}',
