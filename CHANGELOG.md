@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Install Advanced Audio Control (`ssupt.audio-control`) by default for
+  per-app audio routing, replacing the stock audio bar widget in its existing
+  slot and disabling `omarchy.audio` on first install.
+
 ## 12.6.1 - 2026-10-27
 
 ### Changed

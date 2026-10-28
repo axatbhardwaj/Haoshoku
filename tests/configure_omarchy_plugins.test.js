@@ -358,7 +358,36 @@ describe("Omarchy plugin installer", () => {
 		);
 	});
 
-	it("ships a manifest on disk with exactly the 10 expected plugins", () => {
+	it("installs Advanced Audio Control from the shipped manifest and disables stock audio", async () => {
+		const { calls, runner } = makeRunner({
+			installedJsonBody: installedJson(["omarchy.audio"]),
+		});
+		const { logImpl } = makeLog();
+
+		const result = await configureOmarchyPlugins({
+			manifestPath: MANIFEST_PATH,
+			runCommandImpl: runner,
+			logImpl,
+		});
+
+		expect(result.installed).toContain("ssupt.audio-control");
+		expect(commandType(calls, "add")).toContainEqual([
+			"omarchy",
+			"plugin",
+			"add",
+			"https://github.com/ssupt/omarchy-audio-control.git",
+			"--enable",
+			"--yes",
+		]);
+		expect(commandType(calls, "disable")).toContainEqual([
+			"omarchy",
+			"plugin",
+			"disable",
+			"omarchy.audio",
+		]);
+	});
+
+	it("ships a manifest on disk with exactly the 11 expected plugins", () => {
 		const EXPECTED_PLUGINS = [
 			{
 				id: "crmne.hyprmoncfg",
@@ -411,6 +440,12 @@ describe("Omarchy plugin installer", () => {
 				id: "io.github.nodrej.speech-orb",
 				url: "https://github.com/nodrej/omarchy-speech-orb.git",
 				manualAuth: null,
+			},
+			{
+				id: "ssupt.audio-control",
+				url: "https://github.com/ssupt/omarchy-audio-control.git",
+				manualAuth: null,
+				disableOnInstall: ["omarchy.audio"],
 			},
 		];
 
