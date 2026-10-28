@@ -7,7 +7,7 @@ import {
 
 function userAppDoubles(overrides = {}) {
 	return {
-        syncWorktreeCleanupImpl: async () => {},
+		syncWorktreeCleanupImpl: async () => {},
 		promptUserImpl: async () => false,
 		commandExistsImpl: async () => false,
 		configureGitImpl: async () => {},
@@ -80,7 +80,7 @@ describe("device-aware user apps", () => {
 		};
 		// Exercise the default service helper with injected command and prompt dependencies.
 		const result = await configureUserApps({
-        syncWorktreeCleanupImpl: async () => {},
+			syncWorktreeCleanupImpl: async () => {},
 			isOmarchy: true,
 			deviceType,
 			configureGitImpl: record("git"),

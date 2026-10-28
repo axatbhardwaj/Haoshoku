@@ -25,7 +25,10 @@ beforeEach(() => {
 								BackendState: "Running",
 								MagicDNSSuffix: "tail140c22.ts.net",
 								Peer: {
- satellite: { DNSName: "iosatellite.tail140c22.ts.net.", Online: false },
+									satellite: {
+										DNSName: "iosatellite.tail140c22.ts.net.",
+										Online: false,
+									},
 									book: {
 										DNSName: "iobook.tail140c22.ts.net.",
 										Online: true,
@@ -125,7 +128,10 @@ it.each([
 							BackendState: "Running",
 							MagicDNSSuffix: "tail140c22.ts.net",
 							Peer: {
- satellite: { DNSName: "iosatellite.tail140c22.ts.net.", Online: false },
+								satellite: {
+									DNSName: "iosatellite.tail140c22.ts.net.",
+									Online: false,
+								},
 								book: {
 									DNSName: "iobook.tail140c22.ts.net.",
 									Online: true,
@@ -177,7 +183,11 @@ it.each([
 				BackendState: failure === "logged-out" ? "NeedsLogin" : "Running",
 				MagicDNSSuffix: "tail140c22.ts.net",
 				Peer: {
- satellite: { DNSName: "iosatellite.tail140c22.ts.net.", Online: false },},
+					satellite: {
+						DNSName: "iosatellite.tail140c22.ts.net.",
+						Online: false,
+					},
+				},
 			}),
 		};
 	};
@@ -193,7 +203,13 @@ it.each([
 	)
 		expect(calls).not.toContain("tailscale set --ssh");
 	if (["stopped", "logged-out"].includes(failure)) {
-		await expect(configureFleetSsh({ ...options, hostname: "iobox", throwOnFailure: true })).rejects.toThrow("Tailscale");
+		await expect(
+			configureFleetSsh({
+				...options,
+				hostname: "iobox",
+				throwOnFailure: true,
+			}),
+		).rejects.toThrow("Tailscale");
 	} else {
 		await expect(
 			configureFleetSsh({ ...options, hostname: "iobox", standalone: true }),
@@ -231,11 +247,11 @@ it.each([
 			"  StrictHostKeyChecking yes",
 			"",
 			"Host iosatellite",
-   "  HostName iosatellite.tail140c22.ts.net",
-   "  User xzat",
-   "  UserKnownHostsFile ~/.ssh/known_hosts_fleet",
-   "  StrictHostKeyChecking yes",
-   "",
+			"  HostName iosatellite.tail140c22.ts.net",
+			"  User xzat",
+			"  UserKnownHostsFile ~/.ssh/known_hosts_fleet",
+			"  StrictHostKeyChecking yes",
+			"",
 			"Host axat-vps",
 			"  HostName axat-vps.tail140c22.ts.net",
 			"  User root",
@@ -357,9 +373,20 @@ it.each([
 	expect(warnings.join(" ")).toContain(file);
 });
 
-it.each(["iobox", "iosatellite"])("fails %s full setup when tailnet identity cannot be verified", async (deviceType) => {
- await expect(configureFleetSsh({...options, hostname: deviceType, deviceType,
-  captureCommandImpl: async () => ({exitCode: 0, stdout: '{"BackendState":"Stopped"}'})
- })).rejects.toThrow(/Tailscale/);
- expect(fs.readdirSync(home)).toEqual([]);
+it.each([
+	"iobox",
+	"iosatellite",
+])("fails %s full setup when tailnet identity cannot be verified", async (deviceType) => {
+	await expect(
+		configureFleetSsh({
+			...options,
+			hostname: deviceType,
+			deviceType,
+			captureCommandImpl: async () => ({
+				exitCode: 0,
+				stdout: '{"BackendState":"Stopped"}',
+			}),
+		}),
+	).rejects.toThrow(/Tailscale/);
+	expect(fs.readdirSync(home)).toEqual([]);
 });

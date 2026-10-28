@@ -164,5 +164,5 @@ export async function promptDeviceType({
 
 /** Engineering workers share the minimal installer and always-on service policy. */
 export function isEngineeringWorker(deviceType) {
- return deviceType === "iobox" || deviceType === "iosatellite";
+	return deviceType === "iobox" || deviceType === "iosatellite";
 }

@@ -68,7 +68,10 @@ describe("iobox full setup", () => {
 });
 
 describe("iobox packages", () => {
-	it.each(["iobox", "iosatellite"])("%s installs the agent package file without gaming and skips installed targets on rerun", async (deviceType) => {
+	it.each([
+		"iobox",
+		"iosatellite",
+	])("%s installs the agent package file without gaming and skips installed targets on rerun", async (deviceType) => {
 		const files = [];
 		const commands = [];
 		const prompts = [];
@@ -89,7 +92,10 @@ describe("iobox packages", () => {
 					getInstalledPackagesImpl: async () => installed,
 					packageInRepositoryImpl: async () => true,
 					packageInAurImpl: async () => true,
-					captureCommandImpl: async () => ({ stdout: "t3code-bin 0.1.0-1", exitCode: 0 }),
+					captureCommandImpl: async () => ({
+						stdout: "t3code-bin 0.1.0-1",
+						exitCode: 0,
+					}),
 					runCommandImpl: async (command) => {
 						commands.push(command);
 						return true;
@@ -149,7 +155,10 @@ describe("iobox packages", () => {
 	});
 });
 
-it.each(["iobox", "iosatellite"])("exits the full %s CLI non-zero naming linger when the service step fails", (deviceType) => {
+it.each([
+	"iobox",
+	"iosatellite",
+])("exits the full %s CLI non-zero naming linger when the service step fails", (deviceType) => {
 	const root = path.resolve(import.meta.dir, "..");
 	const home = fs.mkdtempSync(path.join(os.tmpdir(), "iobox-linger-cli-"));
 	const cli = path.join(root, "haoshoku.js");
@@ -246,12 +255,11 @@ it.each([
 					return configureFleetSsh({
 						...options,
 						home: path.join(os.tmpdir(), "unused-fleet-failure-home"),
-						hostname:
-							["iobox", "iosatellite"].includes(deviceType)
-								? deviceType
-								: deviceType === "laptop"
-									? "iobook"
-									: "io",
+						hostname: ["iobox", "iosatellite"].includes(deviceType)
+							? deviceType
+							: deviceType === "laptop"
+								? "iobook"
+								: "io",
 						osType: "arch",
 						captureCommandImpl: async (command) =>
 							command === "tailscale status --json"

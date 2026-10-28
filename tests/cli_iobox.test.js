@@ -130,7 +130,10 @@ describe("iobox standalone device commands", () => {
 		"--audio",
 		"--audio-backup",
 	]) {
-		it.each(["iobox", "iosatellite"])(`${flag} refuses %s without changing home or repo configs`, (deviceType) => {
+		it.each([
+			"iobox",
+			"iosatellite",
+		])(`${flag} refuses %s without changing home or repo configs`, (deviceType) => {
 			write(path.join(home, ".haoshoku.json"), JSON.stringify({ deviceType }));
 			const beforeHome = snapshot(home);
 			const beforeRepo = snapshot(path.join(project, "configs"));
@@ -155,9 +158,11 @@ describe("iobox standalone device commands", () => {
 	}
 });
 
- it("accepts and persists iosatellite through the documented CLI usage", () => {
-  const result = run(["--device-type", "iosatellite"]);
-  expect(result.exitCode, `${result.stdout}${result.stderr}`).toBe(0);
-  expect(JSON.parse(fs.readFileSync(path.join(home, ".haoshoku.json"), "utf8"))).toEqual({deviceType: "iosatellite", preserved: true});
-  expect(String(run("--help").stdout)).toContain("iosatellite");
- });
+it("accepts and persists iosatellite through the documented CLI usage", () => {
+	const result = run(["--device-type", "iosatellite"]);
+	expect(result.exitCode, `${result.stdout}${result.stderr}`).toBe(0);
+	expect(
+		JSON.parse(fs.readFileSync(path.join(home, ".haoshoku.json"), "utf8")),
+	).toEqual({ deviceType: "iosatellite", preserved: true });
+	expect(String(run("--help").stdout)).toContain("iosatellite");
+});
