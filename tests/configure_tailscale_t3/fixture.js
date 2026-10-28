@@ -6,6 +6,12 @@ export const pathDropIn =
 	"/home/test/.config/systemd/user/t3code.service.d/axstack-path.conf";
 export const pathContent =
 	'[Service]\nEnvironment="PATH=%h/.local/bin:%h/.bun/bin:%h/.local/share/mise/shims:/usr/local/bin:/usr/bin:/bin"\n';
+export const lidDropIn =
+	"/etc/systemd/logind.conf.d/90-haoshoku-iosatellite.conf";
+export const lidContent =
+	"# Managed by Haoshoku: iosatellite always-awake worker\n[Login]\nHandleLidSwitch=ignore\nHandleLidSwitchExternalPower=ignore\nHandleLidSwitchDocked=ignore\n";
+export const lidConfigProbe = "systemd-analyze cat-config systemd/logind.conf";
+export const inhibitorProbe = "systemd-inhibit --list --no-legend --no-pager";
 export const sleepTargets = [
 	"sleep.target",
 	"suspend.target",
@@ -59,7 +65,16 @@ export function fixture({ fresh = false, loggedOut = fresh } = {}) {
 		deviceType: "pc",
 		env: {},
 		fsImpl: {
-			lstatSync(file) { if (files.get(file)?.startsWith("symlink:")) return { isSymbolicLink: () => true }; throw Object.assign(new Error("absent fixture alias"), { code: "ENOENT" }); },
+			mkdtempSync: () => "/owned-fixture-stage",
+			unlinkSync: (file) => files.delete(file),
+			rmdirSync: () => {},
+			lstatSync(file) {
+				if (files.get(file)?.startsWith("symlink:"))
+					return { isSymbolicLink: () => true };
+				throw Object.assign(new Error("absent fixture alias"), {
+					code: "ENOENT",
+				});
+			},
 			readlinkSync: (file) => files.get(file)?.slice("symlink:".length),
 			realpathSync: () => "/home/test/.local/lib/node_modules/t3/bin/t3.js",
 			existsSync: (file) => files.has(file),
@@ -87,7 +102,14 @@ export function fixture({ fresh = false, loggedOut = fresh } = {}) {
 			}
 			let stdout = "";
 			let exitCode = 0;
-			if (command === "node --version") stdout = "v24.10.0";
+			if (command === lidConfigProbe)
+				stdout = files.get(lidDropIn) ?? lidContent;
+			else if (
+				command.startsWith("busctl get-property org.freedesktop.login1 ")
+			)
+				stdout = 's "ignore"';
+			else if (command === inhibitorProbe) stdout = "";
+			else if (command === "node --version") stdout = "v24.10.0";
 			else if (command === "command -v node") stdout = "/usr/bin/node";
 			else if (command === "npm --version") stdout = "10.9.3";
 			else if (command.startsWith("systemctl --user show "))
@@ -131,6 +153,8 @@ export function fixture({ fresh = false, loggedOut = fresh } = {}) {
 		runCommandImpl: async (command, init) => {
 			events.push(command);
 			mutations.push(command);
+			if (command.startsWith("sudo -n install -o root -g root -m 0644 "))
+				files.set(lidDropIn, files.get("/owned-fixture-stage/logind.conf"));
 			if (command.startsWith("sudo -n tailscale set --operator=")) {
 				operator = options.env.SUDO_USER || options.user;
 				overrides.delete("tailscale debug prefs");
@@ -171,6 +195,12 @@ export function fixture({ fresh = false, loggedOut = fresh } = {}) {
 }
 
 export function seedManagedNpm(f) {
-	f.files.set("/home/test/.local/bin/t3", "symlink:../lib/node_modules/t3/bin/t3.js");
-	f.files.set("/home/test/.local/lib/node_modules/t3/package.json", '{"name":"t3","version":"0.1.0","bin":{"t3":"bin/t3.js"}}');
+	f.files.set(
+		"/home/test/.local/bin/t3",
+		"symlink:../lib/node_modules/t3/bin/t3.js",
+	);
+	f.files.set(
+		"/home/test/.local/lib/node_modules/t3/package.json",
+		'{"name":"t3","version":"0.1.0","bin":{"t3":"bin/t3.js"}}',
+	);
 }

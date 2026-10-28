@@ -1,13 +1,16 @@
-import { afterEach, describe, expect, it } from "bun:test";
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
-import { startRunLog } from "../../src/common/run_log.js";
-import { log, runCommand, runCommandCapture } from "../../src/common/utils.js";
-import { runCachyOSSetup } from "../../src/os_scripts/cachyos.js";
+import { describe, expect, it } from "bun:test";
+
 import { configureTailscaleT3 } from "../../src/helpers/configure_tailscale_t3.js";
 
-import { serve, fixture, seedManagedNpm, sleepTargets, maskProbe, listenerCommand, url, dropIn, content, pathDropIn, pathContent } from "./fixture.js";
+import {
+	serve,
+	fixture,
+	listenerCommand,
+	url,
+	dropIn,
+	pathDropIn,
+	pathContent,
+} from "./fixture.js";
 describe("T3 exposure and service guards", () => {
 	it("does not claim readiness when a newly installed service is inactive", async () => {
 		const f = fixture({ fresh: true });
@@ -216,4 +219,3 @@ it("immediately reports a non-loopback iobox listener without retrying HTTPS", a
 	expect(f.events.filter((event) => event === url)).toHaveLength(1);
 	expect(f.messages.join(" ")).not.toContain("are ready");
 });
-

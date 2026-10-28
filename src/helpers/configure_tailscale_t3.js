@@ -9,6 +9,7 @@ import {
 	runCommand,
 	runCommandCapture,
 } from "../common/utils.js";
+import { configureIosatellitePower } from "./configure_iosatellite_power.js";
 import { prepareArchT3Cli } from "./t3_cli.js";
 import { configureT3Op } from "./configure_t3_op.js";
 import { preflightT3Desktop } from "./t3_desktop_preflight.js";
@@ -159,6 +160,15 @@ export async function configureTailscaleT3({
 					if ((await probe(maskCommand(target))) !== "masked")
 						return fail(`sleep mask: ${target} was not masked`);
 			}
+		}
+		if (deviceType === "iosatellite") {
+			step = "lid policy";
+			await configureIosatellitePower({
+				fsImpl,
+				runCommandImpl,
+				captureCommandImpl,
+				logger,
+			});
 		}
 		step = "T3 service";
 		let changed = writeServiceDropIn(

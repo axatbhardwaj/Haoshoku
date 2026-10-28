@@ -1,13 +1,16 @@
-import { afterEach, describe, expect, it } from "bun:test";
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
-import { startRunLog } from "../../src/common/run_log.js";
-import { log, runCommand, runCommandCapture } from "../../src/common/utils.js";
+import { describe, expect, it } from "bun:test";
+
+import { log } from "../../src/common/utils.js";
 import { runCachyOSSetup } from "../../src/os_scripts/cachyos.js";
 import { configureTailscaleT3 } from "../../src/helpers/configure_tailscale_t3.js";
 
-import { fixture, seedManagedNpm, sleepTargets, maskProbe, listenerCommand, url, dropIn, content, pathDropIn, pathContent } from "./fixture.js";
+import {
+	lidDropIn,
+	lidContent,
+	fixture,
+	sleepTargets,
+	maskProbe,
+} from "./fixture.js";
 const lingerProbe = "loginctl show-user 'test' -p Linger";
 const lingerEnable = "sudo -n loginctl enable-linger 'test'";
 
@@ -16,9 +19,11 @@ describe("Arch T3 linger", () => {
 		"pc",
 		"laptop",
 		"iobox",
+		"iosatellite",
 	])("enables and verifies linger on %s, then leaves it unchanged", async (deviceType) => {
 		const f = fixture();
 		f.options.deviceType = deviceType;
+		f.files.set(lidDropIn, lidContent);
 		f.overrides.set(lingerProbe, { stdout: "Linger=no", exitCode: 0 });
 		const run = f.options.runCommandImpl;
 		f.options.runCommandImpl = async (command, options) => {
@@ -133,6 +138,7 @@ describe("Arch root linger policy", () => {
 		const f = fixture({ fresh: true, loggedOut: false });
 		f.options.user = "root";
 		f.options.deviceType = deviceType;
+		f.files.set(lidDropIn, lidContent);
 		expect(await configureTailscaleT3(f.options)).toBe(true);
 		expect(f.warnings.join(" ")).toContain(
 			"linger requires a non-root setup user",
@@ -148,9 +154,13 @@ describe("Arch root linger policy", () => {
 });
 
 describe("iobox sleep targets", () => {
-	it("masks only unmasked system targets, verifies each, and is a no-op on rerun", async () => {
+	it.each([
+		"iobox",
+		"iosatellite",
+	])("%s masks only unmasked system targets, verifies each, and is a no-op on rerun", async (deviceType) => {
 		const f = fixture();
-		f.options.deviceType = "iobox";
+		f.options.deviceType = deviceType;
+		f.files.set(lidDropIn, lidContent);
 		for (const target of sleepTargets.slice(1)) f.masks.set(target, "static");
 		expect(await configureTailscaleT3(f.options)).toBe(true);
 		expect(f.mutations).toEqual([
@@ -173,6 +183,7 @@ describe("iobox sleep targets", () => {
 	])("leaves %s sleep targets alone", async (deviceType) => {
 		const f = fixture();
 		f.options.deviceType = deviceType;
+		f.files.set(lidDropIn, lidContent);
 		for (const target of sleepTargets) f.masks.set(target, "static");
 		expect(await configureTailscaleT3(f.options)).toBe(true);
 		expect(f.mutations).toEqual([]);
@@ -206,13 +217,14 @@ describe("iobox sleep targets", () => {
 });
 
 describe("Arch full setup always-on failures", () => {
-	it.each([
-		"Tailscale",
-		"T3 service",
-		"linger",
-		"sleep mask",
-		"Tailscale/T3",
-	])("fails iobox setup naming %s and stops later steps", async (step) => {
+	it.each(
+		["Tailscale", "T3 service", "linger", "sleep mask", "Tailscale/T3"].flatMap(
+			(step) => [
+				[step, "iobox"],
+				[step, "iosatellite"],
+			],
+		),
+	)("fails setup naming %s on %s and stops later steps", async (step, deviceType) => {
 		const f = fixture();
 		const errors = [];
 		const events = [];
@@ -237,7 +249,7 @@ describe("Arch full setup always-on failures", () => {
 		try {
 			const result = await runCachyOSSetup({
 				promptDeviceTypeImpl: async () => {},
-				readDeviceTypeImpl: () => "iobox",
+				readDeviceTypeImpl: () => deviceType,
 				startSudoSessionImpl: async () => () => events.push("sudo-stop"),
 				commandExistsImpl: async () => true,
 				prepareArchPackageManagerImpl: async () => true,
@@ -271,4 +283,3 @@ describe("Arch full setup always-on failures", () => {
 		}
 	});
 });
-
