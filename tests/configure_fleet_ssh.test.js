@@ -65,12 +65,25 @@ it.each([
 	expect(calls).toEqual([]);
 	expect(fs.readdirSync(home)).toEqual([]);
 });
-it("skips non-fleet full setup without side effects", async () => {
-	expect(await configureFleetSsh({ ...options, hostname: "unknown" })).toBe(
-		true,
-	);
-	expect(calls).toEqual([]);
-	expect(fs.readdirSync(home)).toEqual([]);
+it.each([
+	"pc",
+	"iobox",
+	"iosatellite",
+])("handles a missing fleet hostname on %s without side effects", async (deviceType) => {
+	for (const standalone of [false, true]) {
+		const result = configureFleetSsh({
+			...options,
+			hostname: "unknown",
+			deviceType,
+			standalone,
+			throwOnFailure: true,
+		});
+		if (deviceType === "iosatellite")
+			await expect(result).rejects.toThrow("Arch fleet hostname");
+		else expect(await result).toBe(!standalone);
+		expect(calls).toEqual([]);
+		expect(fs.readdirSync(home)).toEqual([]);
+	}
 });
 it("validates the fleet before any commands or writes", async () => {
 	await expect(
@@ -80,36 +93,50 @@ it("validates the fleet before any commands or writes", async () => {
 	expect(fs.readdirSync(home)).toEqual([]);
 });
 
-it.each([
-	{ BackendState: "Running", MagicDNSSuffix: "other.ts.net" },
-	{ BackendState: "NeedsLogin", MagicDNSSuffix: "tail140c22.ts.net" },
-	{ BackendState: "Stopped", MagicDNSSuffix: "tail140c22.ts.net" },
-	{ BackendState: "Running" },
-])("guards fleet actions before commands or writes (%#)", async (status) => {
+it.each(
+	[
+		{ BackendState: "Running", MagicDNSSuffix: "other.ts.net" },
+		{ BackendState: "NeedsLogin", MagicDNSSuffix: "tail140c22.ts.net" },
+		{ BackendState: "Stopped", MagicDNSSuffix: "tail140c22.ts.net" },
+		{ BackendState: "Running" },
+		"unreadable",
+		"malformed",
+		"throws",
+	].flatMap((status) => [
+		["pc", "io", status],
+		["iobox", "iobox", status],
+		["iosatellite", "iosatellite", status],
+	]),
+)("guards fleet preflight on %s (%#)", async (deviceType, hostname, status) => {
 	options.captureCommandImpl = async (command) => {
 		calls.push(command);
-		return {
-			exitCode: 0,
-			stdout: JSON.stringify(
-				command === "tailscale debug prefs" ? { RunSSH: true } : status,
-			),
-		};
+		if (status === "throws") throw new Error("Tailscale status unavailable");
+		if (status === "unreadable") return { exitCode: 1, stdout: "" };
+		if (status === "malformed") return { exitCode: 0, stdout: "{" };
+		return { exitCode: 0, stdout: JSON.stringify(status) };
 	};
 	for (const standalone of [true, false]) {
 		calls.length = 0;
-		expect(
-			await configureFleetSsh({
-				...options,
-				hostname: "io",
-				standalone,
-				throwOnFailure: true,
-			}),
-		).toBe(!standalone);
+		const result = configureFleetSsh({
+			...options,
+			hostname,
+			deviceType,
+			standalone,
+			throwOnFailure: true,
+		});
+		if (deviceType === "iosatellite")
+			await expect(result).rejects.toThrow(
+				"Tailscale fleet verification failed",
+			);
+		else expect(await result).toBe(!standalone);
 		expect(calls).toEqual(["tailscale status --json"]);
 		expect(fs.readdirSync(home)).toEqual([]);
 	}
-	expect(warnings.join(" ")).toContain("Skipping fleet SSH");
-	expect(warnings.join(" ")).toContain("tail140c22.ts.net");
+	if (deviceType !== "iosatellite") {
+		expect(warnings.join(" ")).toContain("Skipping fleet SSH");
+		if (typeof status === "object")
+			expect(warnings.join(" ")).toContain("tail140c22.ts.net");
+	}
 });
 
 it.each([
@@ -203,13 +230,13 @@ it.each([
 	)
 		expect(calls).not.toContain("tailscale set --ssh");
 	if (["stopped", "logged-out"].includes(failure)) {
-		await expect(
-			configureFleetSsh({
+		expect(
+			await configureFleetSsh({
 				...options,
 				hostname: "iobox",
 				throwOnFailure: true,
 			}),
-		).rejects.toThrow("Tailscale");
+		).toBe(true);
 	} else {
 		await expect(
 			configureFleetSsh({ ...options, hostname: "iobox", standalone: true }),
@@ -374,19 +401,31 @@ it.each([
 });
 
 it.each([
+	"pc",
 	"iobox",
 	"iosatellite",
-])("fails %s full setup when tailnet identity cannot be verified", async (deviceType) => {
+])("keeps %s runtime failures strict after verified preflight", async (deviceType) => {
+	const capture = options.captureCommandImpl;
+	options.captureCommandImpl = async (command) =>
+		command === "tailscale debug prefs"
+			? { exitCode: 1, stdout: "" }
+			: capture(command);
+	const hostname = deviceType === "pc" ? "io" : deviceType;
 	await expect(
 		configureFleetSsh({
 			...options,
-			hostname: deviceType,
+			hostname,
 			deviceType,
-			captureCommandImpl: async () => ({
-				exitCode: 0,
-				stdout: '{"BackendState":"Stopped"}',
-			}),
+			throwOnFailure: true,
 		}),
-	).rejects.toThrow(/Tailscale/);
+	).rejects.toThrow("Tailscale SSH");
+	if (deviceType === "pc")
+		expect(await configureFleetSsh({ ...options, hostname, deviceType })).toBe(
+			false,
+		);
+	else
+		await expect(
+			configureFleetSsh({ ...options, hostname, deviceType }),
+		).rejects.toThrow("Tailscale SSH");
 	expect(fs.readdirSync(home)).toEqual([]);
 });

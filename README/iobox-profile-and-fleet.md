@@ -29,8 +29,10 @@ or sleep-mask failures stop worker setup with the failed step named.
 non-fleet hosts are refused without changes. Tailscale must report `BackendState`
 `Running` and `MagicDNSSuffix` matching the manifest tailnet (`tail140c22.ts.net`)
 before fleet actions. Otherwise standalone mode exits non-zero without writing
-files; full desktop setup skips fleet SSH with a message. Worker profiles fail instead,
-including when the fleet hostname or tailnet identity cannot be verified.
+files. Full desktop and iobox setup skip fleet SSH when the hostname is not in
+the fleet or the tailnet identity cannot be verified; failed tailnet checks print
+a message. iosatellite stops setup on either preflight failure. After successful
+preflight, fleet SSH setup failures still stop both worker profiles.
 It enables/verifies Tailscale SSH, writes `~/.ssh/config.d/haoshoku-fleet`, and
 puts its Include first in `~/.ssh/config`, preserving user Host/Match blocks.
 Arch peer keys from Tailscale go to `~/.ssh/known_hosts_fleet` with strict host

@@ -159,8 +159,9 @@ export async function configureFleetSsh({
 	const fleet = loadFleet({ manifest });
 	const self = getArchFleetHost({ hostname, osType, fleet });
 	const strict = isEngineeringWorker(deviceType ?? self?.deviceType);
+	const strictPreflight = (deviceType ?? self?.deviceType) === "iosatellite";
 	if (!self) {
-		if (strict)
+		if (strictPreflight)
 			throw new Error(
 				"Fleet SSH requires an Arch fleet hostname; set the hostname before worker setup.",
 			);
@@ -171,7 +172,7 @@ export async function configureFleetSsh({
 	try {
 		status = await readFleetStatus({ fleet, captureCommandImpl });
 	} catch (error) {
-		if (strict)
+		if (strictPreflight)
 			throw new Error(`Tailscale fleet verification failed: ${error.message}`);
 		logger.warning(
 			`${standalone ? "Tailscale SSH failed" : "Skipping fleet SSH"}: ${error.message}.`,

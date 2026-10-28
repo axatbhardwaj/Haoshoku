@@ -32,7 +32,7 @@ Run on the Dell as the ordinary `xzat` user, using sudo for system operations.
 4. Resolve any named T3, Tailscale, linger, sleep-mask, lid-policy or fleet SSH
    failure and rerun setup. Retry the service/power step with
    `bun haoshoku.js --tailscale-t3`, and fleet wiring with
-   `bun haoshoku.js --fleet-ssh`. Worker setup requires a recognized Arch fleet
+   `bun haoshoku.js --fleet-ssh`. iosatellite setup requires a recognized Arch fleet
    hostname and verified matching tailnet; failed verification stops setup.
 5. If told **Reboot required**, keep the lid open and finish provisioning before
    `sudo reboot`. After reboot rerun `bun haoshoku.js --tailscale-t3` and resolve
