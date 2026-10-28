@@ -6,6 +6,8 @@ import {
 	T3_VERSION_FLOOR,
 } from "./t3_tailscale.js";
 
+const npmT3Bins = ["bin/t3.js", "bin/t3.mjs"];
+
 // Shared stable CLI preparation; callers retain their platform runtime and service policy.
 export async function prepareT3Cli({
 	home,
@@ -69,13 +71,17 @@ function inspectNpmT3(prefix, fsImpl, latest) {
 	let occupied = false;
 	let managed = false;
 	let metadata;
+	let binPath;
 	try {
 		const stat = fsImpl.lstatSync(localCli);
 		occupied = true;
-		if (
-			stat.isSymbolicLink() &&
-			fsImpl.realpathSync(localCli) === path.join(packageDir, "bin/t3.js")
-		) {
+		if (stat.isSymbolicLink()) {
+			const target = fsImpl.realpathSync(localCli);
+			binPath = npmT3Bins.find(
+				(entry) => target === path.join(packageDir, entry),
+			);
+		}
+		if (binPath) {
 			metadata = JSON.parse(
 				fsImpl.readFileSync(path.join(packageDir, "package.json"), "utf8"),
 			);
@@ -87,7 +93,7 @@ function inspectNpmT3(prefix, fsImpl, latest) {
 	} catch (error) {
 		if (error.code !== "ENOENT") throw error;
 	}
-	return { localCli, packageDir, occupied, managed, metadata };
+	return { localCli, packageDir, occupied, managed, metadata, binPath };
 }
 
 export function isT3NodeVersionSupported(version) {
@@ -240,14 +246,17 @@ export async function prepareArchT3Cli({
 		);
 	if (ownedNightly) await checkNightly(latest);
 
-	const validMetadata = (entry, cliVersion) =>
-		entry.managed &&
-		entry.metadata.version === cliVersion &&
-		["bin/t3.js", "./bin/t3.js"].includes(
-			typeof entry.metadata.bin === "string"
+	const validMetadata = (entry, cliVersion) => {
+		const declared =
+			typeof entry.metadata?.bin === "string"
 				? entry.metadata.bin
-				: entry.metadata.bin?.t3,
+				: entry.metadata?.bin?.t3;
+		return (
+			entry.managed &&
+			entry.metadata.version === cliVersion &&
+			[entry.binPath, `./${entry.binPath}`].includes(declared)
 		);
+	};
 	if (local.managed && !validMetadata(local, version))
 		throw new Error("local npm CLI origin/version metadata is inconsistent");
 	if (
@@ -301,7 +310,7 @@ export async function prepareArchT3Cli({
 		movedNew = true;
 		const finalVersion = parseT3Version(
 			await probe(
-				`${shellQuote(path.join(local.packageDir, "bin/t3.js"))} --version`,
+				`${shellQuote(path.join(local.packageDir, staged.binPath))} --version`,
 			),
 		);
 		if (finalVersion !== prepared.cliVersion)
@@ -310,7 +319,7 @@ export async function prepareArchT3Cli({
 			);
 		fsImpl.mkdirSync(path.dirname(local.localCli), { recursive: true });
 		const alias = path.join(stage, "t3-link");
-		fsImpl.symlinkSync("../lib/node_modules/t3/bin/t3.js", alias);
+		fsImpl.symlinkSync(`../lib/node_modules/t3/${staged.binPath}`, alias);
 		fsImpl.renameSync(alias, local.localCli);
 		return {
 			t3: shellQuote(local.localCli),

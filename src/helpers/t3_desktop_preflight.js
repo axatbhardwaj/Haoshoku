@@ -223,7 +223,8 @@ export async function preflightT3Desktop({
 				const unit = line.trim().replace(/^●\s*/, "").split(/\s+/)[0];
 				if (
 					/t3code|t3-code|com\.t3tools\.T3Code/i.test(unit) &&
-					unit !== "t3code.service"
+					unit !== "t3code.service" &&
+					!unit.endsWith(".slice")
 				)
 					desktopUnits.add(unit);
 			}
