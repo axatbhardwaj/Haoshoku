@@ -134,6 +134,7 @@ export async function promptDeviceType({
 		{ title: "PC (io)", value: "pc" },
 		{ title: "Laptop (iobook)", value: "laptop" },
 		{ title: "Agent box (iobox)", value: "iobox" },
+		{ title: "Laptop worker (iosatellite)", value: "iosatellite" },
 		{ title: "Skip — don't persist", value: null },
 	];
 	const initial = 0;

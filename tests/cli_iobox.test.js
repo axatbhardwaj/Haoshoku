@@ -106,7 +106,7 @@ afterEach(() => fs.rmSync(scratch, { recursive: true }));
 
 function run(flag) {
 	return Bun.spawnSync(
-		[process.execPath, path.join(project, "haoshoku.js"), flag],
+		[process.execPath, path.join(project, "haoshoku.js"), ...[flag].flat()],
 		{
 			env: {
 				...process.env,
@@ -153,3 +153,10 @@ describe("iobox standalone device commands", () => {
 		});
 	}
 });
+
+ it("accepts and persists iosatellite through the documented CLI usage", () => {
+  const result = run(["--device-type", "iosatellite"]);
+  expect(result.exitCode, `${result.stdout}${result.stderr}`).toBe(0);
+  expect(JSON.parse(fs.readFileSync(path.join(home, ".haoshoku.json"), "utf8"))).toEqual({deviceType: "iosatellite", preserved: true});
+  expect(String(run("--help").stdout)).toContain("iosatellite");
+ });

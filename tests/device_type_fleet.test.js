@@ -162,3 +162,16 @@ describe("fleet device detection", () => {
 		} else expect(warnings).toEqual([]);
 	});
 });
+
+ it("recognizes the shipped iosatellite host before laptop hardware, preserving overrides", async () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), "satellite-profile-"));
+  const configPath = path.join(home, ".haoshoku.json");
+  try {
+   const options = { configPath, hostname: "iosatellite", isTTY: false, detectDeviceTypeImpl: () => "laptop" };
+   expect(await promptDeviceType(options)).toBe("iosatellite");
+   expect(readConfiguredDeviceType(home)).toBe("iosatellite");
+   expect(await promptDeviceType({...options, forcedDeviceType: "pc"})).toBe("pc");
+   expect(await promptDeviceType(options)).toBe("pc");
+   expect(await promptDeviceType({...options, forcedDeviceType: "iosatellite"})).toBe("iosatellite");
+  } finally { fs.rmSync(home, { recursive: true }); }
+ });

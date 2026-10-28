@@ -207,7 +207,7 @@ program
 		"--worktree-cleanup-backup",
 		"Backup live disk-cleanup scripts, config and systemd units to configs/worktree-cleanup/",
 	)
-	.option("--device-type <type>", "Set device type (pc, laptop or iobox)")
+	.option("--device-type <type>", "Set device type (pc, laptop, iobox or iosatellite)")
 	.option(
 		"--scripts",
 		"Deploy user scripts (configs/scripts/ → ~/.local/bin/) and prune retired entries",
@@ -495,7 +495,7 @@ async function runAction(options) {
 
 	if (options.deviceType !== undefined) {
 		if (!DEVICE_TYPES.includes(options.deviceType)) {
-			log.error("Device type must be pc, laptop or iobox.");
+			log.error("Device type must be pc, laptop, iobox or iosatellite.");
 			process.exitCode = 2;
 			return;
 		}
