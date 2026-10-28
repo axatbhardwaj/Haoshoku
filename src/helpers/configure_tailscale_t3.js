@@ -1,3 +1,4 @@
+import { isEngineeringWorker } from "../common/device_type.js";
 import fs from "node:fs";
 import { homedir, hostname as getHostname, userInfo } from "node:os";
 import path from "node:path";
@@ -38,7 +39,7 @@ export async function configureTailscaleT3({
 	logger = log,
 } = {}) {
 	const fail = (message) => {
-		if (deviceType === "iobox") throw new Error(message);
+		if (isEngineeringWorker(deviceType)) throw new Error(message);
 		logger.warning(
 			`${message} — continuing setup. Retry haoshoku --tailscale-t3.`,
 		);
@@ -97,7 +98,7 @@ export async function configureTailscaleT3({
 				logger,
 			}))
 		) {
-			if (deviceType === "iobox")
+			if (isEngineeringWorker(deviceType))
 				return fail("Tailscale operator configuration failed");
 			return false;
 		}
@@ -135,7 +136,7 @@ export async function configureTailscaleT3({
 					return fail("linger was not enabled after enable-linger");
 			}
 		}
-		if (deviceType === "iobox") {
+		if (isEngineeringWorker(deviceType)) {
 			step = "sleep mask";
 			const targets = [
 				"sleep.target",
@@ -215,7 +216,7 @@ export async function configureTailscaleT3({
 			retryFlag: "--tailscale-t3",
 			tailnetOnly: true,
 		});
-		if (ready && deviceType === "iobox") {
+		if (ready && isEngineeringWorker(deviceType)) {
 			step = "1Password token drop-in";
 			await configureT3Op({ home, fsImpl, runCommandImpl, logger });
 		}
@@ -229,7 +230,7 @@ export async function configureTailscaleT3({
 			});
 		return ready;
 	} catch (error) {
-		if (deviceType === "iobox")
+		if (isEngineeringWorker(deviceType))
 			throw new Error(`${step} failed: ${error.message}`);
 		return fail(`${step} configuration failed: ${error.message}`);
 	}

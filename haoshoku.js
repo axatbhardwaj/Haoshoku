@@ -9,7 +9,7 @@ import {
 import prompts from "prompts";
 import { startRunLog } from "./src/common/run_log.js";
 import { detectOS, findActiveModeFlags } from "./src/common/cli_utils.js";
-import { promptDeviceType } from "./src/common/device_type.js";
+import { isEngineeringWorker, promptDeviceType } from "./src/common/device_type.js";
 import { getBanner, showBanner } from "./src/common/ui.js";
 import {
 	DEVICE_TYPES,
@@ -341,10 +341,10 @@ async function runAction(options) {
 			"audio",
 			"audioBackup",
 		].includes(activeFlags[0]) &&
-		readConfiguredDeviceType(homedir()) === "iobox"
+		isEngineeringWorker(readConfiguredDeviceType(homedir()))
 	) {
 		log.error(
-			"Device-routed workspace, monitor and audio commands are not supported on iobox.",
+			`Device-routed workspace, monitor and audio commands are not supported on ${readConfiguredDeviceType(homedir())}.`,
 		);
 		process.exitCode = 1;
 		return;

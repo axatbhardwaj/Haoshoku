@@ -1,3 +1,4 @@
+import { isEngineeringWorker } from "../common/device_type.js";
 import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
@@ -231,8 +232,8 @@ export async function syncAudioConfig(opts = {}) {
   } = resolvePaths(opts);
 
   const deviceType = readConfiguredDeviceType(home);
-  if (deviceType === "iobox") {
-    throw new Error("Audio configuration is not supported on iobox.");
+  if (isEngineeringWorker(deviceType)) {
+    throw new Error(`Audio configuration is not supported on ${deviceType}.`);
   }
   log.info(`Syncing audio config (deviceType=${deviceType ?? "unset"})...`);
 
@@ -297,8 +298,8 @@ export async function backupAudioConfig(opts = {}) {
   } = resolvePaths(opts);
 
   const deviceType = readConfiguredDeviceType(home);
-  if (deviceType === "iobox") {
-    throw new Error("Audio configuration is not supported on iobox.");
+  if (isEngineeringWorker(deviceType)) {
+    throw new Error(`Audio configuration is not supported on ${deviceType}.`);
   }
   log.info(`Backing up audio config (deviceType=${deviceType ?? "unset"})...`);
 

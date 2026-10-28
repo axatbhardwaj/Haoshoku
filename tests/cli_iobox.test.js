@@ -130,13 +130,14 @@ describe("iobox standalone device commands", () => {
 		"--audio",
 		"--audio-backup",
 	]) {
-		it(`${flag} refuses iobox without changing home or repo configs`, () => {
+		it.each(["iobox", "iosatellite"])(`${flag} refuses %s without changing home or repo configs`, (deviceType) => {
+			write(path.join(home, ".haoshoku.json"), JSON.stringify({ deviceType }));
 			const beforeHome = snapshot(home);
 			const beforeRepo = snapshot(path.join(project, "configs"));
 			const result = run(flag);
 			expect(result.exitCode).not.toBe(0);
 			expect(`${result.stdout}${result.stderr}`).toContain(
-				"not supported on iobox",
+				`not supported on ${deviceType}`,
 			);
 			expect(snapshot(home)).toEqual(beforeHome);
 			expect(snapshot(path.join(project, "configs"))).toEqual(beforeRepo);

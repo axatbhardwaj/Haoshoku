@@ -12,9 +12,11 @@ import {
 
 describe("iobox full setup", () => {
 	it.each([
-		true,
-		false,
-	])("routes the persisted profile and skips desktop steps (Omarchy=%s)", async (isOmarchy) => {
+		[true, "iobox"],
+		[false, "iobox"],
+		[true, "iosatellite"],
+		[false, "iosatellite"],
+	])("routes the persisted profile and skips desktop steps (Omarchy=%s, profile=%s)", async (isOmarchy, deviceType) => {
 		const calls = [];
 		const record = (name, result) => async () => {
 			calls.push(name);
@@ -22,7 +24,7 @@ describe("iobox full setup", () => {
 		};
 		const result = await runCachyOSSetup({
 			promptDeviceTypeImpl: record("device", "pc"),
-			readDeviceTypeImpl: () => "iobox",
+			readDeviceTypeImpl: () => deviceType,
 			startSudoSessionImpl: async () => record("sudo-stop"),
 			commandExistsImpl: async () => isOmarchy,
 			prepareArchPackageManagerImpl: record("prepare", true),
@@ -55,8 +57,8 @@ describe("iobox full setup", () => {
 			"rust",
 			"aur",
 			"dev-tools",
-			["packages", "paru", isOmarchy, "iobox"],
-			["apps", { isOmarchy, deviceType: "iobox" }],
+			["packages", "paru", isOmarchy, deviceType],
+			["apps", { isOmarchy, deviceType }],
 			"tailscale-t3",
 			"fleet-ssh",
 			...(isOmarchy ? ["omazed", "appearance"] : []),
@@ -66,14 +68,14 @@ describe("iobox full setup", () => {
 });
 
 describe("iobox packages", () => {
-	it("installs the agent package file without gaming and skips installed targets on rerun", async () => {
+	it.each(["iobox", "iosatellite"])("%s installs the agent package file without gaming and skips installed targets on rerun", async (deviceType) => {
 		const files = [];
 		const commands = [];
 		const prompts = [];
 		const installed = new Set();
 		let requested;
 		const options = {
-			deviceType: "iobox",
+			deviceType,
 			getInstalledPackagesImpl: async () => installed,
 			readFileImpl: (file, encoding) => {
 				files.push(path.basename(file));
@@ -147,7 +149,7 @@ describe("iobox packages", () => {
 	});
 });
 
-it("exits the full iobox CLI non-zero naming linger when the service step fails", () => {
+it.each(["iobox", "iosatellite"])("exits the full %s CLI non-zero naming linger when the service step fails", (deviceType) => {
 	const root = path.resolve(import.meta.dir, "..");
 	const home = fs.mkdtempSync(path.join(os.tmpdir(), "iobox-linger-cli-"));
 	const cli = path.join(root, "haoshoku.js");
@@ -160,7 +162,7 @@ it("exits the full iobox CLI non-zero naming linger when the service step fails"
 			...arch,
 			runCachyOSSetup: () => runSetup({
 				promptDeviceTypeImpl: async () => {},
-				readDeviceTypeImpl: () => "iobox",
+				readDeviceTypeImpl: () => ${JSON.stringify(deviceType)},
 				startSudoSessionImpl: async () => () => console.log("SUDO_STOPPED"),
 				commandExistsImpl: async () => false,
 				prepareArchPackageManagerImpl: async () => true,
@@ -203,6 +205,7 @@ it.each([
 	"pc",
 	"laptop",
 	"iobox",
+	"iosatellite",
 ])("handles fleet SSH failure on %s", async (deviceType) => {
 	for (const throws of [false, true]) {
 		const events = [];
@@ -244,8 +247,8 @@ it.each([
 						...options,
 						home: path.join(os.tmpdir(), "unused-fleet-failure-home"),
 						hostname:
-							deviceType === "iobox"
-								? "iobox"
+							["iobox", "iosatellite"].includes(deviceType)
+								? deviceType
 								: deviceType === "laptop"
 									? "iobook"
 									: "io",
@@ -266,7 +269,7 @@ it.each([
 					});
 				},
 			});
-			expect(result).toBe(deviceType !== "iobox");
+			expect(result).toBe(!["iobox", "iosatellite"].includes(deviceType));
 			expect(events).toEqual(["t3", "fleet", "stop"]);
 			expect(messages.join(" ")).toContain("Fleet SSH");
 			expect(messages).toHaveLength(1);

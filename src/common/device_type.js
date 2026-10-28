@@ -161,3 +161,8 @@ export async function promptDeviceType({
 
 	return persist(response.device);
 }
+
+/** Engineering workers share the minimal installer and always-on service policy. */
+export function isEngineeringWorker(deviceType) {
+ return deviceType === "iobox" || deviceType === "iosatellite";
+}

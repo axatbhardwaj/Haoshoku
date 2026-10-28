@@ -69,6 +69,7 @@ describe("CachyOS browser integration", () => {
 describe("device-aware user apps", () => {
 	it.each([
 		"iobox",
+		"iosatellite",
 		"pc",
 		"laptop",
 	])("keeps agents and scripts while routing desktop work for %s", async (deviceType) => {
@@ -109,13 +110,13 @@ describe("device-aware user apps", () => {
 		});
 		expect(result).toEqual({ claude: { ok: true }, codex: { ok: true } });
 		expect(calls).toEqual([
-			...(deviceType === "iobox"
+			...(["iobox", "iosatellite"].includes(deviceType)
 				? ["scripts"]
 				: ["profiles", "scripts", "mimeapps", "audio"]),
 			"bash",
 			"fastfetch",
 			"ghostty",
-			...(deviceType === "iobox"
+			...(["iobox", "iosatellite"].includes(deviceType)
 				? []
 				: ["command", "Enable Bluetooth?", "command"]),
 			"claude",

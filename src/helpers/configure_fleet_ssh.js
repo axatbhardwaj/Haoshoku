@@ -1,3 +1,4 @@
+import { isEngineeringWorker } from "../common/device_type.js";
 import fs from "node:fs";
 import { randomUUID } from "node:crypto";
 import { homedir, hostname as getHostname } from "node:os";
@@ -157,7 +158,9 @@ export async function configureFleetSsh({
 } = {}) {
 	const fleet = loadFleet({ manifest });
 	const self = getArchFleetHost({ hostname, osType, fleet });
+ const strict = isEngineeringWorker(deviceType ?? self?.deviceType);
 	if (!self) {
+  if (strict) throw new Error("Fleet SSH requires an Arch fleet hostname; set the hostname before worker setup.");
 		if (standalone) logger.warning("--fleet-ssh requires an Arch fleet host.");
 		return !standalone;
 	}
@@ -165,13 +168,14 @@ export async function configureFleetSsh({
 	try {
 		status = await readFleetStatus({ fleet, captureCommandImpl });
 	} catch (error) {
+  if (strict) throw new Error(`Tailscale fleet verification failed: ${error.message}`);
 		logger.warning(
 			`${standalone ? "Tailscale SSH failed" : "Skipping fleet SSH"}: ${error.message}.`,
 		);
 		return !standalone;
 	}
 	const fail = (message) => {
-		if (throwOnFailure || (deviceType ?? self.deviceType) === "iobox")
+		if (throwOnFailure || strict)
 			throw new Error(message);
 		logger.warning(message);
 		return false;

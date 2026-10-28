@@ -1,3 +1,4 @@
+import { isEngineeringWorker } from "../common/device_type.js";
 import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
@@ -105,8 +106,8 @@ export async function configureOmarchyWorkspaces({
 	versionResult,
 } = {}) {
 	const deviceType = readDeviceType(home);
-	if (deviceType === "iobox") {
-		const message = "Workspaces are not supported on iobox.";
+	if (isEngineeringWorker(deviceType)) {
+		const message = `Workspaces are not supported on ${deviceType}.`;
 		logImpl.warning(message);
 		return {
 			status: "refused",
