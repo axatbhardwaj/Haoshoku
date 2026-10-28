@@ -65,22 +65,27 @@ native subagent tools (Claude Agent tool, Codex spawn, etc.) for delegated work.
 ## axnet
 
 The fleet is io (PC), iobook (laptop), iobox (always-on agent box running
-T3 Code), and axat-vps (Debian VPS running Executor and Hermes). Access is
+T3 Code), iosatellite (planned Omarchy laptop worker, Dell Inspiron 7570),
+and axat-vps (Debian VPS running Executor and Hermes). Access is
 Tailscale-only: use MagicDNS short names, for example `ssh iobox` or
-`ssh axat-vps`. Hosts SSH to each other by short name using Tailscale SSH
+`ssh axat-vps` (and `ssh iosatellite` after provisioning). Hosts SSH to each other by short name using Tailscale SSH
 on Arch hosts and OpenSSH to axat-vps.
 
 Roles:
 
 - io = control center (may work locally or hand work to the workers).
 - iobook and my phone = access points (keep me informed and let me steer; no real work).
-- iobox and axat-vps = workers (do the work locally and never hand work to another host).
+- iobox, iosatellite and axat-vps = workers (do the work locally and never hand work to another host).
   Subagents and reviewers via T3 on the same host are fine.
 
 Agents may SSH to any fleet host and act there. Accepted risk: one compromised
 agent can reach every fleet host. On iobox, use the 1Password `op` CLI with the
 service-account token inherited by T3 from `~/.config/op/service-account.env`.
-Never copy keys or tokens into the repository or logs.
+Never copy keys or tokens into the repository or logs. iosatellite uses the same
+optional existing `op` env wiring once provisioned; no token is assumed present.
+It runs locally, always awake even on battery, including with the lid closed on AC.
+The profile is planned/unprovisioned until local setup and real closed-lid AC
+job, SSH and T3 checks pass; credentials, ACLs and timers are not preinstalled.
 
 ## MCP access
 
@@ -101,7 +106,10 @@ Try to use relevant Axstack skills for all of the things you need to do.
 
 Axstack releases reinstall and verify on all four hosts: io (`xzat@io`),
 iobook, axat-vps, and iobox (`xzat@iobox`). Each host also runs the
-`axstack-default-sync` timer with the pool drop-in.
+`axstack-default-sync` timer with the pool drop-in. Keep verification on all four
+existing hosts mandatory. After iosatellite is provisioned, include `xzat@iosatellite`
+in release reinstall/verification and verify its timer and pool drop-in; until then
+record it as planned, not verified.
 
 ## Merging and tooling (set 2026-10-23)
 

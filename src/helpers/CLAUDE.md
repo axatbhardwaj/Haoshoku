@@ -28,7 +28,8 @@ Standalone setup scripts for specific tools.
 | `configure_t3_code_server.js` | Debian stable >=0.1.0 T3 service over Tailscale with `t3@latest` installation and version/origin holds; runtime/CLI prerequisites can precede desktop preflight; service changes require it; disables Connect and verifies HTTPS readiness | Changing CLI floor checks, service drop-ins, Tailscale mapping, or pairing guidance |
 | `configure_tailscale_t3.js` | Arch Tailscale package, browser login, operator and T3 user-service reconciliation | Debugging `--tailscale-t3` or Arch phone access |
 | `configure_fleet_ssh.js` | Fleet SSH host config from the fleet manifest | Changing fleet SSH setup |
-| `configure_t3_op.js` | iobox T3 1Password service-account token wiring (status only, no token logging) | Changing `op` setup for T3 |
+| `configure_iosatellite_power.js` | Managed logind lid ignores, effective/runtime checks and safe reboot guidance | Changing iosatellite closed-lid policy |
+| `configure_t3_op.js` | Engineering-worker T3 1Password service-account token wiring (status only, no token logging) | Changing `op` setup for T3 |
 | `t3_cli.js` | Shared stable T3 CLI preparation with staged replacement | Changing T3 CLI install |
 | `t3_desktop_preflight.js` | Read-only desktop Local environment and effective-directory guard shared by both T3 entrypoints | Changing safe service preflight or desktop evidence probes |
 | `t3_tailscale.js` | Shared CLI floor, Tailscale drop-in, HTTPS mapping/readiness and pairing output | Changing common T3/Tailscale behavior across Arch and Debian |
