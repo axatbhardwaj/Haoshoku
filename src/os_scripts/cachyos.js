@@ -2,7 +2,7 @@ import fs from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { PROJECT_ROOT } from "../common/paths.js";
-import { promptDeviceType } from "../common/device_type.js";
+import { isEngineeringWorker, promptDeviceType } from "../common/device_type.js";
 import { withSpinner } from "../common/ui.js";
 import {
 	commandExists,
@@ -202,7 +202,7 @@ async function enableServices({
 	runCommandImpl = runCommand,
 } = {}) {
 	if (
-		deviceType !== "iobox" &&
+		!isEngineeringWorker(deviceType) &&
 		(await promptUserImpl("Enable Bluetooth?", false))
 	) {
 		log.info("Enabling Bluetooth service...");
@@ -263,7 +263,7 @@ export async function installSystemPackages(
 	log.info("Preparing for package installation...");
 	log.info("Installing packages from file lists...");
 	const content = readFileImpl(
-		deviceType === "iobox" ? IOBOX_APPLIST_PATH : PARU_APPLIST_PATH,
+		isEngineeringWorker(deviceType) ? IOBOX_APPLIST_PATH : PARU_APPLIST_PATH,
 		"utf8",
 	);
 	const requested = content
@@ -295,7 +295,7 @@ export async function installSystemPackages(
 	}
 
 	if (
-		deviceType !== "iobox" &&
+		!isEngineeringWorker(deviceType) &&
 		(await promptUserImpl("Enable gaming configuration?", false))
 	) {
 		await installGamingPackagesImpl({ aurHelper, isOmarchy });
@@ -321,9 +321,9 @@ export async function configureBrowserIntegration({
 	configureMimeappsImpl = configureMimeapps,
 	installUserScriptsImpl = installUserScripts,
 } = {}) {
-	if (deviceType !== "iobox") await configureChromiumProfilesImpl();
+	if (!isEngineeringWorker(deviceType)) await configureChromiumProfilesImpl();
 	await installUserScriptsImpl();
-	if (deviceType !== "iobox") await configureMimeappsImpl();
+	if (!isEngineeringWorker(deviceType)) await configureMimeappsImpl();
 }
 
 export async function configureUserApps({
@@ -355,7 +355,7 @@ export async function configureUserApps({
 
 	await configureBrowserIntegrationImpl({ deviceType });
 	try {
-		if (deviceType !== "iobox") await configureAudioImpl();
+		if (!isEngineeringWorker(deviceType)) await configureAudioImpl();
 	} catch (err) {
 		log.warning(
 			`Audio config sync failed (${err?.message ?? err}) — continuing with remaining app setup.`,
@@ -366,7 +366,7 @@ export async function configureUserApps({
 	await configureFastfetchImpl();
 	await configureGhosttyImpl();
 
-	if (deviceType !== "iobox") {
+	if (!isEngineeringWorker(deviceType)) {
 		log.info("Installing uosc for MPV...");
 		await runCommandImpl(`curl -fsSL ${UOSC_INSTALL_URL} | bash`);
 	}
@@ -467,7 +467,7 @@ export async function runCachyOSSetup({
 
 	await promptDeviceTypeImpl();
 	const deviceType = readDeviceTypeImpl(HOME);
-	const isIobox = deviceType === "iobox";
+	const isWorker = isEngineeringWorker(deviceType);
 	const stopSudoSession = await startSudoSessionImpl();
 	if (!stopSudoSession) {
 		log.error("Sudo authentication failed. Aborting Arch setup.");
@@ -482,7 +482,7 @@ export async function runCachyOSSetup({
 		await installDevToolsImpl();
 
 		await installSystemPackagesImpl(aurHelper, isOmarchy, { deviceType });
-		if (!isIobox) await installFlatpakAppsImpl();
+		if (!isWorker) await installFlatpakAppsImpl();
 		const userAppsResult = await configureUserAppsImpl({
 			isOmarchy,
 			deviceType,
@@ -490,9 +490,9 @@ export async function runCachyOSSetup({
 
 		try {
 			if (!(await configureTailscaleT3Impl({ deviceType }))) {
-				if (isIobox) {
+				if (isWorker) {
 					log.error(
-						"Tailscale/T3 setup failed. Aborting iobox setup. Retry: haoshoku --tailscale-t3",
+						`Tailscale/T3 setup failed. Aborting ${deviceType} setup. Retry: haoshoku --tailscale-t3`,
 					);
 					return false;
 				}
@@ -501,9 +501,9 @@ export async function runCachyOSSetup({
 				);
 			}
 		} catch (err) {
-			if (isIobox) {
+			if (isWorker) {
 				log.error(
-					`Tailscale/T3 setup failed (${err?.message ?? err}). Aborting iobox setup. Retry: haoshoku --tailscale-t3`,
+					`Tailscale/T3 setup failed (${err?.message ?? err}). Aborting ${deviceType} setup. Retry: haoshoku --tailscale-t3`,
 				);
 				return false;
 			}
@@ -519,13 +519,13 @@ export async function runCachyOSSetup({
 			}
 		} catch (err) {
 			const message = `Fleet SSH setup failed (${err?.message ?? err}). Retry: haoshoku --fleet-ssh`;
-			if (isIobox) {
-				log.error(`${message}. Aborting iobox setup.`);
+			if (isWorker) {
+				log.error(`${message}. Aborting ${deviceType} setup.`);
 				return false;
 			}
 			log.warning(`${message} — continuing setup.`);
 		}
-		if (isOmarchy && !isIobox) {
+		if (isOmarchy && !isWorker) {
 			try {
 				await configureBraveManagedPolicies({ nonInteractiveSudo: true });
 			} catch (err) {

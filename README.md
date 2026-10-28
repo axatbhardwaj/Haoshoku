@@ -47,7 +47,7 @@ Install the latest Axstack release from npm, verified against its registry
 SHA-512 integrity, and configure its Claude and Codex harness targets with
 `haoshoku --axstack`. Axstack requires Bun >= 1.3.14 and
 `t3` stable >= 0.1.0 on PATH. Haoshoku enforces that floor independently of
-Axstack. On Arch/Omarchy, desktop and iobox setup explicitly selects
+Axstack. On Arch/Omarchy, desktop and engineering-worker setup explicitly selects
 `aur/t3code-bin`, so an older Omarchy repository package cannot win the lookup.
 An already installed desktop below 0.1.0, prerelease or unknown version is held;
 Haoshoku prints `yay -S aur/t3code-bin` (or the selected helper) for a backed-up,
@@ -115,7 +115,8 @@ both Notion accounts and Linear through the configured Executor MCP while T3 Cod
 remains responsible for orchestration. Profile sync preserves the live Axstack-owned
 routing block; shared, Claude and Codex profile backups strip it so Axstack can
 own it on fresh hosts. The shared profile names axnet roles: io is the control
-center, iobook and the phone are access points, and iobox and axat-vps are
+center, iobook and the phone are access points, and iobox, planned iosatellite,
+and axat-vps are
 workers that do the work locally and never hand work to another host. T3
 subagents and reviewers on the same host are fine.
 
@@ -230,6 +231,7 @@ haoshoku --server-executor https://axat-vps.tail140c22.ts.net
 haoshoku --executor-clients https://executor.example.net/mcp
 haoshoku --device-type laptop
 haoshoku --device-type iobox
+haoshoku --device-type iosatellite
 haoshoku --fleet-ssh
 haoshoku --kde-connect-commands
 haoshoku --audio
@@ -266,7 +268,9 @@ reliable window matching. Without line 2, the desktop entry's
 executables and custom class overrides stay unchanged; reruns keep stable.
 Run `hyprctl reload` after editing it.
 
-Use `haoshoku --device-type pc`, `laptop` or `iobox` to override automatic detection.
+Use `haoshoku --device-type pc`, `laptop`, `iobox` or `iosatellite` to override automatic detection.
+Explicit overrides and stored choices precede fleet hostname detection, which
+precedes DMI/battery detection; hostname `iosatellite` selects the worker profile.
 Later full Arch-family setups honor that stored explicit value.
 
 `haoshoku --3-4-migrate` is a re-runnable, idempotent migration from an
@@ -278,6 +282,12 @@ shim is still present it reports validation deferred and asks for a reboot
 and re-run instead of claiming success.
 
 Run `haoshoku --help` for the complete current list.
+
+## iosatellite profile
+
+[iosatellite bring-up and closed-lid AC verification](README/iosatellite-profile.md).
+This planned Dell Inspiron 7570 worker reuses the iobox package set and exclusions;
+no live provisioning, credential distribution, peer sync or ACL deployment is implied.
 
 ## iobox profile and fleet
 

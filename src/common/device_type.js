@@ -134,6 +134,7 @@ export async function promptDeviceType({
 		{ title: "PC (io)", value: "pc" },
 		{ title: "Laptop (iobook)", value: "laptop" },
 		{ title: "Agent box (iobox)", value: "iobox" },
+		{ title: "Laptop worker (iosatellite)", value: "iosatellite" },
 		{ title: "Skip — don't persist", value: null },
 	];
 	const initial = 0;
@@ -159,4 +160,9 @@ export async function promptDeviceType({
 	}
 
 	return persist(response.device);
+}
+
+/** Engineering workers share the minimal installer and always-on service policy. */
+export function isEngineeringWorker(deviceType) {
+	return deviceType === "iobox" || deviceType === "iosatellite";
 }

@@ -25,6 +25,10 @@ beforeEach(() => {
 								BackendState: "Running",
 								MagicDNSSuffix: "tail140c22.ts.net",
 								Peer: {
+									satellite: {
+										DNSName: "iosatellite.tail140c22.ts.net.",
+										Online: false,
+									},
 									book: {
 										DNSName: "iobook.tail140c22.ts.net.",
 										Online: true,
@@ -61,12 +65,25 @@ it.each([
 	expect(calls).toEqual([]);
 	expect(fs.readdirSync(home)).toEqual([]);
 });
-it("skips non-fleet full setup without side effects", async () => {
-	expect(await configureFleetSsh({ ...options, hostname: "unknown" })).toBe(
-		true,
-	);
-	expect(calls).toEqual([]);
-	expect(fs.readdirSync(home)).toEqual([]);
+it.each([
+	"pc",
+	"iobox",
+	"iosatellite",
+])("handles a missing fleet hostname on %s without side effects", async (deviceType) => {
+	for (const standalone of [false, true]) {
+		const result = configureFleetSsh({
+			...options,
+			hostname: "unknown",
+			deviceType,
+			standalone,
+			throwOnFailure: true,
+		});
+		if (deviceType === "iosatellite")
+			await expect(result).rejects.toThrow("Arch fleet hostname");
+		else expect(await result).toBe(!standalone);
+		expect(calls).toEqual([]);
+		expect(fs.readdirSync(home)).toEqual([]);
+	}
 });
 it("validates the fleet before any commands or writes", async () => {
 	await expect(
@@ -76,36 +93,50 @@ it("validates the fleet before any commands or writes", async () => {
 	expect(fs.readdirSync(home)).toEqual([]);
 });
 
-it.each([
-	{ BackendState: "Running", MagicDNSSuffix: "other.ts.net" },
-	{ BackendState: "NeedsLogin", MagicDNSSuffix: "tail140c22.ts.net" },
-	{ BackendState: "Stopped", MagicDNSSuffix: "tail140c22.ts.net" },
-	{ BackendState: "Running" },
-])("guards fleet actions before commands or writes (%#)", async (status) => {
+it.each(
+	[
+		{ BackendState: "Running", MagicDNSSuffix: "other.ts.net" },
+		{ BackendState: "NeedsLogin", MagicDNSSuffix: "tail140c22.ts.net" },
+		{ BackendState: "Stopped", MagicDNSSuffix: "tail140c22.ts.net" },
+		{ BackendState: "Running" },
+		"unreadable",
+		"malformed",
+		"throws",
+	].flatMap((status) => [
+		["pc", "io", status],
+		["iobox", "iobox", status],
+		["iosatellite", "iosatellite", status],
+	]),
+)("guards fleet preflight on %s (%#)", async (deviceType, hostname, status) => {
 	options.captureCommandImpl = async (command) => {
 		calls.push(command);
-		return {
-			exitCode: 0,
-			stdout: JSON.stringify(
-				command === "tailscale debug prefs" ? { RunSSH: true } : status,
-			),
-		};
+		if (status === "throws") throw new Error("Tailscale status unavailable");
+		if (status === "unreadable") return { exitCode: 1, stdout: "" };
+		if (status === "malformed") return { exitCode: 0, stdout: "{" };
+		return { exitCode: 0, stdout: JSON.stringify(status) };
 	};
 	for (const standalone of [true, false]) {
 		calls.length = 0;
-		expect(
-			await configureFleetSsh({
-				...options,
-				hostname: "iobox",
-				standalone,
-				throwOnFailure: true,
-			}),
-		).toBe(!standalone);
+		const result = configureFleetSsh({
+			...options,
+			hostname,
+			deviceType,
+			standalone,
+			throwOnFailure: true,
+		});
+		if (deviceType === "iosatellite")
+			await expect(result).rejects.toThrow(
+				"Tailscale fleet verification failed",
+			);
+		else expect(await result).toBe(!standalone);
 		expect(calls).toEqual(["tailscale status --json"]);
 		expect(fs.readdirSync(home)).toEqual([]);
 	}
-	expect(warnings.join(" ")).toContain("Skipping fleet SSH");
-	expect(warnings.join(" ")).toContain("tail140c22.ts.net");
+	if (deviceType !== "iosatellite") {
+		expect(warnings.join(" ")).toContain("Skipping fleet SSH");
+		if (typeof status === "object")
+			expect(warnings.join(" ")).toContain("tail140c22.ts.net");
+	}
 });
 
 it.each([
@@ -124,6 +155,10 @@ it.each([
 							BackendState: "Running",
 							MagicDNSSuffix: "tail140c22.ts.net",
 							Peer: {
+								satellite: {
+									DNSName: "iosatellite.tail140c22.ts.net.",
+									Online: false,
+								},
 								book: {
 									DNSName: "iobook.tail140c22.ts.net.",
 									Online: true,
@@ -174,7 +209,12 @@ it.each([
 			stdout: JSON.stringify({
 				BackendState: failure === "logged-out" ? "NeedsLogin" : "Running",
 				MagicDNSSuffix: "tail140c22.ts.net",
-				Peer: {},
+				Peer: {
+					satellite: {
+						DNSName: "iosatellite.tail140c22.ts.net.",
+						Online: false,
+					},
+				},
 			}),
 		};
 	};
@@ -229,6 +269,12 @@ it.each([
 			"",
 			"Host iobox",
 			"  HostName iobox.tail140c22.ts.net",
+			"  User xzat",
+			"  UserKnownHostsFile ~/.ssh/known_hosts_fleet",
+			"  StrictHostKeyChecking yes",
+			"",
+			"Host iosatellite",
+			"  HostName iosatellite.tail140c22.ts.net",
 			"  User xzat",
 			"  UserKnownHostsFile ~/.ssh/known_hosts_fleet",
 			"  StrictHostKeyChecking yes",
@@ -352,4 +398,34 @@ it.each([
 	expect(fs.existsSync(target)).toBe(false);
 	expect(warnings.join(" ")).toContain("symlink");
 	expect(warnings.join(" ")).toContain(file);
+});
+
+it.each([
+	"pc",
+	"iobox",
+	"iosatellite",
+])("keeps %s runtime failures strict after verified preflight", async (deviceType) => {
+	const capture = options.captureCommandImpl;
+	options.captureCommandImpl = async (command) =>
+		command === "tailscale debug prefs"
+			? { exitCode: 1, stdout: "" }
+			: capture(command);
+	const hostname = deviceType === "pc" ? "io" : deviceType;
+	await expect(
+		configureFleetSsh({
+			...options,
+			hostname,
+			deviceType,
+			throwOnFailure: true,
+		}),
+	).rejects.toThrow("Tailscale SSH");
+	if (deviceType === "pc")
+		expect(await configureFleetSsh({ ...options, hostname, deviceType })).toBe(
+			false,
+		);
+	else
+		await expect(
+			configureFleetSsh({ ...options, hostname, deviceType }),
+		).rejects.toThrow("Tailscale SSH");
+	expect(fs.readdirSync(home)).toEqual([]);
 });

@@ -2,31 +2,37 @@
 
 The axnet fleet in [`configs/fleet.json`](../configs/fleet.json) is io (PC, control),
 iobook (laptop, access), iobox (always-on Omarchy agent box running T3, worker),
-and axat-vps (Debian VPS running Executor and Hermes, worker). Everything is reached over Tailscale only.
-Use MagicDNS short names (`ssh io`, `ssh iobook`, `ssh iobox`, `ssh axat-vps`);
+axat-vps (Debian VPS running Executor and Hermes, worker), and planned iosatellite
+(Dell Inspiron 7570 Omarchy laptop, worker). iosatellite remains unprovisioned;
+see [local bring-up and closed-lid AC checks](iosatellite-profile.md). Everything is reached over Tailscale only.
+Use MagicDNS short names (`ssh io`, `ssh iobook`, `ssh iobox`, `ssh axat-vps`,
+and `ssh iosatellite` after provisioning);
 Arch hosts use Tailscale SSH, and axat-vps keeps OpenSSH. Agents may SSH to any
 fleet host and act there. Accepted risk: one compromised agent reaches every host.
 
-`--device-type iobox` stores the profile; a later full setup uses
+`--device-type iobox` or `--device-type iosatellite` stores the worker profile; a later full setup uses
 [`common/paru_applist_iobox.txt`](../common/paru_applist_iobox.txt), including T3,
 Tailscale, Claude/Codex dependencies, Git/gh and 1Password desktop plus `op` CLI.
 It keeps Axstack, gh-stack, shared agent instructions, user scripts and Omarchy
 appearance. It skips Flatpaks, gaming/Steam, uosc/MPV, the Bluetooth prompt,
 Brave/Chromium profiles, KDE Connect, voxtype, bar/plugins, workspaces,
 hyprmoncfg and audio. Standalone `--workspaces`, `--monitors`,
-`--hyprmoncfg-backup`, `--audio` and `--audio-backup` refuse iobox. Reruns keep
+`--hyprmoncfg-backup`, `--audio` and `--audio-backup` refuse both worker profiles. Reruns keep
 previously installed apps; switching profiles does not uninstall anything.
 
-The Arch T3 step enables and verifies user linger. On iobox it also masks and
+The Arch T3 step enables and verifies user linger. On both worker profiles it also masks and
 verifies `sleep.target`, `suspend.target`, `hibernate.target`,
 `hybrid-sleep.target` and `suspend-then-hibernate.target`. T3, Tailscale, linger
-or sleep-mask failures stop iobox setup with the failed step named.
+or sleep-mask failures stop worker setup with the failed step named.
 
 `--fleet-ssh` runs only fleet SSH setup on an Arch fleet host; Debian and
 non-fleet hosts are refused without changes. Tailscale must report `BackendState`
 `Running` and `MagicDNSSuffix` matching the manifest tailnet (`tail140c22.ts.net`)
 before fleet actions. Otherwise standalone mode exits non-zero without writing
-files; full Arch setup skips fleet SSH with a message.
+files. Full desktop and iobox setup skip fleet SSH when the hostname is not in
+the fleet or the tailnet identity cannot be verified; failed tailnet checks print
+a message. iosatellite stops setup on either preflight failure. After successful
+preflight, fleet SSH setup failures still stop both worker profiles.
 It enables/verifies Tailscale SSH, writes `~/.ssh/config.d/haoshoku-fleet`, and
 puts its Include first in `~/.ssh/config`, preserving user Host/Match blocks.
 Arch peer keys from Tailscale go to `~/.ssh/known_hosts_fleet` with strict host
@@ -69,8 +75,8 @@ plus management key). Run `t3-provider-fix` after changing provider instances.
 
 ### Bring-up checklist
 
-Run each host's setup locally. Until 12.4.0 ships, use a git checkout with Bun
-for the new commands below; the installed 12.3.x package does not include them.
+Run each host's setup locally. For the new iosatellite profile use a checkout
+containing that feature until it is released; see its separate bring-up checklist.
 
 1. Set the hostname to `iobox` (`sudo hostnamectl set-hostname iobox`).
 2. Install Bun (`yay -S --needed bun-bin`; Bun >= 1.3.14), then
