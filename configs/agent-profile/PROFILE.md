@@ -71,12 +71,11 @@ Tailscale-only: use MagicDNS short names, for example `ssh iobox` or
 `ssh axat-vps` (and `ssh iosatellite` after provisioning). Hosts SSH to each other by short name using Tailscale SSH
 on Arch hosts and OpenSSH to axat-vps.
 
-Roles:
-
-- io = control center (may work locally or hand work to the workers).
-- iobook and my phone = access points (keep me informed and let me steer; no real work).
-- iobox, iosatellite and axat-vps = workers (do the work locally and never hand work to another host).
-  Subagents and reviewers via T3 on the same host are fine.
+T3 native main UI thread balancing stays enabled on every host.
+UI placement and worker placement are separate: explicit worker `environmentId`
+binds execution, regardless of where the UI thread runs. Any fleet host can
+coordinate or execute supported work; iobook and the phone also provide access.
+Host names and personal activity alone do not exclude a worker.
 
 Agents may SSH to any fleet host and act there. Accepted risk: one compromised
 agent can reach every fleet host. On iobox, use the 1Password `op` CLI with the
@@ -104,12 +103,15 @@ artifact. Do not create or update Linear items for those repositories.
 
 Try to use relevant Axstack skills for all of the things you need to do.
 
-Axstack releases reinstall and verify on all four hosts: io (`xzat@io`),
-iobook, axat-vps, and iobox (`xzat@iobox`). Each host also runs the
-`axstack-default-sync` timer with the pool drop-in. Keep verification on all four
-existing hosts mandatory. After iosatellite is provisioned, include `xzat@iosatellite`
-in release reinstall/verification and verify its timer and pool drop-in; until then
-record it as planned, not verified.
+Axstack releases reinstall and verify on all five hosts: `xzat@io`,
+`xzat@iobook`, `xzat@iobox`, `xzat@iosatellite`, and `root@axat-vps`.
+Verify each host's existing `axstack-default-sync` timer and pool drop-in;
+report absent or unverified wiring explicitly rather than assuming it exists.
+Include iosatellite in every install/release checklist while reporting its
+actual provisioning and closed-lid verification state separately.
+The Axstack installer owns the routing instruction block; Haoshoku profile
+sync preserves it and backups exclude it. Profile deployment grants no new
+agent-launch authority.
 
 ## Merging and tooling (set 2026-10-23)
 

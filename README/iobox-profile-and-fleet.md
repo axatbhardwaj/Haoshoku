@@ -1,7 +1,7 @@
 ## iobox profile and fleet
 
-The axnet fleet in [`configs/fleet.json`](../configs/fleet.json) is io (PC, control),
-iobook (laptop, access), iobox (always-on Omarchy agent box running T3, worker),
+The axnet fleet in [`configs/fleet.json`](../configs/fleet.json) is io (PC),
+iobook (laptop), iobox (always-on Omarchy agent box running T3, worker),
 axat-vps (Debian VPS running Executor and Hermes, worker), and planned iosatellite
 (Dell Inspiron 7570 Omarchy laptop, worker). iosatellite remains unprovisioned;
 see [local bring-up and closed-lid AC checks](iosatellite-profile.md). Everything is reached over Tailscale only.

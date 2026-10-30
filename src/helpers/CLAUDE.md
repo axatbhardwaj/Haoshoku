@@ -27,6 +27,8 @@ Standalone setup scripts for specific tools.
 | `configure_tailnet_firewall.js` | Debian UFW tailnet prerequisites, interface OpenSSH rule, dual-stack verification and incomplete hardening result | Changing Debian firewall safety or command probes |
 | `configure_t3_code_server.js` | Debian stable >=0.1.0 T3 service over Tailscale with `t3@latest` installation and version/origin holds; runtime/CLI prerequisites can precede desktop preflight; service changes require it; disables Connect and verifies HTTPS readiness | Changing CLI floor checks, service drop-ins, Tailscale mapping, or pairing guidance |
 | `configure_tailscale_t3.js` | Arch Tailscale package, browser login, operator and T3 user-service reconciliation | Debugging `--tailscale-t3` or Arch phone access |
+| `fleet_routing_policy.js` | Schema-1 policy shape and secret/runtime-field rejection before deployment | Changing the policy contract |
+| `configure_fleet_routing.js` | Validated account-local policy copy, conflict pinning, backup and scoped receipt rollback; called by Axstack setup | Changing fleet policy deployment |
 | `configure_fleet_ssh.js` | Fleet SSH host config from the fleet manifest | Changing fleet SSH setup |
 | `configure_iosatellite_power.js` | Managed logind lid ignores, effective/runtime checks and safe reboot guidance | Changing iosatellite closed-lid policy |
 | `configure_t3_op.js` | Engineering-worker T3 1Password service-account token wiring (status only, no token logging) | Changing `op` setup for T3 |

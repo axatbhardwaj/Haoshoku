@@ -114,11 +114,10 @@ the live Claude copy with `haoshoku --agents-backup`. The bundled policy routes
 both Notion accounts and Linear through the configured Executor MCP while T3 Code
 remains responsible for orchestration. Profile sync preserves the live Axstack-owned
 routing block; shared, Claude and Codex profile backups strip it so Axstack can
-own it on fresh hosts. The shared profile names axnet roles: io is the control
-center, iobook and the phone are access points, and iobox, planned iosatellite,
-and axat-vps are
-workers that do the work locally and never hand work to another host. T3
-subagents and reviewers on the same host are fine.
+own it on fresh hosts. T3 native main UI thread balancing stays enabled;
+explicit worker `environmentId` determines execution separately. Every fleet
+host can coordinate or execute supported work. See [fleet routing policy](README/fleet-routing.md)
+for account-local deployment, proof gates and scoped rollback.
 
 T3 Code owns agent orchestration, and Axstack supplies routing policy.
 Claude/Codex runtime state and `settings.json` remain machine-local.

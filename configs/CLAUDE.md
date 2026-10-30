@@ -7,6 +7,7 @@ Template configuration files copied to user's `~/.config/` during setup.
 | File                  | What                          | When to read                              |
 | --------------------- | ----------------------------- | ----------------------------------------- |
 | `kde_shortcuts.kksrc` | KDE keyboard shortcuts        | Modifying KDE shortcuts                   |
+| `fleet-routing.json` | Reviewed Axstack worker-placement policy; no live facts or secrets | Changing fleet routing policy/deployment |
 | `fleet.json`         | axnet fleet manifest (hosts, tailnet, roles) | Changing fleet hosts or SSH setup |
 | `README.md`           | Copy-vs-symlink rationale and Claude bundle boundary | Understanding the deployment model |
 
