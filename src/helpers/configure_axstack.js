@@ -367,7 +367,7 @@ export async function configureAxstack(options = {}) {
 	log[ok ? "success" : "warning"](
 		`Axstack ${latestVersion} ${releaseAction}; Claude ${harnesses.claude.ok ? "ok" : "failed"}; Codex ${harnesses.codex.ok ? "ok" : "failed"}.`,
 	);
-	if (!ok) {
+	if (!harnesses.claude.ok || !harnesses.codex.ok) {
 		const failures = Object.entries(harnesses)
 			.filter(([, result]) => !result.ok)
 			.map(([harness, result]) => `${harness}: ${result.reason}`)
