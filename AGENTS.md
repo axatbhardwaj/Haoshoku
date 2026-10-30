@@ -76,8 +76,8 @@ axat-vps (Debian Executor/Hermes VPS), plus planned iosatellite (Dell Inspiron
 7570 Omarchy worker). iosatellite runs work locally, always awake, with a managed
 lid-ignore policy; it remains unprovisioned until local setup and real closed-lid
 AC job, SSH and T3 checks pass. Credentials, timers, peer sync and ACL deployment
-are separate; existing four-host release verification stays mandatory, with
-iosatellite added after provisioning. Fleet access uses Tailscale only. Agents may
+are separate. Install/release verification covers all five hosts, including
+iosatellite; report unavailable hosts and unverified wiring explicitly. Fleet access uses Tailscale only. Agents may
 SSH to any fleet host and act there; one compromised agent can reach all hosts.
 See [iosatellite bring-up](README/iosatellite-profile.md) and [iobox bring-up](README.md#iobox-profile-and-fleet) for setup, CLIProxyAPI
 subscriptions and `op`, and [Executor](README.md#opt-in-executor-server) for the default

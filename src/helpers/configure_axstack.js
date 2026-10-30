@@ -4,6 +4,7 @@ import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import { detectOS } from "../common/cli_utils.js";
 import { recordNextStep } from "../common/run_log.js";
+import { deployFleetRouting } from "./configure_fleet_routing.js";
 import { prepareArchT3Cli } from "./t3_cli.js";
 import { runCommand, runCommandCapture, log } from "../common/utils.js";
 
@@ -352,11 +353,21 @@ export async function configureAxstack(options = {}) {
 					: commandReason(result),
 		};
 	}
-	const ok = harnesses.claude.ok && harnesses.codex.ok;
+	let fleetRouting;
+	try {
+		fleetRouting = deployFleetRouting({ ...options.fleetRouting, home });
+	} catch (error) {
+		fleetRouting = { ok: false, reason: error.message };
+		recordNextStep(
+			"fleet-routing",
+			`Fleet policy setup incomplete: ${error.message}. Resolve the policy conflict, then run haoshoku --axstack.`,
+		);
+	}
+	const ok = harnesses.claude.ok && harnesses.codex.ok && fleetRouting.ok;
 	log[ok ? "success" : "warning"](
 		`Axstack ${latestVersion} ${releaseAction}; Claude ${harnesses.claude.ok ? "ok" : "failed"}; Codex ${harnesses.codex.ok ? "ok" : "failed"}.`,
 	);
-	if (!ok) {
+	if (!harnesses.claude.ok || !harnesses.codex.ok) {
 		const failures = Object.entries(harnesses)
 			.filter(([, result]) => !result.ok)
 			.map(([harness, result]) => `${harness}: ${result.reason}`)
@@ -368,6 +379,7 @@ export async function configureAxstack(options = {}) {
 	}
 	return {
 		harnesses,
+		fleetRouting,
 		ok,
 		release: {
 			action: releaseAction,

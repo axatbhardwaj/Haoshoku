@@ -1,0 +1,243 @@
+{
+	"schemaVersion": 1,
+	"hosts": [
+		{
+			"id": "axat-vps",
+			"environmentId": "e7396ed4-18a6-4e8b-9dfa-efc00fb38932",
+			"fallbackLimitBp": 7500,
+			"capabilities": {}
+		},
+		{
+			"id": "iobox",
+			"environmentId": "13673cd7-7b66-4d5c-a544-798ebdff8e57",
+			"fallbackLimitBp": 8500,
+			"capabilities": {}
+		},
+		{
+			"id": "iosatellite",
+			"environmentId": "410afa8b-991d-4327-ad58-0330d4660030",
+			"fallbackLimitBp": 8500,
+			"capabilities": {}
+		},
+		{
+			"id": "io",
+			"environmentId": "23060c89-1cf4-4174-912b-46e0bf14ac17",
+			"fallbackLimitBp": 8500,
+			"capabilities": {}
+		},
+		{
+			"id": "iobook",
+			"environmentId": "f6ccfabe-fdd5-4cb8-b9cc-bcab6c6e44be",
+			"fallbackLimitBp": 8500,
+			"capabilities": {}
+		}
+	],
+	"pool": ["axat-vps", "iobox", "iosatellite"],
+	"defaultOrder": ["axat-vps", "iobox", "iosatellite", "io", "iobook"],
+	"taskOrders": {
+		"playwright": ["iosatellite", "axat-vps", "iobox", "io", "iobook"]
+	},
+	"balanceLimitBp": 5000,
+	"routes": [
+		{
+			"id": "axat-vps-to-axat-vps",
+			"originEnvironmentId": "e7396ed4-18a6-4e8b-9dfa-efc00fb38932",
+			"environmentId": "e7396ed4-18a6-4e8b-9dfa-efc00fb38932",
+			"kind": "local",
+			"enabled": false,
+			"evidence": null
+		},
+		{
+			"id": "axat-vps-to-iobox",
+			"originEnvironmentId": "e7396ed4-18a6-4e8b-9dfa-efc00fb38932",
+			"environmentId": "13673cd7-7b66-4d5c-a544-798ebdff8e57",
+			"kind": "remote",
+			"enabled": false,
+			"evidence": null
+		},
+		{
+			"id": "axat-vps-to-iosatellite",
+			"originEnvironmentId": "e7396ed4-18a6-4e8b-9dfa-efc00fb38932",
+			"environmentId": "410afa8b-991d-4327-ad58-0330d4660030",
+			"kind": "remote",
+			"enabled": false,
+			"evidence": null
+		},
+		{
+			"id": "axat-vps-to-io",
+			"originEnvironmentId": "e7396ed4-18a6-4e8b-9dfa-efc00fb38932",
+			"environmentId": "23060c89-1cf4-4174-912b-46e0bf14ac17",
+			"kind": "remote",
+			"enabled": false,
+			"evidence": null
+		},
+		{
+			"id": "axat-vps-to-iobook",
+			"originEnvironmentId": "e7396ed4-18a6-4e8b-9dfa-efc00fb38932",
+			"environmentId": "f6ccfabe-fdd5-4cb8-b9cc-bcab6c6e44be",
+			"kind": "remote",
+			"enabled": false,
+			"evidence": null
+		},
+		{
+			"id": "iobox-to-axat-vps",
+			"originEnvironmentId": "13673cd7-7b66-4d5c-a544-798ebdff8e57",
+			"environmentId": "e7396ed4-18a6-4e8b-9dfa-efc00fb38932",
+			"kind": "remote",
+			"enabled": false,
+			"evidence": null
+		},
+		{
+			"id": "iobox-to-iobox",
+			"originEnvironmentId": "13673cd7-7b66-4d5c-a544-798ebdff8e57",
+			"environmentId": "13673cd7-7b66-4d5c-a544-798ebdff8e57",
+			"kind": "local",
+			"enabled": false,
+			"evidence": null
+		},
+		{
+			"id": "iobox-to-iosatellite",
+			"originEnvironmentId": "13673cd7-7b66-4d5c-a544-798ebdff8e57",
+			"environmentId": "410afa8b-991d-4327-ad58-0330d4660030",
+			"kind": "remote",
+			"enabled": false,
+			"evidence": null
+		},
+		{
+			"id": "iobox-to-io",
+			"originEnvironmentId": "13673cd7-7b66-4d5c-a544-798ebdff8e57",
+			"environmentId": "23060c89-1cf4-4174-912b-46e0bf14ac17",
+			"kind": "remote",
+			"enabled": false,
+			"evidence": null
+		},
+		{
+			"id": "iobox-to-iobook",
+			"originEnvironmentId": "13673cd7-7b66-4d5c-a544-798ebdff8e57",
+			"environmentId": "f6ccfabe-fdd5-4cb8-b9cc-bcab6c6e44be",
+			"kind": "remote",
+			"enabled": false,
+			"evidence": null
+		},
+		{
+			"id": "iosatellite-to-axat-vps",
+			"originEnvironmentId": "410afa8b-991d-4327-ad58-0330d4660030",
+			"environmentId": "e7396ed4-18a6-4e8b-9dfa-efc00fb38932",
+			"kind": "remote",
+			"enabled": false,
+			"evidence": null
+		},
+		{
+			"id": "iosatellite-to-iobox",
+			"originEnvironmentId": "410afa8b-991d-4327-ad58-0330d4660030",
+			"environmentId": "13673cd7-7b66-4d5c-a544-798ebdff8e57",
+			"kind": "remote",
+			"enabled": false,
+			"evidence": null
+		},
+		{
+			"id": "iosatellite-to-iosatellite",
+			"originEnvironmentId": "410afa8b-991d-4327-ad58-0330d4660030",
+			"environmentId": "410afa8b-991d-4327-ad58-0330d4660030",
+			"kind": "local",
+			"enabled": false,
+			"evidence": null
+		},
+		{
+			"id": "iosatellite-to-io",
+			"originEnvironmentId": "410afa8b-991d-4327-ad58-0330d4660030",
+			"environmentId": "23060c89-1cf4-4174-912b-46e0bf14ac17",
+			"kind": "remote",
+			"enabled": false,
+			"evidence": null
+		},
+		{
+			"id": "iosatellite-to-iobook",
+			"originEnvironmentId": "410afa8b-991d-4327-ad58-0330d4660030",
+			"environmentId": "f6ccfabe-fdd5-4cb8-b9cc-bcab6c6e44be",
+			"kind": "remote",
+			"enabled": false,
+			"evidence": null
+		},
+		{
+			"id": "io-to-axat-vps",
+			"originEnvironmentId": "23060c89-1cf4-4174-912b-46e0bf14ac17",
+			"environmentId": "e7396ed4-18a6-4e8b-9dfa-efc00fb38932",
+			"kind": "remote",
+			"enabled": false,
+			"evidence": null
+		},
+		{
+			"id": "io-to-iobox",
+			"originEnvironmentId": "23060c89-1cf4-4174-912b-46e0bf14ac17",
+			"environmentId": "13673cd7-7b66-4d5c-a544-798ebdff8e57",
+			"kind": "remote",
+			"enabled": false,
+			"evidence": null
+		},
+		{
+			"id": "io-to-iosatellite",
+			"originEnvironmentId": "23060c89-1cf4-4174-912b-46e0bf14ac17",
+			"environmentId": "410afa8b-991d-4327-ad58-0330d4660030",
+			"kind": "remote",
+			"enabled": false,
+			"evidence": null
+		},
+		{
+			"id": "io-to-io",
+			"originEnvironmentId": "23060c89-1cf4-4174-912b-46e0bf14ac17",
+			"environmentId": "23060c89-1cf4-4174-912b-46e0bf14ac17",
+			"kind": "local",
+			"enabled": false,
+			"evidence": null
+		},
+		{
+			"id": "io-to-iobook",
+			"originEnvironmentId": "23060c89-1cf4-4174-912b-46e0bf14ac17",
+			"environmentId": "f6ccfabe-fdd5-4cb8-b9cc-bcab6c6e44be",
+			"kind": "remote",
+			"enabled": false,
+			"evidence": null
+		},
+		{
+			"id": "iobook-to-axat-vps",
+			"originEnvironmentId": "f6ccfabe-fdd5-4cb8-b9cc-bcab6c6e44be",
+			"environmentId": "e7396ed4-18a6-4e8b-9dfa-efc00fb38932",
+			"kind": "remote",
+			"enabled": false,
+			"evidence": null
+		},
+		{
+			"id": "iobook-to-iobox",
+			"originEnvironmentId": "f6ccfabe-fdd5-4cb8-b9cc-bcab6c6e44be",
+			"environmentId": "13673cd7-7b66-4d5c-a544-798ebdff8e57",
+			"kind": "remote",
+			"enabled": false,
+			"evidence": null
+		},
+		{
+			"id": "iobook-to-iosatellite",
+			"originEnvironmentId": "f6ccfabe-fdd5-4cb8-b9cc-bcab6c6e44be",
+			"environmentId": "410afa8b-991d-4327-ad58-0330d4660030",
+			"kind": "remote",
+			"enabled": false,
+			"evidence": null
+		},
+		{
+			"id": "iobook-to-io",
+			"originEnvironmentId": "f6ccfabe-fdd5-4cb8-b9cc-bcab6c6e44be",
+			"environmentId": "23060c89-1cf4-4174-912b-46e0bf14ac17",
+			"kind": "remote",
+			"enabled": false,
+			"evidence": null
+		},
+		{
+			"id": "iobook-to-iobook",
+			"originEnvironmentId": "f6ccfabe-fdd5-4cb8-b9cc-bcab6c6e44be",
+			"environmentId": "f6ccfabe-fdd5-4cb8-b9cc-bcab6c6e44be",
+			"kind": "local",
+			"enabled": false,
+			"evidence": null
+		}
+	]
+}

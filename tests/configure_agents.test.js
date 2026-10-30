@@ -168,6 +168,30 @@ describe("shared agent profile round trip", () => {
 		}
 	});
 
+	it("deploys fleet placement guidance without host role prohibitions", async () => {
+		await syncAgentsConfig({ home });
+		for (const relativePath of [".claude/CLAUDE.md", ".codex/AGENTS.md"]) {
+			const deployed = fs.readFileSync(path.join(home, relativePath), "utf8");
+			expect(deployed).toMatch(/native.*main.*thread.*balanc/i);
+			expect(deployed).toMatch(/worker.*environmentId/);
+			expect(deployed).not.toMatch(
+				/control center|no real work|never hand work to another host/i,
+			);
+			expect(deployed).toMatch(/all five hosts/);
+			for (const host of [
+				"xzat@io",
+				"xzat@iobook",
+				"xzat@iobox",
+				"xzat@iosatellite",
+				"root@axat-vps",
+			])
+				expect(deployed).toContain(host);
+			expect(deployed).not.toMatch(
+				/after iosatellite is provisioned, include/i,
+			);
+		}
+	});
+
 	it("deploys the bundled T3 provider settings guidance to Claude and Codex", async () => {
 		await syncAgentsConfig({ home });
 		for (const relativePath of [".claude/CLAUDE.md", ".codex/AGENTS.md"]) {

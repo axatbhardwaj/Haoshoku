@@ -874,3 +874,45 @@ describe("checkAxstack", () => {
 		expect(calls).toHaveLength(3);
 	});
 });
+
+describe("fleet policy deployment", () => {
+	it("deploys identical reviewed policy bytes into five account fixtures", async () => {
+		const deployed = [];
+		for (const host of ["io", "iobook", "iobox", "iosatellite", "axat-vps"]) {
+			const home = makeHome();
+			const result = await configureAxstack({
+				home,
+				extractor: makeExtractor([]),
+				runner: async () => ({ exitCode: 0, stdout: "installed", stderr: "" }),
+			});
+			expect(result.ok, host).toBe(true);
+			const file = path.join(home, ".config/haoshoku/fleet-routing.json");
+			expect(fs.existsSync(file), host).toBe(true);
+			deployed.push(fs.readFileSync(file));
+		}
+		const source = fs.readFileSync(
+			path.join(import.meta.dir, "../configs/fleet-routing.json"),
+		);
+		for (const bytes of deployed) expect(bytes).toEqual(source);
+	});
+
+	it("reports missing policy explicitly instead of claiming complete setup", async () => {
+		const home = makeHome();
+		const run = startRunLog({ env: { HOME: home, XDG_STATE_HOME: home } });
+		const result = await configureAxstack({
+			home,
+			fleetRouting: { source: path.join(home, "absent.json") },
+			extractor: makeExtractor([]),
+			runner: async () => ({ exitCode: 0, stdout: "installed", stderr: "" }),
+		});
+		expect(result.ok).toBe(false);
+		expect(result.fleetRouting.reason).toContain("ENOENT");
+		const summary = [];
+		run.finish(1, (line) => summary.push(line));
+		expect(summary.join("\n")).toContain("Fleet policy setup incomplete");
+		expect(summary.join("\n")).not.toContain("Axstack setup incomplete ()");
+		expect(
+			fs.existsSync(path.join(home, ".config/haoshoku/fleet-routing.json")),
+		).toBe(false);
+	});
+});

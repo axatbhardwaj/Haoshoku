@@ -1,8 +1,8 @@
 # iosatellite: planned Omarchy worker
 
 iosatellite is a Dell Inspiron 7570 intended to run engineering jobs locally,
-like iobox. Same-host T3 subagents and reviewers are allowed; it does not hand
-jobs to another host. The fleet username is `xzat`, the hostname and persisted
+like iobox. T3 may coordinate or execute supported work on any fleet host;
+UI thread placement and worker execution are separate. The fleet username is `xzat`, the hostname and persisted
 profile are both `iosatellite`. It remains **planned/unprovisioned** until setup
 and the target checks below pass. This change deploys nothing to live hosts.
 
@@ -97,9 +97,9 @@ not prove the desktop's behavior. No Dell BIOS setting is assumed.
    axat-vps. Verify inbound access separately from an authorized access device.
    Missing credentials, keys and ACLs must be provisioned separately.
 5. Verify Axstack, its `axstack-default-sync` timer and pool drop-in after they
-   are actually installed. Existing release verification on io, iobook, iobox
-   and axat-vps remains mandatory; include iosatellite once provisioned and
-   record its planned/unverified status until then.
+   are actually installed. Every install/release checklist covers io, iobook,
+   iobox, iosatellite and axat-vps. Record unavailable or unverified hosts
+   explicitly; inclusion in the checklist does not prove provisioning.
 
 These hardware, desktop, AC/lid, SSH, T3 and thermal checks have not been run by
 this implementation. Thermal shutdown, battery depletion and loss of power
