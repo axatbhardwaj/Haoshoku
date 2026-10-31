@@ -69,6 +69,7 @@ describe("haoshoku-special-workspace", () => {
 			steam: { workspace: "steam", monitor: "DP-1", followsFocus: false },
 			x: { workspace: "x", monitor: "DP-2", followsFocus: false },
 			youtube: { workspace: "youtube", monitor: "DP-1", followsFocus: true },
+			netflix: { workspace: "netflix", monitor: "DP-1", followsFocus: true },
 			jiohotstar: {
 				workspace: "jiohotstar",
 				monitor: "DP-1",
@@ -744,6 +745,7 @@ fi
 
 	for (const [recipe, className] of [
 		["youtube", "brave-youtube.com__-Default"],
+		["netflix", "brave-www.netflix.com__-Default"],
 		["crunchyroll", "brave-www.crunchyroll.com__-Default"],
 		["twitch", "brave-www.twitch.tv__-Default"],
 	]) {
@@ -760,7 +762,10 @@ fi
 			});
 
 			expect(result.exitCode).toBe(0);
+			expect(fs.existsSync(browserCall)).toBe(false);
 			expect(dispatchCalls()).toContain("dispatch focusmonitor DP-2");
+			expect(fs.readFileSync(specialState, "utf8")).toBe(recipe);
+			expect(fs.readFileSync(specialMonitorState, "utf8")).toBe("DP-2");
 			expect(dispatchCalls()).toContain(
 				`dispatch togglespecialworkspace ${recipe}`,
 			);
@@ -775,6 +780,7 @@ fi
 			});
 
 			expect(result.exitCode).toBe(0);
+			expect(fs.existsSync(browserCall)).toBe(false);
 			expect(dispatchCalls()).toContain(
 				`dispatch togglespecialworkspace ${recipe}`,
 			);
@@ -790,11 +796,36 @@ fi
 			});
 
 			expect(result.exitCode).toBe(0);
+			expect(fs.existsSync(browserCall)).toBe(false);
+			expect(fs.readFileSync(specialState, "utf8")).toBe("");
 			expect(dispatchCalls()).toContain(
 				`dispatch togglespecialworkspace ${recipe}`,
 			);
 		});
 	}
+
+	it.each([
+		"[]",
+		'[{"class":"brave-wwwXnetflixXcom__-Default"}]',
+	])("launches isolated Netflix once when its exact client is absent: %s", async (clients) => {
+		const result = await run(["netflix"], { clients, focusedMonitor: "DP-2" });
+
+		expect(result.exitCode).toBe(0);
+		expect(await chromiumArguments()).toEqual([
+			`--user-data-dir=${directory}/.config/brave-haoshoku/netflix`,
+			"--disable-gpu",
+			"--no-first-run",
+			"--no-default-browser-check",
+			"--app=https://www.netflix.com/",
+		]);
+		expect(
+			dispatchCalls().filter((call) => call === "brave-origin"),
+		).toHaveLength(1);
+		expect(fs.readFileSync(log, "utf8")).toContain(
+			"dispatch exec [workspace special:netflix silent] uwsm-app -- brave-origin",
+		);
+		expect(fs.readFileSync(specialMonitorState, "utf8")).toBe("DP-2");
+	});
 
 	it("falls back to DP-1 for youtube when no monitor is focused", async () => {
 		const result = await run(["youtube"], {
@@ -1324,6 +1355,7 @@ printf 'steam\n' >> "$CALL_LOG"
 		{ recipe: "jiohotstar", url: "https://www.jiohotstar.com/" },
 		{ recipe: "crunchyroll", url: "https://www.crunchyroll.com/" },
 		{ recipe: "twitch", url: "https://www.twitch.tv/" },
+		{ recipe: "reanime", url: "https://reanime.to/home" },
 	]) {
 		// Mutation caught: omitting --class from this app launch lets it become
 		// the Flux singleton owner that creates later plain windows as "brave-origin".

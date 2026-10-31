@@ -62,6 +62,62 @@ describe("configureOmarchyWorkspaces", () => {
 		).toBe(before);
 	});
 
+	it.each([
+		"pc",
+		"laptop",
+	])("deploys Netflix for %s without touching browser data on rerun", async (deviceType) => {
+		fs.writeFileSync(
+			path.join(home, ".haoshoku.json"),
+			JSON.stringify({ deviceType }),
+		);
+		const hypr = path.join(home, ".config/hypr");
+		fs.writeFileSync(
+			path.join(hypr, "hyprland.lua"),
+			'require("hypr.defaults")\n',
+		);
+		const profiles = ["flux", "defi", "netflix"].map((profile) =>
+			path.join(home, ".config/brave-haoshoku", profile, "Default/Preferences"),
+		);
+		for (const file of profiles) {
+			fs.mkdirSync(path.dirname(file), { recursive: true });
+			fs.writeFileSync(file, '{"test":"preserve browser data"}');
+		}
+		const writes = [];
+		const fsImpl = {
+			...fs,
+			writeFileSync(file, ...args) {
+				writes.push(file);
+				return fs.writeFileSync(file, ...args);
+			},
+		};
+		await configureV4({ fsImpl });
+		const deployed = ["bindings", "workspaces"]
+			.map((name) =>
+				fs.readFileSync(path.join(hypr, "haoshoku", `${name}.lua`), "utf8"),
+			)
+			.join("\n");
+		expect(deployed.match(/o\.bind\("SUPER \+ N",[^\n]+/g)).toEqual([
+			'o.bind("SUPER + N", "Show/focus/hide Netflix workspace", "haoshoku-special-workspace netflix")',
+		]);
+		expect(deployed).toContain(
+			'o.window("^brave-www\\\\.netflix\\\\.com__-Default$", { workspace = "special:netflix silent" })',
+		);
+		expect(
+			fs.readFileSync(
+				path.join(home, ".local/bin/haoshoku-special-workspace"),
+				"utf8",
+			),
+		).toContain("--app=https://www.netflix.com/");
+		writes.length = 0;
+		await configureV4({ fsImpl });
+		expect(writes).toEqual([]);
+		for (const file of profiles) {
+			expect(fs.readFileSync(file, "utf8")).toBe(
+				'{"test":"preserve browser data"}',
+			);
+		}
+	});
+
 	it("deploys Lua overlays to the v4 module paths and requires both", async () => {
 		fs.writeFileSync(
 			path.join(home, ".config", "hypr", "hyprland.lua"),

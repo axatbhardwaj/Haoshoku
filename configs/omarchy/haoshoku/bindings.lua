@@ -39,7 +39,7 @@ o.bind(
   "uwsm-app -- xdg-terminal-exec --dir=\"$(omarchy-cmd-terminal-cwd)\""
 )
 o.bind("SUPER + E", "File manager", "uwsm-app -- nautilus --new-window")
-o.bind("SUPER + N", "Editor", "omarchy-launch-editor")
+o.bind("SUPER + N", "Show/focus/hide Netflix workspace", "haoshoku-special-workspace netflix")
 o.bind("SUPER + Z", "Zed", "uwsm-app -- zeditor --new")
 -- Always open a new Zed window on SUPER+Z, rather than focusing an existing one.
 

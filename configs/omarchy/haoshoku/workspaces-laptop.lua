@@ -39,6 +39,7 @@ o.window("^(teams-for-linux|TelegramDesktop|org\\.telegram\\.desktop)$", { works
 o.window("^com\\.haoshoku\\.ws7$", { workspace = "7 silent" })
 o.window("^brave-www\\.notion\\.so__-Default$", { workspace = "10 silent" })
 o.window("^brave-x\\.com__-Default$", { workspace = "special:x" })
+o.window("^brave-www\\.netflix\\.com__-Default$", { workspace = "special:netflix silent" })
 o.window("^brave-youtube\\.com__-Default$", { workspace = "special:youtube" })
 o.window("^brave-www\\.jiohotstar\\.com__-Default$", { workspace = "special:jiohotstar" })
 o.window("^brave-www\\.crunchyroll\\.com__-Default$", { workspace = "special:crunchyroll" })

@@ -267,6 +267,18 @@ reliable window matching. Without line 2, the desktop entry's
 executables and custom class overrides stay unchanged; reruns keep stable.
 Run `hyprctl reload` after editing it.
 
+`haoshoku --workspaces` also manages Netflix on PC and laptop: Meta+N replaces
+Editor and toggles `special:netflix` on the focused monitor, like Meta+Y/J/F.
+An existing Netflix window is reused. Netflix runs in its own Brave Origin
+profile, `~/.config/brave-haoshoku/netflix`, with `--disable-gpu`,
+`--no-first-run`, `--no-default-browser-check` and `--app=https://www.netflix.com/`.
+Other media apps keep the Flux profile and their existing GPU behavior.
+
+On first launch, choose **Proceed with Origin for free on Linux** if prompted,
+enable **Widevine** in `brave://settings/extensions` for that Netflix profile,
+and sign in to Netflix. Login and DRM setup are manual; Haoshoku does not copy
+cookies or credentials, change browser acceleration preferences, or verify playback.
+
 Use `haoshoku --device-type pc`, `laptop`, `iobox` or `iosatellite` to override automatic detection.
 Explicit overrides and stored choices precede fleet hostname detection, which
 precedes DMI/battery detection; hostname `iosatellite` selects the worker profile.
