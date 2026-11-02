@@ -62,29 +62,53 @@ MCP: `delegate_task`, `t3_thread_launch`, schedules) so all agent work is
 visible and tracked in T3. The driver is a T3 thread. Do not use a harness's
 native subagent tools (Claude Agent tool, Codex spawn, etc.) for delegated work.
 
+## Browser and device testing
+
+Use Codex Terra (`gpt-6.1-terra`) for delegated Playwright automation,
+Android Emulator and iOS Simulator testing, and interactive UI simulations.
+Bind the model explicitly through T3 `delegate_task`; start with low reasoning
+for routine automation and raise effort when the scenario needs it. Confirm
+availability in the destination catalog and report an unavailable model rather
+than silently substituting. This preference applies to the automation worker;
+keep coding, diagnosis and review on their existing role models.
+
+Use Playwright MCP for browser work. For Android/iOS, use T3 `device_list`,
+`device_open`, its returned `agent-device` command, and `device_screenshot`
+so testing is visible in the Device panel. Report unavailable platforms;
+never claim browser mobile emulation proves native Android or iOS behavior.
+Keep the same worker attached through credential-sensitive tests and retain
+all testing-skill consent, budget, privacy and cleanup guards. A model choice
+does not authorize extra accounts, signatures, spending or recovery actions.
+
 ## axnet
 
 The fleet is io (PC), iobook (laptop), iobox (always-on agent box running
-T3 Code), iosatellite (planned Omarchy laptop worker, Dell Inspiron 7570),
+T3 Code), iosatellite (Omarchy engineering worker, Dell Inspiron 7570),
 and axat-vps (Debian VPS running Executor and Hermes). Access is
 Tailscale-only: use MagicDNS short names, for example `ssh iobox` or
-`ssh axat-vps` (and `ssh iosatellite` after provisioning). Hosts SSH to each other by short name using Tailscale SSH
+`ssh axat-vps` or `ssh iosatellite`. Hosts SSH to each other by short name using Tailscale SSH
 on Arch hosts and OpenSSH to axat-vps.
 
-T3 native main UI thread balancing stays enabled on every host.
-UI placement and worker placement are separate: explicit worker `environmentId`
-binds execution, regardless of where the UI thread runs. Any fleet host can
-coordinate or execute supported work; iobook and the phone also provide access.
-Host names and personal activity alone do not exclude a worker.
+Roles:
+
+- io = control center (may work locally or hand work to the workers).
+- iobook and my phone = access points (keep me informed and let me steer; no real work).
+- iobox, iosatellite and axat-vps = workers (do the work locally and never hand work to another host).
+  Subagents and reviewers via T3 on the same host are fine.
 
 Agents may SSH to any fleet host and act there. Accepted risk: one compromised
 agent can reach every fleet host. On iobox, use the 1Password `op` CLI with the
 service-account token inherited by T3 from `~/.config/op/service-account.env`.
 Never copy keys or tokens into the repository or logs. iosatellite uses the same
-optional existing `op` env wiring once provisioned; no token is assumed present.
-It runs locally, always awake even on battery, including with the lid closed on AC.
-The profile is planned/unprovisioned until local setup and real closed-lid AC
-job, SSH and T3 checks pass; credentials, ACLs and timers are not preinstalled.
+optional existing `op` env wiring; no token is assumed present.
+IOSatellite runs assigned engineering jobs locally. Its configured policy keeps it awake,
+including with the lid closed on AC; verify real closed-lid job, SSH and T3
+operation before relying on unattended use. Do not assume credentials or timers exist.
+
+
+SSH users: `xzat` on io, iobook, iobox and iosatellite; `root` on axat-vps.
+Managed aliases live in `~/.ssh/config.d/haoshoku-fleet`. The fleet manifest
+is available at `~/.config/haoshoku/fleet.json`.
 
 ## MCP access
 
