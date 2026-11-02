@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Use Codex Terra for delegated browser, Android/iOS and interactive UI testing;
+  preserve consent, budget, privacy and cleanup guards and current fleet roles.
+- Deploy validated account-owned fleet routing policy with scoped rollback and
+  five-host verification.
+- Fix T3 npm setup and desktop preflight, and bind managed services to localhost.
+- Add the isolated Netflix workspace toggle.
+
 ## 12.7.0 - 2026-10-28
 
 ### Added
