@@ -168,13 +168,13 @@ describe("shared agent profile round trip", () => {
 		}
 	});
 
-	it("deploys fleet placement guidance without host role prohibitions", async () => {
+	it("deploys current fleet roles and Terra automation guidance", async () => {
 		await syncAgentsConfig({ home });
 		for (const relativePath of [".claude/CLAUDE.md", ".codex/AGENTS.md"]) {
 			const deployed = fs.readFileSync(path.join(home, relativePath), "utf8");
-			expect(deployed).toMatch(/native.*main.*thread.*balanc/i);
-			expect(deployed).toMatch(/worker.*environmentId/);
-			expect(deployed).not.toMatch(
+			expect(deployed).toContain("gpt-6.1-terra");
+			expect(deployed).toContain("device_open");
+			expect(deployed).toMatch(
 				/control center|no real work|never hand work to another host/i,
 			);
 			expect(deployed).toMatch(/all five hosts/);
