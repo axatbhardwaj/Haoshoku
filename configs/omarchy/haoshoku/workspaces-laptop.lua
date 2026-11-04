@@ -56,8 +56,6 @@ o.window(
   { workspace = "special:communication" }
 )
 o.window("^chromium-flux$", { workspace = "special:browser-flux" })
-o.window("^chromium-defi$", { workspace = "special:browser-defi" })
-o.window("^chromium-defi$", { border_color = "rgb(9762e2) rgb(9762e2)" })
 
 -- Portal file dialogs open TILED on the normal workspace underneath, so a
 -- revealed special workspace draws over them and they appear to vanish -- the
@@ -136,8 +134,7 @@ o.bind("SUPER + SHIFT + T", "Show/focus/hide Twitch workspace", "haoshoku-specia
 o.bind("SUPER + M", "Show/focus/hide music workspace", "haoshoku-special-workspace music")
 o.bind("SUPER + O", "Show/focus/hide 1Password workspace", "haoshoku-special-workspace 1password")
 o.bind("SUPER + G", "Show/focus/hide communication workspace", "haoshoku-special-workspace communication")
-o.bind("SUPER + B", "Toggle Flux Brave Origin workspace", "haoshoku-special-workspace browser-toggle flux")
-o.bind("SUPER + D", "Toggle DeFi Brave Origin workspace", "haoshoku-special-workspace browser-toggle defi")
+o.bind("SUPER + B", "Toggle Brave Origin workspace", "haoshoku-special-workspace browser-toggle flux")
 o.bind("SUPER + Y", "Show/focus/hide YouTube workspace", "haoshoku-special-workspace youtube")
 o.bind("SUPER + J", "Show/focus/hide JioHotstar workspace", "haoshoku-special-workspace jiohotstar")
 o.bind("SUPER + R", "Show/focus/hide Crunchyroll workspace", "haoshoku-special-workspace crunchyroll")

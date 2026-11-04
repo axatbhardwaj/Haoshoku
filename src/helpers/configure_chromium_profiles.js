@@ -11,11 +11,13 @@ export const DEFAULT_CHROMIUM_PROFILES = Object.freeze([
 		monitor: "DP-1",
 		default: true,
 	}),
-	Object.freeze({
-		id: "defi",
-		class: "chromium-defi",
-		monitor: "DP-1",
-	}),
+]);
+
+// The pre-Containers shipped default. Multiple accounts now live in Brave
+// Containers inside the single Flux profile, so this exact registry is migrated.
+const LEGACY_FLUX_DEFI_PROFILES = JSON.stringify([
+	{ id: "flux", class: "chromium-flux", monitor: "DP-1", default: true },
+	{ id: "defi", class: "chromium-defi", monitor: "DP-1" },
 ]);
 
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
@@ -107,7 +109,10 @@ export function configureChromiumProfiles({
 	}
 
 	let changed = false;
-	if (!isValidChromiumProfileRegistry(config.chromiumProfiles)) {
+	if (
+		!isValidChromiumProfileRegistry(config.chromiumProfiles) ||
+		JSON.stringify(config.chromiumProfiles) === LEGACY_FLUX_DEFI_PROFILES
+	) {
 		config.chromiumProfiles = defaultProfiles();
 		changed = true;
 	}

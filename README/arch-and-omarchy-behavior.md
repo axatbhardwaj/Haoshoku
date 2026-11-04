@@ -62,8 +62,8 @@ The Arch setup:
 - adds two-key special-workspace toggles under `Super`: A Haki (the tagged Warp
   `haki` tab), I AI assistants (Claude Desktop and Codex Desktop) on ordinary
   workspace 1,
-  M music, O 1Password, G communication, B Flux Brave Origin,
-  D DeFi Brave Origin,
+  M music, O 1Password, G communication, B Brave Origin (the single Flux
+  browser; use Brave Containers inside it for multiple accounts),
   S Steam, and `Super+Shift+X` X (`Super+Shift+S` stashes the focused window,
   `Super+Alt+S` toggles the stash workspace);
   see the canonical swaps JSON above for every Omarchy default relocated or
@@ -79,7 +79,7 @@ The Arch setup:
   the kernel split-lock penalty while the game runs and restores it on exit
   once `haoshoku --gaming-split-lock` has installed its narrow sudoers rule
   (Division 2 otherwise sits near 50 fps with an idle CPU and GPU);
-- starts Flux, DeFi, WhatsApp, and Notion with empty Brave Origin profiles
+- starts Flux, WhatsApp, and Notion with empty Brave Origin profiles
   below `~/.config/brave-haoshoku/`; existing Chromium profile data remains
   untouched at `~/.config/chromium-haoshoku/` for manual import;
 - installs packaged Omazed and safely points Zed at its generated theme so Zed

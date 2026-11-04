@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Use one Brave Origin browser (Flux) on `Super+B`; manage multiple accounts
+  with Brave Containers inside it. Retire the DeFi profile, its workspace and
+  `Super+D`, and migrate the old shipped Flux+DeFi registry. Existing DeFi
+  profile data under `~/.config/brave-haoshoku/defi` is left untouched.
+
 ## 12.8.0 - 2026-11-02
 
 ### Changed

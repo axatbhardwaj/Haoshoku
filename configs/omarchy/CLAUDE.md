@@ -84,17 +84,16 @@ is excluded from Biome's application-JavaScript rules.
 
 ## Window-class and workspace contracts
 
-The window classes matched by `workspaces-*.lua`—`chromium-flux` and
-`chromium-defi`—are coupled to the registry defaults and, for `chromium-flux`, to
-hardcoded launcher literals. Separately, the `special:browser-flux` and
-`special:browser-defi` workspace targets are coupled to registry profile `.id`
+The window class matched by `workspaces-*.lua`—`chromium-flux`—is coupled to
+the registry default and to hardcoded launcher literals. Separately, the
+`special:browser-flux` workspace target is coupled to registry profile `.id`
 values, which `haoshoku-special-workspace` expands as `browser-$profile`. See the
 `configs/scripts/CLAUDE.md` convention; rename neither from this side alone.
 
-The profile classes `chromium-flux` and `chromium-defi` are intentionally retained
+The profile class `chromium-flux` is intentionally retained
 unchanged even though the browser is now Brave Origin. They are opaque Wayland
 class strings, not brand labels: Brave Origin launched with
-`--class=chromium-flux` or `--class=chromium-defi` stamps that exact string as its
+`--class=chromium-flux` stamps that exact string as its
 window class, identically to Chromium. Keeping those literal strings avoids a
 registry migration that could risk a duplicate-class validation hazard. Future
 maintainers must not “fix” the apparent naming mismatch or break the matching
@@ -149,7 +148,7 @@ downstream artifacts that Omarchy generates.
 
 A second, narrow appearance carve-out permits per-profile browser border colours
 in both `workspaces-*.lua` variants, but only when the rule matches the exact
-Haoshoku-owned `chromium-flux` or `chromium-defi` class. Those opaque classes are
+Haoshoku-owned profile class (currently only `chromium-flux`). Those opaque classes are
 registry/launcher contracts that no Omarchy theme or other component can know.
 This permits only profile-identifying `border_color` window rules; it does not
 permit theme, wallpaper, decoration, opacity, blur, or general visual settings in

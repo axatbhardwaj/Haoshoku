@@ -106,6 +106,30 @@ describe("configureChromiumProfiles", () => {
 		expect(configured.chromiumProfiles).toEqual(DEFAULT_CHROMIUM_PROFILES);
 	});
 
+	// Mutation caught: preserving the old shipped Flux+DeFi default keeps a
+	// second browser profile routable after the switch to Brave Containers.
+	it("migrates the legacy Flux and DeFi default to the single Flux profile", () => {
+		fs.writeFileSync(
+			configFile,
+			JSON.stringify({
+				theme: "ocean",
+				chromiumProfiles: [
+					{ id: "flux", class: "chromium-flux", monitor: "DP-1", default: true },
+					{ id: "defi", class: "chromium-defi", monitor: "DP-1" },
+				],
+			}),
+		);
+
+		const result = configureChromiumProfiles({ home });
+		const configured = JSON.parse(fs.readFileSync(configFile, "utf8"));
+
+		expect(result).toEqual({ changed: true, skipped: false });
+		expect(configured.theme).toBe("ocean");
+		expect(configured.chromiumProfiles).toEqual([
+			{ id: "flux", class: "chromium-flux", monitor: "DP-1", default: true },
+		]);
+	});
+
 	// Mutation caught: retaining a malformed profile list would make shell
 	// launchers interpret untrusted values instead of using the shipped registry.
 	it("replaces an invalid registry without dropping unrelated configuration", () => {

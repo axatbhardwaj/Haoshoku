@@ -36,7 +36,6 @@ describe("Omarchy Lua workspace behavior", () => {
 			'o.window("^brave-www\\\\.notion\\\\.so__-Default$", { workspace = "10 silent" })',
 			'o.window("^brave-x\\\\.com__-Default$", { workspace = "special:x" })',
 			'o.window("^chromium-flux$", { workspace = "special:browser-flux" })',
-			'o.window("^chromium-defi$", { workspace = "special:browser-defi" })',
 		];
 
 		for (const overlay of [pc, laptop]) {
@@ -58,11 +57,13 @@ describe("Omarchy Lua workspace behavior", () => {
 		}
 	});
 
-	it("limits border-color ownership to the DeFi profile", () => {
+	// Mutation caught: leaving the retired DeFi profile wired keeps a second
+	// browser instance alive; Brave Containers in Flux now own multi-account use.
+	it("ships a single Flux browser with no DeFi profile wiring", () => {
 		for (const overlay of [pc, laptop]) {
-			expect(overlay).toContain(
-				'o.window("^chromium-defi$", { border_color = "rgb(9762e2) rgb(9762e2)" })',
-			);
+			expect(overlay).not.toContain("chromium-defi");
+			expect(overlay).not.toContain("browser-toggle defi");
+			expect(overlay).not.toContain('o.bind("SUPER + D"');
 			expect(overlay).not.toContain(
 				'o.window("^chromium-flux$", { border_color',
 			);
@@ -73,8 +74,7 @@ describe("Omarchy Lua workspace behavior", () => {
 		const commands = [
 			'o.bind("SUPER + I", "Show/focus/hide AI assistants workspace", "haoshoku-special-workspace assistants")',
 			'o.bind("SUPER + T", "T3 Code", o.launch_sole("^com\\\\.t3tools\\\\.T3Code$", "t3code"))',
-			'o.bind("SUPER + B", "Toggle Flux Brave Origin workspace", "haoshoku-special-workspace browser-toggle flux")',
-			'o.bind("SUPER + D", "Toggle DeFi Brave Origin workspace", "haoshoku-special-workspace browser-toggle defi")',
+			'o.bind("SUPER + B", "Toggle Brave Origin workspace", "haoshoku-special-workspace browser-toggle flux")',
 			'o.bind("SUPER + SHIFT + G", "Toggle gaming workspace", "haoshoku-gaming-workspace toggle")',
 			'o.bind("SUPER + S", "Show/focus/hide Steam workspace", "haoshoku-special-workspace steam")',
 		];
