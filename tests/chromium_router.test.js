@@ -89,24 +89,30 @@ printf '%s\\0' "$@" > "$ROUTER_CALL"
 			JSON.stringify([
 				{ class: "chromium-flux", focusHistoryID: -1 },
 				{ class: "chromium-flux", focusHistoryID: 12 },
-				{ class: "chromium-defi", focusHistoryID: 3 },
+				{ class: "chromium-research", focusHistoryID: 3 },
 			]),
 			[
-				"https://app.defi.example/portfolio",
-				"https://app.defi.example/trade?pair=ETH%2FUSD",
+				"https://research.example/portfolio",
+				"https://research.example/trade?pair=ETH%2FUSD",
 			],
+			{
+				chromiumProfiles: [
+					{ id: "flux", class: "chromium-flux", monitor: "DP-1", default: true },
+					{ id: "research", class: "chromium-research", monitor: "DP-2" },
+				],
+			},
 		);
 
 		expect(result.exitCode).toBe(0);
 		expect(forwardedArguments()).toEqual([
 			"browser",
-			"defi",
-			"https://app.defi.example/portfolio",
-			"https://app.defi.example/trade?pair=ETH%2FUSD",
+			"research",
+			"https://research.example/portfolio",
+			"https://research.example/trade?pair=ETH%2FUSD",
 		]);
 	});
 
-	// Mutation caught: limiting the router to the shipped Flux/DeFi classes
+	// Mutation caught: limiting the router to the shipped Flux class
 	// makes a registered future profile unreachable as the default browser.
 	it("routes URLs to the focused third configured profile", async () => {
 		const result = await run(
@@ -120,11 +126,6 @@ printf '%s\\0' "$@" > "$ROUTER_CALL"
 					{
 						id: "flux",
 						class: "chromium-flux",
-						monitor: "DP-1",
-					},
-					{
-						id: "defi",
-						class: "chromium-defi",
 						monitor: "DP-1",
 					},
 					{
@@ -227,7 +228,8 @@ printf '%s\\0' "$@" > "$ROUTER_CALL"
 	});
 
 	// Mutation caught: trusting a malformed registry can route to an arbitrary
-	// class; invalid configuration must restore the shipped safe registry.
+	// class; invalid configuration must restore the shipped Flux-only registry,
+	// so a leftover retired DeFi window is no longer a routing target.
 	it("falls back to the shipped registry when configured profiles are invalid", async () => {
 		const invalidRegistry = [
 			{
@@ -246,7 +248,7 @@ printf '%s\\0' "$@" > "$ROUTER_CALL"
 		expect(result.exitCode).toBe(0);
 		expect(forwardedArguments()).toEqual([
 			"browser",
-			"defi",
+			"flux",
 			"https://fallback.example/",
 		]);
 	});
@@ -334,10 +336,14 @@ printf '%s\\0' "$@" > "$ROUTER_CALL"
 		const result = await run(
 			JSON.stringify([
 				{ class: "chromium-flux", focusHistoryID: 5 },
-				{ class: "chromium-defi", focusHistoryID: 1 },
+				{ class: "chromium-research", focusHistoryID: 1 },
 			]),
 			["https://recovered.example/"],
 			{
+				chromiumProfiles: [
+					{ id: "flux", class: "chromium-flux", monitor: "DP-1", default: true },
+					{ id: "research", class: "chromium-research", monitor: "DP-2" },
+				],
 				env: { HYPR_REQUIRE_SIGNATURE: "1", XDG_RUNTIME_DIR: directory },
 				dropEnv: ["HYPRLAND_INSTANCE_SIGNATURE"],
 			},
@@ -346,7 +352,7 @@ printf '%s\\0' "$@" > "$ROUTER_CALL"
 		expect(result.exitCode).toBe(0);
 		expect(forwardedArguments()).toEqual([
 			"browser",
-			"defi",
+			"research",
 			"https://recovered.example/",
 		]);
 	});

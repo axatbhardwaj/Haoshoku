@@ -515,7 +515,6 @@ fi
 			{ name: "browser", args: ["browser", "flux"] },
 			{ name: "browser-toggle", args: ["browser-toggle", "flux"] },
 			{ name: "browser-flux", args: ["browser-flux"] },
-			{ name: "browser-defi", args: ["browser-defi"] },
 			{ name: "haki", args: ["haki"] },
 			{ name: "assistants", args: ["assistants"] },
 			{ name: "music", args: ["music"] },

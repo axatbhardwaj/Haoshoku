@@ -54,9 +54,9 @@ describe("haoshoku-chromium-profiles", () => {
 		expect(defaultProfile.stdout).toBe("flux\n");
 	});
 
-	// Mutation caught: legacy aliases that resolve only against a custom list
-	// become unknown instead of using their shipped Flux/DeFi definitions.
-	it("returns configured entries and shipped compatibility aliases", async () => {
+	// Mutation caught: the Flux alias resolving only against a custom list
+	// becomes unknown, while the retired DeFi profile must no longer resolve.
+	it("returns configured entries, the shipped Flux alias, and no DeFi", async () => {
 		const chromiumProfiles = [
 			{
 				id: "research",
@@ -78,12 +78,8 @@ describe("haoshoku-chromium-profiles", () => {
 			monitor: "DP-1",
 			default: true,
 		});
-		expect(defi.exitCode).toBe(0);
-		expect(JSON.parse(defi.stdout)).toEqual({
-			id: "defi",
-			class: "chromium-defi",
-			monitor: "DP-1",
-		});
+		expect(defi.exitCode).toBe(1);
+		expect(defi.stdout).toBe("");
 	});
 
 	it("rejects multiple defaults by returning the shipped registry", async () => {
@@ -110,7 +106,6 @@ describe("haoshoku-chromium-profiles", () => {
 				monitor: "DP-1",
 				default: true,
 			},
-			{ id: "defi", class: "chromium-defi", monitor: "DP-1" },
 		]);
 	});
 });

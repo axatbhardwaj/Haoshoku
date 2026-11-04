@@ -249,7 +249,6 @@ case "$recipe" in
     urls=("${@:3}")
     ;;
   browser-flux) browser_profile=flux; browser_toggle=true; urls=("${@:2}") ;;
-  browser-defi) browser_profile=defi; browser_toggle=true; urls=("${@:2}") ;;
 esac
 
 if [[ -n "$browser_profile" ]]; then

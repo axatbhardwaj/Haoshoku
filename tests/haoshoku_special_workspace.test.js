@@ -1564,15 +1564,17 @@ printf 'steam\n' >> "$CALL_LOG"
 		]);
 	});
 
-	it("opens DeFi in a different Brave Origin profile", async () => {
-		expect((await run(["browser-toggle", "defi"])).exitCode).toBe(0);
-		expect(await chromiumArguments()).toEqual([
-			`--user-data-dir=${directory}/.config/brave-haoshoku/defi`,
-			"--class=chromium-defi",
-		]);
+	// Mutation caught: keeping DeFi in the shipped registry or as an alias
+	// relaunches a second browser instead of using Containers inside Flux.
+	it("rejects the retired DeFi profile and alias without launching Brave Origin", async () => {
+		for (const args of [["browser-toggle", "defi"], ["browser-defi"]]) {
+			const result = await run(args);
+			expect(result.exitCode).toBe(2);
+		}
+		expect(fs.existsSync(browserCall)).toBe(false);
 	});
 
-	// Mutation caught: hard-coding Flux and DeFi recipe branches rejects a valid
+	// Mutation caught: hard-coding the Flux recipe branch rejects a valid
 	// future profile instead of deriving its workspace and Brave Origin argv safely.
 	it("opens a registered third profile through the generic browser command", async () => {
 		const chromiumProfiles = [
@@ -1581,11 +1583,6 @@ printf 'steam\n' >> "$CALL_LOG"
 				class: "chromium-flux",
 				monitor: "DP-1",
 				default: true,
-			},
-			{
-				id: "defi",
-				class: "chromium-defi",
-				monitor: "DP-1",
 			},
 			{
 				id: "research",
@@ -1633,8 +1630,8 @@ printf 'steam\n' >> "$CALL_LOG"
 	});
 
 	// Mutation caught: resolving aliases only through a custom registry makes
-	// existing Flux/DeFi shortcuts fail when that registry omits those IDs.
-	it("uses shipped definitions for browser aliases omitted from a custom registry", async () => {
+	// the existing Flux shortcut fail when that registry omits its ID.
+	it("uses the shipped definition for the Flux alias omitted from a custom registry", async () => {
 		const chromiumProfiles = [
 			{
 				id: "research",
@@ -1646,7 +1643,6 @@ printf 'steam\n' >> "$CALL_LOG"
 
 		for (const [recipe, id] of [
 			["browser-flux", "flux"],
-			["browser-defi", "defi"],
 		]) {
 			fs.rmSync(browserCall, { force: true });
 			const result = await run([recipe], {
@@ -1685,7 +1681,6 @@ printf 'steam\n' >> "$CALL_LOG"
 
 	for (const [recipe, profile] of [
 		["browser-flux", "flux"],
-		["browser-defi", "defi"],
 	]) {
 		// Mutation caught: sending a URL through the PATH-shadowed Brave Origin wrapper,
 		// dropping an argument, or launching the wrong profile prevents the selected
@@ -1752,7 +1747,7 @@ printf 'steam\n' >> "$CALL_LOG"
 		expect(result.stderr).toContain("usage: haoshoku-special-workspace music");
 	});
 
-	for (const profile of ["flux", "defi"]) {
+	for (const profile of ["flux"]) {
 		const workspace = `browser-${profile}`;
 		const client = JSON.stringify([{ class: `chromium-${profile}` }]);
 
