@@ -11,7 +11,7 @@ binary acts as a PATH-shadow wrapper for that binary.
 | ---- | ---- | ------------ |
 | `haoshoku-browser` | Routes URLs to the most recently focused managed browser profile, falling back to the configured default. | Changing browser dispatch or focused-profile selection |
 | `haoshoku-chromium-flux` | Launches Brave Origin on the isolated Flux profile and preserves that profile through Omarchy web-app launch parsing. | Changing the Flux profile, wrapper name, or paired desktop entry |
-| `haoshoku-chromium-profiles` | Validates and queries the configured browser profile registry, with portable Flux and DeFi fallbacks. | Changing registry validation, defaults, or profile lookup |
+| `haoshoku-chromium-profiles` | Validates and queries the configured browser profile registry, with a portable Flux-only fallback. Multiple accounts use Brave Containers inside Flux; DeFi is retired. | Changing registry validation, defaults, or profile lookup |
 | `haoshoku-claude-local` | Resumes the `claudeSessionName` from `~/.haoshoku.json` (validated) or falls back to a fresh `claude`; used by the Haki Ghostty/tmux split. | Changing the Haki Claude launch or session-name validation |
 | `haoshoku-default-browser` | Login-time repair that re-points `xdg-settings` and the http/https/html MIME handlers at `haoshoku-browser.desktop`. | Changing default-browser ownership or the repaired MIME set |
 | `haoshoku-gaming-workspace` | Toggles gaming workspace 2 and wraps Steam launches to place process-tree windows there, lifting the kernel split-lock penalty for the launch's lifetime. | Changing gaming workspace focus, process matching, placement, or launch wrapping |
@@ -62,17 +62,17 @@ binary acts as a PATH-shadow wrapper for that binary.
   grep -RIn --exclude='CLAUDE.md' -- 'brave-haoshoku/flux' .
   ```
 
-- Profile window-class decision: retain `chromium-flux` and `chromium-defi`
+- Profile window-class decision: retain `chromium-flux`
   unchanged even though the browser is now Brave Origin. These are opaque
   Wayland class strings, not brand labels. Brave Origin launched with
-  `--class=chromium-flux` or `--class=chromium-defi` stamps that exact string
+  `--class=chromium-flux` stamps that exact string
   as its window class, identically to how Chromium did. Keeping the existing
   literal class strings avoids a registry migration that could trigger a
   duplicate-class validation hazard. Future maintainers must not “correct”
   this apparent naming mismatch: the existing strings are intentional and
   both `configs/omarchy/workspaces-*.conf` variants depend on them.
 
-  Keep the `chromium-flux` and `chromium-defi` windowrules in
+  Keep the `chromium-flux` windowrules in
   both `configs/omarchy/workspaces-*.conf` variants; they are deployed byte-for-byte, without
   templating, by `src/helpers/configure_omarchy_workspaces.js`.
   `FALLBACK_PROFILES` in `configs/scripts/haoshoku-chromium-profiles` covers
