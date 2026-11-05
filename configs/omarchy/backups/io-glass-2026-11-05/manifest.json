@@ -1,0 +1,23 @@
+{
+  "host": "io",
+  "date": "2026-11-05",
+  "theme": "aurora",
+  "ghosttyBackgroundOpacity": 0.7,
+  "appOpacity": 0.8,
+  "browserOpacity": 0.9,
+  "blur": {
+    "size": 4,
+    "passes": 2
+  },
+  "files": {
+    ".config/ghostty/config": "df6857a124749f9932e41d065aef84c874a836574a5865525bd496c0614615da",
+    ".config/hypr/looknfeel.lua": "594dc0452bb6da476da26635a8f053f44fb9f6fe3a752b6497ed111c60b443ec",
+    ".local/state/omarchy/toggles/hypr/window-glassy.lua": "a545778327445e58c4c7bfdc5b178294a926257804f0ea9d9845e80e781f054d",
+    ".local/state/omarchy/toggles/hypr/bar-glassy.lua": "033a5926a32c2992d18b4d2cca393119abe1a0cca67266383167af27f5bf9e6b",
+    ".local/state/omarchy/current/theme/ghostty.conf": "cfe7576851fed215b8955b9d8041da14f58f2e9d922ebcac045efe0b575bc279",
+    ".local/state/omarchy/current/theme/shell.toml": "ff889c5e9f4094a9aad67b7cba7151796d0889b14e4bf33198b9abb275616193",
+    ".local/state/omarchy/current/theme/colors.toml": "79a366bf8568866cf8450291e06901854011f10cbb6dd8d872a2ad1e6dbcd2b6",
+    ".local/state/omarchy/current/theme/backgrounds/0-aurora-lake.jpg": "253e067dba6d60504703704b88754fae05f4f1472776899dedc5f5d3002d88af",
+    "bar.json": "c0812035584db2175d76b518fff1e91aef38c632c0366b8b074adbc85d4cc703"
+  }
+}
