@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Added
+
+- Preserve the approved io glass appearance as a checksum-verified restore
+  snapshot: Ghostty 70% background opacity, T3 92% window opacity, Aurora
+  styling, wallpaper, and Omarchy glass toggles. This is a manual backup,
+  not an automatic appearance deployment.
+
 ### Changed
 
 - Use one Brave Origin browser (Flux) on `Super+B`; manage multiple accounts
