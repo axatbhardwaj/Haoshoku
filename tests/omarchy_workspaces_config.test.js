@@ -33,7 +33,7 @@ describe("Omarchy Lua workspace behavior", () => {
 		const expectedRules = [
 			'o.window("^chatgpt$", { workspace = "special:assistants silent" })',
 			'o.window("^com\\\\.anthropic\\\\.Claude$", { workspace = "special:assistants silent" })',
-			'o.window("^brave-www\\\\.notion\\\\.so__-Default$", { workspace = "10 silent" })',
+			'targets.window("brave-www.notion.so__-Default", 10)',
 			'o.window("^brave-x\\\\.com__-Default$", { workspace = "special:x" })',
 			'o.window("^chromium-flux$", { workspace = "special:browser-flux" })',
 		];
@@ -78,15 +78,12 @@ describe("Omarchy Lua workspace behavior", () => {
 			'o.bind("SUPER + SHIFT + G", "Toggle gaming workspace", "haoshoku-gaming-workspace toggle")',
 			'o.bind("SUPER + S", "Show/focus/hide Steam workspace", "haoshoku-special-workspace steam")',
 		];
-		const numberedOmakade = `o.bind(
-  "SUPER + code:11",
-  "Workspace 2 and Omakade",
-  "haoshoku-special-workspace numbered 2 omakade"
-)`;
 
 		for (const overlay of [pc, laptop]) {
 			for (const command of commands) expect(overlay).toContain(command);
-			expect(overlay).toContain(numberedOmakade);
+			expect(overlay).toContain(
+				'"SUPER + F2", "Gaming slot 2 and Omakade", "haoshoku-special-workspace numbered 2 omakade"',
+			);
 			expect(overlay).not.toContain('o.bind("SUPER + A"');
 			expect(overlay).not.toContain(
 				"haoshoku-special-workspace numbered 2 steam",
@@ -106,16 +103,14 @@ describe("Omarchy Lua workspace behavior", () => {
 				'o.exec_on_start("[workspace special:steam silent] uwsm-app -- steam")',
 			);
 			// Omakade autostart is opt-in via --gaming-omakade-autostart; the
-			// shipped overlay keeps Steam only so SUPER+2 stays the library key.
+			// shipped overlay keeps Steam only; SUPER+F2 opens the library.
 			expect(overlay).not.toContain("numbered-login 2 omakade");
-			expect(overlay).toContain(
-				'o.window("^com\\\\.haoshoku\\\\.ws7$", { workspace = "7 silent" })',
-			);
+			expect(overlay).toContain('targets.window("com.haoshoku.ws7", 7)');
 			expect(overlay).toContain(
 				'o.window("^[Ss]team$", { workspace = "special:steam silent", tile = true })',
 			);
 			expect(overlay).toContain(
-				'o.window("^io\\\\.github\\\\.tsouth89\\\\.Omakade$", { workspace = "2 silent" })',
+				'targets.window("io.github.tsouth89.Omakade", 2)',
 			);
 			expect(overlay).toContain(
 				'o.window("^com\\\\.haoshoku\\\\.haki$", { workspace = "special:haki" })',
@@ -123,40 +118,19 @@ describe("Omarchy Lua workspace behavior", () => {
 		}
 	});
 
-	it("replaces stock SUPER+7 with the owned Ghostty focus-or-create action", () => {
-		const workspaceSevenBinding = `o.bind(
-  "SUPER + code:16",
-  "Workspace 7 Ghostty",
-  "haoshoku-special-workspace numbered 7 ghostty"
-)`;
-
+	it("keeps number navigation native and places preferred app actions on Fn", () => {
 		for (const overlay of [pc, laptop]) {
-			expect(overlay).toContain('hl.unbind("SUPER + code:16")');
-			expect(overlay).toContain(workspaceSevenBinding);
+			expect(overlay).not.toMatch(/(?:o.bind|hl.unbind)\("SUPER \+ code:/);
 			expect(overlay).toContain(
-				'o.exec_on_start("haoshoku-special-workspace numbered-login 7 ghostty")',
+				'"SUPER + F7", "Slot 7 Ghostty", "haoshoku-special-workspace numbered 7 ghostty"',
 			);
 			expect(overlay).toContain(
-				'o.window("^com\\\\.haoshoku\\\\.ws7$", { workspace = "7 silent" })',
+				'"SUPER + F5", "Slot 5 and chat", "haoshoku-special-workspace numbered 5 communication-numbered"',
 			);
-		}
-	});
-
-	it("starts the primary app on workspace 1 and gives both number keys its focus action", () => {
-		for (const overlay of [pc, laptop]) {
 			expect(overlay).toContain(
 				'o.exec_on_start("haoshoku-primary-app login")',
 			);
 			expect(overlay).toContain('require("hypr.haoshoku.primary_app")');
-			for (const [key, workspace] of [
-				["10", "1"],
-				["15", "6"],
-			]) {
-				expect(overlay).toContain(`hl.unbind("SUPER + code:${key}")`);
-				expect(overlay).toContain(
-					`"SUPER + code:${key}", "Primary app on workspace ${workspace}", "haoshoku-primary-app focus ${workspace}"`,
-				);
-			}
 		}
 	});
 });

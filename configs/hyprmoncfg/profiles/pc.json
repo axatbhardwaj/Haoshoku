@@ -59,80 +59,9 @@
 		}
 	],
 	"workspaces": {
-		"enabled": true,
+		"enabled": false,
 		"strategy": "manual",
-		"rules": [
-			{
-				"workspace": "1",
-				"output_key": "lg electronics|lg ultragear|303ntzn9k909",
-				"output_name": "DP-1",
-				"default": true,
-				"persistent": true
-			},
-			{
-				"workspace": "2",
-				"output_key": "lg electronics|lg ultragear|303ntzn9k909",
-				"output_name": "DP-1",
-				"default": false,
-				"persistent": true
-			},
-			{
-				"workspace": "3",
-				"output_key": "lg electronics|lg ultragear|303ntzn9k909",
-				"output_name": "DP-1",
-				"default": false,
-				"persistent": true
-			},
-			{
-				"workspace": "4",
-				"output_key": "lg electronics|lg fhd|0x01010101",
-				"output_name": "HDMI-A-1",
-				"default": false,
-				"persistent": true
-			},
-			{
-				"workspace": "5",
-				"output_key": "lg electronics|lg fhd|0x01010101",
-				"output_name": "HDMI-A-1",
-				"default": true,
-				"persistent": true
-			},
-			{
-				"workspace": "6",
-				"output_key": "lg electronics|lg ultragear|512ntpcer888",
-				"output_name": "DP-2",
-				"default": false,
-				"persistent": true
-			},
-			{
-				"workspace": "7",
-				"output_key": "lg electronics|lg ultragear|512ntpcer888",
-				"output_name": "DP-2",
-				"default": false,
-				"persistent": true
-			},
-			{
-				"workspace": "8",
-				"output_key": "lg electronics|lg ultragear|303ntzn9k909",
-				"output_name": "DP-1",
-				"default": false,
-				"persistent": true
-			},
-			{
-				"workspace": "9",
-				"output_key": "lg electronics|lg fhd|0x01010101",
-				"output_name": "HDMI-A-1",
-				"default": false,
-				"persistent": true
-			},
-			{
-				"workspace": "10",
-				"output_key": "lg electronics|lg ultragear|512ntpcer888",
-				"output_name": "DP-2",
-				"default": false,
-				"persistent": true
-			}
-		]
+		"rules": []
 	},
 	"exec": ""
 }
