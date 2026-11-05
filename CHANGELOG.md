@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Restore Omarchy's stock workspace widget and tray, enable the Elsewhen world
+  clock, and remove the Pullbar counter while preserving audio and Agents.
+- On io, use five local workspaces per monitor with preferred app shortcuts on
+  Meta+Fn and monitor selection on Meta+Ctrl+F1–F3. Other desktop and laptop
+  profiles retain ten single-monitor slots.
+- Resolve app destinations through Omarchy's current monitor mapping and keep
+  hyprmoncfg responsible for display geometry. Preserve the gaming toggle's
+  previous-workspace return and special workspaces.
+
+### Migration
+
+- Existing global-workspace setups need the backed-up migration in
+  `README/omarchy-workspaces.md`; installing this release alone does not migrate
+  an active desktop session.
+
 ## 12.8.1 - 2026-11-05
 
 ### Added
