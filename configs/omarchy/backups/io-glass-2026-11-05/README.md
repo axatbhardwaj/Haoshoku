@@ -1,7 +1,7 @@
 # io glass appearance — 2026-11-05
 
-User-approved Ghostty appearance captured in Haoshoku. T3 now uses the ordinary
-80% compositor opacity; Ghostty keeps its 70% native background with solid text.
+User-approved Ghostty appearance captured in Haoshoku. T3 uses a readability-focused
+92% compositor opacity; Ghostty keeps its 70% native background with solid text.
 The live Ghostty config already matches `configs/ghostty/config`.
 
 This is a manual restore snapshot, not an installer change or a fleet deployment.
