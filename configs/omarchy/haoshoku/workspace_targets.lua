@@ -36,7 +36,7 @@ function M.id(slot)
     end
   end
   if not target or not local_slot or local_slot < 1 or local_slot > 10 then return nil end
-  return o.workspaces.workspace_id(target, local_slot)
+  return o.workspaces.workspace_id(target, local_slot), target.name
 end
 
 -- Resolve at map time, including after hotplug; never leave a stale numeric
@@ -54,13 +54,16 @@ end
 function M.rule(slot, rule)
   local applied = {}
   local function apply()
-    local id = M.id(slot)
-    if not id or applied[id] then return end
+    local id, monitor = M.id(slot)
+    if not id or applied[id] == monitor then return end
     local options = {}
     for key, value in pairs(rule) do options[key] = value end
     options.workspace = tostring(id)
+    -- Empty persistent workspaces must be created on their resolved owner,
+    -- independently of which screen happens to be focused during reload.
+    options.monitor = monitor
     hl.workspace_rule(options)
-    applied[id] = true
+    applied[id] = monitor
   end
   apply()
   hl.on("config.reloaded", apply)

@@ -3,7 +3,8 @@
 Omarchy 4.5 owns workspace IDs, focused-monitor number navigation, and its stock
 workspace widget. Hyprmoncfg owns display geometry; the saved PC profile turns
 its global workspace planner Off (`enabled: false`, no rules). Haoshoku never
-edits generated `monitors.lua` or Omarchy's packaged Lua/QML.
+edits generated `hyprmoncfg-monitors.lua`, legacy `monitors.lua`, or Omarchy's
+packaged Lua/QML.
 
 Only hostname **io** with device type **pc** selects `workspaces-io.lua` and
 `workspace-monitors-io`. It uses five local slots per screen. Omarchy's internal
@@ -31,6 +32,9 @@ sole connected display. Multiple external displays without an internal panel
 are ambiguous: helpers defer instead of guessing. No io count cap, portrait
 layout, or three-monitor pinning is applied to an unknown host's PC fallback.
 
+Persistent workspace rules include the resolved monitor so empty workspaces do
+not depend on the focused screen at creation. Rules refresh when the native
+block or resolved connector changes; a missing target emits no new rule.
 Window-open routing resolves the current target, so disconnected screens do not
 leave stale numeric placement rules. Missing roles, state, or monitor identity
 cause shell app actions to fail without dispatching or launching. Login helpers
@@ -69,16 +73,21 @@ This author candidate does not execute them. Keep clients running throughout.
    primary-app,gaming.json}`, and `~/.local/bin/haoshoku-{special-workspace,
    primary-app,gaming-workspace,workspace-target}`. Existing custom primary-app
    and gaming settings are preserved. Also back up the hyprmoncfg profile and
-   generated outputs before the next step. Do not hand-edit `monitors.lua`.
+   generated outputs before the next step: `~/.config/hypr/hyprmoncfg-monitors.lua`
+   and legacy `~/.config/hypr/monitors.lua`, plus their existing sidecars. Inspect
+   the root config’s `dofile` wiring; a comment-only `monitors.lua` does not prove
+   the active modern output is safe. Do not hand-edit either generated output.
 4. Apply the updated profile with **`hyprmoncfg apply pc`**, using its normal
-   confirmation/revert flow. Its engine must regenerate `monitors.lua` **before
-   its reload**, removing the entire `o.workspaces` override, number/Tab/wheel
+   confirmation/revert flow. Its engine must regenerate the active output
+   (`hyprmoncfg-monitors.lua` on current io, `monitors.lua` on legacy setups)
+   **before its reload**, removing the entire `o.workspaces` override, number/Tab/wheel
    rebinds, and global workspace rules. Merely deleting the final rules is
-   insufficient. Inspect both generated profile sidecars and `monitors.lua`:
+   insufficient. Inspect both filenames and any generated profile sidecars:
    no `o.workspaces.enabled = false`, no replacements of native workspace
    functions, and no global numbered monitor rules may remain. If they remain,
    stop here and restore through the backup/native profile flow. Haoshoku's
-   runtime replay guard will also defer while those overrides remain.
+   runtime replay guard checks both filenames and defers while either contains
+   those overrides.
 5. Re-read all monitors, workspaces, clients and native mappings immediately.
    **Native reconciliation can renumber occupied workspaces**, preserving their
    physical monitor and old local slot when free, or using a free slot on a

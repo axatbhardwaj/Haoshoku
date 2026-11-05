@@ -48,7 +48,8 @@ such as `SUPER + F`, uses `displaced_by_workspace_toggle` instead.
 
 ## Monitor ownership boundary
 
-Haoshoku NEVER writes `monitors.lua`. Monitor discovery and layout generation
+Haoshoku NEVER writes `hyprmoncfg-monitors.lua` or legacy `monitors.lua`.
+Monitor discovery and layout generation
 belong to hyprmoncfg. Its PC profile
 sets workspace planning Off; Omarchy owns workspace numbering and number-key
 navigation. Haoshoku only feeds hyprmoncfg through profile JSON. The overlays
@@ -69,7 +70,7 @@ use ten single-monitor slots, without portrait or three-monitor policies.
 
 ## Shell ownership boundary
 
-Unlike `monitors.lua`, which has an exclusive external owner and Haoshoku never
+Unlike generated monitor Lua, which has an exclusive external owner and Haoshoku never
 writes, `shell.json` has NO exclusive owner. Omarchy's own shell process co-writes
 it whenever a plugin is enabled or disabled through Omarchy's UI. For bar
 widgets, that enablement state lives in `bar.layout`; only non-bar plugins use

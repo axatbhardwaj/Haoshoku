@@ -52,10 +52,11 @@ The Arch setup:
 - without interactive confirmation—including piped stdin—Haoshoku declines real
   user decisions immediately and does not treat input as answers;
 - adds a device-routed behavior-only Lua workspace overlay. The hyprmoncfg
-  plugin owns the generated `~/.config/hypr/monitors.lua`; Haoshoku owns only
+  plugin owns generated `~/.config/hypr/hyprmoncfg-monitors.lua` (or legacy
+  `~/.config/hypr/monitors.lua`); Haoshoku owns only
   `~/.config/hyprmoncfg/profiles/*.json`, the source profile JSON that
-  hyprmoncfg reads to generate that Lua file, and never writes
-  `monitors.lua` directly. The PC profile disables hyprmoncfg’s global
+  hyprmoncfg reads to generate its Lua output, and never writes either
+  generated file directly. The PC profile disables hyprmoncfg’s global
   workspace planner so Omarchy owns per-monitor blocks and number keys. Only
   hostname io with the PC device route uses three physical monitor roles and
   five local slots; other desktop routes keep ten single-monitor app slots.

@@ -25,14 +25,21 @@ afterEach(() => {
 			);
 			const moduleDir = `${root}/configs/omarchy/haoshoku`;
 			const program = `
-local bindings, events, moves, rules, unbound = {}, {}, {}, {}, {}
+local bindings, events, moves, rules, unbound, placements = {}, {}, {}, {}, {}, {}
+local rule_count = 0
 local monitors = ${device === "io" ? '{{name="DP-1",block=3},{name="DP-2",block=4},{name="HDMI-A-1",block=2}}' : '{{name="eDP-1",block=0}}'}
 local function action(options) return options end
 hl = {
   get_monitors = function() return monitors end,
   on = function(name, fn) events[name] = events[name] or {}; table.insert(events[name], fn) end,
   dispatch = function(options) table.insert(moves, options) end,
-  workspace_rule = function(rule) rules[rule.workspace] = rule end,
+  workspace_rule = function(rule)
+    rules[rule.workspace] = rule
+    -- Model persistent creation with another monitor focused. Without a monitor
+    -- selector, Hyprland may create the empty workspace on that focused screen.
+    placements[rule.workspace] = rule.monitor or "focused-other-screen"
+    rule_count = rule_count + 1
+  end,
   layout = {register = function() end},
   unbind = function(key)
     if key:find("code:") then
@@ -61,6 +68,14 @@ assert(#unbound == ${device === "io" ? 15 : 0}, "wrong number cap")
 for key in pairs(bindings) do assert(not key:find("code:"), "duplicate number action " .. key) end
 for _, key in ipairs({"F3","F8","F9"}) do assert(not bindings["SUPER + "..key]) end
 ${device === "io" ? 'for n=1,3 do assert(bindings["SUPER + CTRL + F"..n]) end' : ""}
+for id, monitor in pairs(placements) do
+  local owner
+  for _, connected in ipairs(monitors) do
+    if math.floor((tonumber(id)-1)/10) == connected.block then owner=connected.name end
+  end
+  assert(monitor == owner, "persistent workspace initialized on wrong monitor")
+end
+local function emit(name) for _, fn in ipairs(events[name] or {}) do fn() end end
 local function opened(class)
   for _, fn in ipairs(events["window.open"] or {}) do fn({class=class,address="0x1"}) end
 end
@@ -69,10 +84,22 @@ for _, app in ipairs({{"com.t3tools.T3Code",${device === "io" ? 31 : 1}}, {"vesk
 end
 ${device === "io" ? 'assert(rules["41"].layout == "lua:haoshoku-portrait-rows"); assert(rules["42"].layout == "lua:haoshoku-portrait-rows"); assert(rules["43"].layout == "lua:haoshoku-portrait-rows")' : ""}
 local count=#moves
+local previous_rule_count=rule_count
 monitors={}
+emit("config.reloaded"); emit("monitor.added")
+assert(rule_count==previous_rule_count, "disconnected role created a persistent workspace")
 opened("vesktop"); assert(#moves==count, "disconnected monitor was guessed")
 monitors=${device === "io" ? '{{name="HDMI-A-1",block=7}}' : '{{name="eDP-1",block=7}}'}
+emit("monitor.added")
+assert(placements["74"] == monitors[1].name, "hotplug persistent rule lost its owner")
 opened("vesktop"); assert(moves[#moves].workspace == "74", "hotplug block was cached")
+${
+	device !== "io"
+		? `monitors={{name="DP-8",block=7}}
+emit("monitor.added")
+assert(placements["74"] == "DP-8", "same-block connector change kept a stale monitor pin")`
+		: ""
+}
 print("PASS ${device}")
 `;
 			const result = Bun.spawnSync([lua, "-e", program], {

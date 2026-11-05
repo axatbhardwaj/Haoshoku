@@ -291,17 +291,20 @@ export async function configureOmarchyWorkspaces({
 
 	let reloaded = false;
 	let replayed = false;
-	const monitorsPath = path.join(hyprDirectory, "monitors.lua");
-	const monitors = fsImpl.existsSync(monitorsPath)
-		? fsImpl.readFileSync(monitorsPath, "utf8")
-		: "";
-	const globalOverride =
-		/o\.workspaces\.(?:enabled|reconcile|focus|move_window|move_to_monitor)\s*=|function\s+o\.workspaces\.|hl\.workspace_rule\([^\n]*workspace\s*=\s*"\d+"[^\n]*monitor\s*=/.test(
-			monitors,
-		);
+	const globalOverride = ["hyprmoncfg-monitors.lua", "monitors.lua"].some(
+		(name) => {
+			const generatedPath = path.join(hyprDirectory, name);
+			const generated = fsImpl.existsSync(generatedPath)
+				? fsImpl.readFileSync(generatedPath, "utf8")
+				: "";
+			return /o\.workspaces\.(?:enabled|reconcile|focus|move_window|move_to_monitor)\s*=|function\s+o\.workspaces\.|hl\.workspace_rule\([^\n]*workspace\s*=\s*"\d+"[^\n]*monitor\s*=/.test(
+				generated,
+			);
+		},
+	);
 	if (env.HYPRLAND_INSTANCE_SIGNATURE && globalOverride) {
 		logImpl.warning(
-			"Workspace files staged; reload and login replay deferred: regenerate monitors.lua with hyprmoncfg workspace strategy Off first. Remove the entire generated o.workspaces override and global rules through hyprmoncfg, then rerun --workspaces. Haoshoku left monitors.lua untouched.",
+			"Workspace files staged; reload and login replay deferred: regenerate hyprmoncfg-monitors.lua (or legacy monitors.lua) with hyprmoncfg workspace strategy Off first. Remove the entire generated o.workspaces override and global rules through hyprmoncfg, then rerun --workspaces. Haoshoku left both generated outputs untouched.",
 		);
 	} else if (env.HYPRLAND_INSTANCE_SIGNATURE) {
 		reloaded = Boolean(await runCommandImpl("hyprctl reload"));
