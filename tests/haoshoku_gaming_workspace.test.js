@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { workspaceTargetFixture } from "./workspace_target_fixtures.js";
 
 const root = path.join(import.meta.dir, "..");
 const script = path.join(
@@ -37,7 +38,7 @@ describe("gaming workspace configuration", () => {
 			/hl\.workspace_rule\(\{\s*workspace = "(?:2|11)"(?=[^}]*\bpersistent = false\b)[^}]*\}\)/;
 		expect(workspacesConfig).not.toMatch(gamingSpecificWorkspaceRule);
 		expect(laptopConfig).toContain(
-			'hl.workspace_rule({ workspace = "2", persistent = true })',
+			"for slot = 1, 10 do targets.rule(slot, { persistent = true }) end",
 		);
 		expect(laptopConfig).not.toMatch(gamingSpecificWorkspaceRule);
 	});
@@ -50,7 +51,7 @@ describe("gaming workspace configuration", () => {
 
 	it("routes Omakade windows silently to workspace 2", () => {
 		expect(workspacesConfig).toContain(
-			'o.window("^io\\\\.github\\\\.tsouth89\\\\.Omakade$", { workspace = "2 silent" })',
+			'targets.window("io.github.tsouth89.Omakade", 2)',
 		);
 	});
 
@@ -65,7 +66,7 @@ describe("gaming workspace configuration", () => {
 		);
 	});
 
-	it("binds SUPER+2 to Omakade rather than Steam", () => {
+	it("binds SUPER+F2 to Omakade rather than Steam", () => {
 		expect(workspacesConfig).toContain(
 			"haoshoku-special-workspace numbered 2 omakade",
 		);
@@ -96,7 +97,7 @@ describe("gaming workspace configuration", () => {
 			'o.window("^[Ss]team$", { workspace = "special:steam silent", tile = true })',
 		);
 		expect(laptopConfig).toContain(
-			'o.window("^io\\\\.github\\\\.tsouth89\\\\.Omakade$", { workspace = "2 silent" })',
+			'targets.window("io.github.tsouth89.Omakade", 2)',
 		);
 		expect(laptopConfig).toContain(
 			'o.bind("SUPER + SHIFT + G", "Toggle gaming workspace", "haoshoku-gaming-workspace toggle")',
@@ -117,6 +118,7 @@ describe("haoshoku-gaming-workspace toggle", () => {
 
 	beforeEach(() => {
 		directory = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-gaming-"));
+		workspaceTargetFixture(directory);
 		log = path.join(directory, "calls");
 		const hyprctl = path.join(directory, "hyprctl");
 		fs.writeFileSync(
@@ -124,6 +126,7 @@ describe("haoshoku-gaming-workspace toggle", () => {
 			`#!/usr/bin/env bash
 printf '%s\\n' "$*" >> "$CALL_LOG"
 case "$1 $2" in
+  "monitors -j") echo '[{"name":"DP-1"}]' ;;
   "activeworkspace -j") printf '{"id":%s}\\n' "$ACTIVE_WORKSPACE" ;;
   "clients -j") printf '%s\\n' "$HYPR_CLIENTS" ;;
 esac
@@ -151,6 +154,9 @@ fi
 		const proc = Bun.spawn([script, "toggle"], {
 			env: {
 				...process.env,
+				HOME: directory,
+				XDG_CONFIG_HOME: `${directory}/.config`,
+				XDG_STATE_HOME: `${directory}/.local/state`,
 				ACTIVE_WORKSPACE: String(activeWorkspace),
 				CALL_LOG: log,
 				DISPATCH_EXIT_CODE: dispatchExitCode,
@@ -169,7 +175,11 @@ fi
 	}
 
 	function calls() {
-		return fs.readFileSync(log, "utf8").trim().split("\n");
+		return fs
+			.readFileSync(log, "utf8")
+			.trim()
+			.split("\n")
+			.filter((call) => call !== "monitors -j");
 	}
 
 	it("launches missing Omakade when toggling into workspace 2", async () => {
@@ -184,13 +194,13 @@ fi
 		]);
 	});
 
-	it("ensures Omakade when toggling out to the previous workspace", async () => {
+	it("ensures Omakade when toggling out to the same monitor's slot 1", async () => {
 		const result = await runToggle({ activeWorkspace: 2 });
 
 		expect(result).toEqual({ exitCode: 0, stderr: "" });
 		expect(calls()).toEqual([
 			"activeworkspace -j",
-			'dispatch hl.dsp.focus({ workspace = "previous" })',
+			'dispatch hl.dsp.focus({ workspace = "1" })',
 			"clients -j",
 			'dispatch hl.dsp.exec_cmd("[workspace 2 silent] uwsm-app -- omakade ")',
 		]);

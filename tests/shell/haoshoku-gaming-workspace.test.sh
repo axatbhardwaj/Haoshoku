@@ -30,6 +30,8 @@ export HAOSHOKU_GW_SUDO=/bin/false
 
 # shellcheck source=/dev/null
 HAOSHOKU_GAMING_WORKSPACE_LIB=1 . "$SCRIPT"
+WORKSPACE_ID=2
+RETURN_WORKSPACE_ID=1
 
 echo "match_client_for_pids"
 
@@ -73,7 +75,7 @@ is "skips windows already on the gaming workspace, returns remapped ones" \
 echo "toggle_target"
 
 is "on the gaming workspace, go back" \
-   "previous" "$(toggle_target "$FIXTURES/activeworkspace-2.json")"
+   "1" "$(toggle_target "$FIXTURES/activeworkspace-2.json")"
 
 is "elsewhere, go to the gaming workspace" \
    "2" "$(toggle_target "$FIXTURES/activeworkspace-3.json")"
@@ -89,6 +91,16 @@ is "missing file defaults to the gaming workspace" \
 
 TD="$(mktemp -d)"
 trap 'rm -rf "$TD"' EXIT
+export XDG_CONFIG_HOME="$TD/config" XDG_STATE_HOME="$TD/state"
+mkdir -p "$XDG_CONFIG_HOME/haoshoku" "$XDG_STATE_HOME/omarchy" "$TD/target-bin"
+for slot in {1..10}; do printf '%s\tDP-1\t%s\n' "$slot" "$slot"; done > "$XDG_CONFIG_HOME/haoshoku/workspace-monitors"
+printf '0\tDP-1\tDP-1\n' > "$XDG_STATE_HOME/omarchy/monitor-workspaces"
+cat > "$TD/target-bin/hyprctl" <<'EOS'
+#!/bin/sh
+printf '[{"name":"DP-1"}]\n'
+EOS
+chmod +x "$TD/target-bin/hyprctl"
+export PATH="$TD/target-bin:$PATH"
 
 echo "toggle (mktemp failure)"
 
@@ -108,7 +120,7 @@ echo "toggle (already on gaming workspace)"
 toggle_out_calls="$(
   (
     mktemp() { printf '%s\n' "$TD/toggle-state"; }
-    toggle_target() { printf '%s\n' "previous"; }
+    toggle_target() { printf '%s\n' "1"; }
     dispatch() { printf 'focus %s\n' "$*"; }
     haoshoku-special-workspace() { printf 'login %s\n' "$*"; }
     HYPRCTL=true
@@ -116,7 +128,7 @@ toggle_out_calls="$(
   )
 )"
 is "toggling out still ensures Omakade on workspace 2" \
-   $'focus hl.dsp.focus({ workspace = "previous" })\nlogin numbered-login 2 omakade' \
+   $'focus hl.dsp.focus({ workspace = "1" })\nlogin numbered-login 2 omakade' \
    "$toggle_out_calls"
 
 echo "collect_descendants"
