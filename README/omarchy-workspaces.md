@@ -55,7 +55,8 @@ home. Keep clients running throughout.
    other display/profile writers. If the daemon is active, stop it temporarily:
    `systemctl --user stop hyprmoncfgd.service`. Record its previous state.
 2. Record `hyprctl getoption misc:disable_autoreload -j`, then set
-   `hyprctl keyword misc:disable_autoreload true` and verify success before
+   `hyprctl eval 'hl.config({ misc = { disable_autoreload = true } })'` and
+   verify `hyprctl getoption misc:disable_autoreload -j` reports `true` before
    staging files. This prevents the file watcher from loading a partially staged
    combination. Keep a recovery terminal available. Verify hostname is `io`
    and the saved device type is `pc`; never fake hostname on another device.
@@ -103,7 +104,8 @@ home. Keep clients running throughout.
    functions, and no global numbered monitor rules may remain. If they remain,
    stop here and restore through the backup/native profile flow. Haoshoku's
    runtime replay guard checks both filenames and defers while either contains
-   those overrides.
+   those overrides. A reload resets runtime options: set `disable_autoreload`
+   to `true` again with the Lua command and verify it before further file edits.
 5. Re-read all monitors, workspaces, clients and native mappings immediately.
    Verify every captured client address is still on its original physical
    monitor before proceeding. A monitor re-add during profile application can
@@ -158,7 +160,8 @@ home. Keep clients running throughout.
 8. Restore the daemon only if it was previously active and verify it reapplies
    the disabled-workspace profile without restoring global overrides. Restore
    autoreload to its recorded previous value with
-   `hyprctl keyword misc:disable_autoreload PREVIOUS_VALUE`. Repeat the
+   `hyprctl eval 'hl.config({ misc = { disable_autoreload = PREVIOUS_VALUE } })'`
+   using the recorded Lua boolean, and verify it with `getoption`. Repeat the
    state/bind/client checks after the final reload and on a later profile
    reapply. A new unmatched display/profile may have its own workspace planner;
    inspect its strategy before relying on unattended hotplug.

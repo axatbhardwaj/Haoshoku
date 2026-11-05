@@ -262,14 +262,16 @@ describe("Omarchy v4 Lua overlay", () => {
 						const literalBinds = [
 							...source.matchAll(/o\.bind\(\s*"([^"]+)"/g),
 						].map(([, chord]) => chord);
-						const generatedWorkspaceBinds = source.includes(
-							'o.bind("SUPER + " .. key, "Switch to workspace "',
-						)
-							? Array.from(
-									{ length: 10 },
-									(_, index) => `SUPER + code:${index + 10}`,
-								)
-							: [];
+						const generatedWorkspaceBinds = [
+							...source.matchAll(
+								/o\.bind\(\s*"([^"]+)"\s*\.\. key,\s*"(?:Switch to|Move window(?: silently)? to) workspace "/g,
+							),
+						].flatMap(([, prefix]) =>
+							Array.from(
+								{ length: 10 },
+								(_, index) => `${prefix}code:${index + 10}`,
+							),
+						);
 						return [...literalBinds, ...generatedWorkspaceBinds];
 					}),
 			);
