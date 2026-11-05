@@ -30,6 +30,7 @@ export HAOSHOKU_GW_SUDO=/bin/false
 
 # shellcheck source=/dev/null
 HAOSHOKU_GAMING_WORKSPACE_LIB=1 . "$SCRIPT"
+WORKSPACE_ID=2
 
 echo "match_client_for_pids"
 
@@ -89,6 +90,16 @@ is "missing file defaults to the gaming workspace" \
 
 TD="$(mktemp -d)"
 trap 'rm -rf "$TD"' EXIT
+export XDG_CONFIG_HOME="$TD/config" XDG_STATE_HOME="$TD/state"
+mkdir -p "$XDG_CONFIG_HOME/haoshoku" "$XDG_STATE_HOME/omarchy" "$TD/target-bin"
+for slot in {1..10}; do printf '%s\tDP-1\t%s\n' "$slot" "$slot"; done > "$XDG_CONFIG_HOME/haoshoku/workspace-monitors"
+printf '0\tDP-1\tDP-1\n' > "$XDG_STATE_HOME/omarchy/monitor-workspaces"
+cat > "$TD/target-bin/hyprctl" <<'EOS'
+#!/bin/sh
+printf '[{"name":"DP-1"}]\n'
+EOS
+chmod +x "$TD/target-bin/hyprctl"
+export PATH="$TD/target-bin:$PATH"
 
 echo "toggle (mktemp failure)"
 

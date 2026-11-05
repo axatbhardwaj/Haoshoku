@@ -3,33 +3,6 @@
 	"swaps": [
 		{
 			"config_file": "configs/omarchy/haoshoku/workspaces-pc.lua",
-			"key_combination_taken": "SUPER, code:10",
-			"hl_unbind": "hl.unbind(\"SUPER + code:10\")",
-			"previous_binding": "bindd = SUPER, code:10, Switch to workspace 1, workspace, 1",
-			"moved_from_dispatcher": "workspace",
-			"moved_from_arg": "1",
-			"reason": "reclaimed_by_overlay"
-		},
-		{
-			"config_file": "configs/omarchy/haoshoku/workspaces-pc.lua",
-			"key_combination_taken": "SUPER, code:15",
-			"hl_unbind": "hl.unbind(\"SUPER + code:15\")",
-			"previous_binding": "bindd = SUPER, code:15, Switch to workspace 6, workspace, 6",
-			"moved_from_dispatcher": "workspace",
-			"moved_from_arg": "6",
-			"reason": "reclaimed_by_overlay"
-		},
-		{
-			"config_file": "configs/omarchy/haoshoku/workspaces-pc.lua",
-			"key_combination_taken": "SUPER, code:16",
-			"hl_unbind": "hl.unbind(\"SUPER + code:16\")",
-			"previous_binding": "bindd = SUPER, code:16, Switch to workspace 7, workspace, 7",
-			"moved_from_dispatcher": "workspace",
-			"moved_from_arg": "7",
-			"reason": "superseded_by_workspace_toggle"
-		},
-		{
-			"config_file": "configs/omarchy/haoshoku/workspaces-pc.lua",
 			"key_combination_taken": "SUPER, G",
 			"hl_unbind": "hl.unbind(\"SUPER + G\")",
 			"previous_binding": "bindd = SUPER, G, Toggle window grouping, togglegroup",
@@ -74,7 +47,7 @@
 			"reason": "superseded_by_workspace_toggle"
 		},
 		{
-			"config_file": "configs/omarchy/haoshoku/workspaces-pc.lua",
+			"config_file": "configs/omarchy/haoshoku/workspaces-io.lua",
 			"key_combination_taken": "SUPER, L",
 			"hl_unbind": "hl.unbind(\"SUPER + L\")",
 			"previous_binding": "bindd = SUPER, L, Toggle workspace layout, exec, omarchy-hyprland-workspace-layout-toggle",
@@ -367,6 +340,141 @@
 			"previous_binding": "bindd = SUPER SHIFT, P, Google Photos, exec, omarchy-launch-or-focus-webapp \"Google Photos\" \"https://photos.google.com/\"",
 			"moved_from_dispatcher": "exec",
 			"moved_from_arg": "omarchy-launch-or-focus-webapp \"Google Photos\" \"https://photos.google.com/\"",
+			"reason": "deleted_by_user"
+		},
+		{
+			"config_file": "configs/omarchy/haoshoku/workspaces-io.lua",
+			"key_combination_taken": "SUPER, code:15",
+			"hl_unbind": "hl.unbind(\"SUPER + code:15\")",
+			"previous_binding": "o.bind(\"SUPER + code:15\", \"Native workspace slot 6\", o.workspaces.focus(6))",
+			"moved_from_dispatcher": "o.workspaces.focus",
+			"moved_from_arg": "6",
+			"reason": "deleted_by_user"
+		},
+		{
+			"config_file": "configs/omarchy/haoshoku/workspaces-io.lua",
+			"key_combination_taken": "SUPER SHIFT, code:15",
+			"hl_unbind": "hl.unbind(\"SUPER + SHIFT + code:15\")",
+			"previous_binding": "o.bind(\"SUPER + SHIFT + code:15\", \"Native workspace slot 6\", o.workspaces.move_window(6))",
+			"moved_from_dispatcher": "o.workspaces.move_window",
+			"moved_from_arg": "6",
+			"reason": "deleted_by_user"
+		},
+		{
+			"config_file": "configs/omarchy/haoshoku/workspaces-io.lua",
+			"key_combination_taken": "SUPER SHIFT ALT, code:15",
+			"hl_unbind": "hl.unbind(\"SUPER + SHIFT + ALT + code:15\")",
+			"previous_binding": "o.bind(\"SUPER + SHIFT + ALT + code:15\", \"Native workspace slot 6\", o.workspaces.move_window(6, false))",
+			"moved_from_dispatcher": "o.workspaces.move_window",
+			"moved_from_arg": "6, false",
+			"reason": "deleted_by_user"
+		},
+		{
+			"config_file": "configs/omarchy/haoshoku/workspaces-io.lua",
+			"key_combination_taken": "SUPER, code:16",
+			"hl_unbind": "hl.unbind(\"SUPER + code:16\")",
+			"previous_binding": "o.bind(\"SUPER + code:16\", \"Native workspace slot 7\", o.workspaces.focus(7))",
+			"moved_from_dispatcher": "o.workspaces.focus",
+			"moved_from_arg": "7",
+			"reason": "deleted_by_user"
+		},
+		{
+			"config_file": "configs/omarchy/haoshoku/workspaces-io.lua",
+			"key_combination_taken": "SUPER SHIFT, code:16",
+			"hl_unbind": "hl.unbind(\"SUPER + SHIFT + code:16\")",
+			"previous_binding": "o.bind(\"SUPER + SHIFT + code:16\", \"Native workspace slot 7\", o.workspaces.move_window(7))",
+			"moved_from_dispatcher": "o.workspaces.move_window",
+			"moved_from_arg": "7",
+			"reason": "deleted_by_user"
+		},
+		{
+			"config_file": "configs/omarchy/haoshoku/workspaces-io.lua",
+			"key_combination_taken": "SUPER SHIFT ALT, code:16",
+			"hl_unbind": "hl.unbind(\"SUPER + SHIFT + ALT + code:16\")",
+			"previous_binding": "o.bind(\"SUPER + SHIFT + ALT + code:16\", \"Native workspace slot 7\", o.workspaces.move_window(7, false))",
+			"moved_from_dispatcher": "o.workspaces.move_window",
+			"moved_from_arg": "7, false",
+			"reason": "deleted_by_user"
+		},
+		{
+			"config_file": "configs/omarchy/haoshoku/workspaces-io.lua",
+			"key_combination_taken": "SUPER, code:17",
+			"hl_unbind": "hl.unbind(\"SUPER + code:17\")",
+			"previous_binding": "o.bind(\"SUPER + code:17\", \"Native workspace slot 8\", o.workspaces.focus(8))",
+			"moved_from_dispatcher": "o.workspaces.focus",
+			"moved_from_arg": "8",
+			"reason": "deleted_by_user"
+		},
+		{
+			"config_file": "configs/omarchy/haoshoku/workspaces-io.lua",
+			"key_combination_taken": "SUPER SHIFT, code:17",
+			"hl_unbind": "hl.unbind(\"SUPER + SHIFT + code:17\")",
+			"previous_binding": "o.bind(\"SUPER + SHIFT + code:17\", \"Native workspace slot 8\", o.workspaces.move_window(8))",
+			"moved_from_dispatcher": "o.workspaces.move_window",
+			"moved_from_arg": "8",
+			"reason": "deleted_by_user"
+		},
+		{
+			"config_file": "configs/omarchy/haoshoku/workspaces-io.lua",
+			"key_combination_taken": "SUPER SHIFT ALT, code:17",
+			"hl_unbind": "hl.unbind(\"SUPER + SHIFT + ALT + code:17\")",
+			"previous_binding": "o.bind(\"SUPER + SHIFT + ALT + code:17\", \"Native workspace slot 8\", o.workspaces.move_window(8, false))",
+			"moved_from_dispatcher": "o.workspaces.move_window",
+			"moved_from_arg": "8, false",
+			"reason": "deleted_by_user"
+		},
+		{
+			"config_file": "configs/omarchy/haoshoku/workspaces-io.lua",
+			"key_combination_taken": "SUPER, code:18",
+			"hl_unbind": "hl.unbind(\"SUPER + code:18\")",
+			"previous_binding": "o.bind(\"SUPER + code:18\", \"Native workspace slot 9\", o.workspaces.focus(9))",
+			"moved_from_dispatcher": "o.workspaces.focus",
+			"moved_from_arg": "9",
+			"reason": "deleted_by_user"
+		},
+		{
+			"config_file": "configs/omarchy/haoshoku/workspaces-io.lua",
+			"key_combination_taken": "SUPER SHIFT, code:18",
+			"hl_unbind": "hl.unbind(\"SUPER + SHIFT + code:18\")",
+			"previous_binding": "o.bind(\"SUPER + SHIFT + code:18\", \"Native workspace slot 9\", o.workspaces.move_window(9))",
+			"moved_from_dispatcher": "o.workspaces.move_window",
+			"moved_from_arg": "9",
+			"reason": "deleted_by_user"
+		},
+		{
+			"config_file": "configs/omarchy/haoshoku/workspaces-io.lua",
+			"key_combination_taken": "SUPER SHIFT ALT, code:18",
+			"hl_unbind": "hl.unbind(\"SUPER + SHIFT + ALT + code:18\")",
+			"previous_binding": "o.bind(\"SUPER + SHIFT + ALT + code:18\", \"Native workspace slot 9\", o.workspaces.move_window(9, false))",
+			"moved_from_dispatcher": "o.workspaces.move_window",
+			"moved_from_arg": "9, false",
+			"reason": "deleted_by_user"
+		},
+		{
+			"config_file": "configs/omarchy/haoshoku/workspaces-io.lua",
+			"key_combination_taken": "SUPER, code:19",
+			"hl_unbind": "hl.unbind(\"SUPER + code:19\")",
+			"previous_binding": "o.bind(\"SUPER + code:19\", \"Native workspace slot 10\", o.workspaces.focus(10))",
+			"moved_from_dispatcher": "o.workspaces.focus",
+			"moved_from_arg": "10",
+			"reason": "deleted_by_user"
+		},
+		{
+			"config_file": "configs/omarchy/haoshoku/workspaces-io.lua",
+			"key_combination_taken": "SUPER SHIFT, code:19",
+			"hl_unbind": "hl.unbind(\"SUPER + SHIFT + code:19\")",
+			"previous_binding": "o.bind(\"SUPER + SHIFT + code:19\", \"Native workspace slot 10\", o.workspaces.move_window(10))",
+			"moved_from_dispatcher": "o.workspaces.move_window",
+			"moved_from_arg": "10",
+			"reason": "deleted_by_user"
+		},
+		{
+			"config_file": "configs/omarchy/haoshoku/workspaces-io.lua",
+			"key_combination_taken": "SUPER SHIFT ALT, code:19",
+			"hl_unbind": "hl.unbind(\"SUPER + SHIFT + ALT + code:19\")",
+			"previous_binding": "o.bind(\"SUPER + SHIFT + ALT + code:19\", \"Native workspace slot 10\", o.workspaces.move_window(10, false))",
+			"moved_from_dispatcher": "o.workspaces.move_window",
+			"moved_from_arg": "10, false",
 			"reason": "deleted_by_user"
 		}
 	]

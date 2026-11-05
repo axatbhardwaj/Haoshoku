@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Resolve a logical app slot using Omarchy's current, connected monitor blocks.
+set -euo pipefail
+slot="${1:-}"
+[[ $# -eq 1 && "$slot" =~ ^([1-9]|10)$ ]] || { echo 'usage: haoshoku-workspace-target <1..10>' >&2; exit 2; }
+roles="${XDG_CONFIG_HOME:-$HOME/.config}/haoshoku/workspace-monitors"
+state="${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/monitor-workspaces"
+[[ -r "$roles" && -r "$state" ]] || { echo 'workspace mapping unavailable; deploy --workspaces and let Omarchy reconcile first' >&2; exit 1; }
+role="$(awk -F '\t' -v slot="$slot" '$1 == slot { print $2 "\t" $3 }' "$roles")"
+IFS=$'\t' read -r monitor local_slot <<< "$role"
+[[ "$role" != *$'\n'* && "$local_slot" =~ ^([1-9]|10)$ ]] || { echo 'workspace slot missing or ambiguous' >&2; exit 1; }
+[[ "$monitor" =~ ^[a-zA-Z0-9@_-]+$ ]] || { echo 'workspace monitor role missing or ambiguous' >&2; exit 1; }
+monitors="$(hyprctl monitors -j)"
+jq -ner --arg monitor "$monitor" --argjson slot "$local_slot" --argjson monitors "$monitors" --rawfile state "$state" '
+  [$monitors[] | select(.disabled != true and .is_mirror != true and (.mirrorOf // "none") == "none")] as $connected |
+  [$connected[] | select(.name | test("^(eDP|LVDS|DSI)"))] as $internal |
+  (if $monitor == "@single" then (if ($internal | length) == 1 then $internal else $connected end)
+   else [$connected[] | select(.name == $monitor)] end) as $live |
+  (if ($live | length) != 1 then error("workspace monitor disconnected or ambiguous") else $live[0] end) as $target |
+  [$state | split("\n")[] | select(length > 0) | split("\t") |
+    if length == 3 and (.[0] | test("^[0-9]+$")) then
+      {block: (.[0] | tonumber), connector: .[1], identity: .[2]}
+    else error("invalid native monitor-workspaces state") end] as $rows |
+  [$rows[] | select(.connector == $target.name and (.identity | sub(" #[0-9]+$"; "")) ==
+    (if ($target.description // "") == "" then $target.name else $target.description end))] as $owned |
+  if ($owned | length) == 1 and ([$rows[] | select(.block == $owned[0].block)] | length) == 1 then
+    $owned[0].block * 10 + $slot
+  else error("native workspace mapping missing, stale or ambiguous") end
+'

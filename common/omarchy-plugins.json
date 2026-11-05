@@ -10,11 +10,6 @@
 		"manualAuth": null
 	},
 	{
-		"id": "io.github.ciryon.pullbar",
-		"url": "https://github.com/ciryon/omarchy-pullbar.git",
-		"manualAuth": "GitHub CLI auth (`gh auth login`)"
-	},
-	{
 		"id": "io.github.treramey.raindrop-bookmarks",
 		"url": "https://github.com/treramey/omarchy-raindrop-bookmarks.git",
 		"manualAuth": "Raindrop API token"
@@ -23,12 +18,6 @@
 		"id": "omaconnect",
 		"url": "https://github.com/jitendradara12/omaconnect.git",
 		"manualAuth": "KDE Connect pairing"
-	},
-	{
-		"id": "io.github.thetrueferret.decent-workspaces",
-		"url": "https://github.com/TheTrueFerret/omarchy-decent-workspaces.git",
-		"manualAuth": null,
-		"disableOnInstall": ["omarchy.workspaces"]
 	},
 	{
 		"id": "io.github.woogy7.vitals",

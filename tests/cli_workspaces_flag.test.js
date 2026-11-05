@@ -65,24 +65,18 @@ describe("--workspaces CLI mode", () => {
 		fs.mkdirSync(path.join(tmpProjectRoot, "configs", "scripts"), {
 			recursive: true,
 		});
-		fs.copyFileSync(
-			path.join(
-				PROJECT_ROOT,
-				"configs",
-				"scripts",
-				"haoshoku-special-workspace",
-			),
-			path.join(
-				tmpProjectRoot,
-				"configs",
-				"scripts",
-				"haoshoku-special-workspace",
-			),
-		);
-		fs.copyFileSync(
-			path.join(PROJECT_ROOT, "configs", "scripts", "haoshoku-primary-app"),
-			path.join(tmpProjectRoot, "configs", "scripts", "haoshoku-primary-app"),
-		);
+		for (const name of [
+			"haoshoku-special-workspace",
+			"haoshoku-primary-app",
+			"haoshoku-workspace-target",
+			"haoshoku-gaming-workspace",
+		]) {
+			fs.copyFileSync(
+				path.join(PROJECT_ROOT, "configs", "scripts", name),
+				path.join(tmpProjectRoot, "configs", "scripts", name),
+			);
+		}
+
 		fs.copyFileSync(CLI, path.join(tmpProjectRoot, "haoshoku.js"));
 		fs.symlinkSync(
 			path.join(PROJECT_ROOT, "node_modules"),

@@ -23,6 +23,7 @@ const overlaySources = new Map(
 	[
 		"configs/omarchy/haoshoku/bindings.lua",
 		"configs/omarchy/haoshoku/workspaces-pc.lua",
+		"configs/omarchy/haoshoku/workspaces-io.lua",
 		"configs/omarchy/haoshoku/workspaces-laptop.lua",
 	].map((configFile) => [configFile, sourceFor(configFile)]),
 );
@@ -52,16 +53,21 @@ function canonicalLuaChord(chord) {
 }
 
 function sourceBindingIndex(source, chord) {
-	return [...source.matchAll(/o\.bind\(\s*"([^"]+)"/g)].find(
-		([, boundChord]) => canonicalLuaChord(boundChord) === canonicalLuaChord(chord),
-	)?.index ?? -1;
+	return (
+		[...source.matchAll(/o\.bind\(\s*"([^"]+)"/g)].find(
+			([, boundChord]) =>
+				canonicalLuaChord(boundChord) === canonicalLuaChord(chord),
+		)?.index ?? -1
+	);
 }
 
 function sourceUnbindIndex(source, chord) {
-	return [...source.matchAll(/hl\.unbind\("([^"]+)"\)/g)].find(
-		([, unboundChord]) =>
-			canonicalLuaChord(unboundChord) === canonicalLuaChord(chord),
-	)?.index ?? -1;
+	return (
+		[...source.matchAll(/hl\.unbind\("([^"]+)"\)/g)].find(
+			([, unboundChord]) =>
+				canonicalLuaChord(unboundChord) === canonicalLuaChord(chord),
+		)?.index ?? -1
+	);
 }
 
 function relocationBlock(source, chord) {
@@ -72,7 +78,8 @@ function relocationBlock(source, chord) {
 const dispatcherSemantics = {
 	exec: (block, swap) => block.includes(swap.moved_to_arg),
 	fullscreen: (block) => block.includes("hl.dsp.window.fullscreen"),
-	layoutmsg: (block, swap) => block.includes(`hl.dsp.layout("${swap.moved_to_arg}")`),
+	layoutmsg: (block, swap) =>
+		block.includes(`hl.dsp.layout("${swap.moved_to_arg}")`),
 	pseudo: (block) => block.includes("hl.dsp.window.pseudo()"),
 	togglegroup: (block) => block.includes("hl.dsp.group.toggle()"),
 	togglefloating: (block) =>
@@ -87,6 +94,7 @@ describe("Omarchy keybinding swaps", () => {
 		const allowed = new Set([
 			"configs/omarchy/haoshoku/bindings.lua",
 			"configs/omarchy/haoshoku/workspaces-pc.lua",
+			"configs/omarchy/haoshoku/workspaces-io.lua",
 			"configs/omarchy/haoshoku/workspaces-laptop.lua",
 		]);
 
@@ -161,8 +169,12 @@ describe("Omarchy keybinding swaps", () => {
 			const laterOwnerReplacement = localReplacement > ownerUnbind;
 			const workspaceReplacement = [
 				"configs/omarchy/haoshoku/workspaces-pc.lua",
+				"configs/omarchy/haoshoku/workspaces-io.lua",
 				"configs/omarchy/haoshoku/workspaces-laptop.lua",
-			].some((configFile) => sourceBindingIndex(overlaySources.get(configFile), chord) >= 0);
+			].some(
+				(configFile) =>
+					sourceBindingIndex(overlaySources.get(configFile), chord) >= 0,
+			);
 
 			expect(ownerUnbind, swap.key_combination_taken).toBeGreaterThan(-1);
 			expect(

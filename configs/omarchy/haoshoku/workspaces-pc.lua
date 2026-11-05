@@ -1,40 +1,7 @@
 -- Haoshoku workspace behavior for Omarchy. Visual configuration remains Omarchy-owned.
--- Monitor-bound numbered workspace rules are intentionally omitted from this module;
--- hyprmoncfg owns monitor configuration and receives them through its PC profile.
+local targets = require("hypr.haoshoku.workspace_targets")
 
-local portrait_row_workspaces = { [6] = true, [7] = true, [10] = true }
-local portrait_rows_layout = "haoshoku-portrait-rows"
-
-hl.layout.register(portrait_rows_layout, {
-  recalculate = function(ctx)
-    local count = #ctx.targets
-    if count == 0 then
-      return
-    end
-
-    local gaps = hl.get_config("general.gaps_in")
-    local visible_height =
-      (ctx.area.h - (count - 1) * (gaps.top + gaps.bottom)) / count
-    local y = ctx.area.y
-
-    for index, target in ipairs(ctx.targets) do
-      local height = visible_height
-      if index > 1 then
-        height = height + gaps.top
-      end
-      if index < count then
-        height = height + gaps.bottom
-      end
-
-      target:place({ x = ctx.area.x, y = y, w = ctx.area.w, h = height })
-      y = y + height
-    end
-  end,
-})
-
-hl.workspace_rule({ workspace = "6", layout = "lua:" .. portrait_rows_layout })
-hl.workspace_rule({ workspace = "7", layout = "lua:" .. portrait_rows_layout })
-hl.workspace_rule({ workspace = "10", layout = "lua:" .. portrait_rows_layout })
+for slot = 1, 10 do targets.rule(slot, { persistent = true }) end
 
 o.exec_on_start("haoshoku-default-browser")
 o.exec_on_start("haoshoku-primary-app login")
@@ -45,24 +12,19 @@ o.exec_on_start("haoshoku-special-workspace assistants")
 -- /etc/xdg/autostart/org.kde.kdeconnect.daemon.desktop never fires. Start explicitly
 -- instead of relying on incidental D-Bus activation for phone sync after login.
 o.exec_on_start("/usr/bin/kdeconnectd")
--- Steam lives in special:steam (Meta+S) and autostarts silently there at login; Omakade is the library you open with SUPER+2.
+-- Steam lives in special:steam (Meta+S) and autostarts silently there at login; Omakade is the library you open with SUPER+F2.
 o.exec_on_start("[workspace special:steam silent] uwsm-app -- steam")
 
--- Steam (client) goes to special:steam. Omakade stays on 2 with the games so
--- alt-tabbing between a game, the library, and Omakade keeps working --
--- cyclenext is workspace-local, so they have to share a workspace to cycle.
--- Workspace 2 is a normal persistent workspace pinned to DP-1 by the
--- hyprmoncfg PC profile. Disappear-on-close ephemerality was deliberately
--- traded away. Games land on 2 via the `haoshoku-gaming-workspace place`
--- Steam launch-option wrapper (pid-tree watcher), not by class.
--- Omarchy's stock steam.lua floats every Steam window. tile must come after that
--- default (this overlay loads later) so Steam opens tiled in its special workspace.
+-- Steam remains special; Omakade and games share physical slot 2.
+-- Native workspace blocks and stock number binds remain Omarchy-owned.
 o.window("^[Ss]team$", { workspace = "special:steam silent", tile = true })
-o.window("^io\\.github\\.tsouth89\\.Omakade$", { workspace = "2 silent" })
-o.window("^vesktop$", { workspace = "4 silent" })
-o.window("^(teams-for-linux|TelegramDesktop|org\\.telegram\\.desktop)$", { workspace = "5 silent" })
-o.window("^com\\.haoshoku\\.ws7$", { workspace = "7 silent" })
-o.window("^brave-www\\.notion\\.so__-Default$", { workspace = "10 silent" })
+targets.window("io.github.tsouth89.Omakade", 2)
+targets.window("vesktop", 4)
+targets.window("teams-for-linux", 5)
+targets.window("TelegramDesktop", 5)
+targets.window("org.telegram.desktop", 5)
+targets.window("com.haoshoku.ws7", 7)
+targets.window("brave-www.notion.so__-Default", 10)
 o.window("^brave-x\\.com__-Default$", { workspace = "special:x" })
 o.window("^brave-www\\.netflix\\.com__-Default$", { workspace = "special:netflix silent" })
 o.window("^brave-youtube\\.com__-Default$", { workspace = "special:youtube" })
@@ -99,44 +61,14 @@ o.window("^xdg-desktop-portal-gtk$", { float = true })
 o.window("^xdg-desktop-portal-gtk$", { pin = true })
 o.window("^xdg-desktop-portal-gtk$", { center = true })
 
--- Most are additive supersets of Omarchy's stock Super+number workspace binds.
--- Workspace 7 replaces its stock bind so one keypress focuses or creates its
--- owned Ghostty without dispatching two workspace actions.
--- Workspace 2 is the gaming workspace. Omakade starts silently at login; SUPER+2
--- focuses 2 and ensures Omakade. SUPER+SHIFT+G remains the gaming toggle that
--- focuses 2 and ensures Omakade (never Steam -- Steam lives in special:steam).
--- SUPER+S toggles the Steam special workspace; the stash toggle moves to
--- SUPER+ALT+S (SUPER+SHIFT+S still stashes the focused window).
-hl.unbind("SUPER + code:10")
-o.bind("SUPER + code:10", "Primary app on workspace 1", "haoshoku-primary-app focus 1")
-hl.unbind("SUPER + code:15")
-o.bind("SUPER + code:15", "Primary app on workspace 6", "haoshoku-primary-app focus 6")
-o.bind(
-  "SUPER + code:11",
-  "Workspace 2 and Omakade",
-  "haoshoku-special-workspace numbered 2 omakade"
-)
-o.bind(
-  "SUPER + code:13",
-  "Workspace 4 and Vesktop",
-  "haoshoku-special-workspace numbered 4 vesktop"
-)
-o.bind(
-  "SUPER + code:14",
-  "Workspace 5 and chat",
-  "haoshoku-special-workspace numbered 5 communication-numbered"
-)
-hl.unbind("SUPER + code:16")
-o.bind(
-  "SUPER + code:16",
-  "Workspace 7 Ghostty",
-  "haoshoku-special-workspace numbered 7 ghostty"
-)
-o.bind(
-  "SUPER + code:19",
-  "Workspace 10 and Notion",
-  "haoshoku-special-workspace numbered 10 notion"
-)
+-- Preferred app actions use function keys; stock Super+numbers stay untouched.
+o.bind("SUPER + F1", "Primary app in slot 1", "haoshoku-primary-app focus 1")
+o.bind("SUPER + F2", "Gaming slot 2 and Omakade", "haoshoku-special-workspace numbered 2 omakade")
+o.bind("SUPER + F4", "Slot 4 and Vesktop", "haoshoku-special-workspace numbered 4 vesktop")
+o.bind("SUPER + F5", "Slot 5 and chat", "haoshoku-special-workspace numbered 5 communication-numbered")
+o.bind("SUPER + F6", "Primary app in slot 6", "haoshoku-primary-app focus 6")
+o.bind("SUPER + F7", "Slot 7 Ghostty", "haoshoku-special-workspace numbered 7 ghostty")
+o.bind("SUPER + F10", "Slot 10 and Notion", "haoshoku-special-workspace numbered 10 notion")
 
 hl.unbind("SUPER + G")
 o.bind("SUPER + CTRL + SHIFT + G", "Toggle window grouping", hl.dsp.group.toggle())
@@ -167,9 +99,6 @@ o.bind("SUPER + F", "Show/focus/hide Re:ANIME workspace", "haoshoku-special-work
 o.bind("SUPER + S", "Show/focus/hide Steam workspace", "haoshoku-special-workspace steam")
 o.bind("SUPER + ALT + S", "Toggle stash workspace", hl.dsp.workspace.toggle_special("stash"))
 o.bind("SUPER + SHIFT + X", "Show/focus/hide X workspace", "haoshoku-special-workspace x")
-o.bind("SUPER + F1", "Focus left portrait monitor", hl.dsp.focus({ monitor = "DP-2" }))
-o.bind("SUPER + F2", "Focus center monitor", hl.dsp.focus({ monitor = "DP-1" }))
-o.bind("SUPER + F3", "Focus right monitor", hl.dsp.focus({ monitor = "HDMI-A-1" }))
 -- bindings.lua unbinds SUPER+SHIFT+G; this module deliberately reclaims it.
 -- hyprland.lua must require bindings before this workspace module so the later bind wins.
 o.bind("SUPER + SHIFT + G", "Toggle gaming workspace", "haoshoku-gaming-workspace toggle")
@@ -179,13 +108,3 @@ o.bind(
   "Stash focused window",
   hl.dsp.window.move({ workspace = "special:stash", follow = false })
 )
-
-hl.unbind("SUPER + L")
-o.bind("SUPER + L", "Toggle workspace layout", function()
-  local workspace = hl.get_active_workspace()
-  if workspace and portrait_row_workspaces[workspace.id] then
-    return
-  end
-
-  hl.exec_cmd("omarchy-hyprland-workspace-layout-toggle")
-end)

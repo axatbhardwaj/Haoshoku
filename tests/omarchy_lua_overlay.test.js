@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "bun:test";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { workspaceTargetFixture } from "./workspace_target_fixtures.js";
 
 const repoRoot = path.resolve(import.meta.dir, "..");
 const overlayDirectory = path.join(repoRoot, "configs", "omarchy", "haoshoku");
@@ -9,6 +10,7 @@ const overlayPaths = [
 	path.join(overlayDirectory, "bindings.lua"),
 	path.join(overlayDirectory, "workspaces-pc.lua"),
 	path.join(overlayDirectory, "workspaces-laptop.lua"),
+	path.join(overlayDirectory, "workspaces-io.lua"),
 ];
 const swapsPath = path.join(
 	repoRoot,
@@ -213,7 +215,7 @@ function checkLuaSyntax(file) {
 	const lua = Bun.which("lua5.4") ?? Bun.which("lua");
 	if (lua) {
 		const result = Bun.spawnSync(
-			[lua, "-e", "assert(loadfile(arg[1]))", file],
+			[lua, "-e", "assert(loadfile(arg[0])); os.exit(0)", file],
 			{ stdout: "pipe", stderr: "pipe" },
 		);
 		return {
@@ -260,14 +262,16 @@ describe("Omarchy v4 Lua overlay", () => {
 						const literalBinds = [
 							...source.matchAll(/o\.bind\(\s*"([^"]+)"/g),
 						].map(([, chord]) => chord);
-						const generatedWorkspaceBinds = source.includes(
-							'o.bind("SUPER + " .. key, "Switch to workspace "',
-						)
-							? Array.from(
-									{ length: 10 },
-									(_, index) => `SUPER + code:${index + 10}`,
-								)
-							: [];
+						const generatedWorkspaceBinds = [
+							...source.matchAll(
+								/o\.bind\(\s*"([^"]+)"\s*\.\. key,\s*"(?:Switch to|Move window(?: silently)? to) workspace "/g,
+							),
+						].flatMap(([, prefix]) =>
+							Array.from(
+								{ length: 10 },
+								(_, index) => `${prefix}code:${index + 10}`,
+							),
+						);
 						return [...literalBinds, ...generatedWorkspaceBinds];
 					}),
 			);
@@ -330,7 +334,7 @@ describe("Omarchy v4 Lua overlay", () => {
 				[
 					overlays[0],
 					{ ...overlays[1], source: resurrectedSource },
-					overlays[2],
+					...overlays.slice(2),
 				],
 				swaps,
 			),
@@ -341,7 +345,7 @@ describe("Omarchy v4 Lua overlay", () => {
 		});
 	});
 
-	it("unbinds the stock Google Maps chord before both stash-window bindings", () => {
+	it("unbinds the stock Google Maps chord before every stash-window binding", () => {
 		const workspaceResults = overlayPaths.slice(1).map((file) => ({
 			file: path.basename(file),
 			unbindImmediatelyPrecedesBind:
@@ -360,6 +364,10 @@ describe("Omarchy v4 Lua overlay", () => {
 			},
 			{
 				file: "workspaces-laptop.lua",
+				unbindImmediatelyPrecedesBind: true,
+			},
+			{
+				file: "workspaces-io.lua",
 				unbindImmediatelyPrecedesBind: true,
 			},
 		]);
@@ -485,7 +493,7 @@ describe("Omarchy v4 Lua overlay", () => {
 		).toEqual([]);
 	});
 
-	it("accounts for the translated directive inventory including fixed PC layout rules", () => {
+	it("accounts for native-target overlays and the io-only numeric unbinds", () => {
 		const inventory = Object.fromEntries(
 			readExistingOverlays().map(({ file, source }) => [
 				path.basename(file),
@@ -510,18 +518,26 @@ describe("Omarchy v4 Lua overlay", () => {
 				env: 0,
 			},
 			"workspaces-pc.lua": {
-				unbind: 8,
-				bind: 30,
-				window: 24,
-				workspace: 3,
+				unbind: 4,
+				bind: 26,
+				window: 19,
+				workspace: 0,
 				execOnStart: 6,
 				env: 0,
 			},
 			"workspaces-laptop.lua": {
-				unbind: 7,
+				unbind: 4,
 				bind: 26,
-				window: 24,
-				workspace: 10,
+				window: 19,
+				workspace: 0,
+				execOnStart: 6,
+				env: 0,
+			},
+			"workspaces-io.lua": {
+				unbind: 20,
+				bind: 30,
+				window: 19,
+				workspace: 0,
 				execOnStart: 6,
 				env: 0,
 			},
@@ -541,10 +557,10 @@ describe("Omarchy v4 Lua overlay", () => {
 		expect(mimeapps).toContain("x-scheme-handler/discord=vesktop.desktop");
 		for (const file of overlayPaths.slice(1)) {
 			const source = fs.readFileSync(file, "utf8");
-			expect(source).toContain(
-				'o.window("^vesktop$", { workspace = "4 silent" })',
+			expect(source).toContain('targets.window("vesktop", 4)');
+			expect(source).toMatch(
+				/"SUPER \+ F4", "(?:Right slot|Slot) 4 and Vesktop"/,
 			);
-			expect(source).toContain('"Workspace 4 and Vesktop"');
 			expect(source).toContain(
 				'"haoshoku-special-workspace numbered 4 vesktop"',
 			);
@@ -556,6 +572,7 @@ describe("Omarchy v4 Lua overlay", () => {
 			path.join(os.tmpdir(), "haoshoku-dispatch-failure-"),
 		);
 		temporaryDirectories.push(directory);
+		workspaceTargetFixture(directory);
 		const hyprctl = path.join(directory, "hyprctl");
 		fs.writeFileSync(
 			hyprctl,
@@ -563,6 +580,9 @@ describe("Omarchy v4 Lua overlay", () => {
 if [[ "$1" == "dispatch" ]]; then
   printf 'invalid dispatcher\n' >&2
   exit 0
+fi
+if [[ "$1 $2" == "monitors -j" ]]; then
+  echo '[{"name":"DP-1"}]'
 fi
 if [[ "$1 $2" == "clients -j" ]]; then
   printf '[]\\n'
@@ -574,7 +594,13 @@ fi
 		const result = Bun.spawnSync(
 			["bash", specialWorkspacePath, "numbered", "4", "vesktop"],
 			{
-				env: { ...process.env, PATH: `${directory}:${process.env.PATH}` },
+				env: {
+					...process.env,
+					HOME: directory,
+					XDG_CONFIG_HOME: `${directory}/.config`,
+					XDG_STATE_HOME: `${directory}/.local/state`,
+					PATH: `${directory}:${process.env.PATH}`,
+				},
 				stdout: "pipe",
 				stderr: "pipe",
 			},

@@ -1,3 +1,5 @@
+// Synthetic installer fixtures include legacy plugins to exercise compatibility;
+// shipped defaults are checked separately against common/omarchy-plugins.json.
 const MANIFEST = [
 	{
 		id: "crmne.hyprmoncfg",

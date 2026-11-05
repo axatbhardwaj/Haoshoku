@@ -36,7 +36,7 @@ Standalone setup scripts for specific tools.
 | `t3_desktop_preflight.js` | Read-only desktop Local environment and effective-directory guard shared by both T3 entrypoints | Changing safe service preflight or desktop evidence probes |
 | `t3_tailscale.js` | Shared CLI floor, Tailscale drop-in, HTTPS mapping/readiness and pairing output | Changing common T3/Tailscale behavior across Arch and Debian |
 | `configure_git.js`    | Git user and signing setup             | Modifying automated git configuration         |
-| `configure_hyprmoncfg.js` | Profile JSON sync/backup plus hyprmoncfg package and `hyprmoncfgd.service` setup; never writes `monitors.lua` | Modifying monitor-profile deployment or the hyprmoncfg ownership boundary |
+| `configure_hyprmoncfg.js` | Profile JSON sync/backup plus hyprmoncfg package and `hyprmoncfgd.service` setup; never writes modern or legacy generated monitor Lua | Modifying monitor-profile deployment or the hyprmoncfg ownership boundary |
 | `configure_kde_activities.js` | KDE Activity provisioning plus Haoshoku KWin activity/output rules | Modifying activity creation, window routing, or KWin script deployment |
 | `configure_kde_connect.js` | Adds the non-locking `Screens Off` remote command to every paired KDE Connect device via the QML writer | Changing the remote command or device-config parsing |
 | `kde_connect_commands_writer.qml` | `qml`-run writer that appends one command to a device's KDE Connect `commands` byte-array | Changing how commands are persisted through the KDE Connect API |
@@ -50,8 +50,8 @@ Standalone setup scripts for specific tools.
 | `configure_omarchy_appearance.js` | Conflict-safe pinned Omarchy theme/background/font reconciliation | Modifying the portable appearance manifest or its Omarchy command handoff |
 | `configure_discord_theme.js` | Omarchy theme Vencord CSS deploy into Vesktop/Vencord from `configs/discord/theme.json`, preserving other settings keys | Modifying the Discord theme manifest or its per-client settings handling |
 | `configure_omarchy_plugins.js` | Manifest-driven Omarchy plugin install/enable reconciliation plus one-shot `disableOnInstall`; per-plugin failures are non-fatal | Modifying the default plugin set, idempotency, stock-widget displacement, or manual-auth reporting |
-| `configure_omarchy_workspaces.js` | Omarchy 4 device-specific Lua overlay deploy plus two `hyprland.lua` require lines | Modifying workspace/binding overlays, require wiring, or reload behavior |
-| `configure_gaming.js` | Steam (special:steam) / Omakade (workspace 2) login-autostart policy (`~/.config/haoshoku/gaming.json`) plus deployed-overlay reconciliation | Modifying gaming autostart defaults, flags, or the Lua patch boundary |
+| `configure_omarchy_workspaces.js` | Omarchy device/host-routed Lua, role map and helper deploy; checks modern `hyprmoncfg-monitors.lua` and legacy `monitors.lua` before runtime replay | Modifying workspace/binding overlays, require wiring, or reload behavior |
+| `configure_gaming.js` | Steam (special:steam) / Omakade (resolved gaming slot 2) login-autostart policy (`~/.config/haoshoku/gaming.json`) plus deployed-overlay reconciliation | Modifying gaming autostart defaults, flags, or the Lua patch boundary |
 | `configure_split_lock_sudoers.js` | visudo-validated `/etc/sudoers.d/haoshoku-split-lock` granting only the two `kernel.split_lock_mitigate` sysctl calls the gaming wrapper makes | Changing the split-lock rule or `--gaming-split-lock` |
 | `configure_omazed.js` | Omazed setup, Zed theme selection/hook deploy, and legacy theme retirement | Modifying Omarchy-managed Zed theming |
 | `configure_voxtype_osd.js` | Turns off the voxtype OSD so the Speech Orb plugin replaces it | Changing dictation HUD behavior |

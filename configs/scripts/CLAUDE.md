@@ -14,8 +14,9 @@ binary acts as a PATH-shadow wrapper for that binary.
 | `haoshoku-chromium-profiles` | Validates and queries the configured browser profile registry, with a portable Flux-only fallback. Multiple accounts use Brave Containers inside Flux; DeFi is retired. | Changing registry validation, defaults, or profile lookup |
 | `haoshoku-claude-local` | Resumes the `claudeSessionName` from `~/.haoshoku.json` (validated) or falls back to a fresh `claude`; used by the Haki Ghostty/tmux split. | Changing the Haki Claude launch or session-name validation |
 | `haoshoku-default-browser` | Login-time repair that re-points `xdg-settings` and the http/https/html MIME handlers at `haoshoku-browser.desktop`. | Changing default-browser ownership or the repaired MIME set |
-| `haoshoku-gaming-workspace` | Toggles gaming workspace 2 and wraps Steam launches to place process-tree windows there, lifting the kernel split-lock penalty for the launch's lifetime. | Changing gaming workspace focus, process matching, placement, or launch wrapping |
-| `haoshoku-special-workspace` | Implements numbered-app launchers including Omakade on workspace 2, exact-class Ghostty ownership for workspace 7/Haki/agents, native desktop assistant management, and focus/show/hide behavior for named app and browser special workspaces including Twitch. | Changing workspace recipes, placement, reclaim/launch-if-missing behavior, or browser toggles |
+| `haoshoku-gaming-workspace` | Toggles physical gaming slot 2 and wraps Steam launches to place process-tree windows there, lifting the kernel split-lock penalty for the launch's lifetime. | Changing gaming workspace focus, process matching, placement, or launch wrapping |
+| `haoshoku-workspace-target` | Resolves logical app favorites from the deployed monitor-role TSV, native monitor-workspaces state and connected monitors; fails closed for missing or ambiguous targets. | Changing app target resolution or five-slot io routing |
+| `haoshoku-special-workspace` | Implements numbered-app launchers including resolved Omakade/Ghostty slots, exact-class Ghostty ownership for ws7/Haki/agents, native desktop assistant management, and focus/show/hide behavior for named app and browser special workspaces including Twitch. | Changing workspace recipes, placement, reclaim/launch-if-missing behavior, or browser toggles |
 | `haoshoku-zed-glass` | Post-processes Omazed's generated Zed theme with dotted `background.appearance`, alpha-adjusted surfaces, and neutral borders. | Changing Zed transparency, Omazed hooks, or protected theme surfaces |
 | `mic-toggle` | Toggles the default microphone through `wpctl` or `pactl` and reports the resulting state. | Changing microphone controls or notifications |
 | `omarchy-agent-usage-update` | Exposes Omarchy's packaged agent-usage collector at the user-owned path required by Agent Usage Plus. | Changing the managed agent-usage plugin or collector compatibility |
@@ -38,9 +39,11 @@ binary acts as a PATH-shadow wrapper for that binary.
   cleaned from `~/.local/bin/`; `Super+I` and the login-time invocation route
   ChatGPT and Claude Desktop through `haoshoku-special-workspace assistants`.
 - Retired standalone workspace-7 helpers are cleaned from `~/.local/bin/`.
-  Workspace 7 is owned by `haoshoku-special-workspace numbered 7 ghostty`; its
+  The logical Ghostty favorite is owned by `haoshoku-special-workspace numbered 7 ghostty`; its
   dedicated GTK-valid `com.haoshoku.ws7` application ID lets the helper reclaim only that window if it
-  moves. The interactive numbered recipe focuses the exact owned window after
+  moves. Logical slots resolve through `haoshoku-workspace-target` before any dispatch.
+  On io, favorite 7 means DP-2 slot 2; elsewhere it remains single-monitor slot 7.
+  The interactive numbered recipe focuses the exact owned window after
   switching or reclaiming it and launches one when absent; `numbered-login`
   ensures ownership without stealing focus. The `haki` and `agents` recipes use
   their own Ghostty classes and tmux splits (plus

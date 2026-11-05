@@ -8,7 +8,7 @@
 				"id": "omarchy.menu"
 			},
 			{
-				"id": "io.github.thetrueferret.decent-workspaces"
+				"id": "omarchy.workspaces"
 			},
 			{
 				"id": "omarchy.media"
@@ -31,6 +31,9 @@
 				"id": "omarchy.clock"
 			},
 			{
+				"id": "omarchy.elsewhen"
+			},
+			{
 				"id": "io.github.nodrej.speech-orb",
 				"size": 183,
 				"dotCount": 2657,
@@ -48,27 +51,10 @@
 		],
 		"right": [
 			{
-				"id": "xzat.tray",
-				"embeddedWidgets": [
-					{
-						"id": "aislandener.galaxy-buds"
-					},
-					{
-						"id": "crmne.hyprmoncfg"
-					},
-					{
-						"id": "omarchy.monitor"
-					},
-					{
-						"id": "white.nights"
-					}
-				]
+				"id": "omarchy.tray"
 			},
 			{
 				"id": "omaconnect"
-			},
-			{
-				"id": "io.github.ciryon.pullbar"
 			},
 			{
 				"id": "omarchy.agents"
@@ -84,6 +70,20 @@
 			},
 			{
 				"id": "omarchy.power"
+			}
+		],
+		"tray": [
+			{
+				"id": "aislandener.galaxy-buds"
+			},
+			{
+				"id": "crmne.hyprmoncfg"
+			},
+			{
+				"id": "omarchy.monitor"
+			},
+			{
+				"id": "white.nights"
 			}
 		]
 	}

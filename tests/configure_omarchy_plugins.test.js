@@ -358,9 +358,17 @@ describe("Omarchy plugin installer", () => {
 		);
 	});
 
-	it("installs Advanced Audio Control from the shipped manifest and disables stock audio", async () => {
+	it("installs Advanced Audio Control without restoring retired bar widgets", async () => {
 		const { calls, runner } = makeRunner({
-			installedJsonBody: installedJson(["omarchy.audio"]),
+			installedJsonBody: installedJson(
+				["omarchy.audio", "omarchy.workspaces"],
+				{
+					disabled: [
+						"io.github.thetrueferret.decent-workspaces",
+						"io.github.ciryon.pullbar",
+					],
+				},
+			),
 		});
 		const { logImpl } = makeLog();
 
@@ -371,6 +379,11 @@ describe("Omarchy plugin installer", () => {
 		});
 
 		expect(result.installed).toContain("ssupt.audio-control");
+		expect(result.installed).not.toContain(
+			"io.github.thetrueferret.decent-workspaces",
+		);
+		expect(result.installed).not.toContain("io.github.ciryon.pullbar");
+		expect(commandType(calls, "enable")).toEqual([]);
 		expect(commandType(calls, "add")).toContainEqual([
 			"omarchy",
 			"plugin",
@@ -379,15 +392,12 @@ describe("Omarchy plugin installer", () => {
 			"--enable",
 			"--yes",
 		]);
-		expect(commandType(calls, "disable")).toContainEqual([
-			"omarchy",
-			"plugin",
-			"disable",
-			"omarchy.audio",
+		expect(commandType(calls, "disable")).toEqual([
+			["omarchy", "plugin", "disable", "omarchy.audio"],
 		]);
 	});
 
-	it("ships a manifest on disk with exactly the 11 expected plugins", () => {
+	it("ships a manifest on disk with exactly the 9 expected plugins", () => {
 		const EXPECTED_PLUGINS = [
 			{
 				id: "crmne.hyprmoncfg",
@@ -401,11 +411,6 @@ describe("Omarchy plugin installer", () => {
 				manualAuth: null,
 			},
 			{
-				id: "io.github.ciryon.pullbar",
-				url: "https://github.com/ciryon/omarchy-pullbar.git",
-				manualAuth: "GitHub CLI auth (`gh auth login`)",
-			},
-			{
 				id: "io.github.treramey.raindrop-bookmarks",
 				url: "https://github.com/treramey/omarchy-raindrop-bookmarks.git",
 				manualAuth: "Raindrop API token",
@@ -414,12 +419,6 @@ describe("Omarchy plugin installer", () => {
 				id: "omaconnect",
 				url: "https://github.com/jitendradara12/omaconnect.git",
 				manualAuth: "KDE Connect pairing",
-			},
-			{
-				id: "io.github.thetrueferret.decent-workspaces",
-				url: "https://github.com/TheTrueFerret/omarchy-decent-workspaces.git",
-				manualAuth: null,
-				disableOnInstall: ["omarchy.workspaces"],
 			},
 			{
 				id: "io.github.woogy7.vitals",
@@ -460,5 +459,4 @@ describe("Omarchy plugin installer", () => {
 		const ids = onDisk.map((plugin) => plugin.id);
 		expect(new Set(ids).size).toBe(ids.length);
 	});
-
 });

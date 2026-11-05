@@ -43,5 +43,4 @@ if not class then
 end
 class = class or name
 
-local escaped_class = class:gsub("([^%w])", "\\%1")
-o.window("^" .. escaped_class .. "$", { workspace = "1 silent" })
+require("hypr.haoshoku.workspace_targets").window(class, 1)

@@ -36,18 +36,6 @@ const CAPTURED_OUTPUTS = JSON.parse(
 	transform: output.transform,
 }));
 
-const EXPECTED_WORKSPACES = [
-	["1", "DP-1", true, true],
-	["2", "DP-1", false, true],
-	["3", "DP-1", false, true],
-	["4", "HDMI-A-1", false, true],
-	["5", "HDMI-A-1", true, true],
-	["6", "DP-2", false, true],
-	["7", "DP-2", false, true],
-	["8", "DP-1", false, true],
-	["9", "HDMI-A-1", false, true],
-	["10", "DP-2", false, true],
-];
 
 let tmpHome;
 let tmpProjectRoot;
@@ -138,39 +126,14 @@ describe("pc hyprmoncfg profile", () => {
 		}
 	});
 
-	it("carries workspaces 1-10 with stable monitor targets", () => {
-		const profile = readProfile();
-		const keyByName = new Map(
-			profile.outputs.map((output) => [output.name, output.key]),
-		);
-
-		expect(profile.workspaces.enabled).toBe(true);
-		expect(profile.workspaces.strategy).toBe("manual");
-		expect(profile.workspaces.rules).toHaveLength(10);
-		expect(profile.workspaces.rules.map((rule) => [
-			rule.workspace,
-			rule.output_name,
-			Boolean(rule.default),
-			Boolean(rule.persistent),
-		])).toEqual(EXPECTED_WORKSPACES);
-
-		for (const rule of profile.workspaces.rules) {
-			expect(rule.output_key).toBe(keyByName.get(rule.output_name));
-		}
+	it("delegates numbering and navigation to Omarchy without a saved global plan", () => {
+		expect(readProfile().workspaces).toEqual({
+			enabled: false,
+			strategy: "manual",
+			rules: [],
+		});
 	});
 
-	it("every workspace rule targets a monitor by key or name", () => {
-		const rules = readProfile().workspaces.rules;
-		const normalized = rules.filter(
-			(rule) => !(rule.output_key === "" && rule.output_name === ""),
-		);
-
-		expect(normalized).toHaveLength(10);
-		expect(normalized).toEqual(rules);
-		for (const rule of rules) {
-			expect(Boolean(rule.output_key || rule.output_name)).toBe(true);
-		}
-	});
 });
 
 describe("syncHyprmoncfg — repo to live", () => {

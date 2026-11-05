@@ -254,10 +254,12 @@ haoshoku --discord-theme
 haoshoku --3-4-migrate
 ```
 
-On Omarchy, the primary desktop app starts on workspace 1. Meta+1 brings its
-window to workspace 1 and focuses it; Meta+6 brings it to workspace 6 and
-focuses it. If the app is closed, either key launches it before placing it on
-the selected workspace. The default is T3 Code stable (`t3code`).
+On Omarchy, the primary desktop app starts in its resolved home slot. Meta+F1
+focuses it there; Meta+F6 moves it to the portrait app slot on io (slot 6 on
+other devices). Either key launches it when closed. Meta+numbers retain stock
+focused-monitor navigation. See [workspace policy and migration](README/omarchy-workspaces.md)
+for io’s five-slot layout and all preferred function-key actions. The default
+is T3 Code stable (`t3code`).
 `~/.config/haoshoku/primary-app` holds the executable on line 1 and an optional
 window class on line 2; the managed T3 default uses `com.t3tools.T3Code` for
 reliable window matching. Without line 2, the desktop entry's

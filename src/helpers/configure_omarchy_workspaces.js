@@ -1,6 +1,6 @@
 import { isEngineeringWorker } from "../common/device_type.js";
 import fs from "node:fs";
-import { homedir } from "node:os";
+import { homedir, hostname as systemHostname } from "node:os";
 import path from "node:path";
 import { PROJECT_ROOT as ROOT } from "../common/paths.js";
 import { checkOmarchyV4 } from "../common/omarchy_version.js";
@@ -96,6 +96,7 @@ function shellEscape(value) {
  */
 export async function configureOmarchyWorkspaces({
 	home = homedir(),
+	hostname = systemHostname(),
 	projectRoot = ROOT,
 	fsImpl = fs,
 	now = Date.now,
@@ -159,6 +160,8 @@ export async function configureOmarchyWorkspaces({
 		};
 	}
 
+	const workspaceProfile =
+		deviceType === "pc" && hostname.split(".")[0] === "io" ? "io" : deviceType;
 	const sourceDirectory = path.join(
 		projectRoot,
 		"configs",
@@ -183,10 +186,41 @@ export async function configureOmarchyWorkspaces({
 	);
 	const overlayChanged = deployFile(
 		fsImpl,
-		path.join(sourceDirectory, `workspaces-${deviceType}.lua`),
+		path.join(sourceDirectory, `workspaces-${workspaceProfile}.lua`),
 		workspacesDestination,
 		now,
 	);
+	deployFile(
+		fsImpl,
+		path.join(sourceDirectory, "workspace_targets.lua"),
+		path.join(overlayDirectory, "workspace_targets.lua"),
+		now,
+	);
+	deployFile(
+		fsImpl,
+		path.join(
+			projectRoot,
+			"configs",
+			"omarchy",
+			`workspace-monitors-${workspaceProfile}`,
+		),
+		path.join(home, ".config", "haoshoku", "workspace-monitors"),
+		now,
+	);
+	for (const name of [
+		"haoshoku-workspace-target",
+		"haoshoku-gaming-workspace",
+	]) {
+		const destination = path.join(home, ".local", "bin", name);
+		deployFile(
+			fsImpl,
+			path.join(projectRoot, "configs", "scripts", name),
+			destination,
+			now,
+		);
+		if ((fsImpl.statSync(destination).mode & 0o111) !== 0o111)
+			fsImpl.chmodSync(destination, 0o755);
+	}
 	deployFile(
 		fsImpl,
 		path.join(sourceDirectory, "primary_app.lua"),
@@ -257,14 +291,31 @@ export async function configureOmarchyWorkspaces({
 
 	let reloaded = false;
 	let replayed = false;
-	if (env.HYPRLAND_INSTANCE_SIGNATURE) {
-		reloaded = Boolean(await runCommandImpl("hyprctl reload"));
-		replayed = Boolean(
-			await runCommandImpl(
-				`${shellEscape(scriptDestination)} numbered-login 7 ghostty`,
-			),
+	const globalOverride = ["hyprmoncfg-monitors.lua", "monitors.lua"].some(
+		(name) => {
+			const generatedPath = path.join(hyprDirectory, name);
+			const generated = fsImpl.existsSync(generatedPath)
+				? fsImpl.readFileSync(generatedPath, "utf8")
+				: "";
+			return /o\.workspaces\.(?:enabled|reconcile|focus|move_window|move_to_monitor)\s*=|function\s+o\.workspaces\.|hl\.workspace_rule\([^\n]*workspace\s*=\s*"\d+"[^\n]*monitor\s*=/.test(
+				generated,
+			);
+		},
+	);
+	if (env.HYPRLAND_INSTANCE_SIGNATURE && globalOverride) {
+		logImpl.warning(
+			"Workspace files staged; reload and login replay deferred: regenerate hyprmoncfg-monitors.lua (or legacy monitors.lua) with hyprmoncfg workspace strategy Off first. Remove the entire generated o.workspaces override and global rules through hyprmoncfg, then rerun --workspaces. Haoshoku left both generated outputs untouched.",
 		);
-		await runCommandImpl(`${shellEscape(primaryScript)} login`);
+	} else if (env.HYPRLAND_INSTANCE_SIGNATURE) {
+		reloaded = Boolean(await runCommandImpl("hyprctl reload"));
+		if (reloaded) {
+			replayed = Boolean(
+				await runCommandImpl(
+					`${shellEscape(scriptDestination)} numbered-login 7 ghostty`,
+				),
+			);
+			await runCommandImpl(`${shellEscape(primaryScript)} login`);
+		}
 	} else {
 		logImpl.info(
 			"Hyprland is not active; workspace reload and exec-once replay are deferred to login.",

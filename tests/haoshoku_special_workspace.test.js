@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { workspaceTargetFixture } from "./workspace_target_fixtures.js";
 
 import * as chromiumProfileConfig from "../src/helpers/configure_chromium_profiles.js";
 
@@ -110,6 +111,7 @@ describe("haoshoku-special-workspace", () => {
 	let specialState;
 	beforeEach(() => {
 		directory = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-special-"));
+		workspaceTargetFixture(directory);
 		log = path.join(directory, "calls");
 		rawDispatchLog = path.join(directory, "raw-dispatches");
 		browserCall = path.join(directory, "chromium-call");
@@ -359,6 +361,8 @@ esac
 			env: {
 				...process.env,
 				HOME: directory,
+				XDG_CONFIG_HOME: `${directory}/.config`,
+				XDG_STATE_HOME: `${directory}/.local/state`,
 				HYPR_CLIENTS: clients,
 				HYPR_CLIENTS_STATE: clientsState !== undefined ? clientState : "",
 				HYPR_CLIENT_PROBE_LOG: clientProbeLog ?? "",
@@ -444,6 +448,8 @@ esac
 				...process.env,
 				CLAUDE_CALL: claudeCall,
 				HOME: directory,
+				XDG_CONFIG_HOME: `${directory}/.config`,
+				XDG_STATE_HOME: `${directory}/.local/state`,
 				PATH: `${directory}:${process.env.PATH}`,
 				...env,
 			},
@@ -528,7 +534,7 @@ fi
 	});
 
 	it("JSON-quotes every interpolated Lua dispatch value", async () => {
-		const workspace = '7"\\edge';
+		const workspace = "7";
 		const unusualHome = path.join(directory, 'home"\\edge');
 		fs.mkdirSync(unusualHome);
 
@@ -1641,9 +1647,7 @@ printf 'steam\n' >> "$CALL_LOG"
 			},
 		];
 
-		for (const [recipe, id] of [
-			["browser-flux", "flux"],
-		]) {
+		for (const [recipe, id] of [["browser-flux", "flux"]]) {
 			fs.rmSync(browserCall, { force: true });
 			const result = await run([recipe], {
 				chromiumProfiles,
@@ -1679,9 +1683,7 @@ printf 'steam\n' >> "$CALL_LOG"
 		);
 	});
 
-	for (const [recipe, profile] of [
-		["browser-flux", "flux"],
-	]) {
+	for (const [recipe, profile] of [["browser-flux", "flux"]]) {
 		// Mutation caught: sending a URL through the PATH-shadowed Brave Origin wrapper,
 		// dropping an argument, or launching the wrong profile prevents the selected
 		// browser workspace from opening the requested pages.
@@ -2262,6 +2264,8 @@ printf 'signal-desktop\\n' >> "$CALL_LOG"
 					...process.env,
 					CLAUDE_CALL: claudeCall,
 					HOME: directory,
+					XDG_CONFIG_HOME: `${directory}/.config`,
+					XDG_STATE_HOME: `${directory}/.local/state`,
 					PATH: `${directory}:${process.env.PATH}`,
 				},
 				stderr: "pipe",
