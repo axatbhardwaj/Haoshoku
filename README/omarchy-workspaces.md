@@ -59,8 +59,10 @@ home. Keep clients running throughout.
    staging files. This prevents the file watcher from loading a partially staged
    combination. Keep a recovery terminal available. Verify hostname is `io`
    and the saved device type is `pc`; never fake hostname on another device.
-3. From this candidate's repository root, stage the complete overlay, role map,
-   and all four helpers without asking the CLI to reload:
+3. Before installing anything, verify the checksummed backup includes the
+   existing `~/.config/hyprmoncfg/profiles/pc.json`, generated monitor outputs,
+   and their existing sidecars. From the repository root, stage the complete
+   overlay, role map, and all four helpers without asking the CLI to reload:
 
    ```bash
    env -u HYPRLAND_INSTANCE_SIGNATURE bun haoshoku.js --workspaces
@@ -72,9 +74,9 @@ home. Keep clients running throughout.
    primary_app,workspace_targets}.lua`, `~/.config/haoshoku/{workspace-monitors,
    primary-app,gaming.json}`, and `~/.local/bin/haoshoku-{special-workspace,
    primary-app,gaming-workspace,workspace-target}`. Existing custom primary-app
-   and gaming settings are preserved. Also back up the hyprmoncfg profile and
-   generated outputs before the next step: `~/.config/hypr/hyprmoncfg-monitors.lua`
-   and legacy `~/.config/hypr/monitors.lua`, plus their existing sidecars. Inspect
+   and gaming settings are preserved. The generated outputs covered by the
+   backup are `~/.config/hypr/hyprmoncfg-monitors.lua` and legacy
+   `~/.config/hypr/monitors.lua`, plus their existing sidecars. Inspect
    the root config’s `dofile` wiring; a comment-only `monitors.lua` does not prove
    the active modern output is safe. Do not hand-edit either generated output.
 4. **Before any reload, temporarily remove only the exact
@@ -86,6 +88,10 @@ home. Keep clients running throughout.
    3 is ID 3, which is still occupied on the center screen; loading the new rule
    first could pull that workspace onto the right screen. Check every desired
    persistent ID against the captured inventory for similar collisions.
+   During this temporary state, custom Fn and special-workspace shortcuts and
+   window rules are unavailable; Super+T also does nothing. Avoid launching apps
+   or using custom shortcuts until step 7. Include any new client addresses in
+   the migration plan before restoring the overlay.
 
    Apply the updated profile with **`hyprmoncfg apply pc`**, using its normal
    confirmation/revert flow. Its engine must regenerate the active output
@@ -99,6 +105,10 @@ home. Keep clients running throughout.
    runtime replay guard checks both filenames and defers while either contains
    those overrides.
 5. Re-read all monitors, workspaces, clients and native mappings immediately.
+   Verify every captured client address is still on its original physical
+   monitor before proceeding. A monitor re-add during profile application can
+   move foreign-block workspaces to another screen; if any client moved, stop
+   and reconcile its original screen from the inventory before step 6.
    **Native reconciliation can renumber occupied workspaces**, preserving their
    physical monitor and old local slot when free, or using a free slot on a
    collision. Thus old left 6/7/10 may temporarily become local 6/7/10; do not

@@ -130,7 +130,7 @@ Missing or ambiguous mappings defer app actions; never guess a numeric block.
 Steam matches exact classes `steam` / `Steam`, stays in `special:steam`, and
 keeps `tile = true` to override Omarchy’s stock floating rule. Game windows use
 the process-tree watcher in `haoshoku-gaming-workspace place`, not class rules.
-The gaming toggle returns to home slot 1 on the same physical monitor. Login
+Toggling out of the gaming workspace returns to the previous workspace. Login
 policy still lives in `~/.config/haoshoku/gaming.json`. The owned Ghostty keeps
 class `com.haoshoku.ws7` independent of its resolved numeric ID. App routing
 resolves through native workspace blocks at window-open time, including after
