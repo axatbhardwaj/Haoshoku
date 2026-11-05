@@ -74,7 +74,7 @@ function readSettings(settingsPath, clientName, logImpl) {
 /**
  * Deploy the Omarchy theme's Vencord CSS into Vesktop/Vencord from a
  * declarative manifest. The theme checkout itself is owned by
- * configureOmarchyAppearance; this helper only copies its CSS and sets
+ * configureOmarchyAppearance; this helper links its CSS as the single source and sets
  * `enabledThemes`, preserving every other settings key.
  */
 export async function configureDiscordTheme({
@@ -138,10 +138,23 @@ export async function configureDiscordTheme({
 		}
 		const themesPath = path.join(clientPath, "themes");
 		fs.mkdirSync(themesPath, { recursive: true });
-		fs.copyFileSync(
-			sourcePath,
-			path.join(themesPath, path.basename(discord.source)),
-		);
+		const destination = path.join(themesPath, path.basename(discord.source));
+		const existing = fs.lstatSync(destination, { throwIfNoEntry: false });
+		const alreadyLinked =
+			existing?.isSymbolicLink() &&
+			path.resolve(themesPath, fs.readlinkSync(destination)) === sourcePath;
+		if (!alreadyLinked) {
+			if (existing) {
+				const backups = path.join(clientPath, "theme-backups");
+				fs.mkdirSync(backups, { recursive: true });
+				const backup = fs.mkdtempSync(path.join(backups, "aurora-"));
+				fs.renameSync(
+					destination,
+					path.join(backup, path.basename(destination)),
+				);
+			}
+			fs.symlinkSync(sourcePath, destination);
+		}
 
 		const settingsPath = path.join(clientPath, "settings", "settings.json");
 		const { settings, error } = readSettings(
@@ -156,7 +169,9 @@ export async function configureDiscordTheme({
 	}
 
 	if (clients.length === 0) {
-		logImpl.warning("No Vesktop or Vencord config directory found; nothing deployed.");
+		logImpl.warning(
+			"No Vesktop or Vencord config directory found; nothing deployed.",
+		);
 		return { status: "no-clients" };
 	}
 	logImpl.success(
