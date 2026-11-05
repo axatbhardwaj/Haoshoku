@@ -8,7 +8,7 @@ const pcOverlay = path.join(
 	"configs",
 	"omarchy",
 	"haoshoku",
-	"workspaces-pc.lua",
+	"workspaces-io.lua",
 );
 const luaInterpreter = Bun.which("lua5.4") ?? Bun.which("lua");
 
@@ -64,12 +64,19 @@ o = {
 }
 
 package.preload["hypr.haoshoku.primary_app"] = function() end
+package.preload["hypr.haoshoku.workspace_targets"] = function()
+  return {
+    id = function(slot) return ({[6]=21,[7]=22,[10]=23})[slot] or slot end,
+    rule = function(slot, rule) rule.workspace=tostring(({[6]=21,[7]=22,[10]=23})[slot] or slot); table.insert(rules,rule) end,
+    window = function() end,
+  }
+end
 dofile(overlay)
 
 local expected_monitors = {
-  ["SUPER + F1"] = "DP-2",
-  ["SUPER + F2"] = "DP-1",
-  ["SUPER + F3"] = "HDMI-A-1",
+  ["SUPER + CTRL + F1"] = "DP-2",
+  ["SUPER + CTRL + F2"] = "DP-1",
+  ["SUPER + CTRL + F3"] = "HDMI-A-1",
 }
 for chord, monitor in pairs(expected_monitors) do
   assert(bindings[chord] and #bindings[chord] == 1, chord .. " must have exactly one binding")
@@ -87,12 +94,12 @@ local layout_workspaces = {}
 for _, rule in ipairs(rules) do
   if rule.layout then layout_workspaces[rule.workspace] = rule.layout end
 end
-for _, workspace in ipairs({ "6", "7", "10" }) do
+for _, workspace in ipairs({ "21", "22", "23" }) do
   assert(layout_workspaces[workspace] == "lua:" .. layout_name,
     "workspace " .. workspace .. " must select lua:" .. layout_name)
 end
 for workspace, _ in pairs(layout_workspaces) do
-  assert(workspace == "6" or workspace == "7" or workspace == "10",
+  assert(workspace == "21" or workspace == "22" or workspace == "23",
     "unexpected layout workspace " .. workspace)
 end
 
@@ -142,7 +149,7 @@ end
 assert(bindings["SUPER + L"] and #bindings["SUPER + L"] == 1,
   "SUPER + L must have exactly one replacement binding")
 assert(unbinds[#unbinds] == "SUPER + L", "SUPER + L must be unbound before replacement")
-for _, workspace in ipairs({ 6, 7, 10 }) do
+for _, workspace in ipairs({ 21, 22, 23 }) do
   active_id, events = workspace, {}
   bindings["SUPER + L"][1].callback()
   assert(#events == 0, "SUPER + L must be a no-op on workspace " .. workspace)
@@ -180,7 +187,7 @@ describe("PC monitor focus and portrait rows", () => {
 		expect(
 			swaps.filter(
 				(entry) =>
-					entry.config_file === "configs/omarchy/haoshoku/workspaces-pc.lua" &&
+					entry.config_file === "configs/omarchy/haoshoku/workspaces-io.lua" &&
 					entry.hl_unbind === 'hl.unbind("SUPER + L")' &&
 					entry.reason === "reclaimed_by_overlay",
 			),
@@ -191,7 +198,7 @@ describe("PC monitor focus and portrait rows", () => {
 			"utf8",
 		);
 		expect(guidance).toMatch(
-			/Haoshoku owns the\s+layout preference for numbered workspaces 6, 7, and 10/,
+			/Haoshoku owns the\s+layout preference for io’s left-monitor slots 1, 2, and 3/,
 		);
 		expect(guidance).toContain("hyprmoncfg retains sole ownership");
 	});
