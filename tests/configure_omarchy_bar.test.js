@@ -243,9 +243,9 @@ describe("configureOmarchyBar", () => {
 		expect(fs.readFileSync(fixture.liveShellPath, "utf8")).toBe(original);
 	});
 
-	it("refuses a third-party layout id missing from the manifest", async () => {
+	it("refuses a native tray id missing from the manifest", async () => {
 		const fixture = makeFixture({
-			bar: `${JSON.stringify({ layout: { left: [{ id: "unknown.plugin" }] } }, null, "\t")}\n`,
+			bar: `${JSON.stringify({ layout: { tray: [{ id: "unknown.plugin" }] } }, null, "\t")}\n`,
 			shell: { version: 1, junk: "untouched" },
 		});
 		const original = fs.readFileSync(fixture.liveShellPath, "utf8");
@@ -256,9 +256,9 @@ describe("configureOmarchyBar", () => {
 		expect(fs.readFileSync(fixture.liveShellPath, "utf8")).toBe(original);
 	});
 
-	it("warns for a manifest plugin missing on disk and still deploys", async () => {
+	it("warns for a native tray plugin missing on disk and still deploys", async () => {
 		const fixture = makeFixture({ shell: { version: 1 } });
-		fs.rmSync(path.join(fixture.pluginsDir, "io.github.nag3sy.feishin"), {
+		fs.rmSync(path.join(fixture.pluginsDir, "aislandener.galaxy-buds"), {
 			recursive: true,
 		});
 
@@ -266,6 +266,7 @@ describe("configureOmarchyBar", () => {
 
 		expect(result.status).toBe("configured");
 		expect(fixture.warnings.join("\n")).toContain("haoshoku --omarchy-plugins");
+		expect(fixture.warnings.join("\n")).toContain("aislandener.galaxy-buds");
 		expect(
 			JSON.parse(fs.readFileSync(fixture.liveShellPath, "utf8")).bar,
 		).toBeDefined();
@@ -507,9 +508,7 @@ it("places every manifest bar widget in the shipped bar layout", () => {
 	const expectedBarWidgetIds = new Set([
 		"crmne.hyprmoncfg",
 		"white.nights",
-		"io.github.ciryon.pullbar",
 		"omaconnect",
-		"io.github.thetrueferret.decent-workspaces",
 		"io.github.nag3sy.feishin",
 		"io.github.woogy7.vitals",
 		"aislandener.galaxy-buds",
@@ -519,14 +518,11 @@ it("places every manifest bar widget in the shipped bar layout", () => {
 	const manifestIds = new Set(
 		JSON.parse(fs.readFileSync(SHIPPED_MANIFEST, "utf8")).map(({ id }) => id),
 	);
-	const barIds = new Set([
-		"aislandener.galaxy-buds",
-		"crmne.hyprmoncfg",
-		"white.nights",
-		...Object.values(JSON.parse(fs.readFileSync(SHIPPED_BAR, "utf8")).layout)
+	const barIds = new Set(
+		Object.values(JSON.parse(fs.readFileSync(SHIPPED_BAR, "utf8")).layout)
 			.flat()
 			.map(({ id }) => id),
-	]);
+	);
 
 	expect(
 		new Set(
@@ -567,7 +563,7 @@ it("ships Omarchy's generic media widget in the left bar section", () => {
 	);
 });
 
-it("shows Pullbar and the stock Agents widget in the right bar section", () => {
+it("keeps the stock Agents widget without the pull request counter", () => {
 	const bar = JSON.parse(fs.readFileSync(SHIPPED_BAR, "utf8"));
 	const allIds = Object.values(bar.layout)
 		.flat()
@@ -577,20 +573,26 @@ it("shows Pullbar and the stock Agents widget in the right bar section", () => {
 	expect(allIds).not.toContain("robzolkos.github");
 	expect(allIds).not.toContain("io.github.viganogabriele.agent-usage-plus");
 	expect(allIds).not.toContain("robzolkos.agent-usage");
-	expect(rightIds.indexOf("io.github.ciryon.pullbar")).toBe(
-		rightIds.indexOf("omarchy.bluetooth") - 2,
-	);
+	expect(allIds).not.toContain("io.github.ciryon.pullbar");
 	expect(rightIds.indexOf("omarchy.agents")).toBe(
 		rightIds.indexOf("omarchy.bluetooth") - 1,
 	);
 });
 
-it("ships selected controls inside the bundled tray drawer", () => {
+it("ships stock workspaces, world clock and selected controls in the native tray drawer", () => {
 	const bar = JSON.parse(fs.readFileSync(SHIPPED_BAR, "utf8"));
 	const rightIds = bar.layout.right.map(({ id }) => id);
-	const tray = bar.layout.right.find(({ id }) => id === "xzat.tray");
+	const leftIds = bar.layout.left.map(({ id }) => id);
+	const centerIds = bar.layout.center.map(({ id }) => id);
 
-	expect(tray.embeddedWidgets.map(({ id }) => id)).toEqual([
+	expect(leftIds).toContain("omarchy.workspaces");
+	expect(leftIds).not.toContain("io.github.thetrueferret.decent-workspaces");
+	expect(centerIds.indexOf("omarchy.elsewhen")).toBe(
+		centerIds.indexOf("omarchy.clock") + 1,
+	);
+	expect(bar.layout.right[0]).toEqual({ id: "omarchy.tray" });
+	expect(rightIds).not.toContain("xzat.tray");
+	expect(bar.layout.tray.map(({ id }) => id)).toEqual([
 		"aislandener.galaxy-buds",
 		"crmne.hyprmoncfg",
 		"omarchy.monitor",

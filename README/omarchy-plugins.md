@@ -49,10 +49,13 @@ that need manual setup afterwards (API tokens, OAuth, device pairing) are
 printed as a manual-auth checklist after installation.
 The Galaxy Buds plugin is installed from `aislandener/galaxy-buds-control` and
 reports Bluetooth pairing in that checklist; it requires no credentials.
-Pullbar (`io.github.ciryon.pullbar`) replaces both the former GitHub widget
-(`robzolkos.github`) and Agent Usage Plus on the right side of the bar. The full Arch setup deploys its required
-`~/.local/bin/omarchy-agent-usage-update` wrapper before installing plugins. If
-running only selected steps, run `haoshoku --scripts` before
-`haoshoku --omarchy-plugins`. That wrapper also scopes the Omarchy 4.0.0 Codex
-collector's retired `-a untrusted` compatibility translation to usage refreshes;
-ordinary Codex commands still execute the user's normal binary unchanged.
+
+The saved bar uses stock `omarchy.workspaces` and `omarchy.agents`. Decent
+Workspaces and Pullbar's pull request counter are absent from both the layout
+and install manifest, so reruns do not reinstall or re-enable them. Existing
+plugin files are retained.
+
+The full Arch setup still deploys the `~/.local/bin/omarchy-agent-usage-update`
+wrapper. It scopes the Omarchy 4.0.0 Codex collector's retired `-a untrusted`
+compatibility translation to usage refreshes; ordinary Codex commands still
+execute the user's normal binary unchanged.
