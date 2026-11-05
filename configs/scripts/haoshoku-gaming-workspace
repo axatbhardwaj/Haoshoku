@@ -17,7 +17,6 @@
 # already binds ALT+TAB to cyclenext, which is workspace-local.
 
 WORKSPACE_ID=
-RETURN_WORKSPACE_ID=
 RESOLVER="$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")/haoshoku-workspace-target"
 
 # Overridable so the test suite can point at a hyprctl that does not exist and prove
@@ -121,12 +120,12 @@ match_client_for_pids() {
 
 # Which workspace `toggle` should dispatch to, given hyprctl's activeworkspace JSON.
 # An unreadable active state resolves to the already validated gaming target.
-# Return to slot 1 on the same physical monitor, rather than a global previous.
+# Toggling out preserves the previous-workspace behavior.
 toggle_target() {
   local file="$1" id
   id="$(jq -er '.id? // empty' "$file" 2>/dev/null)" || id=""
   if [ "$id" = "$WORKSPACE_ID" ]; then
-    printf '%s\n' "$RETURN_WORKSPACE_ID"
+    printf '%s\n' previous
   else
     printf '%s\n' "$WORKSPACE_ID"
   fi
@@ -186,7 +185,6 @@ EOF
 
 cmd_toggle() {
   WORKSPACE_ID="$("$RESOLVER" 2)" || return 1
-  RETURN_WORKSPACE_ID="$("$RESOLVER" 1)" || return 1
   local state target
   state="$(mktemp 2>/dev/null)" || state=""
   # shellcheck disable=SC2064

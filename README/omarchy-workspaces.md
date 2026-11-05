@@ -22,12 +22,12 @@ and the shell adapter reads Omarchy's current state and checks live monitors.
 Meta+Ctrl+F1/F2/F3 focus left/center/right on io. Meta+1–5 and their Shift and
 Shift+Alt variants keep the stock focused-monitor actions. Only io unbinds the
 corresponding 6–0 actions. Stock Tab and wheel navigation stay unchanged;
-existing extra workspaces remain visible until the driver migrates them. This
+existing extra workspaces remain visible until they are migrated. This
 is a five-slot usage policy, not a compositor capacity limit. Bare F9 dictation
 is unchanged. No app actions are assigned to Meta+F3/F8/F9.
 
 Other PC and laptop routes retain ten single-monitor slots, including favorites
-6, 7, and 10. They select the internal panel when it is present, otherwise the
+6, 7, and 10. Their preferred shortcuts also use Meta+Fn. They select the internal panel when it is present, otherwise the
 sole connected display. Multiple external displays without an internal panel
 are ambiguous: helpers defer instead of guessing. No io count cap, portrait
 layout, or three-monitor pinning is applied to an unknown host's PC fallback.
@@ -40,14 +40,14 @@ leave stale numeric placement rules. Missing roles, state, or monitor identity
 cause shell app actions to fail without dispatching or launching. Login helpers
 can be replayed after Omarchy initializes state. A game still launches when its
 placement watcher has no safe target; placement resumes only for a validated
-mapping. The gaming toggle returns to slot 1 on its physical screen, rather
-than a global previous workspace. Special workspaces remain unchanged.
+mapping. Toggling out of the gaming workspace returns to the previous
+workspace. Special workspaces remain unchanged.
 
 ## Safe io deployment and session migration
 
-These steps are for the owning driver in the existing io session, after its
-backup and client inventory. Do not run them on other hosts or from a root home.
-This author candidate does not execute them. Keep clients running throughout.
+Run these steps in the existing io session as its desktop user, after recording
+a backup and client inventory. Do not run them on other hosts or from a root
+home. Keep clients running throughout.
 
 1. Record `hyprctl monitors -j`, `hyprctl workspaces -j`, `hyprctl clients -j`,
    `hyprctl binds -j`, and both native `monitor-workspaces*` state files. Back up
@@ -77,7 +77,17 @@ This author candidate does not execute them. Keep clients running throughout.
    and legacy `~/.config/hypr/monitors.lua`, plus their existing sidecars. Inspect
    the root config’s `dofile` wiring; a comment-only `monitors.lua` does not prove
    the active modern output is safe. Do not hand-edit either generated output.
-4. Apply the updated profile with **`hyprmoncfg apply pc`**, using its normal
+4. **Before any reload, temporarily remove only the exact
+   `require("hypr.haoshoku.workspaces")` line from `~/.config/hypr/hyprland.lua`.**
+   Save and checksum the staged root config first; verify exactly one matching
+   require was removed and no other file loads that workspace overlay. Keep
+   autoreload disabled. This defers new persistent rules and window-open routing
+   until the old session has migrated. In io's current native mapping, right slot
+   3 is ID 3, which is still occupied on the center screen; loading the new rule
+   first could pull that workspace onto the right screen. Check every desired
+   persistent ID against the captured inventory for similar collisions.
+
+   Apply the updated profile with **`hyprmoncfg apply pc`**, using its normal
    confirmation/revert flow. Its engine must regenerate the active output
    (`hyprmoncfg-monitors.lua` on current io, `monitors.lua` on legacy setups)
    **before its reload**, removing the entire `o.workspaces` override, number/Tab/wheel
@@ -97,19 +107,38 @@ This author candidate does not execute them. Keep clients running throughout.
    `haoshoku-workspace-target FAVORITE`: center old 1/2/3/8 use favorites
    1/2/3/8; left old 6/7/10 use 6/7/10; right old 4/5/9 use 4/5/9. Match sources
    by retained client addresses and physical monitor. Inspect destination
-   occupancy first; never overwrite an occupied destination or close its clients.
-   With validated numeric `source_ws` and `target_ws`, rename in place:
+   occupancy and physical monitor first. Build the complete address-to-destination
+   plan before moving anything, including unnamed clients. Never renumber
+   `special:*`. Re-read live state before each operation because reconciliation
+   or newly opened windows may have changed it.
+
+   Skip identical IDs. Only when the target ID does not exist, and every client
+   on the source belongs at that destination, rename the whole workspace in place
+   with validated numeric `source_ws` and `target_ws`:
 
    ```bash
    target_ws="$(haoshoku-workspace-target "$favorite")"
    hyprctl dispatch "hl.dsp.workspace.change_id({ workspace = \"${source_ws}\", id = ${target_ws} })"
    ```
 
-   Skip identical IDs. If a destination is occupied, resolve that collision
-   explicitly from the inventory before dispatching. Preserve unnamed clients
-   with their workspace, and never renumber `special:*`. Do not force-delete
-   occupied slots 6–10 merely to make the bar look right.
-7. Run `bun haoshoku.js --workspaces` after the generated overrides are gone;
+   `change_id` cannot target any existing workspace, even an empty one. When a
+   target already exists on the correct physical monitor, inspect all occupants
+   and move only the captured source clients by address into it:
+
+   ```bash
+   hyprctl dispatch "hl.dsp.window.move({ workspace = \"${target_ws}\", window = \"address:${client_address}\", follow = false })"
+   ```
+
+   Verify each address is still the captured client before moving it and confirm
+   its resulting workspace and monitor afterward. If a target is on the wrong
+   screen, contains clients assigned elsewhere, or the plan has a cycle, stop and
+   resolve the plan from fresh inventory before proceeding. Never force-delete
+   occupied slots 6–10 or close windows to make the bar look right.
+7. Before restoring the overlay, verify every retained client is on its intended
+   physical monitor and target slot, and every new persistent ID is absent or
+   already on its intended monitor. In particular, old center ID 3 must be
+   evacuated before enabling right slot 3. Restore the saved root require (after
+   checking for intervening edits), then run `bun haoshoku.js --workspaces`;
    successful reload replays the primary app and owned Ghostty helpers. Confirm
    all client addresses are retained on their physical screens, io has only
    intended occupied local slots 1–5, the three bars have no foreign/duplicate
@@ -125,5 +154,5 @@ This author candidate does not execute them. Keep clients running throughout.
    inspect its strategy before relying on unattended hotplug.
 
 The original stock tray, world clock, Advanced Audio Control, stock Agents and
-Pullbar-removal changes remain part of this candidate. Live UI, hardware
-hotplug, and native reconciliation require the driver's io verification.
+Pullbar-removal changes are preserved. Live UI, hardware hotplug, and native
+reconciliation need verification on io.

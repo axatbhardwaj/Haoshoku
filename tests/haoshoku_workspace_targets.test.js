@@ -113,12 +113,12 @@ it("does not dispatch or launch on a missing, disconnected or stale role target"
 	expect(result.calls).toBe("");
 });
 
-it("returns gaming toggle to the same physical monitor's slot 1", () => {
+it("returns gaming toggle to the previous workspace with reordered native blocks", () => {
 	const result = run("haoshoku-gaming-workspace", "toggle");
 	expect(result.stderr).toBe("");
 	expect(result.code).toBe(0);
-	expect(result.calls).toContain('hl.dsp.focus({ workspace = "31" })');
-	expect(result.calls).not.toContain('workspace = "previous"');
+	expect(result.calls).toContain('hl.dsp.focus({ workspace = "previous" })');
+	expect(result.calls).not.toContain('workspace = "31"');
 	expect(result.calls).toContain("[workspace 32 silent] uwsm-app -- omakade");
 });
 

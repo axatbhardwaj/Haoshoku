@@ -194,13 +194,13 @@ fi
 		]);
 	});
 
-	it("ensures Omakade when toggling out to the same monitor's slot 1", async () => {
+	it("ensures Omakade when toggling out to the previous workspace", async () => {
 		const result = await runToggle({ activeWorkspace: 2 });
 
 		expect(result).toEqual({ exitCode: 0, stderr: "" });
 		expect(calls()).toEqual([
 			"activeworkspace -j",
-			'dispatch hl.dsp.focus({ workspace = "1" })',
+			'dispatch hl.dsp.focus({ workspace = "previous" })',
 			"clients -j",
 			'dispatch hl.dsp.exec_cmd("[workspace 2 silent] uwsm-app -- omakade ")',
 		]);

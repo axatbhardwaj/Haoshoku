@@ -31,7 +31,6 @@ export HAOSHOKU_GW_SUDO=/bin/false
 # shellcheck source=/dev/null
 HAOSHOKU_GAMING_WORKSPACE_LIB=1 . "$SCRIPT"
 WORKSPACE_ID=2
-RETURN_WORKSPACE_ID=1
 
 echo "match_client_for_pids"
 
@@ -75,7 +74,7 @@ is "skips windows already on the gaming workspace, returns remapped ones" \
 echo "toggle_target"
 
 is "on the gaming workspace, go back" \
-   "1" "$(toggle_target "$FIXTURES/activeworkspace-2.json")"
+   "previous" "$(toggle_target "$FIXTURES/activeworkspace-2.json")"
 
 is "elsewhere, go to the gaming workspace" \
    "2" "$(toggle_target "$FIXTURES/activeworkspace-3.json")"
@@ -120,7 +119,7 @@ echo "toggle (already on gaming workspace)"
 toggle_out_calls="$(
   (
     mktemp() { printf '%s\n' "$TD/toggle-state"; }
-    toggle_target() { printf '%s\n' "1"; }
+    toggle_target() { printf '%s\n' "previous"; }
     dispatch() { printf 'focus %s\n' "$*"; }
     haoshoku-special-workspace() { printf 'login %s\n' "$*"; }
     HYPRCTL=true
@@ -128,7 +127,7 @@ toggle_out_calls="$(
   )
 )"
 is "toggling out still ensures Omakade on workspace 2" \
-   $'focus hl.dsp.focus({ workspace = "1" })\nlogin numbered-login 2 omakade' \
+   $'focus hl.dsp.focus({ workspace = "previous" })\nlogin numbered-login 2 omakade' \
    "$toggle_out_calls"
 
 echo "collect_descendants"
