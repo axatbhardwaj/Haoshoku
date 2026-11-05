@@ -172,7 +172,9 @@ assistant_addresses_outside_workspace() {
 
 if [[ "$recipe" == numbered || "$recipe" == numbered-login ]]; then
   [[ $# -eq 3 ]] || { echo "usage: haoshoku-special-workspace $recipe WORKSPACE APP" >&2; exit 2; }
-  workspace="$2" app="$3" focus_existing=false
+  slot="$2" app="$3" focus_existing=false
+  resolver="$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")/haoshoku-workspace-target"
+  workspace="$("$resolver" "$slot")" || exit 1
   if [[ "$recipe" == numbered ]]; then
     dispatch_focus_workspace "$workspace"
     focus_existing=true
@@ -185,7 +187,7 @@ if [[ "$recipe" == numbered || "$recipe" == numbered-login ]]; then
       launch_if_missing "$workspace" '^teams-for-linux$' teams-for-linux
       launch_if_missing "$workspace" '^(TelegramDesktop|org\.telegram\.desktop)$' Telegram
       ;;
-    ghostty) ensure_ghostty "$workspace" "com.haoshoku.ws${workspace}" plain "$focus_existing" ;;
+    ghostty) ensure_ghostty "$workspace" "com.haoshoku.ws${slot}" plain "$focus_existing" ;;
     notion)
       # Brave Origin ignores --class under --app and derives the class from the URL instead.
       launch_if_missing "$workspace" '^brave-www\.notion\.so__-Default$' brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/notion" --app=https://www.notion.so/

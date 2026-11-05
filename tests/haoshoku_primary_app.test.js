@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { workspaceTargetFixture } from "./workspace_target_fixtures.js";
 
 const script = path.join(
 	import.meta.dir,
@@ -19,6 +20,7 @@ describe("haoshoku-primary-app", () => {
 	let home;
 	beforeEach(() => {
 		home = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-primary-"));
+		workspaceTargetFixture(home);
 		fs.mkdirSync(path.join(home, ".config", "haoshoku"), { recursive: true });
 		fs.mkdirSync(path.join(home, "bin"));
 		fs.mkdirSync(path.join(home, "share", "applications"), { recursive: true });
@@ -42,7 +44,9 @@ describe("haoshoku-primary-app", () => {
 		fs.writeFileSync(
 			path.join(home, "bin", "hyprctl"),
 			`#!/bin/bash
-if [[ "$1 $2" == "clients -j" ]]; then
+if [[ "$1 $2" == "monitors -j" ]]; then
+  echo '[{"name":"DP-1"}]'
+elif [[ "$1 $2" == "clients -j" ]]; then
   cat "$CLIENTS_FILE"
 else
   printf '%s\\n' "$2" >> "$DISPATCH_LOG"
@@ -74,6 +78,7 @@ fi
 				env: {
 					...process.env,
 					HOME: home,
+					XDG_STATE_HOME: path.join(home, ".local/state"),
 					XDG_CONFIG_HOME: path.join(home, ".config"),
 					XDG_DATA_HOME: path.join(home, "share"),
 					PATH: `${path.join(home, "bin")}:${process.env.PATH}`,
@@ -99,6 +104,7 @@ fi
 			env: {
 				...process.env,
 				HOME: home,
+				XDG_STATE_HOME: path.join(home, ".local/state"),
 				XDG_CONFIG_HOME: path.join(home, ".config"),
 				PATH: `${home}/bin:${process.env.PATH}`,
 				CLIENTS_FILE: `${home}/clients.json`,
@@ -165,6 +171,7 @@ fi
 			env: {
 				...process.env,
 				HOME: home,
+				XDG_STATE_HOME: path.join(home, ".local/state"),
 				XDG_CONFIG_HOME: path.join(home, ".config"),
 				XDG_DATA_HOME: path.join(home, "share"),
 				PATH: `${path.join(home, "bin")}:${process.env.PATH}`,
@@ -199,7 +206,7 @@ fi
 		);
 		expect(result.code).toBe(0);
 		expect(result.dispatches).toContain(
-			"[workspace 1 silent] uwsm-app -- t3code-nightly",
+			"[workspace 6 silent] uwsm-app -- t3code-nightly",
 		);
 		expect(result.dispatches).toContain(
 			'hl.dsp.window.move({ workspace = "6", window = "address:0xnew", follow = false })',
@@ -216,22 +223,22 @@ fi
 		expect(result.dispatches).toBe("");
 	});
 
-	it("keeps the workspace key useful when the configured app is missing", async () => {
+	it("does not dispatch when the configured app is missing", async () => {
 		const result = await run("focus", "[]", "missing-app", "", "6");
 		expect(result.code).not.toBe(0);
-		expect(result.dispatches.trim()).toBe('hl.dsp.focus({ workspace = "6" })');
+		expect(result.dispatches.trim()).toBe("");
 	});
 
-	it("focuses the requested workspace when the client probe fails", async () => {
+	it("does not dispatch after the client probe fails", async () => {
 		const result = await run("focus", "{bad json", NIGHTLY, "", "6");
 		expect(result.code).not.toBe(0);
-		expect(result.dispatches.trim()).toBe('hl.dsp.focus({ workspace = "6" })');
+		expect(result.dispatches.trim()).toBe("");
 	});
 
-	it("focuses the requested workspace when a launch times out", async () => {
+	it("keeps a timed-out launch on its requested physical slot", async () => {
 		const result = await run("focus", "[]", NIGHTLY, "", "6");
 		expect(result.code).not.toBe(0);
-		expect(result.dispatches).toContain('hl.dsp.focus({ workspace = "6" })');
+		expect(result.dispatches).not.toContain("hl.dsp.focus");
 	}, 30000);
 
 	(luaInterpreter ? it : it.skip)(
@@ -247,9 +254,9 @@ fi
 				"primary_app.lua",
 			);
 			for (const [app, expected] of [
-				[NIGHTLY, "^com\\.t3tools\\.T3Code$"],
-				["t3code-nightly", "^t3code$"],
-				["t3code", "^t3code$"],
+				[NIGHTLY, "com.t3tools.T3Code"],
+				["t3code-nightly", "t3code"],
+				["t3code", "t3code"],
 			]) {
 				fs.writeFileSync(
 					path.join(home, ".config", "haoshoku", "primary-app"),
@@ -259,12 +266,13 @@ fi
 					[
 						luaInterpreter,
 						"-e",
-						`o = { window = function(class, rule) print(class, rule.workspace) end }; dofile(${JSON.stringify(module)})`,
+						`package.preload["hypr.haoshoku.workspace_targets"] = function() return { window = function(class, slot) print(class, slot) end } end; dofile(${JSON.stringify(module)})`,
 					],
 					{
 						env: {
 							...process.env,
 							HOME: home,
+							XDG_STATE_HOME: path.join(home, ".local/state"),
 							XDG_CONFIG_HOME: path.join(home, ".config"),
 							XDG_DATA_HOME: path.join(home, "share"),
 						},
@@ -274,7 +282,7 @@ fi
 				);
 				const output = await new Response(proc.stdout).text();
 				expect(await proc.exited).toBe(0);
-				expect(output).toContain(`${expected}\t1 silent`);
+				expect(output).toContain(`${expected}\t1`);
 			}
 		},
 	);
@@ -300,12 +308,13 @@ fi
 					[
 						luaInterpreter,
 						"-e",
-						`o = { window = function(class) print(class) end }; dofile(${JSON.stringify(module)})`,
+						`package.preload["hypr.haoshoku.workspace_targets"] = function() return { window = function(class) print(class) end } end; dofile(${JSON.stringify(module)})`,
 					],
 					{
 						env: {
 							...process.env,
 							HOME: home,
+							XDG_STATE_HOME: path.join(home, ".local/state"),
 							XDG_CONFIG_HOME: path.join(home, ".config"),
 							XDG_DATA_HOME: path.join(home, "share"),
 						},
@@ -315,7 +324,7 @@ fi
 				);
 				const output = await new Response(proc.stdout).text();
 				expect(await proc.exited).toBe(0);
-				expect(output.trim()).toBe("^com\\.t3tools\\.T3Code$");
+				expect(output.trim()).toBe("com.t3tools.T3Code");
 			}
 		},
 	);

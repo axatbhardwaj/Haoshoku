@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { workspaceTargetFixture } from "./workspace_target_fixtures.js";
 
 const script =
 	process.env.HAOSHOKU_SPECIAL_WORKSPACE_SCRIPT ??
@@ -20,12 +21,21 @@ describe("haoshoku-special-workspace failed hyprctl probes", () => {
 
 	beforeEach(() => {
 		directory = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-probe-"));
+		workspaceTargetFixture(directory);
 		log = path.join(directory, "dispatches");
 		commandDirectory = path.join(directory, "commands");
 		runtimeDirectory = path.join(directory, "runtime");
 		fs.mkdirSync(commandDirectory);
 		fs.mkdirSync(runtimeDirectory);
-		for (const command of ["bash", "dirname", "flock", "jq", "sleep"]) {
+		for (const command of [
+			"bash",
+			"dirname",
+			"flock",
+			"jq",
+			"sleep",
+			"readlink",
+			"awk",
+		]) {
 			const systemCommand = Bun.which(command);
 			if (!systemCommand)
 				throw new Error(`missing test dependency: ${command}`);
@@ -193,6 +203,8 @@ esac
 			env: {
 				...process.env,
 				HOME: directory,
+				XDG_CONFIG_HOME: `${directory}/.config`,
+				XDG_STATE_HOME: `${directory}/.local/state`,
 				CLIENTS_JSON: clientsJson,
 				DISPATCH_DIAGNOSTIC: dispatchDiagnostic,
 				DISPATCH_EXIT_CODE: dispatchExitCode,
@@ -491,7 +503,7 @@ esac
 if [[ "$1 $2" == "clients -j" ]]; then
   printf '[]\\n'
 elif [[ "$1 $2" == "monitors -j" ]]; then
-  printf '[]\\n'
+  printf '[{"name":"DP-1"}]\\n'
 elif [[ "$1" == "dispatch" ]]; then
   printf 'dispatch unavailable\\n' >&2
   exit 23

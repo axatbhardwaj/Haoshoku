@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 
 import * as userScripts from "../src/helpers/install_user_scripts.js";
+import { workspaceTargetFixture } from "./workspace_target_fixtures.js";
 
 let tmpHome;
 let tmpProjectRoot;
@@ -450,6 +451,7 @@ describe("installUserScripts — .bak behavior for pre-existing different files"
 
 describe("deployed stable T3 launcher", () => {
 	it("launches stable after installing scripts and keeps custom app preferences on rerun", async () => {
+		workspaceTargetFixture(tmpHome);
 		const bin = path.join(tmpHome, ".local/bin");
 		const config = path.join(tmpHome, ".config/haoshoku/primary-app");
 		fs.mkdirSync(bin, { recursive: true });
@@ -461,7 +463,9 @@ describe("deployed stable T3 launcher", () => {
 		fs.writeFileSync(
 			path.join(bin, "hyprctl"),
 			`#!/bin/sh
-if [ "$1 $2" = "clients -j" ]; then echo '[]'; else echo "$2" >> "$HOME/dispatches"; fi
+if [ "$1 $2" = "clients -j" ]; then echo '[]';
+elif [ "$1 $2" = "monitors -j" ]; then echo '[{"name":"DP-1"}]';
+else echo "$2" >> "$HOME/dispatches"; fi
 `,
 			{ mode: 0o755 },
 		);
@@ -476,6 +480,7 @@ if [ "$1 $2" = "clients -j" ]; then echo '[]'; else echo "$2" >> "$HOME/dispatch
 					...process.env,
 					HOME: tmpHome,
 					XDG_CONFIG_HOME: path.join(tmpHome, ".config"),
+					XDG_STATE_HOME: path.join(tmpHome, ".local/state"),
 					PATH: `${bin}:${process.env.PATH}`,
 				},
 			});

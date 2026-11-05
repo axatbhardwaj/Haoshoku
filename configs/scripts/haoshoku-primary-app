@@ -8,14 +8,10 @@ target="${2:-}"
   exit 2
 }
 
-# Keep the number key useful even if the app cannot launch or Hyprland cannot inspect it.
-on_exit() {
-  local status=$?
-  if (( status != 0 )) && [[ "$mode" == focus ]]; then
-    hyprctl dispatch "hl.dsp.focus({ workspace = \"$target\" })" >/dev/null || true
-  fi
-}
-trap on_exit EXIT
+resolver="$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")/haoshoku-workspace-target"
+# Resolve before installing any fallback: an absent monitor must never focus a
+# global slot on another screen. Login always owns slot 1; explicit focus may use 6.
+target="$("$resolver" "${target:-1}")" || exit 1
 
 config="${XDG_CONFIG_HOME:-$HOME/.config}/haoshoku/primary-app"
 # Line 1 is the executable; optional line 2 overrides the window class when the
@@ -70,7 +66,7 @@ find_client() {
 client="$(find_client)" || { echo "cannot inspect Hyprland clients" >&2; exit 1; }
 if [[ -z "$client" ]]; then
   printf -v escaped_app '%q' "$app"
-  launch="[workspace 1 silent] uwsm-app -- $escaped_app"
+  launch="[workspace $target silent] uwsm-app -- $escaped_app"
   dispatch "hl.dsp.exec_cmd($(lua_string "$launch"))"
   if [[ "$mode" == focus ]]; then
     for _ in {1..100}; do
