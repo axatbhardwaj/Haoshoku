@@ -99,6 +99,15 @@ describe("Discord theme configurator", () => {
 			clients: ["Vesktop", "Vencord"],
 		});
 		for (const dirName of ["vesktop", "Vencord"]) {
+			const deployed = path.join(
+				home,
+				".config",
+				dirName,
+				"themes",
+				"aurora.theme.css",
+			);
+			expect(fs.lstatSync(deployed).isSymbolicLink()).toBe(true);
+			expect(fs.realpathSync(deployed)).toBe(sourcePath);
 			expect(
 				fs.readFileSync(
 					path.join(home, ".config", dirName, "themes", "aurora.theme.css"),
@@ -116,6 +125,37 @@ describe("Discord theme configurator", () => {
 		);
 		expect(raw.endsWith("\n")).toBe(true);
 		expect(raw).toContain("\t");
+	});
+
+	it("migrates a copy once and follows Aurora updates through repeated syncs", async () => {
+		const home = makeHome();
+		const source = seedCheckout(home);
+		const client = seedClient(home, "vesktop");
+		const themes = path.join(client, "themes");
+		fs.mkdirSync(themes);
+		const destination = path.join(themes, "aurora.theme.css");
+		fs.writeFileSync(destination, "old custom css");
+		const options = {
+			manifest: MANIFEST,
+			appearanceManifestPath: writeAppearance(home),
+			home,
+			logImpl: makeLog(),
+		};
+		await configureDiscordTheme(options);
+		const backups = path.join(client, "theme-backups");
+		const entries = fs.readdirSync(backups);
+		expect(entries).toHaveLength(1);
+		expect(
+			fs.readFileSync(
+				path.join(backups, entries[0], "aurora.theme.css"),
+				"utf8",
+			),
+		).toBe("old custom css");
+		fs.writeFileSync(source, "updated Aurora css");
+		expect(fs.readFileSync(destination, "utf8")).toBe("updated Aurora css");
+		await configureDiscordTheme(options);
+		expect(fs.readdirSync(backups)).toEqual(entries);
+		expect(fs.lstatSync(destination).isSymbolicLink()).toBe(true);
 	});
 
 	it("skips a missing client and still configures the present one", async () => {

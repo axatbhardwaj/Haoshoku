@@ -6,8 +6,11 @@ inside that theme, and the font family. Full Arch setup and
 `haoshoku --omarchy-appearance` reconcile the theme under
 `~/.config/omarchy/themes/`, then call Omarchy's own theme, background, and font
 commands. `haoshoku --discord-theme` then deploys that theme's Vencord CSS from
-`configs/discord/theme.json` into Vesktop and Vencord, setting `enabledThemes`
-while preserving every other settings key.
+`configs/discord/theme.json` into Vesktop and Vencord as a symlink, setting
+`enabledThemes` while preserving every other settings key. Aurora owns the
+Discord styling; there is no separate editable client copy. Replaced copies
+are preserved under the client’s `theme-backups/` directory, outside the theme
+picker. The pinned Aurora v3.0.7 includes the server-badge and menu contrast fixes.
 
 An existing checkout from another repository is never replaced. A matching
 checkout with local changes is preserved and applied as-is; a clean matching
