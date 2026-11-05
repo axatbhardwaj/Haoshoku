@@ -48,19 +48,24 @@ such as `SUPER + F`, uses `displaced_by_workspace_toggle` instead.
 
 ## Monitor ownership boundary
 
-Haoshoku NEVER writes `monitors.lua`. Monitor discovery, layout generation, and
-monitor-bound workspace rules belong to hyprmoncfg. Haoshoku only feeds
-hyprmoncfg through profile JSON. The Lua overlays may contain monitor-independent
-behavior, but neither overlay sets `GDK_SCALE`; display scaling belongs to
+Haoshoku NEVER writes `monitors.lua`. Monitor discovery and layout generation
+belong to hyprmoncfg. Its PC profile
+sets workspace planning Off; Omarchy owns workspace numbering and number-key
+navigation. Haoshoku only feeds hyprmoncfg through profile JSON. The overlays
+never set `GDK_SCALE`; display scaling belongs to
 hyprmoncfg and the monitor profile. The overlays must not set scaling environment
 variables: a global `GDK_SCALE` forces every GTK and XWayland client to one fixed
 factor regardless of per-monitor scale.
 
-The PC overlay has one narrow workspace-policy carve-out: Haoshoku owns the
-layout preference for numbered workspaces 6, 7, and 10, including its guarded
+The io overlay has one narrow workspace-policy carve-out: Haoshoku owns the
+layout preference for io’s left-monitor slots 1, 2, and 3, including its guarded
 `SUPER+L` behavior. hyprmoncfg retains sole ownership of monitor discovery,
-geometry, transforms, scaling, and workspace-to-monitor pinning; this carve-out
-must not add monitor selectors or topology reconciliation to the overlay.
+geometry, transforms, and scaling. Omarchy owns dynamic ten-ID block allocation.
+`workspace-monitors-io` maps logical app favorites to physical connectors and
+local slots; `workspace_targets.lua` and `haoshoku-workspace-target` consume it
+in their native runtimes. Only the explicit hostname io on the PC route selects
+this profile and unbinds stock number 6–0 actions. Unknown PC and laptop routes
+use ten single-monitor slots, without portrait or three-monitor policies.
 
 ## Shell ownership boundary
 
@@ -113,34 +118,25 @@ Browser web-app rules use the classes derived from Brave Origin, including
 `brave-web.whatsapp.com__-Default`; do not revert them to the old Chromium-derived
 prefix.
 
-Workspace 2 is the gaming workspace. Omakade matches the exact class
-`io.github.tsouth89.Omakade` and lands on `2 silent`; the Steam client matches
-exact classes (`steam` / `Steam`) and lands on `special:steam silent`, toggled
-with `SUPER+S` via the `steam` recipe in `haoshoku-special-workspace`.
-Steam also sets `tile = true` so it overrides Omarchy's stock `float = true`
-in `$OMARCHY_PATH/default/hypr/apps/steam.lua`; do not drop that effect or
-Steam reopens as a centered float. The exact-class match leaves `steam_app_*`
-game windows to Omarchy. Games reach workspace 2 through the
-`haoshoku-gaming-workspace place` Steam launch-option wrapper (pid-tree
-watcher), not through window rules. Login autostart is policy-driven:
-`~/.config/haoshoku/gaming.json` defaults to Steam on and Omakade off, the
-shipped overlay carries that default, and `--workspaces` redeploys reconcile
-the live copy with the saved policy instead of reverting it. `SUPER+2` uses
-`numbered 2 omakade`. Do not bind `numbered 2 steam` to the workspace switch;
-`SUPER+SHIFT+G` remains the gaming toggle that focuses 2 and ensures Omakade.
+Logical app favorites use `SUPER+F1/F2/F4/F5/F6/F7/F10`; number navigation
+belongs to stock Omarchy. On io, the primary app uses DP-1 slot 1, gaming uses
+DP-1 slot 2, Vesktop uses HDMI-A-1 slot 4, Teams/Telegram use HDMI-A-1 slot 5,
+and the left monitor uses slots 1 (primary via F6), 2 (Ghostty via F7), and 3
+(Notion via F10). `SUPER+CTRL+F1/F2/F3` focus left/center/right monitors.
+Other desktop routes retain logical slots 1,2,4,5,6,7,10 on a single monitor.
+Missing or ambiguous mappings defer app actions; never guess a numeric block.
 
-Workspace 7 replaces Omarchy's stock `SUPER+7` binding with the
-`haoshoku-special-workspace numbered 7 ghostty` recipe. It switches to workspace
-7 and focuses the exact `com.haoshoku.ws7` window when present, reclaiming it by
-address if needed, or creates it when absent. The startup call and post-reload
-helper use `numbered-login 7 ghostty`, which preserves the terminal without
-stealing focus. Haki and agents use their own exact Ghostty classes and tmux
-splits. `SUPER+Return` remains Omarchy's
-`xdg-terminal-exec` route, whose XDG default is Ghostty; `SUPER+T` uses
-the class pattern `^com\.t3tools\.T3Code$`, focusing T3 Code
-wherever it resides and launching T3 Code stable (`t3code`) when absent. Keep the class
-anchored and its dots escaped. Primary-app workspace behavior stays independent
-of this launcher. The assistants recipe runs
+Steam matches exact classes `steam` / `Steam`, stays in `special:steam`, and
+keeps `tile = true` to override Omarchy’s stock floating rule. Game windows use
+the process-tree watcher in `haoshoku-gaming-workspace place`, not class rules.
+The gaming toggle returns to home slot 1 on the same physical monitor. Login
+policy still lives in `~/.config/haoshoku/gaming.json`. The owned Ghostty keeps
+class `com.haoshoku.ws7` independent of its resolved numeric ID. App routing
+resolves through native workspace blocks at window-open time, including after
+hotplug; saved global workspace rules must not return. `SUPER+Return` keeps
+`xdg-terminal-exec`, and `SUPER+T` still matches `^com\\.t3tools\\.T3Code$`.
+
+The assistants recipe runs
 at login and on `SUPER+I`, managing ChatGPT and Claude Desktop in `special:assistants`;
 Twitch retains its own special workspace.
 
