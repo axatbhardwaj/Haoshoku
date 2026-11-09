@@ -81,9 +81,9 @@ The Arch setup:
   the kernel split-lock penalty while the game runs and restores it on exit
   once `haoshoku --gaming-split-lock` has installed its narrow sudoers rule
   (Division 2 otherwise sits near 50 fps with an idle CPU and GPU);
-- starts Flux, WhatsApp, and Notion with empty Brave Origin profiles
-  below `~/.config/brave-haoshoku/`; existing Chromium profile data remains
-  untouched at `~/.config/chromium-haoshoku/` for manual import;
+- uses one Brave Origin profile, `~/.config/brave-haoshoku/flux`, for all
+  managed browser and web-app launches, including WhatsApp, Notion and Netflix;
+  existing Brave/Chromium profile data is left untouched without migration;
 - installs packaged Omazed and safely points Zed at its generated theme so Zed
   follows the active Omarchy palette. Haoshoku never runs Omazed's manual
   installer or deletes unrelated Zed themes;

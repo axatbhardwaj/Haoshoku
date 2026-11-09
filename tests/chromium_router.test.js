@@ -40,6 +40,10 @@ printf '%s\\0' "$@" > "$ROUTER_CALL"
 		);
 		fs.chmodSync(hyprctl, 0o755);
 		fs.chmodSync(specialWorkspace, 0o755);
+		fs.copyFileSync(
+			specialWorkspace,
+			path.join(directory, "haoshoku-chromium-flux"),
+		);
 	});
 
 	afterEach(() => fs.rmSync(directory, { recursive: true, force: true }));
@@ -59,6 +63,7 @@ printf '%s\\0' "$@" > "$ROUTER_CALL"
 			...process.env,
 			HOME: directory,
 			HYPR_CLIENTS: clients,
+			HYPRLAND_INSTANCE_SIGNATURE: "fixture",
 			PATH: `${directory}:${process.env.PATH}`,
 			ROUTER_CALL: call,
 			...extraEnv,
@@ -81,10 +86,8 @@ printf '%s\\0' "$@" > "$ROUTER_CALL"
 		return fs.readFileSync(call, "utf8").split("\0").filter(Boolean);
 	}
 
-	// Mutation caught: accepting a negative ID, choosing the largest ID, or taking
-	// the first match sends default-browser URLs to a stale profile instead of the
-	// registered profile with the smallest non-negative focus-history ID.
-	it("routes multiple URLs to the registered window with the smallest focus history ID", async () => {
+	// A focused legacy custom profile must not divert URLs away from Flux.
+	it("routes multiple URLs to Flux despite a more recently focused custom profile", async () => {
 		const result = await run(
 			JSON.stringify([
 				{ class: "chromium-flux", focusHistoryID: -1 },
@@ -106,15 +109,14 @@ printf '%s\\0' "$@" > "$ROUTER_CALL"
 		expect(result.exitCode).toBe(0);
 		expect(forwardedArguments()).toEqual([
 			"browser",
-			"research",
+			"flux",
 			"https://research.example/portfolio",
 			"https://research.example/trade?pair=ETH%2FUSD",
 		]);
 	});
 
-	// Mutation caught: limiting the router to the shipped Flux class
-	// makes a registered future profile unreachable as the default browser.
-	it("routes URLs to the focused third configured profile", async () => {
+	// Existing custom defaults are preserved as config, not launch authority.
+	it("ignores a focused secondary profile even when configured as default", async () => {
 		const result = await run(
 			JSON.stringify([
 				{ class: "chromium-flux", focusHistoryID: 8 },
@@ -141,14 +143,13 @@ printf '%s\\0' "$@" > "$ROUTER_CALL"
 		expect(result.exitCode).toBe(0);
 		expect(forwardedArguments()).toEqual([
 			"browser",
-			"research",
+			"flux",
 			"https://research.example/brief",
 		]);
 	});
 
-	// Mutation caught: falling back to Flux instead of the configured default
-	// launches default-browser URLs in the wrong profile when no client exists.
-	it("falls back to the configured default profile", async () => {
+	// No running browser still means Flux, regardless of old defaults.
+	it("uses Flux instead of a configured secondary default", async () => {
 		const result = await run(
 			JSON.stringify([{ class: "chromium-unmanaged", focusHistoryID: 0 }]),
 			["https://default.example/"],
@@ -172,14 +173,13 @@ printf '%s\\0' "$@" > "$ROUTER_CALL"
 		expect(result.exitCode).toBe(0);
 		expect(forwardedArguments()).toEqual([
 			"browser",
-			"research",
+			"flux",
 			"https://default.example/",
 		]);
 	});
 
-	// Mutation caught: treating a zero-default custom registry as malformed
-	// discards a focused registered profile instead of routing to it.
-	it("routes a focused profile from a valid zero-default registry", async () => {
+	// A registry without Flux cannot enable another managed directory.
+	it("uses Flux when a zero-default custom profile is focused", async () => {
 		const result = await run(
 			JSON.stringify([{ class: "chromium-research", focusHistoryID: 0 }]),
 			["https://research.example/zero-default"],
@@ -197,7 +197,7 @@ printf '%s\\0' "$@" > "$ROUTER_CALL"
 		expect(result.exitCode).toBe(0);
 		expect(forwardedArguments()).toEqual([
 			"browser",
-			"research",
+			"flux",
 			"https://research.example/zero-default",
 		]);
 	});
@@ -328,10 +328,8 @@ printf '%s\\0' "$@" > "$ROUTER_CALL"
 		]);
 	});
 
-	// Mutation caught: skipping signature recovery makes hyprctl fail for callers
-	// spawned outside the compositor session, demoting every default-browser URL
-	// to the default profile instead of the focused one.
-	it("recovers the Hyprland signature from the runtime dir when unset", async () => {
+	// Portal callers without a compositor signature must still reach Flux.
+	it("routes portal URLs to Flux when the Hyprland signature is unset", async () => {
 		fs.mkdirSync(path.join(directory, "hypr", "abc123"), { recursive: true });
 		const result = await run(
 			JSON.stringify([
@@ -352,9 +350,21 @@ printf '%s\\0' "$@" > "$ROUTER_CALL"
 		expect(result.exitCode).toBe(0);
 		expect(forwardedArguments()).toEqual([
 			"browser",
-			"research",
+			"flux",
 			"https://recovered.example/",
 		]);
+	});
+
+	it("launches Flux directly outside Hyprland, including KDE", async () => {
+		const urls = [
+			"https://example.test/one path",
+			"https://example.test/two?q=$HOME",
+		];
+		const result = await run("[]", urls, {
+			env: { HYPRLAND_INSTANCE_SIGNATURE: "", XDG_RUNTIME_DIR: directory },
+		});
+		expect(result.exitCode).toBe(0);
+		expect(forwardedArguments()).toEqual(urls);
 	});
 
 	// Mutation caught: accepting jq's partial stdout after a parse failure can send

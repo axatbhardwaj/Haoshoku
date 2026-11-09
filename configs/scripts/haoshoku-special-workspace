@@ -190,7 +190,7 @@ if [[ "$recipe" == numbered || "$recipe" == numbered-login ]]; then
     ghostty) ensure_ghostty "$workspace" "com.haoshoku.ws${slot}" plain "$focus_existing" ;;
     notion)
       # Brave Origin ignores --class under --app and derives the class from the URL instead.
-      launch_if_missing "$workspace" '^brave-www\.notion\.so__-Default$' brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/notion" --app=https://www.notion.so/
+      launch_if_missing "$workspace" '^brave-www\.notion\.so__-Default$' brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/flux" --class=chromium-flux --app=https://www.notion.so/
       ;;
     *) echo "unknown numbered recipe: $app" >&2; exit 2 ;;
   esac
@@ -368,12 +368,13 @@ case "$recipe" in
   communication)
     launch_if_missing "special:$workspace" '^signal$' signal-desktop
     # Brave Origin ignores --class under --app and derives the class from the URL instead.
-    launch_if_missing "special:$workspace" '^brave-web\.whatsapp\.com__-Default$' brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/whatsapp" --app=https://web.whatsapp.com/
+    launch_if_missing "special:$workspace" '^brave-web\.whatsapp\.com__-Default$' brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/flux" --class=chromium-flux --app=https://web.whatsapp.com/
     ;;
   stash) ;;
   steam) launch_if_missing "special:$workspace" '^[Ss]team$' steam ;;
   x) launch_if_missing "special:$workspace" '^brave-x\.com__-Default$' brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/flux" --class=chromium-flux --app=https://x.com/ ;;
-  netflix) launch_if_missing "special:$workspace" '^brave-www\.netflix\.com__-Default$' brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/netflix" --disable-gpu --no-first-run --no-default-browser-check --app=https://www.netflix.com/ ;;
+  # --disable-gpu is process-wide: an existing Flux process keeps its startup GPU mode.
+  netflix) launch_if_missing "special:$workspace" '^brave-www\.netflix\.com__-Default$' brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/flux" --class=chromium-flux --disable-gpu --no-first-run --no-default-browser-check --app=https://www.netflix.com/ ;;
   youtube) launch_if_missing "special:$workspace" '^brave-youtube\.com__-Default$' brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/flux" --class=chromium-flux --app=https://youtube.com/ ;;
   jiohotstar) launch_if_missing "special:$workspace" '^brave-www\.jiohotstar\.com__-Default$' brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/flux" --class=chromium-flux --app=https://www.jiohotstar.com/ ;;
   crunchyroll) launch_if_missing "special:$workspace" '^brave-www\.crunchyroll\.com__-Default$' brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/flux" --class=chromium-flux --app=https://www.crunchyroll.com/ ;;

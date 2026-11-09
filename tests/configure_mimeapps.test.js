@@ -477,7 +477,7 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 		}
 	});
 
-	it("ships a WhatsApp desktop entry with an isolated Brave Origin profile", () => {
+	it("ships a WhatsApp desktop entry in the shared Flux profile", () => {
 		const desktop = fs.readFileSync(
 			path.join(CONFIGS_MIMEAPPS_DIR, "applications", "whatsapp-web.desktop"),
 			"utf8",
@@ -485,10 +485,54 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 
 		expect(desktop).toContain("Name=WhatsApp Web");
 		expect(desktop).toContain(
-			`Exec=sh -lc 'exec brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/whatsapp" --app=https://web.whatsapp.com/'`,
+			`Exec=haoshoku-chromium-flux --app=https://web.whatsapp.com/`,
 		);
 		expect(desktop).toContain("Type=Application");
 		expect(desktop).toContain("StartupWMClass=brave-web.whatsapp.com__-Default");
+	});
+
+	it.each([
+		["whatsapp-web.desktop", "https://web.whatsapp.com/"],
+		["notion-chromium.desktop", "https://www.notion.so/"],
+	])("launches deployed %s through Flux without global GPU flags", async (desktop, url) => {
+		await mimeapps.syncMimeappsConfig({
+			home: tmpHome,
+			projectRoot: PROJECT_ROOT,
+		});
+		const bin = path.join(tmpHome, ".local", "bin");
+		fs.mkdirSync(bin, { recursive: true });
+		fs.copyFileSync(
+			path.join(PROJECT_ROOT, "configs/scripts/haoshoku-chromium-flux"),
+			path.join(bin, "haoshoku-chromium-flux"),
+		);
+		const capture = path.join(tmpHome, "browser-argv");
+		fs.writeFileSync(
+			path.join(bin, "brave-origin"),
+			'#!/bin/bash\nprintf "%s\\0" "$@" > "$CAPTURE"\n',
+			{ mode: 0o755 },
+		);
+		const content = fs.readFileSync(
+			path.join(tmpHome, ".local/share/applications", desktop),
+			"utf8",
+		);
+		const exec = content.split("\n").find((line) => line.startsWith("Exec="));
+		expect(exec).toBe(`Exec=haoshoku-chromium-flux --app=${url}`);
+		const process = Bun.spawn(exec.slice(5).split(" "), {
+			env: {
+				...globalThis.process.env,
+				HOME: tmpHome,
+				PATH: `${bin}:${globalThis.process.env.PATH}`,
+				CAPTURE: capture,
+			},
+		});
+		expect(await process.exited).toBe(0);
+		expect(
+			fs.readFileSync(capture, "utf8").split("\0").filter(Boolean),
+		).toEqual([
+			`--user-data-dir=${tmpHome}/.config/brave-haoshoku/flux`,
+			"--class=chromium-flux",
+			`--app=${url}`,
+		]);
 	});
 
 	it("deploys a Twitch launcher through the special-workspace helper", async () => {
@@ -537,7 +581,7 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 			"utf8",
 		);
 		expect(deployed).toContain(
-			`Exec=sh -lc 'exec brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/whatsapp" --app=https://web.whatsapp.com/'`,
+			`Exec=haoshoku-chromium-flux --app=https://web.whatsapp.com/`,
 		);
 		expect(deployed).not.toContain("Exec=caelestia toggle communication");
 	});
@@ -570,7 +614,7 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 		);
 
 		expect(handler).toContain(
-			"Comment=Open links in the most recently focused Haoshoku Brave Origin profile",
+			"Comment=Open links in the shared Haoshoku Flux profile",
 		);
 		expect(handler).not.toContain("Chromium");
 		expect(handler).toContain("Exec=haoshoku-browser %U");
@@ -597,7 +641,7 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 		expect(content).toContain("inode/directory=org.gnome.Nautilus.desktop");
 	});
 
-	it("routes notion:// links to the isolated Brave Origin Notion app", () => {
+	it("routes notion:// links to the Notion app in Flux", () => {
 		const content = fs.readFileSync(
 			path.join(CONFIGS_MIMEAPPS_DIR, "mimeapps.list"),
 			"utf8",
@@ -617,7 +661,7 @@ describe("seeded configs/mimeapps/ (in-tree static config)", () => {
 		expect(content).not.toContain("x-scheme-handler/notion=cohesion.desktop");
 		expect(desktop).toContain("Name=Genesis Block | Notion");
 		expect(desktop).toContain(
-			`Exec=sh -lc 'exec brave-origin --user-data-dir="$HOME/.config/brave-haoshoku/notion" --app=https://www.notion.so/'`,
+			`Exec=haoshoku-chromium-flux --app=https://www.notion.so/`,
 		);
 		expect(desktop).toContain("StartupWMClass=brave-www.notion.so__-Default");
 	});

@@ -271,13 +271,25 @@ Run `hyprctl reload` after editing it.
 
 `haoshoku --workspaces` also manages Netflix on PC and laptop: Meta+N replaces
 Editor and toggles `special:netflix` on the focused monitor, like Meta+Y/J/F.
-An existing Netflix window is reused. Netflix runs in its own Brave Origin
-profile, `~/.config/brave-haoshoku/netflix`, with `--disable-gpu`,
-`--no-first-run`, `--no-default-browser-check` and `--app=https://www.netflix.com/`.
-Other media apps keep the Flux profile and their existing GPU behavior.
+An existing Netflix window is reused. All managed browser and web-app launches,
+including WhatsApp, Notion, Netflix and legacy KDE browser shortcuts, share
+`~/.config/brave-haoshoku/flux`. The default `haoshoku-browser.desktop`
+dispatcher always selects Flux. Valid custom registries in `~/.haoshoku.json`
+are preserved, but secondary profile IDs cannot launch; Flux keeps its valid
+monitor setting with a fixed `chromium-flux` class and default. Existing profile
+directories, cookies and credentials are left untouched; nothing is imported.
+Use Brave Containers inside Flux for multiple accounts.
+
+Netflix still requests `--disable-gpu`, `--no-first-run`,
+`--no-default-browser-check` and `--app=https://www.netflix.com/`. GPU mode is
+shared by the browser process: if Flux is already running, Netflix cannot
+reliably override its startup mode. If Netflix starts Flux first, software
+rendering also affects other apps sharing that process until it exits.
+Haoshoku adds no GPU flags to other launchers and never restarts the browser;
+Netflix-only software rendering cannot be guaranteed with one profile.
 
 On first launch, choose **Proceed with Origin for free on Linux** if prompted,
-enable **Widevine** in `brave://settings/extensions` for that Netflix profile,
+enable **Widevine** in `brave://settings/extensions` in Flux,
 and sign in to Netflix. Login and DRM setup are manual; Haoshoku does not copy
 cookies or credentials, change browser acceleration preferences, or verify playback.
 

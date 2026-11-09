@@ -24,7 +24,12 @@ load_profiles() {
 			and ([.[].class] | unique | length) == length
 			and ([.[] | select(.default == true)] | length) <= 1;
 		if type == "object" and (.chromiumProfiles? | valid_registry)
-		then .chromiumProfiles else empty end
+		then
+			# Preserve old registries on disk; only Flux remains launchable.
+			[(.chromiumProfiles[] | select(.id == "flux"))
+			 | {id: "flux", class: "chromium-flux", monitor, default: true}]
+			| if length == 1 then . else empty end
+		else empty end
 	' "$config" 2>/dev/null; then
 		return
 	fi

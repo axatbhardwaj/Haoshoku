@@ -150,7 +150,7 @@ describe("Flux Brave Origin integration", () => {
 		expect(bindingsByChord.get("SUPER + SHIFT + ALT + G")).toEqual({
 			description: "WhatsApp",
 			command:
-				'omarchy-launch-or-focus "brave-web\\\\.whatsapp\\\\.com__-Default" "brave-origin --user-data-dir=$HOME/.config/brave-haoshoku/whatsapp --app=https://web.whatsapp.com/"',
+				'omarchy-launch-or-focus "brave-web\\\\.whatsapp\\\\.com__-Default" "haoshoku-chromium-flux --app=https://web.whatsapp.com/"',
 		});
 		expect(bindingsByChord.get("SUPER + SHIFT + ALT + X")?.command).toBe(
 			'omarchy-launch-webapp "https://x.com/compose/post"',
