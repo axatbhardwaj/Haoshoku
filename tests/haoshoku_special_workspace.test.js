@@ -813,12 +813,13 @@ fi
 	it.each([
 		"[]",
 		'[{"class":"brave-wwwXnetflixXcom__-Default"}]',
-	])("launches isolated Netflix once when its exact client is absent: %s", async (clients) => {
+	])("launches Netflix through Flux with its software-rendering request once when its exact client is absent: %s", async (clients) => {
 		const result = await run(["netflix"], { clients, focusedMonitor: "DP-2" });
 
 		expect(result.exitCode).toBe(0);
 		expect(await chromiumArguments()).toEqual([
-			`--user-data-dir=${directory}/.config/brave-haoshoku/netflix`,
+			`--user-data-dir=${directory}/.config/brave-haoshoku/flux`,
+			"--class=chromium-flux",
 			"--disable-gpu",
 			"--no-first-run",
 			"--no-default-browser-check",
@@ -1831,7 +1832,8 @@ printf 'steam\n' >> "$CALL_LOG"
 
 		expect(result.exitCode).toBe(0);
 		expect(await chromiumArguments()).toEqual([
-			`--user-data-dir=${directory}/.config/brave-haoshoku/notion`,
+			`--user-data-dir=${directory}/.config/brave-haoshoku/flux`,
+			"--class=chromium-flux",
 			"--app=https://www.notion.so/",
 		]);
 	});
@@ -1850,7 +1852,8 @@ printf 'steam\n' >> "$CALL_LOG"
 
 		expect(result.exitCode).toBe(0);
 		expect(await chromiumArguments()).toEqual([
-			`--user-data-dir=${directory}/.config/brave-haoshoku/notion`,
+			`--user-data-dir=${directory}/.config/brave-haoshoku/flux`,
+			"--class=chromium-flux",
 			"--app=https://www.notion.so/",
 		]);
 		expect(
@@ -1858,12 +1861,12 @@ printf 'steam\n' >> "$CALL_LOG"
 		).toHaveLength(1);
 	});
 
-	it("does not give missing Notion a Brave Origin class flag", async () => {
+	it("gives missing Notion the shared Flux singleton class", async () => {
 		const result = await run(["numbered", "10", "notion"]);
 
 		expect(result.exitCode).toBe(0);
 		const argv = await chromiumArguments();
-		expect(argv.some((argument) => argument.startsWith("--class"))).toBe(false);
+		expect(argv).toContain("--class=chromium-flux");
 	});
 
 	it("launches a missing WhatsApp once into the communication workspace", async () => {
@@ -1873,7 +1876,8 @@ printf 'steam\n' >> "$CALL_LOG"
 
 		expect(result.exitCode).toBe(0);
 		expect(await chromiumArguments()).toEqual([
-			`--user-data-dir=${directory}/.config/brave-haoshoku/whatsapp`,
+			`--user-data-dir=${directory}/.config/brave-haoshoku/flux`,
+			"--class=chromium-flux",
 			"--app=https://web.whatsapp.com/",
 		]);
 		expect(
@@ -1894,7 +1898,8 @@ printf 'steam\n' >> "$CALL_LOG"
 
 		expect(result.exitCode).toBe(0);
 		expect(await chromiumArguments()).toEqual([
-			`--user-data-dir=${directory}/.config/brave-haoshoku/whatsapp`,
+			`--user-data-dir=${directory}/.config/brave-haoshoku/flux`,
+			"--class=chromium-flux",
 			"--app=https://web.whatsapp.com/",
 		]);
 	});

@@ -113,7 +113,7 @@ hl.unbind("SUPER + SHIFT + ALT + G")
 o.bind(
   "SUPER + SHIFT + ALT + G",
   "WhatsApp",
-  "omarchy-launch-or-focus \"brave-web\\.whatsapp\\.com__-Default\" \"brave-origin --user-data-dir=$HOME/.config/brave-haoshoku/whatsapp --app=https://web.whatsapp.com/\""
+  "omarchy-launch-or-focus \"brave-web\\.whatsapp\\.com__-Default\" \"haoshoku-chromium-flux --app=https://web.whatsapp.com/\""
 )
 -- X Post is ACTION-shaped, not APP-shaped: Brave Origin freezes the derived
 -- app-id at window creation. After posting, X routes the window to /home, but
