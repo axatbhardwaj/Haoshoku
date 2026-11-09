@@ -12,6 +12,11 @@ if [[ -z "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
 	fi
 fi
 
+# KDE and other sessions use the same Flux profile without Hyprland dispatch.
+if [[ -z "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
+	exec haoshoku-chromium-flux "$@"
+fi
+
 profiles_helper="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/haoshoku-chromium-profiles"
 [[ -x "$profiles_helper" ]] || { echo "missing haoshoku-chromium-profiles helper" >&2; exit 1; }
 

@@ -40,6 +40,10 @@ printf '%s\\0' "$@" > "$ROUTER_CALL"
 		);
 		fs.chmodSync(hyprctl, 0o755);
 		fs.chmodSync(specialWorkspace, 0o755);
+		fs.copyFileSync(
+			specialWorkspace,
+			path.join(directory, "haoshoku-chromium-flux"),
+		);
 	});
 
 	afterEach(() => fs.rmSync(directory, { recursive: true, force: true }));
@@ -59,6 +63,7 @@ printf '%s\\0' "$@" > "$ROUTER_CALL"
 			...process.env,
 			HOME: directory,
 			HYPR_CLIENTS: clients,
+			HYPRLAND_INSTANCE_SIGNATURE: "fixture",
 			PATH: `${directory}:${process.env.PATH}`,
 			ROUTER_CALL: call,
 			...extraEnv,
@@ -348,6 +353,18 @@ printf '%s\\0' "$@" > "$ROUTER_CALL"
 			"flux",
 			"https://recovered.example/",
 		]);
+	});
+
+	it("launches Flux directly outside Hyprland, including KDE", async () => {
+		const urls = [
+			"https://example.test/one path",
+			"https://example.test/two?q=$HOME",
+		];
+		const result = await run("[]", urls, {
+			env: { HYPRLAND_INSTANCE_SIGNATURE: "", XDG_RUNTIME_DIR: directory },
+		});
+		expect(result.exitCode).toBe(0);
+		expect(forwardedArguments()).toEqual(urls);
 	});
 
 	// Mutation caught: accepting jq's partial stdout after a parse failure can send

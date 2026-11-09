@@ -52,9 +52,8 @@ describe("haoshoku-chromium-profiles", () => {
 			"flux",
 		]);
 		expect(
-			JSON.parse(
-				fs.readFileSync(path.join(home, ".haoshoku.json"), "utf8"),
-			).chromiumProfiles,
+			JSON.parse(fs.readFileSync(path.join(home, ".haoshoku.json"), "utf8"))
+				.chromiumProfiles,
 		).toEqual(chromiumProfiles);
 		expect(defaultProfile.exitCode).toBe(0);
 		expect(defaultProfile.stdout).toBe("flux\n");
@@ -88,10 +87,13 @@ describe("haoshoku-chromium-profiles", () => {
 	});
 
 	it("keeps the Flux monitor but fixes its identity and default", async () => {
-		const listed = await run(["list"], [
-			{ id: "flux", class: "custom-flux", monitor: "DP-2" },
-			{ id: "work", class: "chromium-work", monitor: "DP-1", default: true },
-		]);
+		const listed = await run(
+			["list"],
+			[
+				{ id: "flux", class: "custom-flux", monitor: "DP-2" },
+				{ id: "work", class: "chromium-work", monitor: "DP-1", default: true },
+			],
+		);
 		expect(listed.exitCode).toBe(0);
 		expect(JSON.parse(listed.stdout)).toEqual([
 			{ id: "flux", class: "chromium-flux", monitor: "DP-2", default: true },
