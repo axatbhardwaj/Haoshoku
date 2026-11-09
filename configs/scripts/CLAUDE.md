@@ -9,9 +9,9 @@ binary acts as a PATH-shadow wrapper for that binary.
 
 | File | What | When to read |
 | ---- | ---- | ------------ |
-| `haoshoku-browser` | Routes URLs to the most recently focused managed browser profile, falling back to the configured default. | Changing browser dispatch or focused-profile selection |
+| `haoshoku-browser` | Routes URLs to the single managed Flux browser profile. | Changing browser dispatch or focused-profile selection |
 | `haoshoku-chromium-flux` | Launches Brave Origin on the isolated Flux profile and preserves that profile through Omarchy web-app launch parsing. | Changing the Flux profile, wrapper name, or paired desktop entry |
-| `haoshoku-chromium-profiles` | Validates and queries the configured browser profile registry, with a portable Flux-only fallback. Multiple accounts use Brave Containers inside Flux; DeFi is retired. | Changing registry validation, defaults, or profile lookup |
+| `haoshoku-chromium-profiles` | Validates saved registries and exposes only Flux with a fixed class/default, retaining its valid monitor. Other entries remain on disk but cannot launch. | Changing registry validation, defaults, or profile lookup |
 | `haoshoku-claude-local` | Resumes the `claudeSessionName` from `~/.haoshoku.json` (validated) or falls back to a fresh `claude`; used by the Haki Ghostty/tmux split. | Changing the Haki Claude launch or session-name validation |
 | `haoshoku-default-browser` | Login-time repair that re-points `xdg-settings` and the http/https/html MIME handlers at `haoshoku-browser.desktop`. | Changing default-browser ownership or the repaired MIME set |
 | `haoshoku-gaming-workspace` | Toggles physical gaming slot 2 and wraps Steam launches to place process-tree windows there, lifting the kernel split-lock penalty for the launch's lifetime. | Changing gaming workspace focus, process matching, placement, or launch wrapping |
@@ -52,8 +52,8 @@ binary acts as a PATH-shadow wrapper for that binary.
   but browser workspaces normally follow the focused monitor instead of that
   value. It is used only as a fallback when Hyprland transiently reports no
   focused monitor.
-- A managed browser profile `.class` is effectively fixed, despite the registry
-  accepting any value. Every command that can start the Flux profile's
+- The runtime fixes Flux `.class` to `chromium-flux`, even if the saved registry
+  contains a custom class. Every command that can start the Flux profile's
   Brave Origin singleton owner must pass `--class=chromium-flux`; otherwise the
   owner stamps the default class onto later plain windows, the workspace class
   probe misses them, and each `Super+B` press opens another window.
@@ -81,9 +81,7 @@ binary acts as a PATH-shadow wrapper for that binary.
   `FALLBACK_PROFILES` in `configs/scripts/haoshoku-chromium-profiles` covers
   the no-registry case. `DEFAULT_CHROMIUM_PROFILES` in
   `src/helpers/configure_chromium_profiles.js` seeds the registry on first
-  run. They are not interchangeable. An already-seeded valid
-  `~/.haoshoku.json` is never migrated because `configureChromiumProfiles`
-  returns early with `{ changed: false }`. A class rename therefore needs an
-  explicit registry migration; changing either default alone does not affect
-  existing installs. Registry-emitted windowrules for custom `.class` values
-  were considered and deliberately deferred.
+  run. Existing valid custom registries remain on disk; runtime queries expose
+  only Flux, fixing its id, class and default while retaining a valid Flux monitor.
+  Missing or invalid Flux definitions fall back to the shipped entry. Secondary
+  IDs are rejected, including entries in a valid custom registry.

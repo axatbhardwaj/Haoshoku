@@ -39,9 +39,8 @@ describe("haoshoku-chromium-profiles", () => {
 		};
 	}
 
-	// Mutation caught: treating zero defaults as malformed loses custom profiles
-	// and does not expose the documented Flux fallback through the query API.
-	it("lists a valid zero-default registry and falls back to Flux", async () => {
+	// Custom registries stay on disk but cannot create a second managed profile.
+	it("exposes only Flux without rewriting a custom registry", async () => {
 		const chromiumProfiles = [
 			{ id: "research", class: "chromium-research", monitor: "DP-2" },
 		];
@@ -49,14 +48,20 @@ describe("haoshoku-chromium-profiles", () => {
 		const defaultProfile = await run(["default"], chromiumProfiles);
 
 		expect(listed.exitCode).toBe(0);
-		expect(JSON.parse(listed.stdout)).toEqual(chromiumProfiles);
+		expect(JSON.parse(listed.stdout).map((profile) => profile.id)).toEqual([
+			"flux",
+		]);
+		expect(
+			JSON.parse(
+				fs.readFileSync(path.join(home, ".haoshoku.json"), "utf8"),
+			).chromiumProfiles,
+		).toEqual(chromiumProfiles);
 		expect(defaultProfile.exitCode).toBe(0);
 		expect(defaultProfile.stdout).toBe("flux\n");
 	});
 
-	// Mutation caught: the Flux alias resolving only against a custom list
-	// becomes unknown, while the retired DeFi profile must no longer resolve.
-	it("returns configured entries, the shipped Flux alias, and no DeFi", async () => {
+	// Neither old custom IDs nor DeFi may launch another data directory.
+	it("rejects configured secondary IDs while retaining the Flux alias", async () => {
 		const chromiumProfiles = [
 			{
 				id: "research",
@@ -69,8 +74,8 @@ describe("haoshoku-chromium-profiles", () => {
 		const flux = await run(["get", "flux"], chromiumProfiles);
 		const defi = await run(["get", "defi"], chromiumProfiles);
 
-		expect(configured.exitCode).toBe(0);
-		expect(JSON.parse(configured.stdout)).toEqual(chromiumProfiles[0]);
+		expect(configured.exitCode).toBe(1);
+		expect(configured.stdout).toBe("");
 		expect(flux.exitCode).toBe(0);
 		expect(JSON.parse(flux.stdout)).toEqual({
 			id: "flux",
@@ -80,6 +85,17 @@ describe("haoshoku-chromium-profiles", () => {
 		});
 		expect(defi.exitCode).toBe(1);
 		expect(defi.stdout).toBe("");
+	});
+
+	it("keeps the Flux monitor but fixes its identity and default", async () => {
+		const listed = await run(["list"], [
+			{ id: "flux", class: "custom-flux", monitor: "DP-2" },
+			{ id: "work", class: "chromium-work", monitor: "DP-1", default: true },
+		]);
+		expect(listed.exitCode).toBe(0);
+		expect(JSON.parse(listed.stdout)).toEqual([
+			{ id: "flux", class: "chromium-flux", monitor: "DP-2", default: true },
+		]);
 	});
 
 	it("rejects multiple defaults by returning the shipped registry", async () => {

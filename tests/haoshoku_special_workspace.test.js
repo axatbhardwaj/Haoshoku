@@ -1580,9 +1580,8 @@ printf 'steam\n' >> "$CALL_LOG"
 		expect(fs.existsSync(browserCall)).toBe(false);
 	});
 
-	// Mutation caught: hard-coding the Flux recipe branch rejects a valid
-	// future profile instead of deriving its workspace and Brave Origin argv safely.
-	it("opens a registered third profile through the generic browser command", async () => {
+	// A preserved custom registry must not allow a second managed directory.
+	it("rejects a registered secondary profile through the generic browser command", async () => {
 		const chromiumProfiles = [
 			{
 				id: "flux",
@@ -1601,16 +1600,9 @@ printf 'steam\n' >> "$CALL_LOG"
 			{ chromiumProfiles },
 		);
 
-		expect(result.exitCode).toBe(0);
-		expect(await chromiumArguments()).toEqual([
-			`--user-data-dir=${directory}/.config/brave-haoshoku/research`,
-			"--class=chromium-research",
-			"https://research.example/brief",
-		]);
-		expect(fs.readFileSync(log, "utf8")).toContain(
-			"dispatch focusmonitor DP-1",
-		);
-		expect(fs.readFileSync(specialState, "utf8")).toBe("browser-research");
+		expect(result.exitCode).toBe(2);
+		expect(result.stderr).toContain("unknown browser profile: research");
+		expect(fs.existsSync(browserCall)).toBe(false);
 	});
 
 	// Mutation caught: accepting an ID that is absent from the validated registry
@@ -1661,7 +1653,7 @@ printf 'steam\n' >> "$CALL_LOG"
 		}
 	});
 
-	it("honors configured definitions for legacy browser aliases", async () => {
+	it("fixes the Flux class despite a legacy custom class", async () => {
 		const result = await run(["browser-flux"], {
 			chromiumProfiles: [
 				{
@@ -1676,7 +1668,7 @@ printf 'steam\n' >> "$CALL_LOG"
 		expect(result.exitCode).toBe(0);
 		expect(await chromiumArguments()).toEqual([
 			`--user-data-dir=${directory}/.config/brave-haoshoku/flux`,
-			"--class=chromium-research",
+			"--class=chromium-flux",
 		]);
 		expect(fs.readFileSync(log, "utf8")).toContain(
 			"dispatch focusmonitor DP-1",
