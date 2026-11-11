@@ -146,6 +146,17 @@ agent-launch authority.
   and tell me why.
 - When I correct the same thing twice, write it here as one rule that day.
 
+## Waiting on workers (set 2026-11-11)
+
+- Never end a turn waiting on a worker with no wake path. `delegate_task`
+  children notify you on completion; `t3_thread_launch` and cross-host
+  threads do not.
+- For a worker with no callback, call `t3_thread_wait` before ending the
+  turn. If it times out, `schedule_task` a one-shot check bound to your own
+  thread (about 20 min) before you stop.
+- On any wake-up, read your workers' latest runs first and consume finished
+  results before acting on the event that woke you.
+
 ## Holds
 
 When a run you drive parks on my decision or hits a serious risk, state the
