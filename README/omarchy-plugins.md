@@ -35,9 +35,35 @@ disabled on first install. To remove it, run
 plugin and bar layout; for a lasting change, also remove its manifest entry and
 restore `omarchy.audio` in `configs/omarchy/bar.json`.
 
-The manifest includes the Speech Orb dictation HUD. Setup turns off voxtype's
-own OSD (`voxtype config set osd.enabled false`) and restarts a running
-`voxtype.service`, so only the orb appears while you dictate.
+Superwhisper is the desktop dictation backend on io (`pc`) and iobook
+(`laptop`). Setup uses `omarchy-install-dictation-superwhisper --background`
+only when Superwhisper is absent. Existing installs keep their models and
+preferences; setup enables `superwhisper.service`, selects the backend with
+`omarchy-dictation-use superwhisper`, and sets only its native hold shortcut
+to `none` to avoid a duplicate F9 action.
+
+Haoshoku deploys `configs/omarchy/haoshoku/dictation.lua` to
+`~/.config/hypr/haoshoku/dictation.lua` and loads it after personal bindings
+from `~/.config/hypr/hyprland.lua`. The module replaces any existing F9 pair
+with one generic `omarchy-dictation start` on hold and `omarchy-dictation stop`
+on release (transcribe and paste). Personal `~/.config/hypr/bindings.lua` stays
+intact; changed managed files and the main Lua config receive backups.
+An active Hyprland session reloads; otherwise the binding takes effect at login.
+
+Speech Orb is retired from the manifest and managed bar. The dictation helper
+also disables an installed, enabled orb through
+`omarchy plugin disable io.github.nodrej.speech-orb`, and disables/stops a loaded
+`voxtype.service` without removing its package, configs or downloaded models.
+This retirement runs on engineering workers too, but iobox, iosatellite,
+unknown hosts and Debian/VPS never receive the desktop backend or F9 module.
+T3 voice settings and models remain independent and unchanged.
+
+For a focused migration, call `configureOmarchyDictation()` from
+`src/helpers/configure_omarchy_dictation.js` in the target user's Omarchy session;
+check its `ok` result. It needs the user's graphical-session environment for
+native plugin IPC and Superwhisper. Do not rerun an entire profile just for
+speech migration. Validate microphone recording, transcription and paste in a
+real app separately; automated fixtures do not establish end-to-end audio.
 
 These plugins run as arbitrary, unsandboxed code inside the long-lived
 omarchy-shell process — the same risk Omarchy's own CLI warns about when

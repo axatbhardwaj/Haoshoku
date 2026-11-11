@@ -4,6 +4,9 @@ Haoshoku owns the behavior overlays in `haoshoku/*.lua`. Omarchy 4 loads these
 modules through explicit `require()` calls after its defaults; do not reintroduce
 Omarchy 3 `source =` lines in `hyprland.conf`. The require wiring is maintained by
 the Omarchy workspace configurator, not by the overlay modules themselves.
+The dictation helper separately deploys `haoshoku/dictation.lua` and appends its
+require after personal bindings on io/iobook only. It reclaims unmodified F9
+with one generic start/stop hold pair; Superwhisper native hold stays `none`.
 
 Omarchy remains the owner of applying appearance and core defaults.
 `appearance.json` may select a public theme revision, a background within that

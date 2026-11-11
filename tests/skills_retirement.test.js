@@ -294,7 +294,7 @@ describe("selected integration retirement", () => {
 						configureTailscaleT3Impl: record("t3"),
 						configureBraveManagedPoliciesImpl: noop, configureHyprmoncfgImpl: noop,
 						configureOmarchyWorkspacesImpl: noop, configureOmarchyPluginsImpl: noop,
-						configureVoxtypeOsdImpl: noop, configureKdeConnectCommandsImpl: noop,
+						configureOmarchyDictationImpl: noop, configureKdeConnectCommandsImpl: noop,
 						configureOmarchyBarImpl: noop, configureOmazedImpl: noop, configureOmarchyAppearanceImpl: noop,
 						configureUserAppsImpl: (options) => configureUserApps({
         syncWorktreeCleanupImpl: async () => {}, ...options,

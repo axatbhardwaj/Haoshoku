@@ -512,7 +512,6 @@ it("places every manifest bar widget in the shipped bar layout", () => {
 		"io.github.nag3sy.feishin",
 		"io.github.woogy7.vitals",
 		"aislandener.galaxy-buds",
-		"io.github.nodrej.speech-orb",
 		"ssupt.audio-control",
 	]);
 	const manifestIds = new Set(
@@ -602,4 +601,22 @@ it("ships stock workspaces, world clock and selected controls in the native tray
 	expect(rightIds).not.toContain("crmne.hyprmoncfg");
 	expect(rightIds).not.toContain("omarchy.monitor");
 	expect(rightIds).not.toContain("white.nights");
+});
+
+it("removes Speech Orb from the deployed managed bar while preserving unrelated shell state", async () => {
+	const fixture = makeFixture({
+		shell: {
+			version: 1,
+			idle: { enabled: false },
+			bar: { layout: { center: [{ id: "io.github.nodrej.speech-orb" }] } },
+		},
+	});
+	expect((await configureOmarchyBar(fixture.opts)).status).toBe("configured");
+	const deployed = JSON.parse(fs.readFileSync(fixture.liveShellPath, "utf8"));
+	expect(
+		Object.values(deployed.bar.layout)
+			.flat()
+			.some(({ id }) => id === "io.github.nodrej.speech-orb"),
+	).toBe(false);
+	expect(deployed.idle).toEqual({ enabled: false });
 });

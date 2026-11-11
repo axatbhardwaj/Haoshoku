@@ -22,6 +22,7 @@ const allowedReasons = new Set([
 const overlaySources = new Map(
 	[
 		"configs/omarchy/haoshoku/bindings.lua",
+		"configs/omarchy/haoshoku/dictation.lua",
 		"configs/omarchy/haoshoku/workspaces-pc.lua",
 		"configs/omarchy/haoshoku/workspaces-io.lua",
 		"configs/omarchy/haoshoku/workspaces-laptop.lua",
@@ -54,7 +55,7 @@ function canonicalLuaChord(chord) {
 
 function sourceBindingIndex(source, chord) {
 	return (
-		[...source.matchAll(/o\.bind\(\s*"([^"]+)"/g)].find(
+		[...source.matchAll(/o\.bind(?:_hold)?\(\s*"([^"]+)"/g)].find(
 			([, boundChord]) =>
 				canonicalLuaChord(boundChord) === canonicalLuaChord(chord),
 		)?.index ?? -1
@@ -93,6 +94,7 @@ describe("Omarchy keybinding swaps", () => {
 	it("routes every registry entry to a shipped Lua overlay", () => {
 		const allowed = new Set([
 			"configs/omarchy/haoshoku/bindings.lua",
+			"configs/omarchy/haoshoku/dictation.lua",
 			"configs/omarchy/haoshoku/workspaces-pc.lua",
 			"configs/omarchy/haoshoku/workspaces-io.lua",
 			"configs/omarchy/haoshoku/workspaces-laptop.lua",

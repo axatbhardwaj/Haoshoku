@@ -69,7 +69,7 @@ describe("bounded T3 package hold in full Arch setup", () => {
 				configureHyprmoncfgImpl: noop,
 				configureOmarchyWorkspacesImpl: async () => events.push("workspaces"),
 				configureOmarchyPluginsImpl: noop,
-				configureVoxtypeOsdImpl: noop,
+				configureOmarchyDictationImpl: noop,
 				configureKdeConnectCommandsImpl: noop,
 				configureOmarchyBarImpl: noop,
 				configureOmazedImpl: noop,
