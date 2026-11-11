@@ -526,9 +526,7 @@ export async function runCachyOSSetup({
 			log.warning(`${message} — continuing setup.`);
 		}
 		try {
-			const result = await configureOmarchyDictation({ deviceType });
-			if (result?.ok === false)
-				log.warning(`Dictation setup incomplete: ${result.message}`);
+			await configureOmarchyDictation({ deviceType });
 		} catch (err) {
 			log.warning(
 				`Dictation setup failed (${err?.message ?? err}) — continuing setup.`,

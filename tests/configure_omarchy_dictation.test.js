@@ -2,6 +2,8 @@ import { afterEach, expect, it } from "bun:test";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { log } from "../src/common/utils.js";
+import { runCachyOSSetup } from "../src/os_scripts/cachyos.js";
 import { configureOmarchyDictation } from "../src/helpers/configure_omarchy_dictation.js";
 
 const homes = [];
@@ -15,6 +17,8 @@ function fixture({
 	deviceType = "pc",
 	fail,
 	plugins,
+	serviceState = "loaded",
+	serviceExitCode = 0,
 } = {}) {
 	const home = fs.mkdtempSync(path.join(os.tmpdir(), "dictation-"));
 	homes.push(home);
@@ -49,7 +53,7 @@ function fixture({
 				if (command === "omarchy version")
 					return { exitCode: 0, stdout: "Omarchy 4.5.0\n" };
 				if (command.startsWith("systemctl"))
-					return { exitCode: 0, stdout: "loaded\n" };
+					return { exitCode: serviceExitCode, stdout: `${serviceState}\n` };
 				if (command === "omarchy plugin list --json")
 					return {
 						exitCode: 0,
@@ -210,3 +214,97 @@ assert(#releases == 1 and releases[1] == "omarchy-dictation stop")
 		expect(result.exitCode).toBe(0);
 	},
 );
+
+it.each([
+	"masked",
+	"not-found",
+])("continues desktop migration with an already-retired %s Voxtype unit", async (serviceState) => {
+	const { options, commands, home } = fixture({ serviceState });
+	expect(await configureOmarchyDictation(options)).toEqual({
+		ok: true,
+		desktop: true,
+	});
+	expect(commands).toContain(
+		"omarchy-install-dictation-superwhisper --background",
+	);
+	expect(commands).toContain("omarchy-dictation-use superwhisper");
+	expect(
+		commands.filter((command) => command.includes("voxtype.service")),
+	).toEqual([
+		"systemctl --user show voxtype.service --property=LoadState --value",
+	]);
+	expect(
+		fs.readFileSync(path.join(home, ".config/hypr/hyprland.lua"), "utf8"),
+	).toContain('require("hypr.haoshoku.dictation")');
+	expect(
+		fs.existsSync(path.join(home, ".config/hypr/haoshoku/dictation.lua")),
+	).toBe(true);
+});
+
+it.each([
+	["error", 0],
+	["bad-setting", 0],
+	["unknown", 0],
+	["", 0],
+	["", 1],
+])("refuses ambiguous Voxtype state %j (exit %s) before any mutation", async (serviceState, serviceExitCode) => {
+	const { options, commands, home } = fixture({
+		serviceState,
+		serviceExitCode,
+	});
+	expect(await configureOmarchyDictation(options)).toEqual({
+		ok: false,
+		message: "Could not determine voxtype.service state; retirement deferred.",
+	});
+	expect(commands).toEqual([
+		"systemctl --user show voxtype.service --property=LoadState --value",
+	]);
+	expect(
+		fs.readFileSync(path.join(home, ".config/hypr/hyprland.lua"), "utf8"),
+	).toBe('require("hypr.bindings")\n');
+});
+
+it("reports a retirement failure once while completing worker setup", async () => {
+	const { options } = fixture({ serviceState: "error" });
+	const warnings = [];
+	let stopped = false;
+	const originalWarning = log.warning;
+	log.warning = (message) => warnings.push(message);
+	const noop = async () => {};
+	try {
+		const result = await runCachyOSSetup({
+			readDeviceTypeImpl: () => "iobox",
+			promptDeviceTypeImpl: noop,
+			startSudoSessionImpl: async () => () => {
+				stopped = true;
+			},
+			commandExistsImpl: async () => false,
+			prepareArchPackageManagerImpl: async () => true,
+			ensureRustToolchainImpl: noop,
+			ensureAurHelperImpl: async () => "paru",
+			installDevToolsImpl: noop,
+			installSystemPackagesImpl: noop,
+			installFlatpakAppsImpl: noop,
+			configureUserAppsImpl: noop,
+			configureTailscaleT3Impl: async () => true,
+			configureFleetSshImpl: async () => true,
+			configureBraveManagedPoliciesImpl: noop,
+			configureHyprmoncfgImpl: noop,
+			configureOmarchyWorkspacesImpl: noop,
+			configureOmarchyPluginsImpl: noop,
+			configureOmarchyDictationImpl: ({ deviceType }) =>
+				configureOmarchyDictation({ ...options, deviceType }),
+			configureKdeConnectCommandsImpl: noop,
+			configureOmarchyBarImpl: noop,
+			configureOmazedImpl: noop,
+			configureOmarchyAppearanceImpl: noop,
+		});
+		expect(result).toBe(true);
+		expect(stopped).toBe(true);
+		expect(warnings).toEqual([
+			"Could not determine voxtype.service state; retirement deferred.",
+		]);
+	} finally {
+		log.warning = originalWarning;
+	}
+});

@@ -50,7 +50,7 @@ export async function configureOmarchyDictation({
 			const state = service.stdout.trim();
 			if (state === "loaded")
 				await run("systemctl --user disable --now voxtype.service");
-			else if (state !== "not-found")
+			else if (state !== "not-found" && state !== "masked")
 				throw new Error(
 					"Could not determine voxtype.service state; retirement deferred.",
 				);
