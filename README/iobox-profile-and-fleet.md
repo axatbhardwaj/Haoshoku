@@ -15,10 +15,12 @@ fleet host and act there. Accepted risk: one compromised agent reaches every hos
 Tailscale, Claude/Codex dependencies, Git/gh and 1Password desktop plus `op` CLI.
 It keeps Axstack, gh-stack, shared agent instructions, user scripts and Omarchy
 appearance. It skips Flatpaks, gaming/Steam, uosc/MPV, the Bluetooth prompt,
-Brave/Chromium profiles, KDE Connect, voxtype, bar/plugins, workspaces,
+Brave/Chromium profiles, KDE Connect, desktop speech installation, bar/plugins, workspaces,
 hyprmoncfg and audio. Standalone `--workspaces`, `--monitors`,
 `--hyprmoncfg-backup`, `--audio` and `--audio-backup` refuse both worker profiles. Reruns keep
 previously installed apps; switching profiles does not uninstall anything.
+Voxtype service and Speech Orb retirement still run on both worker profiles,
+without installing Superwhisper or deploying desktop dictation bindings.
 
 The Arch T3 step enables and verifies user linger. On both worker profiles it also masks and
 verifies `sleep.target`, `suspend.target`, `hibernate.target`,

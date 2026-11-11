@@ -53,7 +53,7 @@ describe("Arch daily disk cleanup", () => {
 				configureHyprmoncfgImpl: noop,
 				configureOmarchyWorkspacesImpl: noop,
 				configureOmarchyPluginsImpl: noop,
-				configureVoxtypeOsdImpl: noop,
+				configureOmarchyDictationImpl: noop,
 				configureKdeConnectCommandsImpl: noop,
 				configureOmarchyBarImpl: noop,
 				configureOmazedImpl: noop,

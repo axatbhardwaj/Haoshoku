@@ -476,6 +476,15 @@
 			"moved_from_dispatcher": "o.workspaces.move_window",
 			"moved_from_arg": "10, false",
 			"reason": "deleted_by_user"
+		},
+		{
+			"config_file": "configs/omarchy/haoshoku/dictation.lua",
+			"key_combination_taken": ", F9",
+			"hl_unbind": "hl.unbind(\"F9\")",
+			"previous_binding": "Personal F9 hold: omarchy-dictation start / stop",
+			"moved_from_dispatcher": "exec",
+			"moved_from_arg": "omarchy-dictation start / stop",
+			"reason": "reclaimed_by_overlay"
 		}
 	]
 }

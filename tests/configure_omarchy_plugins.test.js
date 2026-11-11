@@ -397,7 +397,7 @@ describe("Omarchy plugin installer", () => {
 		]);
 	});
 
-	it("ships a manifest on disk with exactly the 9 expected plugins", () => {
+	it("ships a manifest on disk with exactly the 8 expected plugins", () => {
 		const EXPECTED_PLUGINS = [
 			{
 				id: "crmne.hyprmoncfg",
@@ -436,11 +436,6 @@ describe("Omarchy plugin installer", () => {
 				manualAuth: null,
 			},
 			{
-				id: "io.github.nodrej.speech-orb",
-				url: "https://github.com/nodrej/omarchy-speech-orb.git",
-				manualAuth: null,
-			},
-			{
 				id: "ssupt.audio-control",
 				url: "https://github.com/ssupt/omarchy-audio-control.git",
 				manualAuth: null,
@@ -459,4 +454,19 @@ describe("Omarchy plugin installer", () => {
 		const ids = onDisk.map((plugin) => plugin.id);
 		expect(new Set(ids).size).toBe(ids.length);
 	});
+});
+
+it("never installs or re-enables Speech Orb from the managed manifest", async () => {
+	const { calls, runner } = makeRunner({
+		installedJsonBody: installedJson([]),
+	});
+	const { logImpl } = makeLog();
+	const result = await configureOmarchyPlugins({
+		runCommandImpl: runner,
+		logImpl,
+	});
+	expect(result.installed).toContain("ssupt.audio-control");
+	expect(calls.some((argv) => argv.some((arg) => /speech-orb/.test(arg)))).toBe(
+		false,
+	);
 });

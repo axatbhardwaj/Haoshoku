@@ -33,7 +33,7 @@ import { configureOmarchyBar } from "../helpers/configure_omarchy_bar.js";
 import { configureOmarchyPlugins } from "../helpers/configure_omarchy_plugins.js";
 import { configureOmarchyWorkspaces } from "../helpers/configure_omarchy_workspaces.js";
 import { configureOmazed } from "../helpers/configure_omazed.js";
-import { configureVoxtypeOsd } from "../helpers/configure_voxtype_osd.js";
+import { configureOmarchyDictation } from "../helpers/configure_omarchy_dictation.js";
 import { configureTailscaleT3 } from "../helpers/configure_tailscale_t3.js";
 import { configureFleetSsh } from "../helpers/configure_fleet_ssh.js";
 import { installUserScripts } from "../helpers/install_user_scripts.js";
@@ -448,7 +448,7 @@ export async function runCachyOSSetup({
 	configureHyprmoncfgImpl = configureHyprmoncfg,
 	configureOmarchyWorkspacesImpl = configureOmarchyWorkspaces,
 	configureOmarchyPluginsImpl = configureOmarchyPlugins,
-	configureVoxtypeOsdImpl = configureVoxtypeOsd,
+	configureOmarchyDictationImpl = configureOmarchyDictation,
 	configureKdeConnectCommandsImpl = configureKdeConnectCommands,
 	configureOmarchyBarImpl = configureOmarchyBar,
 	configureOmazedImpl = configureOmazed,
@@ -459,7 +459,7 @@ export async function runCachyOSSetup({
 	const configureHyprmoncfg = configureHyprmoncfgImpl;
 	const configureOmarchyWorkspaces = configureOmarchyWorkspacesImpl;
 	const configureOmarchyPlugins = configureOmarchyPluginsImpl;
-	const configureVoxtypeOsd = configureVoxtypeOsdImpl;
+	const configureOmarchyDictation = configureOmarchyDictationImpl;
 	const configureKdeConnectCommands = configureKdeConnectCommandsImpl;
 	const configureOmarchyBar = configureOmarchyBarImpl;
 	const configureOmazed = configureOmazedImpl;
@@ -525,6 +525,13 @@ export async function runCachyOSSetup({
 			}
 			log.warning(`${message} — continuing setup.`);
 		}
+		try {
+			await configureOmarchyDictation({ deviceType });
+		} catch (err) {
+			log.warning(
+				`Dictation setup failed (${err?.message ?? err}) — continuing setup.`,
+			);
+		}
 		if (isOmarchy && !isWorker) {
 			try {
 				await configureBraveManagedPolicies({ nonInteractiveSudo: true });
@@ -552,13 +559,6 @@ export async function runCachyOSSetup({
 			} catch (err) {
 				log.warning(
 					`Omarchy plugin configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
-				);
-			}
-			try {
-				await configureVoxtypeOsd();
-			} catch (err) {
-				log.warning(
-					`voxtype OSD configuration failed (${err?.message ?? err}) — continuing with remaining Omarchy setup.`,
 				);
 			}
 			try {

@@ -12,6 +12,10 @@ const overlayPaths = [
 	path.join(overlayDirectory, "workspaces-laptop.lua"),
 	path.join(overlayDirectory, "workspaces-io.lua"),
 ];
+const allOverlayPaths = [
+	...overlayPaths,
+	path.join(overlayDirectory, "dictation.lua"),
+];
 const swapsPath = path.join(
 	repoRoot,
 	"configs",
@@ -26,8 +30,8 @@ const specialWorkspacePath = path.join(
 );
 const omarchyDefaultHyprDirectory = "/usr/share/omarchy/default/hypr";
 
-function readExistingOverlays() {
-	return overlayPaths.flatMap((file) =>
+function readExistingOverlays(paths = overlayPaths) {
+	return paths.flatMap((file) =>
 		fs.existsSync(file)
 			? [{ file, source: fs.readFileSync(file, "utf8") }]
 			: [],
@@ -245,7 +249,13 @@ describe("Omarchy v4 Lua overlay", () => {
 		() => {
 			const overlayUnbinds = fs
 				.readdirSync(overlayDirectory, { withFileTypes: true })
-				.filter((entry) => entry.isFile() && entry.name.endsWith(".lua"))
+				// Dictation reclaims personal F9, not an Omarchy stock shortcut.
+				.filter(
+					(entry) =>
+						entry.isFile() &&
+						entry.name.endsWith(".lua") &&
+						entry.name !== "dictation.lua",
+				)
 				.flatMap((entry) => {
 					const source = fs
 						.readFileSync(path.join(overlayDirectory, entry.name), "utf8")
@@ -385,12 +395,12 @@ describe("Omarchy v4 Lua overlay", () => {
 	});
 
 	it("links every distinct Lua unbind to exactly one registry entry in both directions", () => {
-		const missingLuaFiles = overlayPaths
+		const missingLuaFiles = allOverlayPaths
 			.filter((file) => !fs.existsSync(file))
 			.map((file) => path.relative(repoRoot, file));
 		const luaUnbinds = [
 			...new Set(
-				readExistingOverlays().flatMap(({ source }) =>
+				readExistingOverlays(allOverlayPaths).flatMap(({ source }) =>
 					unbindCalls(source).map(canonicalUnbindCall),
 				),
 			),
@@ -440,7 +450,7 @@ describe("Omarchy v4 Lua overlay", () => {
 	});
 
 	it("parses every overlay with the strongest available Lua syntax checker", () => {
-		const results = overlayPaths.map((file) => {
+		const results = allOverlayPaths.map((file) => {
 			if (!fs.existsSync(file)) {
 				return {
 					file: path.relative(repoRoot, file),
@@ -456,7 +466,7 @@ describe("Omarchy v4 Lua overlay", () => {
 		});
 
 		expect(results).toEqual(
-			overlayPaths.map((file) => ({
+			allOverlayPaths.map((file) => ({
 				file: path.relative(repoRoot, file),
 				tool: Bun.which("luac")
 					? "luac -p"
