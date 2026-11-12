@@ -59,7 +59,17 @@ Android and desktop.
 ## Orchestration
 
 Use the main Thread as an Orchestrator and use special subthreads/childthreads 
-as drivers for specific tasks , such as research using relevant skill , for creating an explainer , for doing a POC 
+as drivers for specific tasks , 
+
+such as 
+- research using relevant skill  
+- creating an explainer
+- implementation 
+
+axstack skills will spawn subagents on it's own in the driver(child threads)
+this is an intended beahviour to manage context and keep things high signal
+
+use the threads as consultants if you want to do something which aligns with it use the same thread again
 
 Every subagent, delegated worker, reviewer, or cross-harness dispatch (Claude,
 Codex, or any other agent) goes through T3 Code orchestration (the `t3-code`
