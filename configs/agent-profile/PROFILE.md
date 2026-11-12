@@ -16,12 +16,15 @@ Preferences:
   unless I explicitly ask.
 - Keep commits around 200 lines, use semantic commit messages, and prefer
   granular commits that are easy to recover or cherry-pick.
+- single commit should have a single file do not bundle multiple files in single commit
 - Never request a review from a whole team. Request review only from the
   one specific person I name: no GitHub team reviewers (`org/team`), no
   bulk requests or re-requests to every collaborator. If a
   PR needs a human reviewer and I haven't named one, ask me who. Mass
   requests waste teammates' time and tokens (they end up reviewing PRs
   that are already reviewed or merged).
+- If there is a skill from axstack use of it preferred , 
+  like publishing skill for publishing anything over native artifact/site from claude/codex respectively
 
 Platform: agents run on T3 Code; I drive them from the T3 app on
 Android and desktop.
@@ -56,11 +59,25 @@ Android and desktop.
 
 ## Orchestration
 
+Use the main Thread as an Orchestrator and use special subthreads/childthreads 
+as drivers for specific tasks , 
+
+such as 
+- research using relevant skill  
+- creating an explainer
+- implementation 
+
+axstack skills will spawn subagents on it's own in the driver(child threads)
+this is an intended beahviour to manage context and keep things high signal
+
+use the threads as consultants if you want to do something which aligns with it use the same thread again
+
 Every subagent, delegated worker, reviewer, or cross-harness dispatch (Claude,
 Codex, or any other agent) goes through T3 Code orchestration (the `t3-code`
 MCP: `delegate_task`, `t3_thread_launch`, schedules) so all agent work is
 visible and tracked in T3. The driver is a T3 thread. Do not use a harness's
 native subagent tools (Claude Agent tool, Codex spawn, etc.) for delegated work.
+
 
 ## Browser and device testing
 
@@ -83,7 +100,7 @@ does not authorize extra accounts, signatures, spending or recovery actions.
 ## axnet
 
 The fleet is io (PC), iobook (laptop), iobox (always-on agent box running
-T3 Code), iosatellite (Omarchy engineering worker, Dell Inspiron 7570),
+T3 Code), iosatellite (Testing machine, Dell Inspiron 7570),
 and axat-vps (Debian VPS running Executor and Hermes). Access is
 Tailscale-only: use MagicDNS short names, for example `ssh iobox` or
 `ssh axat-vps` or `ssh iosatellite`. Hosts SSH to each other by short name using Tailscale SSH
@@ -95,6 +112,7 @@ Roles:
 - iobook and my phone = access points (keep me informed and let me steer; no real work).
 - iobox, iosatellite and axat-vps = workers (do the work locally and never hand work to another host).
   Subagents and reviewers via T3 on the same host are fine.
+- iosatellite = Test device run all the playwright tests there or any kind of testing there of the final feture , PR work e.t.c 
 
 Agents may SSH to any fleet host and act there. Accepted risk: one compromised
 agent can reach every fleet host. On iobox, use the 1Password `op` CLI with the
