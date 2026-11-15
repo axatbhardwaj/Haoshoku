@@ -4,6 +4,7 @@ import fs from "node:fs";
 import { hostname } from "node:os";
 import path from "node:path";
 import { PROJECT_ROOT } from "../common/paths.js";
+import { editRuleFile as edit, patchRule as patch } from "./agent_rule_file.js";
 
 const OLD =
 	"- When I correct the same thing twice, write it here as one rule that day.";
@@ -15,75 +16,6 @@ const revision = () =>
 		cwd: PROJECT_ROOT,
 		encoding: "utf8",
 	}).trim();
-
-// Latin-1 offsets are byte offsets, including for non-UTF-8 neighbouring bytes.
-function patch(bytes, from, to) {
-	let managed = false;
-	let offset = 0;
-	const matches = [];
-	for (const line of bytes.toString("latin1").split("\n")) {
-		const plain = line.replace(/\r$/, "");
-		if (plain.includes("<!-- axstack:begin")) {
-			if (managed) throw new Error("Ambiguous Axstack markers");
-			managed = true;
-		}
-		if (!managed) {
-			if (plain === from) matches.push(offset);
-			if (plain === to) throw new Error("Replacement rule already present");
-		}
-		if (plain.includes("<!-- axstack:end -->")) {
-			if (!managed) throw new Error("Unpaired Axstack marker");
-			managed = false;
-		}
-		offset += line.length + 1;
-	}
-	if (managed || matches.length !== 1)
-		throw new Error("Expected exactly one matching rule outside Axstack block");
-	return Buffer.concat([
-		bytes.subarray(0, matches[0]),
-		Buffer.from(to),
-		bytes.subarray(matches[0] + from.length),
-	]);
-}
-
-function edit(file, expectedHash, from, to, guard) {
-	const fd = fs.openSync(file, fs.constants.O_RDWR | fs.constants.O_NOFOLLOW);
-	try {
-		const stat = fs.fstatSync(fd);
-		if (!stat.isFile()) throw new Error("Destination is not a regular file");
-		const current = fs.readFileSync(fd);
-		if (expectedHash && hash(current) !== expectedHash)
-			throw new Error("Destination differs from reviewed before-state");
-		const next = patch(current, from, to);
-		guard();
-		const live = fs.lstatSync(file);
-		if (
-			live.ino !== stat.ino ||
-			live.dev !== stat.dev ||
-			!fs.readFileSync(file).equals(current)
-		)
-			throw new Error("Destination changed immediately before write");
-		let written = 0;
-		while (written < next.length) {
-			const count = fs.writeSync(
-				fd,
-				next,
-				written,
-				next.length - written,
-				written,
-			);
-			if (!count) throw new Error("Destination write made no progress");
-			written += count;
-		}
-		fs.ftruncateSync(fd, next.length);
-		fs.fsyncSync(fd);
-		if (!fs.readFileSync(file).equals(next))
-			throw new Error("Destination readback mismatch; inspect before retrying");
-		return hash(next);
-	} finally {
-		fs.closeSync(fd);
-	}
-}
 
 /** Local, explicitly scoped plan/deploy/rollback; never calls full profile sync. */
 export function runAgentRulePatch({ mode, evidenceDir, source, destinations }) {
@@ -100,7 +32,16 @@ export function runAgentRulePatch({ mode, evidenceDir, source, destinations }) {
 	)
 		throw new Error("Evidence directory must be owned and mode 0700");
 	const lock = path.join(evidenceDir, "lock");
-	const lockFd = fs.openSync(lock, "wx", 0o600);
+	let lockFd;
+	try {
+		lockFd = fs.openSync(lock, "wx", 0o600);
+	} catch (error) {
+		if (error.code === "EEXIST")
+			throw new Error(
+				`Stale or active lock: ${lock}. Inspect its owner; remove it only after confirming no run is active.`,
+			);
+		throw error;
+	}
 	const manifest = path.join(evidenceDir, "receipt.json");
 	const save = (receipt) => {
 		const staging = path.join(evidenceDir, "receipt.next");
@@ -124,6 +65,8 @@ export function runAgentRulePatch({ mode, evidenceDir, source, destinations }) {
 				destinations: destinations.map((file, index) => {
 					const target = { path: file, before: `${index}.before` };
 					try {
+						if (fs.lstatSync(file).isSymbolicLink())
+							throw new Error(`Symlink destination refused: ${file}`);
 						const bytes = fs.readFileSync(file);
 						fs.writeFileSync(path.join(evidenceDir, target.before), bytes, {
 							flag: "wx",
