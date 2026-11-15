@@ -1,47 +1,29 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
-import { syncAgentsConfig } from "../src/helpers/configure_agents.js";
-
-const oldRule =
-	"- When I correct the same thing twice, write it here as one rule that day.";
-const newRule =
-	"- When I correct the same thing twice, make it a check, test or code change that day; the rule line here points to that check. Keep prose only for authority or judgement.";
-const block =
-	"<!-- axstack:begin v1 -->\r\nINSTALLER OWNED\r\n<!-- axstack:end -->";
+import {
+	block,
+	createRuleFixture,
+	newRule,
+	oldRule,
+} from "./agent_rule_fixture.js";
 
 describe("scoped correction-rule deployment", () => {
-	let root;
-	let home;
-	let srcDir;
+	let fixture;
+	let source;
 	let evidenceDir;
 	let destinations;
 	let original;
-	const run = (mode) =>
-		syncAgentsConfig({ home, srcDir, rulePatch: { mode, evidenceDir } });
+	const run = (mode) => fixture.run(mode);
 	const read = (file) => fs.readFileSync(file, "utf8");
 
-	beforeEach(() => {
-		root = fs.mkdtempSync(path.join(os.tmpdir(), "haoshoku-rule-"));
-		fs.chmodSync(root, 0o700);
-		home = path.join(root, "home");
-		srcDir = path.join(root, "source");
-		evidenceDir = path.join(root, "evidence");
-		fs.mkdirSync(srcDir);
-		fs.writeFileSync(path.join(srcDir, "PROFILE.md"), `SOURCE\n${newRule}\n`);
-		destinations = [".claude/CLAUDE.md", ".codex/AGENTS.md"].map((name) =>
-			path.join(home, name),
-		);
-		original = `LOCAL\r\n${oldRule}\r\n${block}\r\nTAIL`;
-		for (const file of destinations) {
-			fs.mkdirSync(path.dirname(file), { recursive: true });
-			fs.writeFileSync(file, original);
-		}
+	beforeEach(async () => {
+		fixture = await createRuleFixture();
+		({ source, evidenceDir, destinations, original } = fixture);
 	});
-	afterEach(() => fs.rmSync(root, { recursive: true }));
+	afterEach(() => fs.rmSync(fixture.root, { recursive: true }));
 
-	it("plans without writing and deploys only the reviewed line to Claude and Codex", async () => {
+	it("plans without writing and deploys only the reviewed line to all four harnesses", async () => {
 		const plan = await run("plan");
 		for (const file of destinations) expect(read(file)).toBe(original);
 		expect(plan.source.revision).toMatch(/^[a-f0-9]{40}$/);
@@ -50,46 +32,54 @@ describe("scoped correction-rule deployment", () => {
 		expect(result.destinations.map((d) => d.status)).toEqual([
 			"applied",
 			"applied",
+			"applied",
+			"applied",
 		]);
 		for (const file of destinations) {
 			expect(read(file)).toBe(original.replace(oldRule, newRule));
 		}
-		expect(fs.existsSync(path.join(home, ".gemini"))).toBe(false);
-		expect(fs.existsSync(path.join(home, ".config/opencode"))).toBe(false);
 		const snapshots = fs
 			.readdirSync(evidenceDir)
 			.filter((name) => name.endsWith(".before"));
-		expect(snapshots).toHaveLength(3);
+		expect(snapshots).toHaveLength(5);
 		expect(
 			snapshots.map((name) => read(path.join(evidenceDir, name))),
 		).toContain(original);
 	});
 
-	it("holds a stale destination and preserves its unrelated edit while deploying its peer", async () => {
+	it.each([
+		0, 1, 2, 3,
+	])("holds stale destination %i and preserves its unrelated edit", async (index) => {
 		await run("plan");
 		const stale = original.replace("LOCAL", "CHANGED AFTER REVIEW");
-		fs.writeFileSync(destinations[0], stale);
+		fs.writeFileSync(destinations[index], stale);
 		const result = await run("deploy");
-		expect(result.destinations[0].status).toBe("held");
-		expect(read(destinations[0])).toBe(stale);
-		expect(read(destinations[1])).toBe(original.replace(oldRule, newRule));
+		expect(result.destinations[index].status).toBe("held");
+		expect(read(destinations[index])).toBe(stale);
+		expect(read(destinations[(index + 1) % 4])).toBe(
+			original.replace(oldRule, newRule),
+		);
 	});
 
 	it("holds deployment when the reviewed source changes", async () => {
 		await run("plan");
-		fs.appendFileSync(path.join(srcDir, "PROFILE.md"), "SOURCE DRIFT\n");
+		fs.appendFileSync(source, "SOURCE DRIFT\n");
 		const result = await run("deploy");
 		expect(result.destinations.every((d) => d.status === "held")).toBe(true);
 		for (const file of destinations) expect(read(file)).toBe(original);
 	});
 
-	it("holds an unreachable file without blocking its peer", async () => {
+	it.each([
+		0, 1, 2, 3,
+	])("holds unreachable destination %i without blocking its peer", async (index) => {
 		await run("plan");
-		fs.unlinkSync(destinations[0]);
+		fs.unlinkSync(destinations[index]);
 		const result = await run("deploy");
-		expect(result.destinations[0].status).toBe("held");
-		expect(fs.existsSync(destinations[0])).toBe(false);
-		expect(read(destinations[1])).toBe(original.replace(oldRule, newRule));
+		expect(result.destinations[index].status).toBe("held");
+		expect(fs.existsSync(destinations[index])).toBe(false);
+		expect(read(destinations[(index + 1) % 4])).toBe(
+			original.replace(oldRule, newRule),
+		);
 	});
 
 	it("rolls back only the applied rule, preserving later bytes and the routing block", async () => {
@@ -100,21 +90,25 @@ describe("scoped correction-rule deployment", () => {
 		expect(result.destinations.map((d) => d.status)).toEqual([
 			"rolled-back",
 			"rolled-back",
+			"rolled-back",
+			"rolled-back",
 		]);
 		for (const file of destinations) {
 			expect(read(file)).toBe(`${original}\nADDED LATER\n`);
 		}
 	});
 
-	it("refuses rollback after the applied rule changes without blocking its peer", async () => {
+	it.each([
+		0, 1, 2, 3,
+	])("refuses rollback of changed rule at destination %i", async (index) => {
 		await run("plan");
 		await run("deploy");
 		const changed = original.replace(oldRule, `${newRule} EDITED`);
-		fs.writeFileSync(destinations[0], changed);
+		fs.writeFileSync(destinations[index], changed);
 		const result = await run("rollback");
-		expect(result.destinations[0].status).toBe("held");
-		expect(read(destinations[0])).toBe(changed);
-		expect(read(destinations[1])).toBe(original);
+		expect(result.destinations[index].status).toBe("held");
+		expect(read(destinations[index])).toBe(changed);
+		expect(read(destinations[(index + 1) % 4])).toBe(original);
 	});
 
 	it("never patches a rule inside the installer-owned block", async () => {
@@ -154,26 +148,37 @@ describe("scoped correction-rule deployment", () => {
 		expect(fs.readFileSync(destinations[0])).toEqual(bytes);
 	});
 
+	it.each([
+		0, 1, 2, 3,
+	])("holds missing destination %i at plan while applying its peers", (index) => {
+		fs.unlinkSync(destinations[index]);
+		const plan = fixture.command("plan");
+		expect(plan.exitCode).toBe(2);
+		expect(JSON.parse(plan.stdout.toString()).destinations[index].status).toBe(
+			"held",
+		);
+		const deploy = fixture.command("deploy");
+		expect(deploy.exitCode).toBe(2);
+		const result = JSON.parse(deploy.stdout.toString());
+		expect(result.destinations).toHaveLength(4);
+		expect(result.destinations[index].status).toBe("held");
+		expect(fs.existsSync(destinations[index])).toBe(false);
+		for (const file of destinations.filter((_, i) => i !== index)) {
+			expect(read(file)).toBe(original.replace(oldRule, newRule));
+		}
+	});
+
 	it("prints CLI receipts and exit 2 on a held destination, then rolls back its peer", () => {
-		const command = (mode, args = []) => {
-			const result = Bun.spawnSync(
-				[
-					process.execPath,
-					path.resolve(import.meta.dir, "../scripts/agent-rule-patch.js"),
-					mode,
-					"--home",
-					home,
-					"--evidence",
-					evidenceDir,
-					...args,
-				],
-				{ env: { ...process.env, HOME: home } },
-			);
+		const command = (mode) => {
+			const result = fixture.command(mode);
+			expect(result.stderr.toString()).toBe("");
 			return {
 				exit: result.exitCode,
 				receipt: JSON.parse(result.stdout.toString()),
 			};
 		};
+		const geminiNote = "\nGEMINI HARNESS NOTES\n";
+		fs.appendFileSync(destinations[3], geminiNote);
 		expect(command("plan").exit).toBe(0);
 		expect(read(destinations[0])).toBe(original);
 		fs.appendFileSync(destinations[0], "\nSTALE\n");
@@ -182,9 +187,13 @@ describe("scoped correction-rule deployment", () => {
 		expect(deployed.receipt.destinations.map((d) => d.status)).toEqual([
 			"held",
 			"applied",
+			"applied",
+			"applied",
 		]);
 		expect(command("rollback").exit).toBe(2);
 		expect(read(destinations[0])).toBe(`${original}\nSTALE\n`);
 		expect(read(destinations[1])).toBe(original);
+		expect(read(destinations[2])).toBe(original);
+		expect(read(destinations[3])).toBe(original + geminiNote);
 	});
 });
