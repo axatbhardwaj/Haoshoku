@@ -7,30 +7,12 @@ import {
 	stripAxstackBlock,
 	syncAgentInstructions,
 } from "./agent_instructions.js";
-import { runAgentRulePatch } from "./agent_rule_patch.js";
+import { AGENT_TARGETS } from "./agent_targets.js";
 
 const HOME = homedir();
 const AGENT_PROFILE_DIR = path.join(PROJECT_ROOT, "configs", "agent-profile");
 
-// Single configurable source (PROFILE.md) deployed to every harness.
-// Claude reads CLAUDE.md, Codex/Opencode read AGENTS.md, Antigravity reads
-// GEMINI.md as global rules. A target with `append` also gets that bundle
-// file appended (harness-specific notes). Exported for the manifest test.
-export const AGENT_TARGETS = [
-	{ src: "PROFILE.md", destDir: ".claude", dest: "CLAUDE.md" },
-	{ src: "PROFILE.md", destDir: ".codex", dest: "AGENTS.md" },
-	{
-		src: "PROFILE.md",
-		destDir: ".config/opencode",
-		dest: "AGENTS.md",
-	},
-	{
-		src: "PROFILE.md",
-		destDir: ".gemini",
-		dest: "GEMINI.md",
-		append: "GEMINI.append.md",
-	},
-];
+export { AGENT_TARGETS };
 
 /** Build the exact bytes a target destination should hold. */
 function targetContent(srcDir, target) {
@@ -44,15 +26,6 @@ function targetContent(srcDir, target) {
 /** Deploy the shared profile from the bundle to all four agent homes. */
 export async function syncAgentsConfig(options = {}) {
 	const { srcDir = AGENT_PROFILE_DIR, home = HOME } = options;
-	if (options.rulePatch) {
-		return runAgentRulePatch({
-			...options.rulePatch,
-			source: path.join(srcDir, "PROFILE.md"),
-			destinations: AGENT_TARGETS.filter((t) =>
-				[".claude", ".codex"].includes(t.destDir),
-			).map((t) => path.join(home, t.destDir, t.dest)),
-		});
-	}
 
 	log.info("Syncing shared agent profile...");
 	const srcPath = path.join(srcDir, "PROFILE.md");
