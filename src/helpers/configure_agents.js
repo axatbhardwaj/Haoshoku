@@ -3,11 +3,11 @@ import { homedir } from "node:os";
 import path from "node:path";
 import { PROJECT_ROOT } from "../common/paths.js";
 import { log, portabilizeHome } from "../common/utils.js";
-
 import {
 	stripAxstackBlock,
 	syncAgentInstructions,
 } from "./agent_instructions.js";
+import { runAgentRulePatch } from "./agent_rule_patch.js";
 
 const HOME = homedir();
 const AGENT_PROFILE_DIR = path.join(PROJECT_ROOT, "configs", "agent-profile");
@@ -44,6 +44,15 @@ function targetContent(srcDir, target) {
 /** Deploy the shared profile from the bundle to all four agent homes. */
 export async function syncAgentsConfig(options = {}) {
 	const { srcDir = AGENT_PROFILE_DIR, home = HOME } = options;
+	if (options.rulePatch) {
+		return runAgentRulePatch({
+			...options.rulePatch,
+			source: path.join(srcDir, "PROFILE.md"),
+			destinations: AGENT_TARGETS.filter((t) =>
+				[".claude", ".codex"].includes(t.destDir),
+			).map((t) => path.join(home, t.destDir, t.dest)),
+		});
+	}
 
 	log.info("Syncing shared agent profile...");
 	const srcPath = path.join(srcDir, "PROFILE.md");
