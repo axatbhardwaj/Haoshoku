@@ -60,9 +60,9 @@ describe("scoped correction-rule deployment", () => {
 			.readdirSync(evidenceDir)
 			.filter((name) => name.endsWith(".before"));
 		expect(snapshots).toHaveLength(3);
-		expect(snapshots.map((name) => read(path.join(evidenceDir, name)))).toContain(
-			original,
-		);
+		expect(
+			snapshots.map((name) => read(path.join(evidenceDir, name))),
+		).toContain(original);
 	});
 
 	it("holds a stale destination and preserves its unrelated edit while deploying its peer", async () => {
@@ -134,5 +134,57 @@ describe("scoped correction-rule deployment", () => {
 		const result = await run("rollback");
 		expect(result.destinations[0].status).toBe("held");
 		expect(read(destinations[0])).toBe(otherRun);
+	});
+
+	it("preserves arbitrary unrelated bytes during deploy and rollback", async () => {
+		const bytes = Buffer.concat([
+			Buffer.from([0xff, 0x80, 0x00, 0x0a]),
+			Buffer.from(`${oldRule}\n${block}`),
+		]);
+		fs.writeFileSync(destinations[0], bytes);
+		await run("plan");
+		await run("deploy");
+		expect(fs.readFileSync(destinations[0])).toEqual(
+			Buffer.concat([
+				bytes.subarray(0, 4),
+				Buffer.from(`${newRule}\n${block}`),
+			]),
+		);
+		await run("rollback");
+		expect(fs.readFileSync(destinations[0])).toEqual(bytes);
+	});
+
+	it("prints CLI receipts and exit 2 on a held destination, then rolls back its peer", () => {
+		const command = (mode, args = []) => {
+			const result = Bun.spawnSync(
+				[
+					process.execPath,
+					path.resolve(import.meta.dir, "../scripts/agent-rule-patch.js"),
+					mode,
+					"--home",
+					home,
+					"--evidence",
+					evidenceDir,
+					...args,
+				],
+				{ env: { ...process.env, HOME: home } },
+			);
+			return {
+				exit: result.exitCode,
+				receipt: JSON.parse(result.stdout.toString()),
+			};
+		};
+		expect(command("plan").exit).toBe(0);
+		expect(read(destinations[0])).toBe(original);
+		fs.appendFileSync(destinations[0], "\nSTALE\n");
+		const deployed = command("deploy");
+		expect(deployed.exit).toBe(2);
+		expect(deployed.receipt.destinations.map((d) => d.status)).toEqual([
+			"held",
+			"applied",
+		]);
+		expect(command("rollback").exit).toBe(2);
+		expect(read(destinations[0])).toBe(`${original}\nSTALE\n`);
+		expect(read(destinations[1])).toBe(original);
 	});
 });
