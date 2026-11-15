@@ -2,8 +2,11 @@
 
 Use this command from the reviewed Haoshoku Git checkout with Bun and Git on
 PATH. Run it locally on each authorized host. It patches only the correction
-rule in the Claude and Codex destinations from the `--agents` manifest:
-`<home>/.claude/CLAUDE.md` and `<home>/.codex/AGENTS.md`.
+rule in all four destinations from the `--agents` manifest:
+`<home>/.claude/CLAUDE.md`, `<home>/.codex/AGENTS.md`,
+`<home>/.config/opencode/AGENTS.md` and `<home>/.gemini/GEMINI.md`.
+Gemini's existing harness notes are preserved; no append bundle is redeployed.
+The CLI requires an explicit absolute `--home` and calls the patch helper directly.
 
 It does not run the full `--agents` sync. Each destination is independent.
 An unreachable host must be held by the caller; continue with other hosts.
@@ -19,7 +22,7 @@ bun scripts/agent-rule-patch.js plan --home /home/xzat --evidence /var/tmp/haosh
 ```
 
 The command prints JSON and saves `receipt.json`, `source.before`, `0.before`
-and `1.before`. A missing destination has no snapshot and stays held.
+through `3.before`. A missing or symlinked destination has no snapshot and stays held.
 Review these files before deployment. The receipt records the hostname,
 source path, Git HEAD, source SHA-256, destination paths and before-hashes.
 The before-files contain exact bytes and may contain personal instructions;
@@ -34,8 +37,10 @@ bun scripts/agent-rule-patch.js deploy --home /home/xzat --evidence /var/tmp/hao
 Immediately before each write, the command checks the source revision and
 bytes, destination bytes and file identity. A difference holds that destination.
 It replaces one exact old rule outside the installer-owned Axstack block.
-It preserves all other bytes, line endings and file permissions, then reads
-the destination back. It saves each successful destination before continuing.
+It stages a complete replacement beside the destination, preserves its mode and
+owner, then atomically renames the replacement and reads it back. It preserves
+all other bytes and line endings. The inode changes on successful replacement.
+It saves each successful destination before continuing.
 Symlink destinations are held. Do not run another writer concurrently.
 
 The command prints the updated receipt. Successful destinations have
@@ -59,8 +64,10 @@ snapshot. A successful rollback prints `status: "rolled-back"` and
 All modes exit 0 when every destination succeeds. A held destination or
 command-level error exits 2. A command-level error prints a JSON held reason
 to stderr. Inspect evidence after an interrupted write or readback failure;
-there is no crash-recovery guarantee. The evidence lock prevents concurrent
-invocations using the same directory; it does not lock other profile writers.
+there is no crash-recovery guarantee for the receipt. A stale or active lock error
+names the exact lock file. Inspect its owner and confirm no run is active before
+removing it. The evidence lock prevents concurrent invocations using the same
+directory; it does not lock other profile writers.
 
 ## Fleet invocation
 
