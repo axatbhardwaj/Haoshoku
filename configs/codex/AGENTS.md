@@ -162,7 +162,7 @@ agent-launch authority.
   review, and never hand the merge to me. Stop at merge-ready only when
   the diff touches migrations, auth, secrets, money paths or prod config,
   and tell me why.
-- When I correct the same thing twice, write it here as one rule that day.
+- When I correct the same thing twice, make it a check, test or code change that day; the rule line here points to that check. Keep prose only for authority or judgement.
 
 ## Waiting on workers (set 2026-11-11)
 

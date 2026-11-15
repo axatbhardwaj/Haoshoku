@@ -3,34 +3,16 @@ import { homedir } from "node:os";
 import path from "node:path";
 import { PROJECT_ROOT } from "../common/paths.js";
 import { log, portabilizeHome } from "../common/utils.js";
-
 import {
 	stripAxstackBlock,
 	syncAgentInstructions,
 } from "./agent_instructions.js";
+import { AGENT_TARGETS } from "./agent_targets.js";
 
 const HOME = homedir();
 const AGENT_PROFILE_DIR = path.join(PROJECT_ROOT, "configs", "agent-profile");
 
-// Single configurable source (PROFILE.md) deployed to every harness.
-// Claude reads CLAUDE.md, Codex/Opencode read AGENTS.md, Antigravity reads
-// GEMINI.md as global rules. A target with `append` also gets that bundle
-// file appended (harness-specific notes). Exported for the manifest test.
-export const AGENT_TARGETS = [
-	{ src: "PROFILE.md", destDir: ".claude", dest: "CLAUDE.md" },
-	{ src: "PROFILE.md", destDir: ".codex", dest: "AGENTS.md" },
-	{
-		src: "PROFILE.md",
-		destDir: ".config/opencode",
-		dest: "AGENTS.md",
-	},
-	{
-		src: "PROFILE.md",
-		destDir: ".gemini",
-		dest: "GEMINI.md",
-		append: "GEMINI.append.md",
-	},
-];
+export { AGENT_TARGETS };
 
 /** Build the exact bytes a target destination should hold. */
 function targetContent(srcDir, target) {
