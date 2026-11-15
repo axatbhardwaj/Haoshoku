@@ -1,6 +1,8 @@
 import path from "node:path";
 import { parseArgs } from "node:util";
-import { syncAgentsConfig } from "../src/helpers/configure_agents.js";
+import { PROJECT_ROOT } from "../src/common/paths.js";
+import { runAgentRulePatch } from "../src/helpers/agent_rule_patch.js";
+import { AGENT_TARGETS } from "../src/helpers/agent_targets.js";
 
 try {
 	const { values, positionals } = parseArgs({
@@ -16,7 +18,7 @@ try {
 
 Plan creates a NEW private evidence directory and snapshots; it never writes profiles.
 Review receipt.json and *.before before deploy. Keep the same checkout, HEAD and source.
-Deploy patches only the reviewed correction-rule line in Claude and Codex.
+Deploy patches only the reviewed correction-rule line in Claude, Codex, Opencode and Gemini.
 Rollback reads current files and reverses only this run's applied rule.
 Exit 0: all destinations succeeded. Exit 2: held; inspect each reason.
 This command operates locally. It never contacts or deploys to other hosts.`);
@@ -29,9 +31,13 @@ This command operates locally. It never contacts or deploys to other hosts.`);
 			throw new Error(
 				"Specify one mode and an explicit absolute --home; see --help",
 			);
-		const receipt = await syncAgentsConfig({
-			home: values.home,
-			rulePatch: { mode: positionals[0], evidenceDir: values.evidence },
+		const receipt = runAgentRulePatch({
+			mode: positionals[0],
+			evidenceDir: values.evidence,
+			source: path.join(PROJECT_ROOT, "configs/agent-profile/PROFILE.md"),
+			destinations: AGENT_TARGETS.map((t) =>
+				path.join(values.home, t.destDir, t.dest),
+			),
 		});
 		console.log(JSON.stringify(receipt, null, 2));
 		if (receipt.destinations.some((d) => d.status === "held"))
