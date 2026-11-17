@@ -89,9 +89,9 @@ function validateStyle(style) {
 		tint
 			.slice(1)
 			.match(/../g)
-			.some((part) => Number.parseInt(part, 16) > 48)
+			.some((part) => Number.parseInt(part, 16) > 32)
 	) {
-		return "style.palette.tint channels must be at most 48 for readable dark glass";
+		return "style.palette.tint channels must be at most 32 for readable dark glass";
 	}
 	if (
 		(luminance(accent) + 0.05) /
@@ -731,10 +731,15 @@ export async function configureOmarchyAppearance({
 		} else if (restoringGlass) {
 			writeTemplate(templatePath, glassState.priorTemplate);
 			try {
-				writeTemplate(
-					path.join(derivedPath, GLASS_MARKER),
-					`${JSON.stringify({ ...glassState, active: false }, null, 2)}\n`,
+				// Retire active ownership; later default runs must use the source
+				// template and manifest wallpaper, not stale glass metadata.
+				const prefix = path.join(
+					themesPath,
+					`.${path.basename(derivedPath)}-disabled-${nowImpl()}`,
 				);
+				let retired = prefix;
+				for (let n = 1; fs.existsSync(retired); n++) retired = `${prefix}.${n}`;
+				renameImpl(derivedPath, retired);
 			} catch (error) {
 				writeTemplate(
 					templatePath,

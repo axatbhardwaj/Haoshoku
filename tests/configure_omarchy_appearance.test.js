@@ -452,6 +452,8 @@ describe("optional Obsidian Glass settings", () => {
 	it.each([
 		{ variant: "unknown" },
 		{ ...OBSIDIAN, palette: { tint: "#ffffff" } },
+		{ ...OBSIDIAN, palette: { tint: "#303030" } },
+		{ ...OBSIDIAN, palette: { tint: "#003030" } },
 		{ ...OBSIDIAN, palette: { tint: "#000000; exit" } },
 		{ ...OBSIDIAN, palette: { accent: "#050505" } },
 		{ ...OBSIDIAN, palette: { accent: "#808080" } },
@@ -643,7 +645,27 @@ describe("owned Obsidian Glass theme", () => {
 			"set",
 			f.wallpaper,
 		]);
-		expect(fs.existsSync(f.derived)).toBe(true);
+		expect(fs.existsSync(f.derived)).toBe(false);
+		// Disabling must retire ownership so future default runs behave normally.
+		fs.writeFileSync(
+			path.join(f.source, "themed/hyprland.lua.tpl"),
+			"-- updated source template\n",
+		);
+		f.calls.length = 0;
+		expect(
+			(await configureOmarchyAppearance({ ...f.options, manifest: MANIFEST }))
+				.status,
+		).toBe("configured");
+		expect(fs.readFileSync(f.template, "utf8")).toBe(
+			"-- updated source template\n",
+		);
+		expect(f.calls.map(({ argv }) => argv)).toContainEqual([
+			"omarchy",
+			"theme",
+			"bg",
+			"set",
+			path.join(f.source, "backgrounds", MANIFEST.background),
+		]);
 	});
 
 	it.each([

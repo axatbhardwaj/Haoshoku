@@ -48,7 +48,7 @@ The `palette` and `glass` objects, and each setting inside them, are optional.
 
 | Setting | Accepted values | Effect |
 | --- | --- | --- |
-| `palette.tint` | Six-digit `#RRGGBB`; each channel 0–48 | Very dark background; neutral surface shades are derived from it |
+| `palette.tint` | Six-digit `#RRGGBB`; each channel 0–32 | Very dark background; neutral surface shades are derived from it |
 | `palette.accent` | Six-digit `#RRGGBB`; at least 4.5:1 against the derived selected surface | Focus, selection, active border, and T3 actions |
 | `glass.t3Opacity` | Number 0.90–1; default 0.92 | Active and inactive whole-window opacity for `com.t3tools.T3Code` |
 
@@ -110,9 +110,10 @@ if (result.status !== "configured") process.exit(1);'
 
 This selects Aurora again, restores the exact pre-variant Hyprland template
 (or removes it if there was none), and keeps the selected wallpaper. Subsequent
-disabled reruns preserve that restored template. The derived theme remains for
-recovery, with its ownership marker marked inactive. Re-enabling saves the
-then-current template again. To restore an entirely different pre-existing
+default reruns resume normal behavior: they use Aurora’s current template and
+the manifest wallpaper. The derived directory is moved to a hidden
+`.aurora-obsidian-glass-disabled-<time>` sibling for recovery; it no longer
+affects default runs. Re-enabling saves the then-current template again. To restore an entirely different pre-existing
 theme or font, select it explicitly with `omarchy theme set <name>` and
 `omarchy font set <family>` after disabling.
 
