@@ -454,9 +454,11 @@ describe("optional Obsidian Glass settings", () => {
 		{ ...OBSIDIAN, palette: { tint: "#ffffff" } },
 		{ ...OBSIDIAN, palette: { tint: "#000000; exit" } },
 		{ ...OBSIDIAN, palette: { accent: "#050505" } },
+		{ ...OBSIDIAN, palette: { accent: "#808080" } },
 		{ ...OBSIDIAN, palette: { surprise: "#000000" } },
 		{ ...OBSIDIAN, glass: { t3Opacity: 0.7 } },
 		{ ...OBSIDIAN, glass: { t3Opacity: "0.92" } },
+		{ ...OBSIDIAN, glass: { t3Opacity: null } },
 		{ ...OBSIDIAN, glass: { surfaceOpacity: 0.5 } },
 		{ ...OBSIDIAN, unexpected: true },
 		null,
@@ -476,5 +478,214 @@ describe("optional Obsidian Glass settings", () => {
 		expect(result.status).toBe("invalid-manifest");
 		expect(calls).toEqual([]);
 		expect(fs.readdirSync(home)).toEqual([]);
+	});
+});
+
+function glassFixture() {
+	const home = makeHome();
+	const source = seedTheme(home);
+	const template = path.join(home, ".config/omarchy/themed/hyprland.lua.tpl");
+	const sourceTemplate =
+		'o.window({ tag = "terminal" }, { opacity = "1 override 1 override" })\no.window("dev\\\\.zed\\\\.Zed", { opacity = "1 override 1 override" })\n';
+	fs.mkdirSync(path.dirname(template), { recursive: true });
+	fs.writeFileSync(template, "-- prior user template\n");
+	fs.mkdirSync(path.join(source, "themed"));
+	fs.writeFileSync(
+		path.join(source, "themed/hyprland.lua.tpl"),
+		sourceTemplate,
+	);
+	fs.writeFileSync(
+		path.join(source, "colors.toml"),
+		'mode = "dark"\nbackground = "#0a100d"\naccent = "#62e2a4"\nred = "#f0708e"\n',
+	);
+	fs.writeFileSync(
+		path.join(source, "t3code.json"),
+		JSON.stringify({
+			version: 1,
+			name: "Aurora",
+			colors: {
+				canvas: "#0a100d",
+				text: "#fdfffd",
+				sidebar: "#070c0a",
+				error: "#e0587a",
+			},
+		}),
+	);
+	const wallpaper = path.join(home, "personal.png");
+	fs.writeFileSync(wallpaper, "personal wallpaper");
+	const current = path.join(home, ".local/state/omarchy/current");
+	fs.mkdirSync(current, { recursive: true });
+	fs.symlinkSync(wallpaper, path.join(current, "background"));
+	const calls = [];
+	const options = {
+		manifest: { ...MANIFEST, style: OBSIDIAN },
+		home,
+		versionResult: VERSION_RESULT,
+		logImpl: makeLog(),
+		runCommandImpl: async (argv, commandOptions) => {
+			calls.push({ argv, ...commandOptions });
+			const stdout =
+				argv[1] === "remote"
+					? REPOSITORY
+					: argv[1] === "rev-parse"
+						? REVISION
+						: "";
+			return { exitCode: 0, stdout, stderr: "" };
+		},
+	};
+	return {
+		home,
+		source,
+		template,
+		sourceTemplate,
+		wallpaper,
+		calls,
+		options,
+		derived: `${source}-obsidian-glass`,
+	};
+}
+
+describe("owned Obsidian Glass theme", () => {
+	it("derives neutral colors, preserves source and wallpaper, and delegates apply to Omarchy", async () => {
+		const f = glassFixture();
+		const sourceColors = fs.readFileSync(
+			path.join(f.source, "colors.toml"),
+			"utf8",
+		);
+		const result = await configureOmarchyAppearance(f.options);
+		expect(result.status).toBe("configured");
+		expect(result.appliedTheme).toBe("elysian-obsidian-glass");
+		const colors = Bun.TOML.parse(
+			fs.readFileSync(path.join(f.derived, "colors.toml"), "utf8"),
+		);
+		expect(colors.background).toBe("#080a0b");
+		expect(colors.accent).toBe("#86edb0");
+		expect(colors.red).toBe("#f0708e");
+		const t3 = JSON.parse(fs.readFileSync(path.join(f.derived, "t3code.json")));
+		expect(t3.colors.canvas).toBe("#080a0b");
+		expect(t3.colors.text).toBe("#f2f6f3");
+		expect(t3.colors.error).toBe("#e0587a");
+		const template = fs.readFileSync(f.template, "utf8");
+		expect(template).toStartWith(f.sourceTemplate);
+		expect(template).toContain(
+			'o.window("^com\\\\.t3tools\\\\.T3Code$", { opacity = "0.92 override 0.92 override" })',
+		);
+		expect(fs.readFileSync(path.join(f.source, "colors.toml"), "utf8")).toBe(
+			sourceColors,
+		);
+		expect(
+			f.calls.some(({ argv }) => ["fetch", "checkout"].includes(argv[1])),
+		).toBe(false);
+		expect(
+			f.calls
+				.filter(({ argv }) => argv[0] === "omarchy")
+				.map(({ argv }) => argv),
+		).toEqual([
+			["omarchy", "theme", "set", "elysian-obsidian-glass"],
+			["omarchy", "theme", "bg", "set", f.wallpaper],
+			["omarchy", "font", "set", MANIFEST.font],
+		]);
+		expect(
+			f.calls.find(({ argv }) => argv[0] === "omarchy").env
+				.OMARCHY_THEME_SKIP_BACKGROUND,
+		).toBe("1");
+	});
+
+	it("reruns without backup churn, backs up settings changes, and restores the prior template on disable", async () => {
+		const f = glassFixture();
+		expect((await configureOmarchyAppearance(f.options)).status).toBe(
+			"configured",
+		);
+		const first = fs.readFileSync(path.join(f.derived, "t3code.json"), "utf8");
+		expect((await configureOmarchyAppearance(f.options)).status).toBe(
+			"configured",
+		);
+		const themes = path.dirname(f.source);
+		expect(
+			fs.readdirSync(themes).filter((name) => name.includes("backup")),
+		).toEqual([]);
+		const changed = {
+			...f.options,
+			manifest: {
+				...MANIFEST,
+				style: {
+					...OBSIDIAN,
+					palette: { tint: "#101010", accent: "#9af5b0" },
+					glass: { t3Opacity: 1 },
+				},
+			},
+		};
+		expect((await configureOmarchyAppearance(changed)).status).toBe(
+			"configured",
+		);
+		const backups = fs
+			.readdirSync(themes)
+			.filter((name) => name.includes("backup"));
+		expect(backups).toHaveLength(1);
+		expect(
+			fs.readFileSync(path.join(themes, backups[0], "t3code.json"), "utf8"),
+		).toBe(first);
+		expect(fs.readFileSync(f.template, "utf8")).toContain(
+			'opacity = "1 override 1 override"',
+		);
+		f.calls.length = 0;
+		expect(
+			(await configureOmarchyAppearance({ ...f.options, manifest: MANIFEST }))
+				.status,
+		).toBe("configured");
+		expect(fs.readFileSync(f.template, "utf8")).toBe(
+			"-- prior user template\n",
+		);
+		expect(f.calls.map(({ argv }) => argv)).toContainEqual([
+			"omarchy",
+			"theme",
+			"bg",
+			"set",
+			f.wallpaper,
+		]);
+		expect(fs.existsSync(f.derived)).toBe(true);
+	});
+
+	it.each([
+		"unowned-directory",
+		"symlink",
+		"edited-output",
+		"edited-template",
+		"dirty-source",
+		"wrong-revision",
+		"invalid-input",
+	])("preserves and refuses %s before apply", async (scenario) => {
+		const f = glassFixture();
+		if (scenario.startsWith("edited"))
+			expect((await configureOmarchyAppearance(f.options)).status).toBe(
+				"configured",
+			);
+		if (scenario === "unowned-directory") fs.mkdirSync(f.derived);
+		if (scenario === "symlink") fs.symlinkSync(f.source, f.derived);
+		if (scenario === "edited-output")
+			fs.appendFileSync(path.join(f.derived, "colors.toml"), "# local edit\n");
+		if (scenario === "edited-template")
+			fs.appendFileSync(f.template, "-- local edit\n");
+		if (scenario === "invalid-input")
+			fs.writeFileSync(path.join(f.source, "t3code.json"), "{");
+		if (["dirty-source", "wrong-revision"].includes(scenario)) {
+			const run = f.options.runCommandImpl;
+			f.options.runCommandImpl = async (argv, opts) =>
+				argv[1] === (scenario === "dirty-source" ? "status" : "rev-parse")
+					? { exitCode: 0, stdout: "changed", stderr: "" }
+					: run(argv, opts);
+		}
+		const before = fs.readFileSync(f.template, "utf8");
+		f.calls.length = 0;
+		expect((await configureOmarchyAppearance(f.options)).status).toBe(
+			"conflict",
+		);
+		expect(f.calls.some(({ argv }) => argv[0] === "omarchy")).toBe(false);
+		expect(fs.readFileSync(f.template, "utf8")).toBe(before);
+		if (scenario === "edited-template")
+			expect(
+				(await configureOmarchyAppearance({ ...f.options, manifest: MANIFEST }))
+					.status,
+			).toBe("conflict");
 	});
 });
