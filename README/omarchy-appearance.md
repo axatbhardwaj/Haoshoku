@@ -43,6 +43,17 @@ const result = await configureOmarchyAppearance({ manifestPath: "configs/omarchy
 if (result.status !== "configured") process.exit(1);'
 ```
 
+After applying, open T3 **Settings → Appearance → Dark** and select the
+**Obsidian Glass** swatch. An existing per-mode Aurora selection can override
+the environment default; click the swatch even if it already looks selected.
+The active theme should become `omarchy`, with canvas `#080a0b` and accent
+`#86edb0` for the example preset. Later Omarchy changes update that published
+theme. Other desktop clients need their own selection.
+
+Applying the example once does not change the default manifest. A later run
+using the unchanged default manifest disables the variant; keep the `style`
+block in your chosen manifest and use that manifest for subsequent applies.
+
 The `palette` and `glass` objects, and each setting inside them, are optional.
 `{ "variant": "obsidian-glass" }` selects the same defaults as the example.
 
