@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import fs from "node:fs";
+import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
@@ -493,6 +494,9 @@ describe("optional Obsidian Glass settings", () => {
 
 function glassFixture() {
 	const home = makeHome();
+	const main = path.join(home, ".config/hypr/hyprland.lua");
+	fs.mkdirSync(path.dirname(main), { recursive: true });
+	fs.writeFileSync(main, "-- personal Hyprland config\n");
 	const source = seedTheme(home);
 	const template = path.join(home, ".config/omarchy/themed/hyprland.lua.tpl");
 	const sourceTemplate =
@@ -546,6 +550,7 @@ function glassFixture() {
 	};
 	return {
 		home,
+		main,
 		source,
 		template,
 		sourceTemplate,
@@ -555,6 +560,191 @@ function glassFixture() {
 		derived: `${source}-obsidian-glass`,
 	};
 }
+
+describe("Obsidian Glass late precedence", () => {
+	it.each([
+		true,
+		false,
+	])("migrates or disables legacy owned state (enable %j)", async (enable) => {
+		const f = glassFixture();
+		const originalMain = fs.readFileSync(f.main, "utf8");
+		const priorTemplate = fs.readFileSync(f.template, "utf8");
+		const files = {
+			"colors.toml": fs.readFileSync(
+				path.join(f.source, "colors.toml"),
+				"utf8",
+			),
+			"t3code.json": fs.readFileSync(
+				path.join(f.source, "t3code.json"),
+				"utf8",
+			),
+			"hyprland.lua.tpl":
+				f.sourceTemplate +
+				'\no.window("^com\\\\.t3tools\\\\.T3Code$", { opacity = "0.92 override 0.92 override" })\n',
+		};
+		fs.mkdirSync(f.derived);
+		for (const [name, contents] of Object.entries(files))
+			fs.writeFileSync(path.join(f.derived, name), contents);
+		fs.writeFileSync(f.template, files["hyprland.lua.tpl"]);
+		fs.writeFileSync(
+			path.join(f.derived, ".haoshoku-obsidian.json"),
+			JSON.stringify({
+				owner: "haoshoku-obsidian-v1",
+				source: f.source,
+				active: true,
+				priorTemplate,
+				hashes: Object.fromEntries(
+					Object.entries(files).map(([name, contents]) => [
+						name,
+						createHash("sha256").update(contents).digest("hex"),
+					]),
+				),
+			}),
+		);
+		expect(
+			(
+				await configureOmarchyAppearance({
+					...f.options,
+					manifest: enable ? f.options.manifest : MANIFEST,
+				})
+			).status,
+		).toBe("configured");
+		if (enable) {
+			expect(fs.readFileSync(f.main, "utf8")).not.toBe(originalMain);
+			expect((await configureOmarchyAppearance(f.options)).status).toBe(
+				"configured",
+			);
+			expect(
+				(await configureOmarchyAppearance({ ...f.options, manifest: MANIFEST }))
+					.status,
+			).toBe("configured");
+		}
+		expect(fs.readFileSync(f.main, "utf8")).toBe(originalMain);
+		expect(fs.readFileSync(f.template, "utf8")).toBe(priorTemplate);
+	});
+
+	it.each([
+		"main-symlink",
+		"unowned-loader",
+	])("refuses %s before changing templates or applying", async (scenario) => {
+		const f = glassFixture();
+		if (scenario === "main-symlink") {
+			fs.renameSync(f.main, `${f.main}.personal`);
+			fs.symlinkSync(`${f.main}.personal`, f.main);
+		} else
+			fs.appendFileSync(
+				f.main,
+				"-- haoshoku-obsidian:begin\n-- custom content\n-- haoshoku-obsidian:end\n",
+			);
+		const before = fs.readFileSync(f.main, "utf8");
+		expect((await configureOmarchyAppearance(f.options)).status).toBe(
+			"conflict",
+		);
+		expect(fs.readFileSync(f.main, "utf8")).toBe(before);
+		expect(fs.readFileSync(f.template, "utf8")).toBe(
+			"-- prior user template\n",
+		);
+		expect(f.calls.some(({ argv }) => argv[0] === "omarchy")).toBe(false);
+	});
+
+	(lua ? it : it.skip).each([3, 20, undefined])(
+		"applies explicit settings after personal rules and the glass toggle (blur %j)",
+		async (blurSize) => {
+			const f = glassFixture();
+			f.options.manifest.style = {
+				...OBSIDIAN,
+				glass: {
+					t3Opacity: 0.904,
+					...(blurSize === undefined ? {} : { blurSize }),
+				},
+			};
+			fs.writeFileSync(
+				f.main,
+				`
+dofile(${JSON.stringify(f.template)})
+-- Personal config and persisted toggle run after the generated theme.
+o.window("^com\\\\.t3tools\\\\.T3Code$", { opacity = "0.92 override 0.92 override" })
+hl.config({ decoration = { blur = { enabled = true, size = 4, passes = 2,
+  brightness = 0.75, xray = false }, shadow = { range = 13 } }, cursor = { size = 32 } })
+o.window({ tag = "terminal" }, { opacity = "1 override 1 override" })
+o.window("credential", { opacity = "1 override 1 override" })
+`,
+			);
+			expect((await configureOmarchyAppearance(f.options)).status).toBe(
+				"configured",
+			);
+			const execution = spawnSync(lua, ["-"], {
+				encoding: "utf8",
+				env: { ...process.env, HOME: f.home },
+				input: `
+local size, passes, enabled, brightness, xray, shadow, cursor
+local opacity, terminal, credential
+hl = { config = function(c)
+  local d = c.decoration or {}; local b = d.blur or {}
+  size = b.size or size; passes = b.passes or passes
+  if b.enabled ~= nil then enabled = b.enabled end
+  brightness = b.brightness or brightness
+  if b.xray ~= nil then xray = b.xray end
+  shadow = d.shadow and d.shadow.range or shadow
+  cursor = c.cursor and c.cursor.size or cursor
+end }
+o = { window = function(match, rules)
+  if type(match) == "table" then terminal = rules.opacity
+  elseif match == "credential" then credential = rules.opacity
+  elseif match:find("t3tools", 1, true) then opacity = rules.opacity end
+end }
+dofile(${JSON.stringify(f.main)})
+print(size, passes, tostring(enabled), brightness, tostring(xray), shadow, cursor)
+print(opacity); print(terminal); print(credential)
+`,
+			});
+			expect(execution.stderr).toBe("");
+			expect(execution.status).toBe(0);
+			expect(
+				execution.stdout
+					.trim()
+					.split("\n")
+					.map((line) => line.split(/\s+/).join(" ")),
+			).toEqual([
+				`${blurSize ?? 4} 2 true 0.75 false 13 32`,
+				"0.904 override 0.904 override",
+				"1 override 1 override",
+				"1 override 1 override",
+			]);
+		},
+	);
+
+	it("keeps unrelated main edits, remains idempotent and removes only its loader on disable", async () => {
+		const f = glassFixture();
+		const original = fs.readFileSync(f.main, "utf8");
+		expect((await configureOmarchyAppearance(f.options)).status).toBe(
+			"configured",
+		);
+		const enabled = fs.readFileSync(f.main, "utf8");
+		expect(enabled).not.toBe(original);
+		expect((await configureOmarchyAppearance(f.options)).status).toBe(
+			"configured",
+		);
+		expect(fs.readFileSync(f.main, "utf8")).toBe(enabled);
+		fs.appendFileSync(f.main, "-- unrelated later edit\n");
+		expect((await configureOmarchyAppearance(f.options)).status).toBe(
+			"configured",
+		);
+		expect(fs.readFileSync(f.main, "utf8")).toBe(
+			`${original}-- unrelated later edit\n${enabled.slice(original.length)}`,
+		);
+		expect(
+			(await configureOmarchyAppearance({ ...f.options, manifest: MANIFEST }))
+				.status,
+		).toBe("configured");
+		expect(fs.readFileSync(f.main, "utf8")).toBe(
+			`${original}-- unrelated later edit\n`,
+		);
+		expect(fs.readFileSync(f.template, "utf8")).toBe(
+			"-- prior user template\n",
+		);
+	});
+});
 
 describe("Obsidian Glass blur tuning", () => {
 	(lua ? it : it.skip).each([1, 20, 64])(
