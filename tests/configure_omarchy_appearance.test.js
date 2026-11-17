@@ -689,3 +689,30 @@ describe("owned Obsidian Glass theme", () => {
 			).toBe("conflict");
 	});
 });
+
+describe("generated wallpaper preservation", () => {
+	it("keeps wallpaper bytes when Omarchy replaces its generated current-theme directory", async () => {
+		const f = glassFixture();
+		const current = path.join(f.home, ".local/state/omarchy/current");
+		const generated = path.join(current, "theme");
+		fs.mkdirSync(generated);
+		const ephemeral = path.join(generated, "chosen.jpg");
+		fs.writeFileSync(ephemeral, "keep this wallpaper");
+		fs.unlinkSync(path.join(current, "background"));
+		fs.symlinkSync(ephemeral, path.join(current, "background"));
+		const run = f.options.runCommandImpl;
+		f.options.runCommandImpl = async (argv, options) => {
+			if (argv.slice(0, 3).join(" ") === "omarchy theme set")
+				fs.rmSync(generated, { recursive: true });
+			if (argv.slice(0, 4).join(" ") === "omarchy theme bg set") {
+				if (!fs.existsSync(argv[4]))
+					return { exitCode: 1, stdout: "", stderr: "background disappeared" };
+				expect(fs.readFileSync(argv[4], "utf8")).toBe("keep this wallpaper");
+			}
+			return run(argv, options);
+		};
+		expect((await configureOmarchyAppearance(f.options)).status).toBe(
+			"configured",
+		);
+	});
+});

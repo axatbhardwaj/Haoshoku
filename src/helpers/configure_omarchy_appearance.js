@@ -320,19 +320,49 @@ function glassFiles(themePath, style) {
 	])
 		for (const key of keys.split(" ")) t3.colors[key] = value;
 	return {
-		"colors.toml":
-			Object.entries(colors)
-				.map(([key, value]) => {
-					if (!/^[a-z_]+$/.test(key) || typeof value !== "string")
-						throw new Error("Unsupported source palette entry");
-					return `${key} = ${JSON.stringify(value)}`;
-				})
-				.join("\n") + "\n",
-		"t3code.json": JSON.stringify(t3, null, 2) + "\n",
+		"colors.toml": `${Object.entries(colors)
+			.map(([key, value]) => {
+				if (!/^[a-z_]+$/.test(key) || typeof value !== "string")
+					throw new Error("Unsupported source palette entry");
+				return `${key} = ${JSON.stringify(value)}`;
+			})
+			.join("\n")}\n`,
+		"t3code.json": `${JSON.stringify(t3, null, 2)}\n`,
 		"hyprland.lua.tpl":
 			template +
 			`\n-- Whole-window fallback: opacity also affects T3 text.\no.window("^com\\\\.t3tools\\\\.T3Code$", { opacity = "${opacity} override ${opacity} override" })\n`,
 	};
+}
+
+// Omarchy replaces current/theme on apply; keep any selected media there alive.
+function planWallpaper(home, fallback) {
+	const current = path.join(home, ".local/state/omarchy/current");
+	const link = path.join(current, "background");
+	if (!fs.existsSync(link)) return { file: fallback };
+	const file = fs.realpathSync(link);
+	const relative = path.relative(path.join(current, "theme"), file);
+	if (relative.startsWith("..") || path.isAbsolute(relative)) return { file };
+	const contents = fs.readFileSync(file);
+	const directory = path.join(
+		home,
+		".config/omarchy/backgrounds/haoshoku-preserved",
+	);
+	const existingDirectory = fs.lstatSync(directory, { throwIfNoEntry: false });
+	if (existingDirectory && !existingDirectory.isDirectory())
+		throw new Error("Wallpaper backup directory is not a directory");
+	const saved = path.join(
+		directory,
+		`${digest(contents)}${path.extname(file)}`,
+	);
+	if (fs.lstatSync(saved, { throwIfNoEntry: false })) {
+		if (
+			!fs.lstatSync(saved).isFile() ||
+			!fs.readFileSync(saved).equals(contents)
+		)
+			throw new Error("Wallpaper backup collision; preserving it");
+		return { file: saved };
+	}
+	return { file: saved, contents };
 }
 
 function writeTemplate(templatePath, contents) {
@@ -388,7 +418,7 @@ function materializeGlass({
 				fs.writeFileSync(path.join(staging, file), contents);
 			fs.writeFileSync(
 				path.join(staging, GLASS_MARKER),
-				JSON.stringify(nextState, null, 2) + "\n",
+				`${JSON.stringify(nextState, null, 2)}\n`,
 			);
 			if (state) {
 				const prefix = `${derivedPath}.haoshoku-backup-${nowImpl()}`;
@@ -667,17 +697,13 @@ export async function configureOmarchyAppearance({
 	let appliedTheme = name;
 	const restoringGlass = glassState?.active && !appearance.style;
 	const preserveWallpaper = Boolean(appearance.style || glassState);
-	let appliedBackground = backgroundPath;
-	if (preserveWallpaper) {
-		commandEnv.OMARCHY_THEME_SKIP_BACKGROUND = "1";
-		const currentBackground = path.join(
-			home,
-			".local/state/omarchy/current/background",
-		);
-		if (fs.existsSync(currentBackground))
-			appliedBackground = fs.realpathSync(currentBackground);
-	}
+	let wallpaper = { file: backgroundPath };
+
 	try {
+		if (preserveWallpaper) {
+			commandEnv.OMARCHY_THEME_SKIP_BACKGROUND = "1";
+			wallpaper = planWallpaper(home, backgroundPath);
+		}
 		if (appearance.style) {
 			materializeGlass({
 				themePath,
@@ -694,7 +720,7 @@ export async function configureOmarchyAppearance({
 			try {
 				writeTemplate(
 					path.join(derivedPath, GLASS_MARKER),
-					JSON.stringify({ ...glassState, active: false }, null, 2) + "\n",
+					`${JSON.stringify({ ...glassState, active: false }, null, 2)}\n`,
 				);
 			} catch (error) {
 				writeTemplate(
@@ -714,9 +740,20 @@ export async function configureOmarchyAppearance({
 		);
 		return { status: "conflict", installed, themePath };
 	}
+	try {
+		if (wallpaper.contents) {
+			fs.mkdirSync(path.dirname(wallpaper.file), { recursive: true });
+			fs.writeFileSync(wallpaper.file, wallpaper.contents, { flag: "wx" });
+		}
+	} catch (error) {
+		logImpl.warning(
+			`Could not preserve the selected wallpaper: ${error.message}`,
+		);
+		return { status: "conflict", installed, themePath };
+	}
 	const commands = [
 		["omarchy", "theme", "set", appliedTheme],
-		["omarchy", "theme", "bg", "set", appliedBackground],
+		["omarchy", "theme", "bg", "set", wallpaper.file],
 		["omarchy", "font", "set", appearance.font],
 	];
 	for (const argv of commands) {
