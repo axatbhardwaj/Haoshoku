@@ -700,6 +700,19 @@ export async function configureOmarchyAppearance({
 	let wallpaper = { file: backgroundPath };
 
 	try {
+		// Git probes may yield to other configuration writers; verify ownership again.
+		if (appearance.style || glassState) {
+			const confirmedState = readGlassState(
+				derivedPath,
+				templatePath,
+				themePath,
+			);
+			if (
+				JSON.stringify(confirmedState) !== JSON.stringify(glassState ?? null)
+			) {
+				throw new Error("Obsidian Glass ownership changed during preflight");
+			}
+		}
 		if (preserveWallpaper) {
 			commandEnv.OMARCHY_THEME_SKIP_BACKGROUND = "1";
 			wallpaper = planWallpaper(home, backgroundPath);

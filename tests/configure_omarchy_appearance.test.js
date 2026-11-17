@@ -716,3 +716,33 @@ describe("generated wallpaper preservation", () => {
 		);
 	});
 });
+
+describe("appearance changes during Git probes", () => {
+	it.each([
+		"template",
+		"derived",
+	])("preserves a %s edit made after preflight", async (target) => {
+		const f = glassFixture();
+		expect((await configureOmarchyAppearance(f.options)).status).toBe(
+			"configured",
+		);
+		const file =
+			target === "template" ? f.template : path.join(f.derived, "colors.toml");
+		const run = f.options.runCommandImpl;
+		f.options.manifest = {
+			...MANIFEST,
+			style: { ...OBSIDIAN, glass: { t3Opacity: 1 } },
+		};
+		f.options.runCommandImpl = async (argv, options) => {
+			if (argv[1] === "rev-parse")
+				fs.appendFileSync(file, "\n-- concurrent edit\n");
+			return run(argv, options);
+		};
+		f.calls.length = 0;
+		expect((await configureOmarchyAppearance(f.options)).status).toBe(
+			"conflict",
+		);
+		expect(fs.readFileSync(file, "utf8")).toEndWith("\n-- concurrent edit\n");
+		expect(f.calls.some(({ argv }) => argv[0] === "omarchy")).toBe(false);
+	});
+});
