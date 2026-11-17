@@ -1,5 +1,26 @@
 # Changelog
 
+## 12.9.2 - 2026-11-17
+
+### Changed
+
+- Turn repeated agent corrections into executable checks in the shared,
+  Claude and Codex profiles.
+- Add explicit-home plan, deploy and rollback commands for the correction rule
+  across Claude, Codex, Opencode and Gemini. Preserve unrelated profile bytes
+  and installer-owned Axstack instructions; keep full profile sync separate.
+- Guard scoped rule deployment with reviewed source and destination identities,
+  atomic replacement, symlink refusal and evidence-directory locks. Rollback
+  reverses only the deployed rule and preserves later unrelated edits.
+
+### Removed
+
+- Revert the unreleased Obsidian Glass custom theme before release. Normal
+  Aurora appearance remains supported; manifests containing custom `style`
+  settings are rejected. Installed unreleased variants must be disabled with
+  the retained installation helper before upgrading; see
+  [appearance recovery](README/omarchy-appearance.md).
+
 ## 12.9.1 - 2026-11-13
 
 ### Changed
