@@ -15,7 +15,8 @@
 			"accent": "#86edb0"
 		},
 		"glass": {
-			"t3Opacity": 0.92
+			"t3Opacity": 0.904,
+			"blurSize": 20
 		}
 	}
 }

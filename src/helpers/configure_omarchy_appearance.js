@@ -74,8 +74,17 @@ function validateStyle(style) {
 	) {
 		return "style.palette supports only tint and accent";
 	}
-	if (style.glass !== undefined && !hasOnlyKeys(style.glass, ["t3Opacity"])) {
-		return "style.glass supports only t3Opacity";
+	if (
+		style.glass !== undefined &&
+		!hasOnlyKeys(style.glass, ["t3Opacity", "blurSize"])
+	) {
+		return "style.glass supports only t3Opacity and blurSize";
+	}
+	if (Object.hasOwn(style.glass ?? {}, "blurSize")) {
+		const { blurSize } = style.glass;
+		if (!Number.isInteger(blurSize) || blurSize < 1 || blurSize > 64) {
+			return "style.glass.blurSize must be an integer from 1 to 64";
+		}
 	}
 	const { tint, accent } = { ...OBSIDIAN_DEFAULTS.palette, ...style.palette };
 	if (
@@ -248,6 +257,10 @@ function mixColor(start, end, fraction) {
 function glassFiles(themePath, style) {
 	const { tint, accent } = { ...OBSIDIAN_DEFAULTS.palette, ...style.palette };
 	const opacity = style.glass?.t3Opacity ?? OBSIDIAN_DEFAULTS.glass.t3Opacity;
+	const blurOverride =
+		style.glass?.blurSize === undefined
+			? ""
+			: `\n-- Blur size is global; preserve the source's other blur settings.\nhl.config({ decoration = { blur = { size = ${style.glass.blurSize} } } })\n`;
 	const colors = Bun.TOML.parse(
 		readRegularFile(path.join(themePath, "colors.toml")),
 	);
@@ -330,6 +343,7 @@ function glassFiles(themePath, style) {
 		"t3code.json": `${JSON.stringify(t3, null, 2)}\n`,
 		"hyprland.lua.tpl":
 			template +
+			blurOverride +
 			`\n-- Whole-window fallback: opacity also affects T3 text.\no.window("^com\\\\.t3tools\\\\.T3Code$", { opacity = "${opacity} override ${opacity} override" })\n`,
 	};
 }

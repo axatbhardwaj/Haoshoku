@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import fs from "node:fs";
+import { spawnSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 
@@ -28,9 +29,16 @@ const VERSION_RESULT = {
 	stderr: "",
 };
 const temporaryHomes = [];
+const lua = Bun.which("lua5.4") ?? Bun.which("lua");
 
 afterEach(() => {
 	for (const home of temporaryHomes.splice(0)) {
+		if (
+			path.dirname(home) !== fs.realpathSync(os.tmpdir()) ||
+			!path.basename(home).startsWith("haoshoku-appearance-") ||
+			!fs.lstatSync(home).isDirectory()
+		)
+			throw new Error("Unsafe fixture cleanup");
 		fs.rmSync(home, { recursive: true, force: true });
 	}
 });
@@ -488,6 +496,7 @@ function glassFixture() {
 	const source = seedTheme(home);
 	const template = path.join(home, ".config/omarchy/themed/hyprland.lua.tpl");
 	const sourceTemplate =
+		"hl.config({ decoration = { blur = { size = 24, passes = 4 }, shadow = { range = 24 } }, cursor = { size = 24 } })\n" +
 		'o.window({ tag = "terminal" }, { opacity = "1 override 1 override" })\no.window("dev\\\\.zed\\\\.Zed", { opacity = "1 override 1 override" })\n';
 	fs.mkdirSync(path.dirname(template), { recursive: true });
 	fs.writeFileSync(template, "-- prior user template\n");
@@ -546,6 +555,135 @@ function glassFixture() {
 		derived: `${source}-obsidian-glass`,
 	};
 }
+
+describe("Obsidian Glass blur tuning", () => {
+	(lua ? it : it.skip).each([1, 20, 64])(
+		"applies global blur size %i without changing source, passes or unrelated sizes",
+		async (blurSize) => {
+			const f = glassFixture();
+			f.options.manifest.style = {
+				...OBSIDIAN,
+				glass: { blurSize, t3Opacity: 0.904 },
+			};
+			expect((await configureOmarchyAppearance(f.options)).status).toBe(
+				"configured",
+			);
+			const rendered = fs.readFileSync(f.template, "utf8");
+			// Execute the generated Lua with a config collector; no compositor is touched.
+			const execution = spawnSync(lua, ["-"], {
+				encoding: "utf8",
+				input: `
+local blurSize, passes, shadow, cursor
+hl = { config = function(c)
+  local d = c.decoration or {}
+  local b = d.blur or {}
+  blurSize = b.size or blurSize
+  passes = b.passes or passes
+  shadow = d.shadow and d.shadow.range or shadow
+  cursor = c.cursor and c.cursor.size or cursor
+end }
+o = { window = function() end }
+${rendered}
+print(blurSize, passes, shadow, cursor)
+`,
+			});
+			expect(execution.status).toBe(0);
+			expect(execution.stdout.trim().split(/\s+/)).toEqual([
+				String(blurSize),
+				"4",
+				"24",
+				"24",
+			]);
+			expect(rendered).toStartWith(f.sourceTemplate);
+			expect(rendered).toContain('opacity = "0.904 override 0.904 override"');
+			expect(
+				fs.readFileSync(path.join(f.source, "themed/hyprland.lua.tpl"), "utf8"),
+			).toBe(f.sourceTemplate);
+			expect((await configureOmarchyAppearance(f.options)).status).toBe(
+				"configured",
+			);
+			expect(fs.readFileSync(f.template, "utf8")).toBe(rendered);
+			expect(
+				fs
+					.readdirSync(path.dirname(f.source))
+					.filter((name) => name.includes("backup")),
+			).toEqual([]);
+			expect(
+				(await configureOmarchyAppearance({ ...f.options, manifest: MANIFEST }))
+					.status,
+			).toBe("configured");
+			expect(fs.readFileSync(f.template, "utf8")).toBe(
+				"-- prior user template\n",
+			);
+		},
+	);
+
+	it("applies the opt-in preset with 9.6% transparency and rounded blur size 20", async () => {
+		const f = glassFixture();
+		const preset = JSON.parse(
+			fs.readFileSync(
+				path.resolve(
+					import.meta.dir,
+					"../configs/omarchy/appearance.obsidian-glass.json",
+				),
+				"utf8",
+			),
+		);
+		f.options.manifest.style = preset.style;
+		expect((await configureOmarchyAppearance(f.options)).status).toBe(
+			"configured",
+		);
+		const rendered = fs.readFileSync(f.template, "utf8");
+		expect(rendered).toContain(
+			"hl.config({ decoration = { blur = { size = 20 } } })",
+		);
+		expect(rendered).toContain('opacity = "0.904 override 0.904 override"');
+	});
+
+	it("leaves the source template byte-exact apart from the existing opacity addition when blur is absent", async () => {
+		const f = glassFixture();
+		f.options.manifest.style = { variant: "obsidian-glass" };
+		expect((await configureOmarchyAppearance(f.options)).status).toBe(
+			"configured",
+		);
+		expect(fs.readFileSync(f.template, "utf8")).toBe(
+			f.sourceTemplate +
+				'\n-- Whole-window fallback: opacity also affects T3 text.\no.window("^com\\\\.t3tools\\\\.T3Code$", { opacity = "0.92 override 0.92 override" })\n',
+		);
+	});
+
+	it.each([
+		0,
+		65,
+		-1,
+		20.4,
+		"20",
+		null,
+		NaN,
+		Infinity,
+		-Infinity,
+	])("rejects invalid blur size %j before commands or writes", async (blurSize) => {
+		const home = makeHome();
+		const calls = [];
+		const warnings = [];
+		const result = await configureOmarchyAppearance({
+			manifest: { ...MANIFEST, style: { ...OBSIDIAN, glass: { blurSize } } },
+			home,
+			versionResult: VERSION_RESULT,
+			logImpl: { ...makeLog(), warning: (message) => warnings.push(message) },
+			runCommandImpl: async (argv) => {
+				calls.push(argv);
+				return { exitCode: 0, stdout: "", stderr: "" };
+			},
+		});
+		expect(result.status).toBe("invalid-manifest");
+		expect(warnings.join(" ")).toContain(
+			"style.glass.blurSize must be an integer from 1 to 64",
+		);
+		expect(calls).toEqual([]);
+		expect(fs.readdirSync(home)).toEqual([]);
+	});
+});
 
 describe("owned Obsidian Glass theme", () => {
 	it("derives neutral colors, preserves source and wallpaper, and delegates apply to Omarchy", async () => {

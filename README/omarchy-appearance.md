@@ -33,7 +33,7 @@ route, or apply the example directly from a Haoshoku source checkout:
 "style": {
   "variant": "obsidian-glass",
   "palette": { "tint": "#080a0b", "accent": "#86edb0" },
-  "glass": { "t3Opacity": 0.92 }
+  "glass": { "t3Opacity": 0.904, "blurSize": 20 }
 }
 ```
 
@@ -55,17 +55,27 @@ using the unchanged default manifest disables the variant; keep the `style`
 block in your chosen manifest and use that manifest for subsequent applies.
 
 The `palette` and `glass` objects, and each setting inside them, are optional.
-`{ "variant": "obsidian-glass" }` selects the same defaults as the example.
+`{ "variant": "obsidian-glass" }` retains the original defaults: the same palette,
+`t3Opacity: 0.92` and no blur override. The opt-in preset above explicitly uses
+0.904 opacity and blur size 20.
 
 | Setting | Accepted values | Effect |
 | --- | --- | --- |
 | `palette.tint` | Six-digit `#RRGGBB`; each channel 0–32 | Very dark background; neutral surface shades are derived from it |
 | `palette.accent` | Six-digit `#RRGGBB`; at least 4.5:1 against the derived selected surface | Focus, selection, active border, and T3 actions |
-| `glass.t3Opacity` | Number 0.90–1; default 0.92 | Active and inactive whole-window opacity for `com.t3tools.T3Code` |
+| `glass.t3Opacity` | Number 0.90–1; default 0.92 | Active and inactive whole-window opacity for `com.t3tools.T3Code`; preset 0.904 |
+| `glass.blurSize` | Finite integer 1–64; omitted by default | Global Hyprland blur size; preset 20; other blur settings stay under the source template's control |
 
-Unknown settings, unsupported variants, null settings, invalid colors and opacity
-outside these bounds are rejected before commands or writes. These contrast
-checks concern opaque palette colors; the wallpaper can still affect contrast
+The preset raises transparency by 20% relative to the original 8%: 9.6%
+transparency means 90.4% opacity (`0.904`). Aurora's pinned template uses blur
+size 24 and 4 passes. A 15% size reduction gives 20.4; the nearest integer is 20,
+so the actual size reduction is about 16.7%. Passes remain 4. Blur size applies
+globally to surfaces using Hyprland blur, including other windows; it is not a
+per-T3 setting and does not enable blur by itself.
+
+Unknown settings, unsupported variants, null settings, invalid colors, opacity
+outside its bounds and non-integer or out-of-range blur sizes are rejected before
+commands or writes. These contrast checks concern opaque palette colors; the wallpaper can still affect contrast
 through compositor glass. Use `t3Opacity: 1` when text readability needs priority.
 
 The helper reads the clean source theme at the manifest's exact pinned revision,
@@ -83,18 +93,24 @@ Omarchy's theme command owns rendering and application. The helper does not
 copy generated current-theme files, change `/usr/share/omarchy`, add visual
 workspace overlays, or modify T3's application bundle. It installs the source
 Hyprland template with one extra T3 opacity rule, retaining the native terminal,
-Zed, video and credential-window opacity guards. Template overrides are global
-to Omarchy: other themes also use this template until the variant is disabled.
+Zed, video and credential-window opacity guards. When `blurSize` is set, it also
+appends a supported `hl.config` override for `decoration.blur.size` only; passes,
+other blur options and unrelated sizes are preserved. With `blurSize` omitted,
+the source template's bytes are unchanged apart from the existing T3 opacity
+addition. Template overrides are global to Omarchy: other themes also use this template until the variant is disabled.
 Native terminal/Zed background transparency and Omarchy's existing glass toggle
 remain under their own owners; this manifest does not configure them.
 
 **Transparency limits:** T3's native canvas, sidebar, cards and input colors are
 opaque RGB. The approved mockup's separate surface alpha values cannot be
-reproduced by this manifest. The 92% fallback fades the entire T3 window,
-including text and controls. It does not provide independent background alpha
-or promise that a browser or other client gets compositor transparency. Blur and
-all non-T3 window opacity policies come from Aurora's unchanged template; live
-Hyprland rules or a glass/opaque toggle can override the result. Check the real
+reproduced by this manifest. Whole-window opacity fades the entire T3 window,
+including text and controls: 90.4% opacity in the tuned preset, or the original
+92% fallback when `t3Opacity` is omitted. It does not provide independent
+background alpha or promise that a browser or other client gets compositor
+transparency. With `blurSize` omitted, blur comes from Aurora's unchanged
+template; the preset overrides only its global size. All non-T3 window opacity
+policies stay under the source template's control. Live Hyprland rules or a
+glass/opaque toggle can override the result. Check the real
 native window after applying. Remote T3 clients receive the RGB theme through
 Omarchy but have their own desktop opacity behavior and theme selection.
 
