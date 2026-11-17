@@ -168,6 +168,21 @@ describe("shared agent profile round trip", () => {
 		}
 	});
 
+	it("deploys the exact code-first correction rule to Claude and Codex", async () => {
+		await syncAgentsConfig({ home });
+		for (const relativePath of [".claude/CLAUDE.md", ".codex/AGENTS.md"]) {
+			const lines = fs
+				.readFileSync(path.join(home, relativePath), "utf8")
+				.split("\n");
+			expect(lines).toContain(
+				"- When I correct the same thing twice, make it a check, test or code change that day; the rule line here points to that check. Keep prose only for authority or judgement.",
+			);
+			expect(lines).not.toContain(
+				"- When I correct the same thing twice, write it here as one rule that day.",
+			);
+		}
+	});
+
 	it("deploys current fleet roles and Terra automation guidance", async () => {
 		await syncAgentsConfig({ home });
 		for (const relativePath of [".claude/CLAUDE.md", ".codex/AGENTS.md"]) {

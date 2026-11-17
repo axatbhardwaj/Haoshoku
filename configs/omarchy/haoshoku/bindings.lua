@@ -140,5 +140,4 @@ hl.unbind("SUPER + SHIFT + CTRL + G")
 
 -- Logitech MX Keys examples:
 -- o.bind("SUPER + SHIFT + S", nil, "omarchy-capture-screenshot") -- Print Screen
--- o.bind("SUPER + H", nil, "voxtype record toggle")              -- Dictation
 -- o.bind("SUPER + PERIOD", nil, "omarchy-launch-walker -m symbols") -- Emoji

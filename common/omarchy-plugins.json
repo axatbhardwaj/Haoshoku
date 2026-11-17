@@ -35,11 +35,6 @@
 		"manualAuth": null
 	},
 	{
-		"id": "io.github.nodrej.speech-orb",
-		"url": "https://github.com/nodrej/omarchy-speech-orb.git",
-		"manualAuth": null
-	},
-	{
 		"id": "ssupt.audio-control",
 		"url": "https://github.com/ssupt/omarchy-audio-control.git",
 		"manualAuth": null,

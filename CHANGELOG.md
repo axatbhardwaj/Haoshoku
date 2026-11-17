@@ -1,5 +1,26 @@
 # Changelog
 
+## 12.9.1 - 2026-11-13
+
+### Changed
+
+- Prefer relevant Axstack skills in the shared agent profiles.
+- Use the main thread as orchestrator and child threads as drivers for
+  research, explainers and implementation; reuse related threads as consultants.
+- Assign iosatellite the fleet testing role for Playwright and final feature
+  and PR verification.
+
+## 12.9.0 - 2026-11-11
+
+### Changed
+
+- Use Superwhisper for Omarchy desktop dictation on io/iobook, with one F9
+  hold-to-record/release-to-paste binding through Omarchy’s generic backend.
+  Preserve existing Superwhisper preferences, downloaded models and T3 voice.
+- Disable Voxtype and Speech Orb without deleting their data; remove the orb
+  from the managed plugin manifest and bar. Engineering workers and Debian/VPS
+  receive no desktop speech installation.
+
 ## 12.8.2 - 2026-11-05
 
 ### Changed

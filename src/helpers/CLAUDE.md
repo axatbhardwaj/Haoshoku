@@ -54,7 +54,7 @@ Standalone setup scripts for specific tools.
 | `configure_gaming.js` | Steam (special:steam) / Omakade (resolved gaming slot 2) login-autostart policy (`~/.config/haoshoku/gaming.json`) plus deployed-overlay reconciliation | Modifying gaming autostart defaults, flags, or the Lua patch boundary |
 | `configure_split_lock_sudoers.js` | visudo-validated `/etc/sudoers.d/haoshoku-split-lock` granting only the two `kernel.split_lock_mitigate` sysctl calls the gaming wrapper makes | Changing the split-lock rule or `--gaming-split-lock` |
 | `configure_omazed.js` | Omazed setup, Zed theme selection/hook deploy, and legacy theme retirement | Modifying Omarchy-managed Zed theming |
-| `configure_voxtype_osd.js` | Turns off the voxtype OSD so the Speech Orb plugin replaces it | Changing dictation HUD behavior |
+| `configure_omarchy_dictation.js` | Retires Voxtype/Speech Orb everywhere; configures Superwhisper and a generic F9 hold module only on io/iobook | Changing dictation migration, preservation or worker exclusions |
 | `configure_warp.js` | Dormant Warp tab/theme deploy and idempotent settings activation | Reviewing or modifying the retained Warp setup |
 | `configure_worktree_cleanup.js` | Worktree cleanup script/timer sync, backup, and user-timer enablement | Modifying cleanup deployment, backup, or scheduling |
 | `install_user_scripts.js` | Copy `configs/scripts/*` → `~/.local/bin/` + chmod 755 | Adding user-level shell wrappers (PATH shadows, helper commands) |
