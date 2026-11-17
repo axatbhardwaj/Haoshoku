@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { PROJECT_ROOT } from "../common/paths.js";
 import { checkOmarchyV4 } from "../common/omarchy_version.js";
@@ -27,6 +28,99 @@ async function runCaptured(argv, { cwd, env = process.env } = {}) {
 		child.exited,
 	]);
 	return { exitCode, stdout, stderr };
+}
+
+const OBSIDIAN_DEFAULTS = {
+	variant: "obsidian-glass",
+	palette: { tint: "#080a0b", accent: "#86edb0" },
+	glass: { t3Opacity: 0.92 },
+};
+
+function hasOnlyKeys(value, keys) {
+	return (
+		value &&
+		typeof value === "object" &&
+		!Array.isArray(value) &&
+		Object.keys(value).every((key) => keys.includes(key))
+	);
+}
+
+function luminance(hex) {
+	return hex
+		.slice(1)
+		.match(/../g)
+		.map((part) => {
+			const channel = Number.parseInt(part, 16) / 255;
+			return channel <= 0.04045
+				? channel / 12.92
+				: ((channel + 0.055) / 1.055) ** 2.4;
+		})
+		.reduce(
+			(sum, channel, index) => sum + channel * [0.2126, 0.7152, 0.0722][index],
+			0,
+		);
+}
+
+function validateStyle(style) {
+	if (
+		!hasOnlyKeys(style, ["variant", "palette", "glass"]) ||
+		style.variant !== "obsidian-glass"
+	) {
+		return "style must select obsidian-glass with only palette and glass settings";
+	}
+	if (
+		style.palette !== undefined &&
+		!hasOnlyKeys(style.palette, ["tint", "accent"])
+	) {
+		return "style.palette supports only tint and accent";
+	}
+	if (
+		style.glass !== undefined &&
+		!hasOnlyKeys(style.glass, ["t3Opacity", "blurSize"])
+	) {
+		return "style.glass supports only t3Opacity and blurSize";
+	}
+	if (Object.hasOwn(style.glass ?? {}, "blurSize")) {
+		const { blurSize } = style.glass;
+		if (!Number.isInteger(blurSize) || blurSize < 1 || blurSize > 64) {
+			return "style.glass.blurSize must be an integer from 1 to 64";
+		}
+	}
+	const { tint, accent } = { ...OBSIDIAN_DEFAULTS.palette, ...style.palette };
+	if (
+		![tint, accent].every(
+			(color) => typeof color === "string" && /^#[0-9a-f]{6}$/i.test(color),
+		)
+	) {
+		return "style colors must be six-digit hex RGB values";
+	}
+	if (
+		tint
+			.slice(1)
+			.match(/../g)
+			.some((part) => Number.parseInt(part, 16) > 32)
+	) {
+		return "style.palette.tint channels must be at most 32 for readable dark glass";
+	}
+	if (
+		(luminance(accent) + 0.05) /
+			(luminance(mixColor(tint, accent, 0.13)) + 0.05) <
+		4.5
+	) {
+		return "style.palette.accent must contrast with the selected surface by at least 4.5:1";
+	}
+	const opacity = Object.hasOwn(style.glass ?? {}, "t3Opacity")
+		? style.glass.t3Opacity
+		: OBSIDIAN_DEFAULTS.glass.t3Opacity;
+	if (
+		typeof opacity !== "number" ||
+		!Number.isFinite(opacity) ||
+		opacity < 0.9 ||
+		opacity > 1
+	) {
+		return "style.glass.t3Opacity must be a number from 0.90 to 1";
+	}
+	return null;
 }
 
 function validateManifest(manifest) {
@@ -64,7 +158,9 @@ function validateManifest(manifest) {
 	) {
 		return "font must be a non-empty single-line family name";
 	}
-	return null;
+	return Object.hasOwn(manifest, "style")
+		? validateStyle(manifest.style)
+		: null;
 }
 
 function normalizedRepository(value) {
@@ -94,6 +190,318 @@ async function commandOk(runCommandImpl, argv, options = {}) {
 			stdout: "",
 			stderr: error?.message ?? String(error),
 		};
+	}
+}
+
+const GLASS_MARKER = ".haoshoku-obsidian.json";
+const GLASS_FILES = ["colors.toml", "t3code.json", "hyprland.lua.tpl"];
+const LATE_FILE = "hyprland-late.lua";
+const LOADER_BEGIN = "-- haoshoku-obsidian:begin";
+const LOADER_END = "-- haoshoku-obsidian:end";
+const digest = (text) => createHash("sha256").update(text).digest("hex");
+
+function readRegularFile(file) {
+	if (!fs.lstatSync(file).isFile())
+		throw new Error(`Not a regular file: ${file}`);
+	return fs.readFileSync(file, "utf8");
+}
+
+function readGlassState(derivedPath, templatePath, source) {
+	if (!fs.lstatSync(derivedPath, { throwIfNoEntry: false })) return null;
+	if (!fs.lstatSync(derivedPath).isDirectory())
+		throw new Error("Derived theme is not an owned directory");
+	const state = JSON.parse(
+		readRegularFile(path.join(derivedPath, GLASS_MARKER)),
+	);
+	const files = state.lateLoader ? [...GLASS_FILES, LATE_FILE] : GLASS_FILES;
+	if (
+		state.owner !== "haoshoku-obsidian-v1" ||
+		state.source !== source ||
+		typeof state.active !== "boolean" ||
+		!(state.lateLoader === undefined || state.lateLoader === true) ||
+		!(
+			state.priorTemplate === null || typeof state.priorTemplate === "string"
+		) ||
+		fs.readdirSync(derivedPath).sort().join() !==
+			[...files, GLASS_MARKER].sort().join() ||
+		files.some(
+			(file) =>
+				digest(readRegularFile(path.join(derivedPath, file))) !==
+				state.hashes?.[file],
+		)
+	) {
+		throw new Error(
+			"Derived theme contains unowned or edited files; preserving it",
+		);
+	}
+	if (
+		state.active &&
+		digest(readRegularFile(templatePath)) !== state.hashes["hyprland.lua.tpl"]
+	) {
+		throw new Error("Hyprland template changed since apply; preserving it");
+	}
+	return state;
+}
+
+function planGlassLoader(home, derivedPath, state, enabled) {
+	// Legacy disable and never-enabled hosts do not need a main-config edit.
+	if (!enabled && !state?.lateLoader) return null;
+	const file = path.join(home, ".config/hypr/hyprland.lua");
+	if (!fs.lstatSync(path.dirname(file)).isDirectory())
+		throw new Error("Hyprland config directory must not be a symlink");
+	const prior = readRegularFile(file);
+	const block = `\n${LOADER_BEGIN}\ndo\n  local file = os.getenv("HOME") .. "/.config/omarchy/themes/${path.basename(derivedPath)}/${LATE_FILE}"\n  local handle = io.open(file, "r")\n  if handle then handle:close(); dofile(file) end\nend\n${LOADER_END}\n`;
+	const owned = Boolean(state?.lateLoader);
+	if (
+		prior.split(LOADER_BEGIN).length !== (owned ? 2 : 1) ||
+		prior.split(LOADER_END).length !== (owned ? 2 : 1) ||
+		(owned && !prior.includes(block))
+	) {
+		throw new Error("Hyprland late loader is unowned or edited; preserving it");
+	}
+	const rest = owned ? prior.replace(block, "") : prior;
+	return { file, prior, contents: enabled ? rest + block : rest };
+}
+
+function mixColor(start, end, fraction) {
+	return (
+		"#" +
+		[1, 3, 5]
+			.map((index) =>
+				Math.round(
+					Number.parseInt(start.slice(index, index + 2), 16) * (1 - fraction) +
+						Number.parseInt(end.slice(index, index + 2), 16) * fraction,
+				)
+					.toString(16)
+					.padStart(2, "0"),
+			)
+			.join("")
+	);
+}
+
+function glassFiles(themePath, style) {
+	const { tint, accent } = { ...OBSIDIAN_DEFAULTS.palette, ...style.palette };
+	const opacity = style.glass?.t3Opacity ?? OBSIDIAN_DEFAULTS.glass.t3Opacity;
+	const blurOverride =
+		style.glass?.blurSize === undefined
+			? ""
+			: `\n-- Blur size is global; preserve the source's other blur settings.\nhl.config({ decoration = { blur = { size = ${style.glass.blurSize} } } })\n`;
+	const overrides =
+		blurOverride +
+		`\n-- Whole-window fallback: opacity also affects T3 text.\no.window("^com\\\\.t3tools\\\\.T3Code$", { opacity = "${opacity} override ${opacity} override" })\n`;
+	const colors = Bun.TOML.parse(
+		readRegularFile(path.join(themePath, "colors.toml")),
+	);
+	const t3 = JSON.parse(readRegularFile(path.join(themePath, "t3code.json")));
+	const template = readRegularFile(
+		path.join(themePath, "themed/hyprland.lua.tpl"),
+	);
+	if (
+		!colors.background ||
+		!colors.accent ||
+		t3.version !== 1 ||
+		!t3.colors ||
+		typeof t3.colors !== "object" ||
+		Array.isArray(t3.colors)
+	) {
+		throw new Error(
+			"Source theme lacks a supported palette, T3 theme or Hyprland template",
+		);
+	}
+	const surface = mixColor(tint, "#ffffff", 0.04);
+	const dark = mixColor(tint, "#000000", 0.3);
+	const selected = mixColor(tint, accent, 0.13);
+	Object.assign(colors, {
+		accent,
+		selection: accent,
+		selection_foreground: tint,
+		background: tint,
+		dark_background: dark,
+		darker_background: mixColor(tint, "#000000", 0.5),
+		lighter_background: surface,
+		foreground: "#f2f6f3",
+		muted: "#b6c5bd",
+		dark_foreground: "#56615b",
+		light_foreground: "#f2f6f3",
+		bright_foreground: "#ffffff",
+		hyprland_active_border: `rgba(${accent.slice(1)}ee)`,
+		hyprland_inactive_border: "rgba(56615b99)",
+	});
+	Object.assign(t3, { name: "Obsidian Glass", canvas: tint, accent });
+	for (const [value, keys] of [
+		[
+			tint,
+			"canvas chrome toolbar codeBackground terminalBackground accentForeground messageActionForeground",
+		],
+		[dark, "sidebar surfaceOverlay"],
+		[
+			surface,
+			"toolbarControl toolbarControlHover surface surfaceRaised secondary muted messageSurface sidebarControlSurface sidebarRowHover",
+		],
+		[
+			selected,
+			"accentSurface sidebarRowActive sidebarRowSelected terminalSelection",
+		],
+		[
+			"#f2f6f3",
+			"text toolbarForeground toolbarControlForeground secondaryForeground messageForeground codeForeground sidebarForeground terminalForeground",
+		],
+		[
+			"#b6c5bd",
+			"textMuted mutedForeground placeholder secondaryLabel iconMuted sidebarMutedForeground",
+		],
+		[
+			"#39433e",
+			"border toolbarBorder input sidebarBorder terminalScrollbar terminalScrollbarHover",
+		],
+		[
+			accent,
+			"accent focus accentSurfaceForeground messageAction messageActionHover terminalCursor",
+		],
+	])
+		for (const key of keys.split(" ")) t3.colors[key] = value;
+	return {
+		"colors.toml": `${Object.entries(colors)
+			.map(([key, value]) => {
+				if (!/^[a-z_]+$/.test(key) || typeof value !== "string")
+					throw new Error("Unsupported source palette entry");
+				return `${key} = ${JSON.stringify(value)}`;
+			})
+			.join("\n")}\n`,
+		"t3code.json": `${JSON.stringify(t3, null, 2)}\n`,
+		"hyprland.lua.tpl": template + overrides,
+		// Do not replay the theme after personal settings and persisted toggles.
+		[LATE_FILE]: overrides,
+	};
+}
+
+// Omarchy replaces current/theme on apply; keep any selected media there alive.
+function planWallpaper(home, fallback) {
+	const current = path.join(home, ".local/state/omarchy/current");
+	const link = path.join(current, "background");
+	if (!fs.existsSync(link)) return { file: fallback };
+	const file = fs.realpathSync(link);
+	const relative = path.relative(path.join(current, "theme"), file);
+	if (relative.startsWith("..") || path.isAbsolute(relative)) return { file };
+	const contents = fs.readFileSync(file);
+	const directory = path.join(
+		home,
+		".config/omarchy/backgrounds/haoshoku-preserved",
+	);
+	const existingDirectory = fs.lstatSync(directory, { throwIfNoEntry: false });
+	if (existingDirectory && !existingDirectory.isDirectory())
+		throw new Error("Wallpaper backup directory is not a directory");
+	const saved = path.join(
+		directory,
+		`${digest(contents)}${path.extname(file)}`,
+	);
+	if (fs.lstatSync(saved, { throwIfNoEntry: false })) {
+		if (
+			!fs.lstatSync(saved).isFile() ||
+			!fs.readFileSync(saved).equals(contents)
+		)
+			throw new Error("Wallpaper backup collision; preserving it");
+		return { file: saved };
+	}
+	return { file: saved, contents };
+}
+
+function writeTemplate(templatePath, contents) {
+	if (contents === null) {
+		fs.unlinkSync(templatePath);
+		return;
+	}
+	if (fs.existsSync(templatePath) && readRegularFile(templatePath) === contents)
+		return;
+	fs.mkdirSync(path.dirname(templatePath), { recursive: true });
+	const temporary = fs.mkdtempSync(
+		path.join(path.dirname(templatePath), ".haoshoku-glass-"),
+	);
+	try {
+		const mode = fs.existsSync(templatePath)
+			? fs.statSync(templatePath).mode
+			: undefined;
+		fs.writeFileSync(path.join(temporary, "template"), contents, { mode });
+		fs.renameSync(path.join(temporary, "template"), templatePath);
+	} finally {
+		fs.rmSync(temporary, { recursive: true });
+	}
+}
+
+function materializeGlass({
+	themePath,
+	derivedPath,
+	templatePath,
+	style,
+	state,
+	loader,
+	nowImpl,
+	renameImpl,
+}) {
+	const files = glassFiles(themePath, style);
+	const priorTemplate = state?.active
+		? state.priorTemplate
+		: fs.lstatSync(templatePath, { throwIfNoEntry: false })
+			? readRegularFile(templatePath)
+			: null;
+	const nextState = {
+		owner: "haoshoku-obsidian-v1",
+		source: themePath,
+		active: true,
+		lateLoader: true,
+		priorTemplate,
+		hashes: Object.fromEntries(
+			Object.entries(files).map(([file, contents]) => [file, digest(contents)]),
+		),
+	};
+	if (JSON.stringify(state) !== JSON.stringify(nextState)) {
+		const staging = fs.mkdtempSync(
+			path.join(path.dirname(derivedPath), ".haoshoku-obsidian-"),
+		);
+		let backup;
+		try {
+			for (const [file, contents] of Object.entries(files))
+				fs.writeFileSync(path.join(staging, file), contents);
+			fs.writeFileSync(
+				path.join(staging, GLASS_MARKER),
+				`${JSON.stringify(nextState, null, 2)}\n`,
+			);
+			if (state) {
+				const prefix = `${derivedPath}.haoshoku-backup-${nowImpl()}`;
+				backup = prefix;
+				for (let n = 1; fs.existsSync(backup); n++) backup = `${prefix}.${n}`;
+				renameImpl(derivedPath, backup);
+			}
+			try {
+				renameImpl(staging, derivedPath);
+			} catch (error) {
+				if (backup) renameImpl(backup, derivedPath);
+				throw error;
+			}
+			try {
+				writeTemplate(templatePath, files["hyprland.lua.tpl"]);
+				try {
+					writeTemplate(loader.file, loader.contents);
+				} catch (error) {
+					writeTemplate(
+						templatePath,
+						state?.active
+							? readRegularFile(path.join(backup, "hyprland.lua.tpl"))
+							: priorTemplate,
+					);
+					throw error;
+				}
+			} catch (error) {
+				renameImpl(derivedPath, staging);
+				if (backup) renameImpl(backup, derivedPath);
+				throw error;
+			}
+		} finally {
+			if (fs.existsSync(staging)) fs.rmSync(staging, { recursive: true });
+		}
+	} else {
+		// Move the validated block behind any newly appended personal config.
+		writeTemplate(loader.file, loader.contents);
 	}
 }
 
@@ -142,6 +550,30 @@ export async function configureOmarchyAppearance({
 	const commandEnv = { ...env, HOME: home };
 	const themesPath = path.join(home, ".config", "omarchy", "themes");
 	const themePath = path.join(themesPath, name);
+	const derivedPath = `${themePath}-obsidian-glass`;
+	const templatePath = path.join(
+		home,
+		".config/omarchy/themed/hyprland.lua.tpl",
+	);
+	let glassState;
+	let loader;
+	try {
+		if (
+			appearance.style ||
+			fs.existsSync(path.join(derivedPath, GLASS_MARKER))
+		) {
+			glassState = readGlassState(derivedPath, templatePath, themePath);
+			loader = planGlassLoader(
+				home,
+				derivedPath,
+				glassState,
+				Boolean(appearance.style),
+			);
+		}
+	} catch (error) {
+		logImpl.warning(`Preserving Obsidian Glass state: ${error.message}`);
+		return { status: "conflict", installed: false, themePath };
+	}
 	let installed = false;
 	let preservedLocalChanges = false;
 	let legacyBackupPath;
@@ -186,6 +618,8 @@ export async function configureOmarchyAppearance({
 				return { status: "conflict", installed: false, themePath };
 			}
 
+			if (appearance.style)
+				return { status: "conflict", installed: false, themePath };
 			replaceLegacyTheme = true;
 			installPinnedTheme = true;
 		} else {
@@ -200,7 +634,23 @@ export async function configureOmarchyAppearance({
 				);
 				return { status: "conflict", installed: false, themePath };
 			}
-			if (status.stdout.trim()) {
+			if (appearance.style) {
+				const head = await commandOk(
+					runCommandImpl,
+					["git", "rev-parse", "HEAD"],
+					{ cwd: themePath, env: commandEnv },
+				);
+				if (
+					status.stdout.trim() ||
+					head.exitCode !== 0 ||
+					head.stdout.trim() !== revision
+				) {
+					logImpl.warning(
+						"Obsidian Glass requires a clean source theme at its pinned revision; no source changes were made.",
+					);
+					return { status: "conflict", installed: false, themePath };
+				}
+			} else if (status.stdout.trim()) {
 				preservedLocalChanges = true;
 				logImpl.warning(
 					`Preserving local changes in the ${name} theme; applying the current checkout.`,
@@ -311,19 +761,95 @@ export async function configureOmarchyAppearance({
 		return { status: "background-missing", installed, themePath };
 	}
 
-	const themeHyprlandTpl = path.join(themePath, "themed", "hyprland.lua.tpl");
-	if (fs.existsSync(themeHyprlandTpl)) {
-		const userThemedDir = path.join(home, ".config", "omarchy", "themed");
-		fs.mkdirSync(userThemedDir, { recursive: true });
-		fs.copyFileSync(
-			themeHyprlandTpl,
-			path.join(userThemedDir, "hyprland.lua.tpl"),
-		);
-	}
+	let appliedTheme = name;
+	const restoringGlass = glassState?.active && !appearance.style;
+	const preserveWallpaper = Boolean(appearance.style || glassState);
+	let wallpaper = { file: backgroundPath };
 
+	try {
+		// Git probes may yield to other configuration writers; verify ownership again.
+		if (appearance.style || glassState) {
+			const confirmedState = readGlassState(
+				derivedPath,
+				templatePath,
+				themePath,
+			);
+			if (
+				JSON.stringify(confirmedState) !== JSON.stringify(glassState ?? null) ||
+				JSON.stringify(
+					planGlassLoader(
+						home,
+						derivedPath,
+						confirmedState,
+						Boolean(appearance.style),
+					),
+				) !== JSON.stringify(loader)
+			) {
+				throw new Error("Obsidian Glass ownership changed during preflight");
+			}
+		}
+		if (preserveWallpaper) {
+			commandEnv.OMARCHY_THEME_SKIP_BACKGROUND = "1";
+			wallpaper = planWallpaper(home, backgroundPath);
+		}
+		if (appearance.style) {
+			materializeGlass({
+				themePath,
+				derivedPath,
+				templatePath,
+				style: appearance.style,
+				state: glassState,
+				loader,
+				nowImpl,
+				renameImpl,
+			});
+			appliedTheme = path.basename(derivedPath);
+		} else if (restoringGlass) {
+			try {
+				if (loader) writeTemplate(loader.file, loader.contents);
+				writeTemplate(templatePath, glassState.priorTemplate);
+				// Retire active ownership; later default runs must use the source
+				// template and manifest wallpaper, not stale glass metadata.
+				const prefix = path.join(
+					themesPath,
+					`.${path.basename(derivedPath)}-disabled-${nowImpl()}`,
+				);
+				let retired = prefix;
+				for (let n = 1; fs.existsSync(retired); n++) retired = `${prefix}.${n}`;
+				renameImpl(derivedPath, retired);
+			} catch (error) {
+				if (loader) writeTemplate(loader.file, loader.prior);
+				writeTemplate(
+					templatePath,
+					readRegularFile(path.join(derivedPath, "hyprland.lua.tpl")),
+				);
+				throw error;
+			}
+		} else if (!glassState) {
+			const themeHyprlandTpl = path.join(themePath, "themed/hyprland.lua.tpl");
+			if (fs.existsSync(themeHyprlandTpl))
+				writeTemplate(templatePath, readRegularFile(themeHyprlandTpl));
+		}
+	} catch (error) {
+		logImpl.warning(
+			`Could not prepare Obsidian Glass appearance: ${error.message}`,
+		);
+		return { status: "conflict", installed, themePath };
+	}
+	try {
+		if (wallpaper.contents) {
+			fs.mkdirSync(path.dirname(wallpaper.file), { recursive: true });
+			fs.writeFileSync(wallpaper.file, wallpaper.contents, { flag: "wx" });
+		}
+	} catch (error) {
+		logImpl.warning(
+			`Could not preserve the selected wallpaper: ${error.message}`,
+		);
+		return { status: "conflict", installed, themePath };
+	}
 	const commands = [
-		["omarchy", "theme", "set", name],
-		["omarchy", "theme", "bg", "set", backgroundPath],
+		["omarchy", "theme", "set", appliedTheme],
+		["omarchy", "theme", "bg", "set", wallpaper.file],
 		["omarchy", "font", "set", appearance.font],
 	];
 	for (const argv of commands) {
@@ -338,9 +864,12 @@ export async function configureOmarchyAppearance({
 			};
 		}
 	}
-	logImpl.success(`Applied Omarchy theme ${name}, background, and font.`);
+	logImpl.success(
+		`Applied Omarchy theme ${appliedTheme}, background, and font.`,
+	);
 	return {
 		status: "configured",
+		appliedTheme,
 		installed,
 		preservedLocalChanges,
 		themePath,
