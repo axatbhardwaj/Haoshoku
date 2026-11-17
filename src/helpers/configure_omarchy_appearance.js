@@ -250,7 +250,7 @@ function planGlassLoader(home, derivedPath, state, enabled) {
 	if (!fs.lstatSync(path.dirname(file)).isDirectory())
 		throw new Error("Hyprland config directory must not be a symlink");
 	const prior = readRegularFile(file);
-	const block = `\n${LOADER_BEGIN}\ndofile(os.getenv("HOME") .. "/.config/omarchy/themes/${path.basename(derivedPath)}/${LATE_FILE}")\n${LOADER_END}\n`;
+	const block = `\n${LOADER_BEGIN}\ndo\n  local file = os.getenv("HOME") .. "/.config/omarchy/themes/${path.basename(derivedPath)}/${LATE_FILE}"\n  local handle = io.open(file, "r")\n  if handle then handle:close(); dofile(file) end\nend\n${LOADER_END}\n`;
 	const owned = Boolean(state?.lateLoader);
 	if (
 		prior.split(LOADER_BEGIN).length !== (owned ? 2 : 1) ||

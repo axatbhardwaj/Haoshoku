@@ -562,6 +562,26 @@ function glassFixture() {
 }
 
 describe("Obsidian Glass late precedence", () => {
+	(lua ? it : it.skip)(
+		"loads main config after the generated theme is removed",
+		async () => {
+			const f = glassFixture();
+			fs.writeFileSync(f.main, 'print("personal config loaded")\n');
+			expect((await configureOmarchyAppearance(f.options)).status).toBe(
+				"configured",
+			);
+			// Simulate Omarchy removing only this test's generated theme directory.
+			fs.rmSync(f.derived, { recursive: true });
+			const execution = spawnSync(lua, [f.main], {
+				encoding: "utf8",
+				env: { ...process.env, HOME: f.home },
+			});
+			expect(execution.stderr).toBe("");
+			expect(execution.status).toBe(0);
+			expect(execution.stdout.trim()).toBe("personal config loaded");
+		},
+	);
+
 	it.each([
 		true,
 		false,
