@@ -647,6 +647,93 @@ describe("Obsidian Glass late precedence", () => {
 		expect(f.calls.some(({ argv }) => argv[0] === "omarchy")).toBe(false);
 	});
 
+	it.each([
+		"edited-loader",
+		"duplicate-loader",
+		"edited-late-file",
+		"late-symlink",
+		"directory-symlink",
+	])("preserves %s on apply and disable", async (scenario) => {
+		const f = glassFixture();
+		const original = fs.readFileSync(f.main, "utf8");
+		expect((await configureOmarchyAppearance(f.options)).status).toBe(
+			"configured",
+		);
+		const late = path.join(f.derived, "hyprland-late.lua");
+		if (scenario === "edited-loader")
+			fs.writeFileSync(
+				f.main,
+				fs.readFileSync(f.main, "utf8").replace("dofile", "-- dofile"),
+			);
+		if (scenario === "duplicate-loader")
+			fs.appendFileSync(
+				f.main,
+				fs.readFileSync(f.main, "utf8").slice(original.length),
+			);
+		if (scenario === "edited-late-file")
+			fs.appendFileSync(late, "-- personal edit\n");
+		if (scenario === "late-symlink") {
+			const personal = path.join(f.home, "personal-late.lua");
+			fs.renameSync(late, personal);
+			fs.symlinkSync(personal, late);
+		}
+		if (scenario === "directory-symlink") {
+			fs.renameSync(path.dirname(f.main), path.join(f.home, "personal-hypr"));
+			fs.symlinkSync(path.join(f.home, "personal-hypr"), path.dirname(f.main));
+		}
+		const before = [f.main, f.template, late].map((file) =>
+			fs.readFileSync(file, "utf8"),
+		);
+		f.calls.length = 0;
+		for (const manifest of [f.options.manifest, MANIFEST]) {
+			expect(
+				(await configureOmarchyAppearance({ ...f.options, manifest })).status,
+			).toBe("conflict");
+			expect(
+				[f.main, f.template, late].map((file) => fs.readFileSync(file, "utf8")),
+			).toEqual(before);
+		}
+		expect(f.calls.some(({ argv }) => argv[0] === "omarchy")).toBe(false);
+	});
+
+	it("restores the active loader and template when disable retirement fails", async () => {
+		const f = glassFixture();
+		expect((await configureOmarchyAppearance(f.options)).status).toBe(
+			"configured",
+		);
+		const before = [f.main, f.template].map((file) =>
+			fs.readFileSync(file, "utf8"),
+		);
+		expect(
+			(
+				await configureOmarchyAppearance({
+					...f.options,
+					manifest: MANIFEST,
+					renameImpl: () => {
+						throw new Error("retirement failed");
+					},
+				})
+			).status,
+		).toBe("conflict");
+		expect(
+			[f.main, f.template].map((file) => fs.readFileSync(file, "utf8")),
+		).toEqual(before);
+		expect((await configureOmarchyAppearance(f.options)).status).toBe(
+			"configured",
+		);
+	});
+
+	it("leaves never-enabled main config untouched when style is absent", async () => {
+		const f = glassFixture();
+		const original = fs.readFileSync(f.main, "utf8");
+		expect(
+			(await configureOmarchyAppearance({ ...f.options, manifest: MANIFEST }))
+				.status,
+		).toBe("configured");
+		expect(fs.readFileSync(f.main, "utf8")).toBe(original);
+		expect(fs.existsSync(f.derived)).toBe(false);
+	});
+
 	(lua ? it : it.skip).each([3, 20, undefined])(
 		"applies explicit settings after personal rules and the glass toggle (blur %j)",
 		async (blurSize) => {
@@ -716,6 +803,7 @@ print(opacity); print(terminal); print(credential)
 
 	it("keeps unrelated main edits, remains idempotent and removes only its loader on disable", async () => {
 		const f = glassFixture();
+		fs.chmodSync(f.main, 0o640);
 		const original = fs.readFileSync(f.main, "utf8");
 		expect((await configureOmarchyAppearance(f.options)).status).toBe(
 			"configured",
@@ -726,6 +814,7 @@ print(opacity); print(terminal); print(credential)
 			"configured",
 		);
 		expect(fs.readFileSync(f.main, "utf8")).toBe(enabled);
+		expect(fs.statSync(f.main).mode & 0o777).toBe(0o640);
 		fs.appendFileSync(f.main, "-- unrelated later edit\n");
 		expect((await configureOmarchyAppearance(f.options)).status).toBe(
 			"configured",
@@ -1071,13 +1160,18 @@ describe("appearance changes during Git probes", () => {
 	it.each([
 		"template",
 		"derived",
+		"main",
 	])("preserves a %s edit made after preflight", async (target) => {
 		const f = glassFixture();
 		expect((await configureOmarchyAppearance(f.options)).status).toBe(
 			"configured",
 		);
 		const file =
-			target === "template" ? f.template : path.join(f.derived, "colors.toml");
+			target === "template"
+				? f.template
+				: target === "main"
+					? f.main
+					: path.join(f.derived, "colors.toml");
 		const run = f.options.runCommandImpl;
 		f.options.manifest = {
 			...MANIFEST,

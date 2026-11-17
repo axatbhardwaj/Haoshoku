@@ -64,12 +64,17 @@ The `palette` and `glass` objects, and each setting inside them, are optional.
 | `palette.tint` | Six-digit `#RRGGBB`; each channel 0–32 | Very dark background; neutral surface shades are derived from it |
 | `palette.accent` | Six-digit `#RRGGBB`; at least 4.5:1 against the derived selected surface | Focus, selection, active border, and T3 actions |
 | `glass.t3Opacity` | Number 0.90–1; default 0.92 | Active and inactive whole-window opacity for `com.t3tools.T3Code`; preset 0.904 |
-| `glass.blurSize` | Finite integer 1–64; omitted by default | Global Hyprland blur size; preset 20; other blur settings stay under the source template's control |
+| `glass.blurSize` | Finite integer 1–64; omitted by default | Global Hyprland blur size; preset 20; other blur settings retain their effective personal/toggle values |
 
 The preset raises transparency by 20% relative to the original 8%: 9.6%
 transparency means 90.4% opacity (`0.904`). Aurora's pinned template uses blur
 size 24 and 4 passes. A 15% size reduction gives 20.4; the nearest integer is 20,
-so the actual size reduction is about 16.7%. Passes remain 4. Blur size applies
+so the actual size reduction is about 16.7% against that template. Personal config
+and Omarchy's glass toggle can have a different baseline: the current toggle uses
+size 4 and 2 passes. For those hosts, choose `blurSize: 3` for the nearest integer
+to a 15% reduction (3.4 rounds to 3; the actual reduction is 25%). Size 20 would
+increase their blur. Existing effective passes remain unchanged: 2 with that
+toggle, or 4 with the source template alone. Blur size applies
 globally to surfaces using Hyprland blur, including other windows; it is not a
 per-T3 setting and does not enable blur by itself.
 
@@ -98,8 +103,24 @@ appends a supported `hl.config` override for `decoration.blur.size` only; passes
 other blur options and unrelated sizes are preserved. With `blurSize` omitted,
 the source template's bytes are unchanged apart from the existing T3 opacity
 addition. Template overrides are global to Omarchy: other themes also use this template until the variant is disabled.
-Native terminal/Zed background transparency and Omarchy's existing glass toggle
-remain under their own owners; this manifest does not configure them.
+To keep those explicit values effective after personal config and persisted
+Omarchy toggles, Haoshoku appends a marked loader to the end of
+`~/.config/hypr/hyprland.lua`. It uses `dofile` to run the owned derived theme's
+`hyprland-late.lua` on every config reload. That small file repeats only the
+T3 opacity rule and optional blur size, never the full theme. It leaves effective
+blur enablement, passes, brightness and other settings intact, along with the
+terminal, Zed and credential-window rules. The main config must already exist as
+a regular file in a regular `hypr` directory; symlinks are refused.
+
+Keep manual rules outside the `haoshoku-obsidian:begin` / `:end` block and do not
+edit the generated late file. Unrelated main-config edits are preserved. Each
+apply moves the unchanged owned block back to the end, so manifest values take
+precedence over personal rules and persisted toggles after reload. To keep your
+own blur-size rule authoritative, omit `blurSize`; to stop managing T3 opacity,
+disable the variant. Runtime commands or toggles issued after loading can change
+the current compositor state until the next reload. Native terminal/Zed
+background transparency and the rest of Omarchy's glass toggle remain under
+their own owners.
 
 **Transparency limits:** T3's native canvas, sidebar, cards and input colors are
 opaque RGB. The approved mockup's separate surface alpha values cannot be
@@ -107,10 +128,10 @@ reproduced by this manifest. Whole-window opacity fades the entire T3 window,
 including text and controls: 90.4% opacity in the tuned preset, or the original
 92% fallback when `t3Opacity` is omitted. It does not provide independent
 background alpha or promise that a browser or other client gets compositor
-transparency. With `blurSize` omitted, blur comes from Aurora's unchanged
-template; the preset overrides only its global size. All non-T3 window opacity
-policies stay under the source template's control. Live Hyprland rules or a
-glass/opaque toggle can override the result. Check the real
+transparency. With `blurSize` omitted, blur comes from the existing template,
+personal config and toggles; the preset overrides only its global size. Non-T3
+window opacity rules are untouched by the late override. Runtime Hyprland rules
+or a glass/opaque toggle can change the result until reload. Check the real
 native window after applying. Remote T3 clients receive the RGB theme through
 Omarchy but have their own desktop opacity behavior and theme selection.
 
@@ -136,8 +157,9 @@ if (result.status !== "configured") process.exit(1);'
 ```
 
 This selects Aurora again, restores the exact pre-variant Hyprland template
-(or removes it if there was none), and keeps the selected wallpaper. Subsequent
-default reruns resume normal behavior: they use Aurora’s current template and
+(or removes it if there was none), removes only the exact owned main-config
+loader, and keeps the selected wallpaper. Unrelated main-config edits survive.
+Subsequent default reruns resume normal behavior: they use Aurora’s current template and
 the manifest wallpaper. The derived directory is moved to a hidden
 `.aurora-obsidian-glass-disabled-<time>` sibling for recovery; it no longer
 affects default runs. Re-enabling saves the then-current template again. To restore an entirely different pre-existing
@@ -145,8 +167,12 @@ theme or font, select it explicitly with `omarchy theme set <name>` and
 `omarchy font set <family>` after disabling.
 
 The derived directory contains a `.haoshoku-obsidian.json` ownership marker,
-output SHA-256 hashes and the previous template's bytes. Identical reruns do not
-rewrite files or create backups. Changed settings move the previous owned
+output SHA-256 hashes, late-loader ownership and the previous template's bytes.
+Existing v1 markers from earlier template-only installations migrate on the next
+enabled apply, preserving their original pre-variant template for disable. They
+can also be disabled directly without installing a loader. Never-enabled hosts
+using a manifest without `style` receive no main-config integration.
+Identical reruns do not rewrite files or create backups. Changed settings move the previous owned
 directory to a collision-safe `aurora-obsidian-glass.haoshoku-backup-<time>`
 sibling before replacement. Failed directory swaps restore the previous
 version. Filesystem errors or a failing Omarchy command return an incomplete
@@ -156,8 +182,10 @@ the command above. There is no automatic desktop rollback; the helper adds no re
 Omarchy’s normal apply behavior.
 
 Unowned output directories, symlinks, extra files, locally edited output files,
-and an edited active template are preserved and block apply/disable. Do not
-remove the marker or overwrite those files to force a rerun. Copy your edits
+an edited active template, or an edited/duplicated loader block are preserved and
+block apply/disable. The generated late file is hash-checked like other owned
+outputs. A failed disable directory swap restores the active template and loader.
+Do not remove the marker or overwrite those files to force a rerun. Copy your edits
 somewhere safe, inspect the recorded template and sibling backups, then restore
 the expected owned bytes or move the conflicting directory aside deliberately.
 Theme backups and preserved media are never automatically deleted. A code
