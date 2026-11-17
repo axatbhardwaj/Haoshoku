@@ -29,6 +29,84 @@ async function runCaptured(argv, { cwd, env = process.env } = {}) {
 	return { exitCode, stdout, stderr };
 }
 
+const OBSIDIAN_DEFAULTS = {
+	variant: "obsidian-glass",
+	palette: { tint: "#080a0b", accent: "#86edb0" },
+	glass: { t3Opacity: 0.92 },
+};
+
+function hasOnlyKeys(value, keys) {
+	return (
+		value &&
+		typeof value === "object" &&
+		!Array.isArray(value) &&
+		Object.keys(value).every((key) => keys.includes(key))
+	);
+}
+
+function luminance(hex) {
+	return hex
+		.slice(1)
+		.match(/../g)
+		.map((part) => {
+			const channel = Number.parseInt(part, 16) / 255;
+			return channel <= 0.04045
+				? channel / 12.92
+				: ((channel + 0.055) / 1.055) ** 2.4;
+		})
+		.reduce(
+			(sum, channel, index) => sum + channel * [0.2126, 0.7152, 0.0722][index],
+			0,
+		);
+}
+
+function validateStyle(style) {
+	if (
+		!hasOnlyKeys(style, ["variant", "palette", "glass"]) ||
+		style.variant !== "obsidian-glass"
+	) {
+		return "style must select obsidian-glass with only palette and glass settings";
+	}
+	if (
+		style.palette !== undefined &&
+		!hasOnlyKeys(style.palette, ["tint", "accent"])
+	) {
+		return "style.palette supports only tint and accent";
+	}
+	if (style.glass !== undefined && !hasOnlyKeys(style.glass, ["t3Opacity"])) {
+		return "style.glass supports only t3Opacity";
+	}
+	const { tint, accent } = { ...OBSIDIAN_DEFAULTS.palette, ...style.palette };
+	if (
+		![tint, accent].every(
+			(color) => typeof color === "string" && /^#[0-9a-f]{6}$/i.test(color),
+		)
+	) {
+		return "style colors must be six-digit hex RGB values";
+	}
+	if (
+		tint
+			.slice(1)
+			.match(/../g)
+			.some((part) => Number.parseInt(part, 16) > 48)
+	) {
+		return "style.palette.tint channels must be at most 48 for readable dark glass";
+	}
+	if ((luminance(accent) + 0.05) / (luminance(tint) + 0.05) < 4.5) {
+		return "style.palette.accent must contrast with tint by at least 4.5:1";
+	}
+	const opacity = style.glass?.t3Opacity ?? OBSIDIAN_DEFAULTS.glass.t3Opacity;
+	if (
+		typeof opacity !== "number" ||
+		!Number.isFinite(opacity) ||
+		opacity < 0.9 ||
+		opacity > 1
+	) {
+		return "style.glass.t3Opacity must be a number from 0.90 to 1";
+	}
+	return null;
+}
+
 function validateManifest(manifest) {
 	if (manifest?.schemaVersion !== 1) return "schemaVersion must be 1";
 	if (!THEME_NAME_PATTERN.test(manifest?.theme?.name ?? "")) {
@@ -64,7 +142,9 @@ function validateManifest(manifest) {
 	) {
 		return "font must be a non-empty single-line family name";
 	}
-	return null;
+	return Object.hasOwn(manifest, "style")
+		? validateStyle(manifest.style)
+		: null;
 }
 
 function normalizedRepository(value) {

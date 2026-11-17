@@ -441,3 +441,40 @@ describe("Omarchy appearance configurator", () => {
 		expect(calls).toEqual([]);
 	});
 });
+
+const OBSIDIAN = {
+	variant: "obsidian-glass",
+	palette: { tint: "#080a0b", accent: "#86edb0" },
+	glass: { t3Opacity: 0.92 },
+};
+
+describe("optional Obsidian Glass settings", () => {
+	it.each([
+		{ variant: "unknown" },
+		{ ...OBSIDIAN, palette: { tint: "#ffffff" } },
+		{ ...OBSIDIAN, palette: { tint: "#000000; exit" } },
+		{ ...OBSIDIAN, palette: { accent: "#050505" } },
+		{ ...OBSIDIAN, palette: { surprise: "#000000" } },
+		{ ...OBSIDIAN, glass: { t3Opacity: 0.7 } },
+		{ ...OBSIDIAN, glass: { t3Opacity: "0.92" } },
+		{ ...OBSIDIAN, glass: { surfaceOpacity: 0.5 } },
+		{ ...OBSIDIAN, unexpected: true },
+		null,
+	])("rejects invalid settings before any commands or writes: %j", async (style) => {
+		const home = makeHome();
+		const calls = [];
+		const result = await configureOmarchyAppearance({
+			manifest: { ...MANIFEST, style },
+			home,
+			versionResult: VERSION_RESULT,
+			logImpl: makeLog(),
+			runCommandImpl: async (argv) => {
+				calls.push(argv);
+				return { exitCode: 0, stdout: "", stderr: "" };
+			},
+		});
+		expect(result.status).toBe("invalid-manifest");
+		expect(calls).toEqual([]);
+		expect(fs.readdirSync(home)).toEqual([]);
+	});
+});
