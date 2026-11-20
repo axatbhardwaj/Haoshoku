@@ -183,11 +183,13 @@ describe("shared agent profile round trip", () => {
 		}
 	});
 
-	it("deploys current fleet roles and Terra automation guidance", async () => {
+	it("deploys current fleet roles and Sol high automation guidance", async () => {
 		await syncAgentsConfig({ home });
 		for (const relativePath of [".claude/CLAUDE.md", ".codex/AGENTS.md"]) {
 			const deployed = fs.readFileSync(path.join(home, relativePath), "utf8");
-			expect(deployed).toContain("gpt-6.1-terra");
+			expect(deployed, relativePath).toContain("gpt-6.2-sol");
+			expect(deployed, relativePath).toContain("`reasoningEffort: high`");
+			expect(deployed, relativePath).not.toContain("gpt-6.1-terra");
 			expect(deployed).toContain("device_open");
 			expect(deployed).toMatch(
 				/control center|no real work|never hand work to another host/i,
