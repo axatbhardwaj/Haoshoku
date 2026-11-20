@@ -188,6 +188,18 @@ Send no Telegram or Hermes alerts. My scheduled sweep thread on axat-vps,
 `bb239085-f3d0-4fef-810a-7bb408852333`), checks periodically for reviews and
 holds blocked on me.
 
+## T3 environment routes (set 2026-11-21)
+
+- Connect every T3 app to a fleet host only through a Tailscale route
+  (`https://<host>.tail140c22.ts.net`; axat-vps uses `:8443`), paired with
+  `t3 pair` on that host. Never add or keep an SSH route.
+- Why: an SSH route starts its own `t3 serve` on the host whenever that
+  server is briefly down, such as during a self-update. The stray server takes
+  the ownership lock and the update fails with `state-dir-owned`.
+- If that happens: stop the `t3 serve` outside `t3code.service`, restart
+  `t3code.service`, and remove the SSH route of the app named by the stray
+  server's `SSH_CLIENT`.
+
 ## T3 provider settings
 
 Subscriptions are pooled through the CLIProxyAPI hub on axat-vps
