@@ -116,10 +116,11 @@ remains responsible for orchestration. Profile sync preserves the live Axstack-o
 routing block; shared, Claude and Codex profile backups strip it so Axstack can
 own it on fresh hosts. For the one-line correction-rule change, use the
 [scoped deployment and rollback command](README/agent-rule-patch.md).
-T3 native main UI thread balancing stays enabled;
-explicit worker `environmentId` determines execution separately. Every fleet
-host can coordinate or execute supported work. See [fleet routing policy](README/fleet-routing.md)
-for account-local deployment, proof gates and scoped rollback.
+T3 native main UI thread balancing stays enabled. The explicit worker
+`environmentId` determines execution separately. iobook remains an access point
+for workload placement. See [iobook T3 access](README/iobox-profile-and-fleet.md#iobook-t3-access)
+for the service setup and [fleet routing policy](README/fleet-routing.md) for
+account-local deployment, proof gates and scoped rollback.
 
 T3 Code owns agent orchestration, and Axstack supplies routing policy.
 Claude/Codex runtime state and `settings.json` remain machine-local.

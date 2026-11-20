@@ -1,7 +1,7 @@
 ## iobox profile and fleet
 
 The axnet fleet in [`configs/fleet.json`](../configs/fleet.json) is io (PC),
-iobook (laptop), iobox (always-on Omarchy agent box running T3, worker),
+iobook (laptop and access point), iobox (always-on Omarchy T3 worker),
 axat-vps (Debian VPS running Executor and Hermes, worker), and planned iosatellite
 (Dell Inspiron 7570 Omarchy laptop, worker). iosatellite remains unprovisioned;
 see [local bring-up and closed-lid AC checks](iosatellite-profile.md). Everything is reached over Tailscale only.
@@ -123,3 +123,10 @@ containing that feature until it is released; see its separate bring-up checklis
 14. Smoke-test `ssh -o BatchMode=yes <peer> true` for each peer (from iobox:
     io, iobook and axat-vps). Check authenticated Executor tool discovery separately
     in both primary and alt T3 instances; registration alone does not prove access.
+
+### iobook T3 access
+
+iobook has an enabled T3 Code user service (`t3code.service`) and user
+lingering enabled. Tailnet-only Tailscale Serve proxies to
+`http://127.0.0.1:3773`. Axat verified HTTP 200 from the running service cgroup.
+iobook remains an access point for workload placement.

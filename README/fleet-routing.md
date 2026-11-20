@@ -10,7 +10,10 @@ missing timers as part of policy deployment. No live rollout is proven here.
 
 T3 native main UI thread balancing stays enabled. Explicit worker
 `environmentId` binds subsequent execution independently of UI placement.
-The initial pool is axat-vps/iobox/iosatellite; fallback order adds io/iobook.
+The initial pool is axat-vps/iobox/iosatellite. The fallback order lists io and
+iobook, subject to route eligibility. iobook remains an access point for
+workload placement. Its [T3 service](iobox-profile-and-fleet.md#iobook-t3-access)
+serves tailnet clients.
 Assignment counts rank workers first while eligible measured pool load is at
 or below 50%. CPU/RAM fallback limits are 75% on VPS and 85% elsewhere.
 Playwright prefers iosatellite among proven browser-capable destinations.

@@ -114,6 +114,10 @@ Roles:
   Subagents and reviewers via T3 on the same host are fine.
 - iosatellite = Test device run all the playwright tests there or any kind of testing there of the final feture , PR work e.t.c 
 
+iobook has an enabled T3 Code user service (`t3code.service`) and user
+lingering enabled. Tailnet-only Tailscale Serve proxies to
+`http://127.0.0.1:3773`. Axat verified HTTP 200 from the running service cgroup.
+
 Agents may SSH to any fleet host and act there. Accepted risk: one compromised
 agent can reach every fleet host. On iobox, use the 1Password `op` CLI with the
 service-account token inherited by T3 from `~/.config/op/service-account.env`.
