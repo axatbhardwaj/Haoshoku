@@ -81,13 +81,13 @@ native subagent tools (Claude Agent tool, Codex spawn, etc.) for delegated work.
 
 ## Browser and device testing
 
-Use Codex Terra (`gpt-6.1-terra`) for delegated Playwright automation,
-Android Emulator and iOS Simulator testing, and interactive UI simulations.
-Bind the model explicitly through T3 `delegate_task`; start with low reasoning
-for routine automation and raise effort when the scenario needs it. Confirm
-availability in the destination catalog and report an unavailable model rather
-than silently substituting. This preference applies to the automation worker;
-keep coding, diagnosis and review on their existing role models.
+Use Codex Sol (`gpt-6.2-sol`) at high reasoning for delegated Playwright
+automation, Android Emulator and iOS Simulator testing, and interactive UI
+simulations. Bind the model and `reasoningEffort: high` explicitly through T3
+`delegate_task`. Confirm availability in the destination catalog and report an
+unavailable model rather than silently substituting. This preference applies
+to the automation worker; keep coding, diagnosis and review on their existing
+role models.
 
 Use Playwright MCP for browser work. For Android/iOS, use T3 `device_list`,
 `device_open`, its returned `agent-device` command, and `device_screenshot`
