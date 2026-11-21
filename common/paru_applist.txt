@@ -75,3 +75,5 @@ warp-terminal-bin
 windsurf
 t3code-bin
 tailscale
+
+yaru-icon-theme
