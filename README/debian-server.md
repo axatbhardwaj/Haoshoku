@@ -165,12 +165,16 @@ ID. T3 serves the lake wallpaper from the regular JPEG beside the JSON. A
 saved client theme with the same ID takes precedence. To set the environment
 default for its clients, run `t3 theme set aurora --base-dir "$base"`.
 
-**Desktop with Local environment disabled.** Keep the existing remote
-connection. In **Settings → Appearance**, import the
-[Aurora JSON](../configs/t3/omarchy-current.json) and select **Aurora** for
-dark appearance. A JSON-only import uses the built-in Aurora gradient. To
-see the lake from a remote or headless server, open that server's web app.
-A remote connection alone does not supply desktop appearance settings.
+**Desktop with Local environment disabled.** If the desktop is connected to
+the standalone T3 service on the same machine, publish both files to that
+service and run `t3 theme set aurora --base-dir "$base"`. This path was
+verified on T3 v0.1.11 on io, including live updates and the lake wallpaper.
+Keep the existing tailnet connection and Local environment setting.
+
+For a client connected only to another machine, import the
+[Aurora JSON](../configs/t3/omarchy-current.json) in **Settings → Appearance**
+and select **Aurora** for dark appearance. A JSON-only import uses the Aurora
+gradient. The remote server’s web app displays its published lake wallpaper.
 
 ### VPS Hermes Telegram transport
 
