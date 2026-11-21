@@ -348,9 +348,9 @@ policy uses 3 days for `/tmp` and retains the distro default 30 days for `/var/t
 
 [Read this section](README/debian-server.md#debian-t3-service-setup).
 
-### One-time current Omarchy palette in T3 desktop
+### Aurora in T3 web and desktop
 
-[Read this section](README/debian-server.md#one-time-current-omarchy-palette-in-t3-desktop).
+[Read this section](README/debian-server.md#aurora-in-t3-web-and-desktop).
 
 ### VPS Hermes Telegram transport
 
