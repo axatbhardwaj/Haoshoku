@@ -142,10 +142,9 @@ The full Debian path asks about Git and the daily disk-cleanup job.
 
 ### One-time current Omarchy palette in T3 desktop
 
-The [importable Aurora snapshot](../configs/t3/omarchy-current.json) is an unchanged
-copy of io's Omarchy-generated `~/.t3/userdata/themes/omarchy.json`, read on
-2026-10-16. It already uses T3's version-1 custom-theme format; no converter is
-needed. To take a newer snapshot, use the current generated file on that desktop.
+The [importable Aurora snapshot](../configs/t3/omarchy-current.json) is an exact
+copy of the Aurora theme exported from T3 on io on 2026-11-21. It uses T3's
+version-1 custom-theme format. To refresh it, export Aurora from T3 on io.
 
 **Manual import and visual verification remain pending.** In the stable desktop:
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 12.9.3 - 2026-11-21
+
+### Changed
+
+- Refresh the importable T3 Aurora theme with the November 21 export from io
+  and update the Debian desktop import guide to identify its source.
+
 ## 12.9.2 - 2026-11-17
 
 ### Changed
