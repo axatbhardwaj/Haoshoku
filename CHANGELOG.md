@@ -1,5 +1,9 @@
 # Changelog
 
+## 12.10.1 - 2026-11-22
+
+- Use Aurora primary green for Brave and Chromium toolbars and vertical tabs.
+
 ## 12.10.0 - 2026-11-22
 
 - Add `haoshoku --icon-theme <name>` to select an installed GTK icon theme.
