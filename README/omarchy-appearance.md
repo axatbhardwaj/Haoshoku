@@ -13,7 +13,8 @@ installed theme’s directory name. Haoshoku looks for its `index.theme` in
 user and system icon directories, then sets `org.gnome.desktop.interface
 icon-theme` with `gsettings`. The standalone command also works without Omarchy.
 The next full appearance setup selects the manifest value (shipped as
-`Yaru-olive`); omit `iconTheme` to leave icon selection to Omarchy.
+`Yaru-olive`); omit `iconTheme` to leave icon selection to Omarchy. Current Omarchy releases reset GTK icons
+to Adwaita on theme switches. Run the icon command again to restore your choice.
 
 `haoshoku --discord-theme` then deploys that theme's Vencord CSS from
 `configs/discord/theme.json` into Vesktop and Vencord as a symlink, setting
