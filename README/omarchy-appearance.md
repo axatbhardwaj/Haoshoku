@@ -21,7 +21,7 @@ to Adwaita on theme switches. Run the icon command again to restore your choice.
 `enabledThemes` while preserving every other settings key. Aurora owns the
 Discord styling; there is no separate editable client copy. Replaced copies
 are preserved under the client’s `theme-backups/` directory, outside the theme
-picker. The Aurora Lake preset updates voice labels and server-badge contrast.
+picker. Aurora updates voice labels and server-badge contrast.
 
 For the matching terminal and Files appearance, run the pinned theme’s
 desktop installer as your desktop user after applying Aurora:
