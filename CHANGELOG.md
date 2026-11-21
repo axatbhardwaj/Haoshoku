@@ -1,5 +1,15 @@
 # Changelog
 
+## 12.10.0 - 2026-11-22
+
+- Add `haoshoku --icon-theme <name>` to select an installed GTK icon theme.
+  Full Omarchy appearance setup applies the manifest’s icon theme last.
+- Update Omarchy’s Aurora Lake palette and glass surfaces, including the
+  theme’s optional terminal and Files integration.
+- Improve voice label and server-badge readability in Vesktop/Vencord.
+- Ship the matching T3 Code palette and lake JPEG for server-hosted web
+  sessions. Desktop JSON imports use the Aurora gradient.
+
 ## 12.9.3 - 2026-11-21
 
 ### Changed
