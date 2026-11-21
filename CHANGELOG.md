@@ -1,5 +1,9 @@
 # Changelog
 
+## 12.10.1 - 2026-11-22
+
+- Use a dark green frame in Brave and Chromium and translucent black user messages in T3 Code.
+
 ## 12.10.0 - 2026-11-22
 
 - Add `haoshoku --icon-theme <name>` to select an installed GTK icon theme.
