@@ -5,7 +5,7 @@ import path from "node:path";
 
 import { configureOmarchyAppearance } from "../src/helpers/configure_omarchy_appearance.js";
 
-const SHIPPED_REVISION = "5022c56d77c0a8bb5d7d0847666860da0bc4f0ec";
+const SHIPPED_REVISION = "b5eb4a96fed3ac1c3c4b535f963467362343039e";
 const REVISION = "e7600f5e2bf248ee976059f9a11a13c4856f7138";
 const LEGACY_REVISION = "42845dc048632425bc566b993f25145f05e840f1";
 const PRIOR_REVISION = "29356fb68d2070d847a259de0f310b055df55823";

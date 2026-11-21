@@ -140,32 +140,41 @@ Inspect the CLI, service state and running-server version; do not force a downgr
 
 The full Debian path asks about Git and the daily disk-cleanup job.
 
-### One-time current Omarchy palette in T3 desktop
+### Aurora in T3 web and desktop
 
-The [importable Aurora snapshot](../configs/t3/omarchy-current.json) is an exact
-copy of the Aurora theme exported from T3 on io on 2026-11-21. It uses T3's
-version-1 custom-theme format. To refresh it, export Aurora from T3 on io.
+**Server-hosted web app.** On the host serving the web app, run the following
+as the T3 service user. The Linux installer keeps the assets under
+`~/.local/share/haoshoku` by default. For a global npm installation, set
+`assets="$(npm root -g)/haoshoku/configs/t3"` instead. For a source checkout,
+use its `configs/t3` directory. Back up any personal Aurora files before
+replacing them.
 
-**Manual import and visual verification remain pending.** In the stable desktop:
+```bash
+assets="${HAOSHOKU_HOME:-$HOME/.local/share/haoshoku}/configs/t3"
+base="${T3CODE_HOME:-$HOME/.t3}"  # Match the serving process's --base-dir, if set.
+themes="$base/userdata/themes"
+install -d "$themes"
+install -m 644 "$assets/aurora.jpg" "$themes/aurora.jpg"
+install -m 644 "$assets/omarchy-current.json" "$themes/aurora.json"
+t3 theme show --base-dir "$base"
+```
 
-1. Keep **Local environment** disabled and connect to the existing standalone
-   service. Do not start another server for appearance setup.
-2. Open **Settings → Appearance**, open the theme import dialog, choose the JSON
-   file above (or paste its contents), and import it. If Aurora is already saved,
-   keep that copy unless you explicitly intend to replace its colors.
-3. Select **Aurora** for the desired appearance preview (the snapshot is dark)
-   and confirm the desktop renders it. This is a client-local choice; do not
-   perform these steps in Android or another browser.
+Open **Settings → Appearance** in the web app served by that host and select
+the published **Aurora** for dark appearance. The filename supplies the theme
+ID. T3 serves the lake wallpaper from the regular JPEG beside the JSON. A
+saved client theme with the same ID takes precedence. To set the environment
+default for its clients, run `t3 theme set aurora --base-dir "$base"`.
 
-Upstream documents [custom-theme import and environment-theme limits](https://github.com/pingdotgg/t3code/blob/v0.1.0/docs/user/appearance.md).
-With Local environment disabled, the desktop cannot receive this palette from
-its main local environment. The supported importer saves custom themes in
-client storage; Haoshoku does not edit Electron storage or pretend that
-`t3 theme set omarchy` imported a theme into this client. Re-running setup does
-not import, select or overwrite themes. There is no automatic palette sync,
-daemon or change to the current Omarchy theme. Providers and other preferences
-stay unchanged. Live import, rendering and fleet/phone verification are separate
-rollout checkpoints.
+**Desktop with Local environment disabled.** If the desktop is connected to
+the standalone T3 service on the same machine, publish both files to that
+service and run `t3 theme set aurora --base-dir "$base"`. This path was
+verified on T3 v0.1.11 on io, including live updates and the lake wallpaper.
+Keep the existing tailnet connection and Local environment setting.
+
+For a client connected only to another machine, import the
+[Aurora JSON](../configs/t3/omarchy-current.json) in **Settings → Appearance**
+and select **Aurora** for dark appearance. A JSON-only import uses the Aurora
+gradient. The remote server’s web app displays its published lake wallpaper.
 
 ### VPS Hermes Telegram transport
 

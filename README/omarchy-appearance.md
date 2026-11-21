@@ -21,7 +21,28 @@ to Adwaita on theme switches. Run the icon command again to restore your choice.
 `enabledThemes` while preserving every other settings key. Aurora owns the
 Discord styling; there is no separate editable client copy. Replaced copies
 are preserved under the client’s `theme-backups/` directory, outside the theme
-picker. The pinned Aurora v3.0.7 includes the server-badge and menu contrast fixes.
+picker. Aurora updates voice labels and server-badge contrast.
+
+For the matching terminal and Files appearance, run the pinned theme’s
+desktop installer as your desktop user after applying Aurora:
+
+```bash
+theme="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/themes/aurora"
+python3 "$theme/desktop/install.py"
+```
+
+When Omarchy publishes the T3 palette as `omarchy.json`, copy the lake under
+the same ID on the host running T3. Use the serving process's configured
+base directory if it differs from the default:
+
+```bash
+themes="${T3CODE_HOME:-$HOME/.t3}/userdata/themes"
+install -m 644 "$theme/backgrounds/0-aurora-lake.jpg" "$themes/omarchy.jpg"
+```
+
+Select **Omarchy** in the serving web app. For an independent **Aurora** theme,
+a headless server, or a desktop using a remote connection, see
+[Aurora in T3 web and desktop](debian-server.md#aurora-in-t3-web-and-desktop).
 
 An existing checkout from another repository is never replaced. A matching
 checkout with local changes is preserved and applied as-is; a clean matching
