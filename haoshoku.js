@@ -60,7 +60,7 @@ import {
 	backupMimeappsConfig,
 	syncMimeappsConfig,
 } from "./src/helpers/configure_mimeapps.js";
-import { configureOmarchyAppearance } from "./src/helpers/configure_omarchy_appearance.js";
+import { configureGtkIconTheme, configureOmarchyAppearance } from "./src/helpers/configure_omarchy_appearance.js";
 import {
 	backupOmarchyBar,
 	configureOmarchyBar,
@@ -258,8 +258,9 @@ program
 	)
 	.option(
 		"--omarchy-appearance",
-		"Apply the pinned Omarchy theme, background, and font from configs/omarchy/appearance.json",
+		"Apply the Omarchy theme, background, font, and optional GTK icon theme from configs/omarchy/appearance.json",
 	)
+	.option("--icon-theme <name>", "Set the current user's GTK icon theme")
 	.option(
 		"--discord-theme",
 		"Deploy the Omarchy theme's Vencord CSS into Vesktop/Vencord from configs/discord/theme.json",
@@ -585,6 +586,11 @@ async function runAction(options) {
 
 	if (options.omarchyBarBackup) {
 		await backupOmarchyBar();
+		return;
+	}
+
+	if (options.iconTheme !== undefined) {
+		if (!(await configureGtkIconTheme(options.iconTheme))) process.exitCode = 1;
 		return;
 	}
 

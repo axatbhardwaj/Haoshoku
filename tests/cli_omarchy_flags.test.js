@@ -46,7 +46,7 @@ function runCliMode({
 				: helperPath === kdeConnectHelper
 					? ["configureKdeConnectCommands"]
 					: helperPath === appearanceHelper
-						? ["configureOmarchyAppearance"]
+						? ["configureOmarchyAppearance", "configureGtkIconTheme"]
 						: helperPath === discordHelper
 							? ["configureDiscordTheme"]
 							: ["migrateOmarchy3To4"];
@@ -215,7 +215,7 @@ describe("Omarchy one-shot CLI modes", () => {
 			"--kde-connect-commands Add Haoshoku remote commands to every paired KDE Connect device",
 		);
 		expect(help).toContain(
-			"--omarchy-appearance Apply the pinned Omarchy theme, background, and font from configs/omarchy/appearance.json",
+			"--omarchy-appearance Apply the Omarchy theme, background, font, and optional GTK icon theme from configs/omarchy/appearance.json",
 		);
 		expect(help).toContain(
 			"--discord-theme Deploy the Omarchy theme's Vencord CSS into Vesktop/Vencord from configs/discord/theme.json",

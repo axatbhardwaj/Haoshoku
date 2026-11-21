@@ -42,6 +42,9 @@ function deployModeFeaturesFromCli() {
 		// Client registration requires explicit endpoint/auth; covered by the opt-in keeper.
 		"--executor-clients",
 		"--claude-update",
+		// Full Omarchy setup sets icons through --omarchy-appearance; this flag
+		// takes an explicit theme override outside the default setup path.
+		"--icon-theme",
 		// The workspaces deploy ensures the gaming autostart defaults. These
 		// flags only create or override that preference outside the default
 		// setup path.
@@ -418,6 +421,7 @@ describe("default-run reachability", () => {
 			prompts: [{ message: "Configure git?", initial: true }],
 		});
 		expect(result.calls).not.toContain("prWatch");
+		expect(result.calls).not.toContain("omarchyAppearance");
 	});
 
 	it.each([

@@ -29,8 +29,72 @@ async function runCaptured(argv, { cwd, env = process.env } = {}) {
 	return { exitCode, stdout, stderr };
 }
 
+function validIconTheme(name) {
+	return (
+		typeof name === "string" &&
+		name === name.trim() &&
+		/^[a-zA-Z0-9][a-zA-Z0-9._+ -]*$/.test(name)
+	);
+}
+
+export async function configureGtkIconTheme(
+	name,
+	{ env = process.env, runCommandImpl = runCaptured, logImpl = log } = {},
+) {
+	if (!validIconTheme(name)) {
+		logImpl.warning(
+			"Specify an installed GTK icon theme by directory name, e.g. Yaru-olive.",
+		);
+		return false;
+	}
+	const dataHome = env.XDG_DATA_HOME || path.join(env.HOME, ".local", "share");
+	const dataDirs = (env.XDG_DATA_DIRS || "/usr/local/share:/usr/share").split(
+		":",
+	);
+	const roots = [
+		path.join(env.HOME, ".icons"),
+		...[dataHome, ...dataDirs]
+			.filter((dir) => path.isAbsolute(dir))
+			.map((dir) => path.join(dir, "icons")),
+	];
+	if (
+		!roots.some((dir) =>
+			fs
+				.statSync(path.join(dir, name, "index.theme"), {
+					throwIfNoEntry: false,
+				})
+				?.isFile(),
+		)
+	) {
+		logImpl.warning(
+			`GTK icon theme ${name} is missing. Install it in one of: ${roots.join(", ")}.`,
+		);
+		return false;
+	}
+	const result = await commandOk(
+		runCommandImpl,
+		["gsettings", "set", "org.gnome.desktop.interface", "icon-theme", name],
+		{ env },
+	);
+	// dconf can report a failed write on stderr with a successful exit code.
+	if (result.exitCode !== 0 || result.stderr?.trim()) {
+		logImpl.warning(
+			`Could not set GTK icon theme ${name}: ${result.stderr?.trim() || `gsettings exited ${result.exitCode}`}`,
+		);
+		return false;
+	}
+	logImpl.success(`Applied GTK icon theme ${name}.`);
+	return true;
+}
+
 function validateManifest(manifest) {
 	if (manifest?.schemaVersion !== 1) return "schemaVersion must be 1";
+	if (
+		Object.hasOwn(manifest, "iconTheme") &&
+		!validIconTheme(manifest.iconTheme)
+	) {
+		return "iconTheme must be an icon theme directory name, e.g. Yaru-olive";
+	}
 	if (Object.hasOwn(manifest, "style")) {
 		return "style is no longer supported; remove it to use the declared theme";
 	}
@@ -340,6 +404,21 @@ export async function configureOmarchyAppearance({
 				themePath,
 			};
 		}
+	}
+	if (
+		appearance.iconTheme &&
+		!(await configureGtkIconTheme(appearance.iconTheme, {
+			env: commandEnv,
+			runCommandImpl,
+			logImpl,
+		}))
+	) {
+		return {
+			status: "apply-failed",
+			installed,
+			preservedLocalChanges,
+			themePath,
+		};
 	}
 	logImpl.success(`Applied Omarchy theme ${name}, background, and font.`);
 	return {

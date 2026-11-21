@@ -28,3 +28,5 @@ httpie
 docker
 gitleaks
 pyenv
+
+yaru-icon-theme

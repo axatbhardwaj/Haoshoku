@@ -103,6 +103,7 @@ describe("Omarchy appearance configurator", () => {
 				"utf8",
 			),
 		);
+		expect(shippedManifest.iconTheme).toBe("Yaru-olive");
 		expect(shippedManifest.theme.name).toBe("aurora");
 		expect(shippedManifest.theme.repository).toBe(
 			"https://github.com/axatbhardwaj/omarchy-aurora-theme.git",
@@ -110,6 +111,90 @@ describe("Omarchy appearance configurator", () => {
 		expect(shippedManifest.theme.revision).toBe(SHIPPED_REVISION);
 		expect(shippedManifest.theme.legacyRevisions).toEqual([]);
 		expect(shippedManifest.background).toBe("0-aurora-lake.jpg");
+	});
+
+	it.each(["../outside", null, ""])("rejects invalid iconTheme %j before setup", async (iconTheme) => {
+		const calls = [];
+		const result = await configureOmarchyAppearance({
+			manifest: { ...MANIFEST, iconTheme },
+			home: makeHome(),
+			versionResult: VERSION_RESULT,
+			logImpl: makeLog(),
+			runCommandImpl: async (argv) => {
+				calls.push(argv);
+				return { exitCode: 1, stdout: "", stderr: "" };
+			},
+		});
+		expect(result.status).toBe("invalid-manifest");
+		expect(calls).toEqual([]);
+	});
+
+	it("applies the requested installed icon theme after Omarchy finishes", async () => {
+		const home = makeHome();
+		seedTheme(home);
+		const iconPath = path.join(home, ".icons", "Papirus-Dark");
+		fs.mkdirSync(iconPath, { recursive: true });
+		fs.writeFileSync(path.join(iconPath, "index.theme"), "[Icon Theme]\n");
+		const calls = [];
+		const result = await configureOmarchyAppearance({
+			manifest: { ...MANIFEST, iconTheme: "Papirus-Dark" },
+			home,
+			versionResult: VERSION_RESULT,
+			logImpl: makeLog(),
+			runCommandImpl: async (argv) => {
+				calls.push(argv);
+				const stdout = argv[1] === "remote" ? REPOSITORY : "";
+				return { exitCode: 0, stdout, stderr: "" };
+			},
+		});
+		expect(result.status).toBe("configured");
+		expect(calls.at(-1)).toEqual([
+			"gsettings",
+			"set",
+			"org.gnome.desktop.interface",
+			"icon-theme",
+			"Papirus-Dark",
+		]);
+	});
+
+	it("changes only icons from the CLI and rejects missing themes and conflicting modes", () => {
+		const home = makeHome();
+		const dataHome = path.join(home, "data");
+		const iconPath = path.join(dataHome, "icons", "Papirus-Dark");
+		fs.mkdirSync(iconPath, { recursive: true });
+		fs.writeFileSync(path.join(iconPath, "index.theme"), "[Icon Theme]\n");
+		fs.writeFileSync(
+			path.join(home, "gsettings"),
+			'#!/bin/sh\nprintf "%s\\n" "$@" >> "$HOME/calls"\n',
+			{ mode: 0o755 },
+		);
+		const run = (...args) =>
+			Bun.spawnSync([process.execPath, "haoshoku.js", ...args], {
+				env: {
+					...process.env,
+					HOME: home,
+					PATH: home,
+					XDG_DATA_HOME: dataHome,
+					XDG_DATA_DIRS: dataHome,
+				},
+			});
+		const result = run("--icon-theme", "Papirus-Dark");
+		expect(result.exitCode).toBe(0);
+		const missing = run("--icon-theme", "Missing");
+		expect(missing.exitCode).toBe(1);
+		expect(missing.stdout.toString() + missing.stderr.toString()).toContain(
+			"Missing",
+		);
+		expect(run("--icon-theme=", "--omarchy-appearance").exitCode).toBe(2);
+		expect(run("--icon-theme=").exitCode).toBe(1);
+		expect(
+			fs.readFileSync(path.join(home, "calls"), "utf8").trim().split("\n"),
+		).toEqual([
+			"set",
+			"org.gnome.desktop.interface",
+			"icon-theme",
+			"Papirus-Dark",
+		]);
 	});
 
 	it("installs the pinned theme and applies its background and font", async () => {
@@ -178,6 +263,7 @@ describe("Omarchy appearance configurator", () => {
 		).toBe("size = 24\n");
 		const checkout = calls.find(({ argv }) => argv[1] === "checkout");
 		expect(checkout.argv).toEqual(["git", "checkout", "--detach", REVISION]);
+		expect(calls.some(({ argv }) => argv[0] === "gsettings")).toBe(false);
 		expect(checkout.cwd).toContain(".haoshoku-elysian-");
 	});
 

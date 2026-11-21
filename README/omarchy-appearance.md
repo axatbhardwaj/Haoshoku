@@ -2,10 +2,21 @@
 
 [`configs/omarchy/appearance.json`](../configs/omarchy/appearance.json) declares a
 public theme repository at an immutable Git commit, one background filename
-inside that theme, and the font family. Full Arch setup and
+inside that theme, the font family, and an optional GTK icon theme. Full Arch setup and
 `haoshoku --omarchy-appearance` reconcile the theme under
 `~/.config/omarchy/themes/`, then call Omarchy's own theme, background, and font
-commands. `haoshoku --discord-theme` then deploys that theme's Vencord CSS from
+commands. If the manifest declares `iconTheme`, setup applies it last.
+
+To change folder icons and other GTK icons for your current user, run
+`haoshoku --icon-theme Papirus-Dark` from your desktop session. Use the
+installed theme’s directory name. Haoshoku looks for its `index.theme` in
+user and system icon directories, then sets `org.gnome.desktop.interface
+icon-theme` with `gsettings`. The standalone command also works without Omarchy.
+The next full appearance setup selects the manifest value (shipped as
+`Yaru-olive`); omit `iconTheme` to leave icon selection to Omarchy. Current Omarchy releases reset GTK icons
+to Adwaita on theme switches. Run the icon command again to restore your choice.
+
+`haoshoku --discord-theme` then deploys that theme's Vencord CSS from
 `configs/discord/theme.json` into Vesktop and Vencord as a symlink, setting
 `enabledThemes` while preserving every other settings key. Aurora owns the
 Discord styling; there is no separate editable client copy. Replaced copies
