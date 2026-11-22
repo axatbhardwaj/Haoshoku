@@ -1,5 +1,9 @@
 # Changelog
 
+## 12.10.2 - 2026-11-22
+
+- Reduce bright wallpaper bands behind tiled T3 conversations.
+
 ## 12.10.1 - 2026-11-22
 
 - Use a dark green frame in Brave and Chromium and translucent black user messages in T3 Code.
