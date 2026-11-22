@@ -1,5 +1,9 @@
 # Changelog
 
+## 12.10.3 - 2026-11-23
+
+- Show the Aurora lake behind the composer on the T3 new-thread page.
+
 ## 12.10.2 - 2026-11-22
 
 - Reduce bright wallpaper bands behind tiled T3 conversations.
