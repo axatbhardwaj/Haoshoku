@@ -1,5 +1,9 @@
 # Changelog
 
+## 12.10.5 - 2026-11-24
+
+- Show the Aurora lake behind T3 pull request details and fenced code blocks.
+
 ## 12.10.4 - 2026-11-23
 
 - Use translucent backgrounds in the T3 Usage and Settings dialogs.
