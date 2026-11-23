@@ -96,11 +96,11 @@ describe("bundled shared agent profile", () => {
 				"show it inline in the reply, not behind links.",
 			);
 			for (const phrase of [
-				"Inline T3 reports are glass, not solid",
-				"keep `html`, `body` and the outer wrapper transparent, overriding the embed's base styles",
-				"tint cards with 34% of the theme card colour by default",
-				"keep text and data marks opaque",
-				"preview before rendering",
+				"For inline T3 reports",
+				"keep `html`, `body` and the outer wrapper transparent",
+				"Use a 34% theme-card tint by default",
+				"Keep text and data marks opaque",
+				"Preview before rendering",
 				`\`node ${checkPath}\``,
 			]) {
 				expect(profile, relativePath).toContain(phrase);
