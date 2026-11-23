@@ -23,6 +23,7 @@
 | `run_log.test.js`, `run_log_commands.test.js`, `share_log.test.js` | Run log privacy, retention, redaction, command diagnostics, summaries and explicit sharing | Changing logging or `--share-log` |
 | `t3_desktop_preflight.test.js` | Both public T3 entrypoints: default-enabled refusal, directory and probe failures, desktop signals, headless/disabled passes, rerun and settings/token preservation | Changing T3 single-backend preflight |
 | `utils.test.js`    | Utility function tests        | Testing shell execution, logging          |
+| `report_glass/`    | Chrome pixel check that inline T3 reports stay glass over two backdrops; `node tests/report_glass/check.js [report.html]`, run by CI on the host runner, outside `bun test` | Changing the visual rule, T3 embed styles or theme |
 
 Most other tests are named after the helper, script, or CLI flag they cover
 (`configure_<x>.test.js`, `cli_<flag>.test.js`, `haoshoku_<script>.test.js`).

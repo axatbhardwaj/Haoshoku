@@ -20,3 +20,14 @@ jobs:
         run: docker build --file .github/ci/Dockerfile --tag haoshoku-ci .
       - name: Run full Bun suite in isolation
         run: python3 .github/ci/run.py haoshoku-ci
+
+  report-glass:
+    # Host runner: Chrome ships on the image but not in the test container.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Render inline T3 report fixture over two backdrops
+        run: node tests/report_glass/check.js

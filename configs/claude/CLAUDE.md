@@ -47,6 +47,10 @@ Android and desktop.
   question's options as bullets, and put the recommended option first
   with its trade-off.
 - When you make a visual, show it inline in the reply, not behind links.
+  For inline T3 reports, keep `html`, `body` and the outer wrapper transparent.
+  Override the embed's base background. Use a 34% theme-card tint by default.
+  Keep text and data marks opaque. Preview before rendering. In Haoshoku, run
+  `node tests/report_glass/check.js` to check the reference chart.
 - Include full PR, ticket, or comment URLs in every hand-off.
 - Draft text for other people (team chat, PM, tickets) short, plain,
   specific and ready to paste; no markdown for chat. Label each question

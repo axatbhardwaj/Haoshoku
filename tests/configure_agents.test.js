@@ -78,6 +78,35 @@ describe("bundled shared agent profile", () => {
 			expect(profile).not.toMatch(/orca-linear|`orca linear/i);
 		}
 	});
+
+	it("ships the glass inline-report rule and its re-runnable check", () => {
+		const checkPath = "tests/report_glass/check.js";
+		expect(fs.existsSync(path.join(import.meta.dir, "..", checkPath))).toBe(
+			true,
+		);
+		for (const relativePath of [
+			"configs/agent-profile/PROFILE.md",
+			"configs/claude/CLAUDE.md",
+			"configs/codex/AGENTS.md",
+		]) {
+			const profile = fs
+				.readFileSync(path.join(import.meta.dir, "..", relativePath), "utf8")
+				.replace(/\s+/g, " ");
+			expect(profile, relativePath).toContain(
+				"show it inline in the reply, not behind links.",
+			);
+			for (const phrase of [
+				"For inline T3 reports",
+				"keep `html`, `body` and the outer wrapper transparent",
+				"Use a 34% theme-card tint by default",
+				"Keep text and data marks opaque",
+				"Preview before rendering",
+				`\`node ${checkPath}\``,
+			]) {
+				expect(profile, relativePath).toContain(phrase);
+			}
+		}
+	});
 });
 
 const axstackBlock =
