@@ -52,16 +52,24 @@ const PROBE = `(() => [...document.querySelectorAll("iframe")].map((frame) => {
 	const doc = frame.contentDocument;
 	const view = frame.contentWindow;
 	const rect = (el) => { const r = el.getBoundingClientRect(); return { left: box.left + r.left, top: box.top + r.top, right: box.left + r.right, bottom: box.top + r.bottom }; };
-	const alpha = (value) => { const m = value.match(/rgba?\\(([^)]*)\\)/); if (!m) return 1; const parts = m[1].split(/[ ,/]+/).filter(Boolean); return parts.length > 3 ? Number(parts[3]) : 1; };
+	const ctx = doc.createElement("canvas").getContext("2d", { willReadFrequently: true });
+	const rgba = (css) => {
+		ctx.clearRect(0, 0, 1, 1);
+		ctx.fillStyle = css;
+		ctx.fillRect(0, 0, 1, 1);
+		return Array.from(ctx.getImageData(0, 0, 1, 1).data);
+	};
 	const faded = [];
 	for (const el of doc.body.querySelectorAll("*")) {
 		const style = view.getComputedStyle(el);
 		if (Number(style.opacity) < 1) faded.push(el.tagName + " opacity " + style.opacity);
 		const hasText = [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
-		if (hasText && alpha(style.color) < 1) faded.push(el.tagName + " text " + style.color);
+		if (hasText && rgba(style.color)[3] < 255) faded.push(el.tagName + " text " + style.color);
 	}
-	const bar = doc.querySelector(".rail b");
-	return { frame: { left: box.left, top: box.top }, card: rect(doc.querySelector("article")), bar: rect(bar), barColor: view.getComputedStyle(bar).backgroundColor, faded };
+	const bars = Array.from(doc.querySelectorAll(".rail b"), el => ({
+		box: rect(el), color: rgba(view.getComputedStyle(el).backgroundColor)
+	}));
+	return { frame: { left: box.left, top: box.top }, card: rect(doc.querySelector("article")), bars, faded };
 }))()`;
 
 export async function checkReport(report) {
@@ -91,15 +99,13 @@ export async function checkReport(report) {
 			failures.push(
 				`${label}: card pixel ${card} is not a ${CARD_ALPHA * 100}% card tint ${glass}`,
 			);
-		const bar = png.pixel(
-			(frame.bar.left + frame.bar.right) / 2,
-			(frame.bar.top + frame.bar.bottom) / 2,
-		);
-		const barColor = frame.barColor.match(/\d+/g).slice(0, 3).map(Number);
-		if (!near(bar, barColor))
-			failures.push(
-				`${label}: bar pixel ${bar} is not the opaque mark ${barColor}`,
-			);
+		if (!frame.bars.length) failures.push(label + ": missing chart bars");
+		for (const [i, { box, color }] of frame.bars.entries()) {
+			const pixel = png.pixel((box.left + box.right) / 2, (box.top + box.bottom) / 2);
+			if (color[3] !== 255 || !near(pixel, color.slice(0, 3))) {
+				failures.push(label + ": non-opaque bar " + (i + 1));
+			}
+		}
 		for (const item of frame.faded)
 			failures.push(`${label}: translucent ${item}`);
 	});
@@ -128,6 +134,16 @@ async function main() {
 				: `FAIL solid twin not rejected: ${solid.join("; ") || "no failures"}`,
 		);
 		if (!caught) failures.push("solid twin");
+		const controls = [
+			["non-opaque bar 2", "article:first-of-type .measure:nth-of-type(2) .rail b { background:rgb(36 139 154 / 50%) !important }"],
+			["translucent H3 text", "h3 { color:color(srgb 1 1 1 / 0.5) }"],
+		];
+		for (const [expected, css] of controls) {
+			const result = await checkReport(report + "<style>" + css + "</style>");
+			if (!BACKDROPS.every(bg => result.some(f => f.includes(bg + ": " + expected)))) {
+				failures.push("missed negative control: " + expected);
+			}
+		}
 	}
 	console.log(
 		failures.length
