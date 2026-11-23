@@ -1,5 +1,9 @@
 # Changelog
 
+## 12.10.4 - 2026-11-23
+
+- Use translucent backgrounds in the T3 Usage and Settings dialogs.
+
 ## 12.10.3 - 2026-11-23
 
 - Show the Aurora lake behind the composer on the T3 new-thread page.
