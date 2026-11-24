@@ -1,5 +1,9 @@
 # Changelog
 
+## 12.10.6 - 2026-11-25
+
+- Show the Aurora lake behind the rendered T3 Markdown file viewer.
+
 ## 12.10.5 - 2026-11-24
 
 - Show the Aurora lake behind T3 pull request details and fenced code blocks.
