@@ -124,7 +124,7 @@ function parseEnabledState(value) {
 program
 	.name("haoshoku")
 	.description("Haoshoku: portable setup for Arch / Omarchy and Debian Server.")
-	.version("12.10.5")
+	.version("12.10.6")
 	.addHelpText("before", getBanner());
 
 const informational = process.argv
