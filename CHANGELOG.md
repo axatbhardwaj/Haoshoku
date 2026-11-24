@@ -1,5 +1,9 @@
 # Changelog
 
+## 12.10.7 - 2026-11-25
+
+- Apply Aurora series colors and clearer node outlines to T3 Mermaid diagrams and remove the navy fill from expanded diagram exports.
+
 ## 12.10.6 - 2026-11-25
 
 - Show the Aurora lake behind the rendered T3 Markdown file viewer.
